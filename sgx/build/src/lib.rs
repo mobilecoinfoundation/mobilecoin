@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -16,7 +16,8 @@ pub use libs::*;
 pub use sign::{SgxConfigBuilder, SgxSign, TcsPolicy};
 pub use tools::{get_mrenclave, link_enclave};
 
-/// This structure is used to pass output paths from the "signed" crate to the "measurement" crate.
+/// This structure is used to pass output paths from the "signed" crate to the
+/// "measurement" crate.
 #[derive(Clone, Debug, Default, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SignedPaths {
     pub enclave: String,
@@ -24,7 +25,8 @@ pub struct SignedPaths {
     pub dump_file: String,
 }
 
-/// This structure is used to pass output paths from the "shared" crate to the "signed" crate.
+/// This structure is used to pass output paths from the "shared" crate to the
+/// "signed" crate.
 #[derive(Clone, Debug, Default, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct UnsignedPaths {
     pub enclave: String,
@@ -42,6 +44,10 @@ pub struct PathConfig {
 // Conditionally apply sgx-sim feature to current crate based on SGX_MODE
 pub fn handle_sgx_sim_feature() {
     if *conf::SGX_MODE_SIM {
+        println!(
+            "cargo:warning=Compiling {} for SGX simulation mode",
+            std::env::var("CARGO_PKG_NAME").expect("Could not get package name from environment")
+        );
         println!("cargo:rustc-cfg=feature=\"sgx-sim\"");
     } else if std::env::var("CARGO_FEATURE_SGX_SIM").is_ok() {
         panic!("sgx-sim feature is set by cargo, but SGX_MODE is HW");
@@ -51,39 +57,43 @@ pub fn handle_sgx_sim_feature() {
 // Conditionally apply ias-dev feature to current crate based on IAS_MODE
 pub fn handle_ias_dev_feature() {
     if *conf::IAS_MODE_DEV {
+        println!(
+            "cargo:warning=Compiling {} for IAS dev mode",
+            std::env::var("CARGO_PKG_NAME").expect("Could not get package name from environment")
+        );
         println!("cargo:rustc-cfg=feature=\"ias-dev\"");
     } else if std::env::var("CARGO_FEATURE_IAS_DEV").is_ok() {
         panic!("ias-dev feature is set by cargo, but IAS_MODE is PROD");
     }
 }
 
-// Tell cargo to rebuild if any *.rs, *.edl, *.proto, Cargo.toml, Cargo.lock or a directory itself in a given path has changed.
+// Tell cargo to rebuild if any *.rs, *.edl, *.proto, Cargo.toml, Cargo.lock or
+// a directory itself in a given path has changed.
 pub fn rerun_if_code_changed(dir: &str) {
-    for entry in WalkDir::new(dir) {
-        if let Ok(entry) = entry {
-            if entry.path().components().any(|c| c.as_os_str() == "target") {
-                continue;
-            }
+    for entry in WalkDir::new(dir).into_iter().flatten() {
+        if entry.path().components().any(|c| c.as_os_str() == "target") {
+            continue;
+        }
 
-            if entry.file_type().is_file() {
-                if let Some(ext) = entry.path().extension() {
-                    if ext == "rs" || ext == "edl" || ext == "proto" {
-                        println!("cargo:rerun-if-changed={}", entry.path().display());
-                        //println!("cargo:warning=Tracking {}", entry.path().display());
-
-                        // If this directory contained a source/edl/proto file, we also want to
-                        // rebuild in case a file got added or removed.
-                        println!(
-                            "cargo:rerun-if-changed={}",
-                            entry.path().parent().unwrap().display()
-                        );
-                    }
-                }
-                let fname = entry.file_name();
-                if fname == "Cargo.toml" || fname == "Cargo.lock" {
+        if entry.file_type().is_file() {
+            if let Some(ext) = entry.path().extension() {
+                if ext == "rs" || ext == "edl" || ext == "proto" {
                     println!("cargo:rerun-if-changed={}", entry.path().display());
                     //println!("cargo:warning=Tracking {}", entry.path().display());
+
+                    // If this directory contained a source/edl/proto file, we also want to
+                    // rebuild in case a file got added or removed.
+                    println!(
+                        "cargo:rerun-if-changed={}",
+                        entry.path().parent().unwrap().display()
+                    );
                 }
+            }
+            let fname = entry.file_name();
+            if fname == "Cargo.toml" || fname == "Cargo.lock" {
+                println!("cargo:rerun-if-changed={}", entry.path().display());
+                //println!("cargo:warning=Tracking {}",
+                // entry.path().display());
             }
         }
     }

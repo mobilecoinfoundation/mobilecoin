@@ -1,23 +1,25 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
-//! Utilities for converting between `mobilecoind` and `mobilecoind_api` data types.
+//! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
+//! types.
 
 use crate::{
-    payments::{Outlay, TxProposal},
+    payments::{Outlay, OutlayV2, SciForTx, TxProposal},
     utxo_store::UnspentTxOut,
 };
 use mc_account_keys::PublicAddress;
 use mc_api::ConversionError;
 use mc_common::HashMap;
-use mc_mobilecoind_api::{self};
+use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutConfirmationNumber},
+    tx::{Tx, TxOut},
+    Amount, TokenId,
 };
+use mc_transaction_extra::TxOutConfirmationNumber;
 use protobuf::RepeatedField;
-use std::{convert::TryFrom, iter::FromIterator};
 
-impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
+impl From<&UnspentTxOut> for api::UnspentTxOut {
     fn from(src: &UnspentTxOut) -> Self {
         let mut dst = Self::new();
 
@@ -27,21 +29,23 @@ impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
         dst.set_value(src.value);
         dst.set_attempted_spend_height(src.attempted_spend_height);
         dst.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
+        dst.set_token_id(src.token_id);
 
         dst
     }
 }
 
-impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
+impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
     type Error = ConversionError;
 
-    fn try_from(src: &mc_mobilecoind_api::UnspentTxOut) -> Result<Self, Self::Error> {
+    fn try_from(src: &api::UnspentTxOut) -> Result<Self, Self::Error> {
         let tx_out = TxOut::try_from(src.get_tx_out())?;
         let subaddress_index = src.subaddress_index;
         let key_image = KeyImage::try_from(src.get_key_image())?;
         let value = src.value;
         let attempted_spend_height = src.attempted_spend_height;
         let attempted_spend_tombstone = src.attempted_spend_tombstone;
+        let token_id = src.token_id;
 
         Ok(Self {
             tx_out,
@@ -50,11 +54,12 @@ impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
             value,
             attempted_spend_height,
             attempted_spend_tombstone,
+            token_id,
         })
     }
 }
 
-impl From<&Outlay> for mc_mobilecoind_api::Outlay {
+impl From<&Outlay> for api::Outlay {
     fn from(src: &Outlay) -> Self {
         let mut dst = Self::new();
 
@@ -65,10 +70,10 @@ impl From<&Outlay> for mc_mobilecoind_api::Outlay {
     }
 }
 
-impl TryFrom<&mc_mobilecoind_api::Outlay> for Outlay {
+impl TryFrom<&api::Outlay> for Outlay {
     type Error = ConversionError;
 
-    fn try_from(src: &mc_mobilecoind_api::Outlay) -> Result<Self, Self::Error> {
+    fn try_from(src: &api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
         let receiver = PublicAddress::try_from(src.get_receiver())?;
 
@@ -76,9 +81,32 @@ impl TryFrom<&mc_mobilecoind_api::Outlay> for Outlay {
     }
 }
 
-impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
-    fn from(src: &TxProposal) -> mc_mobilecoind_api::TxProposal {
-        let mut dst = mc_mobilecoind_api::TxProposal::new();
+impl From<&OutlayV2> for api::OutlayV2 {
+    fn from(src: &OutlayV2) -> Self {
+        let mut dst = Self::new();
+
+        dst.set_value(src.amount.value);
+        dst.set_token_id(*src.amount.token_id);
+        dst.set_receiver((&src.receiver).into());
+
+        dst
+    }
+}
+
+impl TryFrom<&api::OutlayV2> for OutlayV2 {
+    type Error = ConversionError;
+
+    fn try_from(src: &api::OutlayV2) -> Result<Self, Self::Error> {
+        let amount = Amount::new(src.value, TokenId::from(src.token_id));
+        let receiver = PublicAddress::try_from(src.get_receiver())?;
+
+        Ok(Self { amount, receiver })
+    }
+}
+
+impl From<&TxProposal> for api::TxProposal {
+    fn from(src: &TxProposal) -> api::TxProposal {
+        let mut dst = api::TxProposal::new();
 
         dst.set_input_list(RepeatedField::from_vec(
             src.utxos.iter().map(|utxo| utxo.into()).collect(),
@@ -88,26 +116,28 @@ impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
         ));
         dst.set_tx((&src.tx).into());
         dst.set_fee(src.tx.prefix.fee);
-        dst.set_outlay_index_to_tx_out_index(std::collections::HashMap::from_iter(
+        dst.set_outlay_index_to_tx_out_index(
             src.outlay_index_to_tx_out_index
                 .iter()
-                .map(|(key, val)| (*key as u64, *val as u64)),
-        ));
+                .map(|(key, val)| (*key as u64, *val as u64))
+                .collect(),
+        );
         dst.set_outlay_confirmation_numbers(
             src.outlay_confirmation_numbers
                 .iter()
                 .map(|val| val.to_vec())
                 .collect(),
         );
+        dst.set_scis(src.scis.iter().map(Into::into).collect());
 
         dst
     }
 }
 
-impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
+impl TryFrom<&api::TxProposal> for TxProposal {
     type Error = ConversionError;
 
-    fn try_from(src: &mc_mobilecoind_api::TxProposal) -> Result<Self, Self::Error> {
+    fn try_from(src: &api::TxProposal) -> Result<Self, Self::Error> {
         if src.fee != src.get_tx().get_prefix().fee {
             return Err(ConversionError::FeeMismatch);
         }
@@ -118,19 +148,25 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
             .map(UnspentTxOut::try_from)
             .collect::<Result<Vec<UnspentTxOut>, ConversionError>>()?;
 
-        let outlays = src
+        let outlays: Vec<OutlayV2> = src
             .get_outlay_list()
             .iter()
-            .map(Outlay::try_from)
-            .collect::<Result<Vec<Outlay>, ConversionError>>()?;
+            .map(OutlayV2::try_from)
+            .collect::<Result<_, _>>()?;
+
+        let scis: Vec<SciForTx> = src
+            .get_scis()
+            .iter()
+            .map(SciForTx::try_from)
+            .collect::<Result<_, _>>()?;
 
         let tx = Tx::try_from(src.get_tx())?;
 
-        let outlay_index_to_tx_out_index = HashMap::from_iter(
-            src.get_outlay_index_to_tx_out_index()
-                .iter()
-                .map(|(key, val)| (*key as usize, *val as usize)),
-        );
+        let outlay_index_to_tx_out_index = src
+            .get_outlay_index_to_tx_out_index()
+            .iter()
+            .map(|(key, val)| (*key as usize, *val as usize))
+            .collect::<HashMap<_, _>>();
 
         // Check that none of the indices are out of bound.
         if outlay_index_to_tx_out_index.len() != outlays.len() {
@@ -162,6 +198,30 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            scis,
+        })
+    }
+}
+
+impl From<&SciForTx> for api::SciForTx {
+    fn from(src: &SciForTx) -> Self {
+        let mut dst = Self::new();
+        dst.set_sci((&src.sci).into());
+        dst.set_partial_fill_value(src.partial_fill_value);
+        dst
+    }
+}
+
+impl TryFrom<&api::SciForTx> for SciForTx {
+    type Error = ConversionError;
+
+    fn try_from(src: &api::SciForTx) -> Result<Self, Self::Error> {
+        let sci = src.get_sci().try_into()?;
+        let partial_fill_value = src.partial_fill_value;
+
+        Ok(Self {
+            sci,
+            partial_fill_value,
         })
     }
 }
@@ -169,12 +229,13 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_crypto_keys::RistrettoPublic;
-    use mc_ledger_db::Ledger;
-    use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount};
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
+    use mc_account_keys::AccountKey;
+    use mc_crypto_keys::RistrettoPrivate;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        Ledger,
     };
+    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -183,12 +244,18 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         // Rust -> Proto
-        let tx_out = TxOut {
-            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
-            target_key: RistrettoPublic::from_random(&mut rng).into(),
-            public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+        let amount = Amount {
+            value: 1u64 << 13,
+            token_id: Mob::ID,
         };
+        let tx_out = TxOut::new(
+            BlockVersion::MAX,
+            amount,
+            &PublicAddress::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+            Default::default(),
+        )
+        .unwrap();
 
         let subaddress_index = 123;
         let key_image = KeyImage::from(456);
@@ -199,13 +266,14 @@ mod test {
         let rust = UnspentTxOut {
             tx_out: tx_out.clone(),
             subaddress_index,
-            key_image: key_image.clone(),
+            key_image,
             value,
             attempted_spend_height,
             attempted_spend_tombstone,
+            token_id: *Mob::ID,
         };
 
-        let proto = mc_mobilecoind_api::UnspentTxOut::from(&rust);
+        let proto = api::UnspentTxOut::from(&rust);
 
         assert_eq!(tx_out, TxOut::try_from(proto.get_tx_out()).unwrap());
         assert_eq!(subaddress_index, proto.subaddress_index);
@@ -231,7 +299,7 @@ mod test {
             receiver: public_addr.clone(),
             value: 1234,
         };
-        let proto = mc_mobilecoind_api::Outlay::from(&rust);
+        let proto = api::Outlay::from(&rust);
 
         assert_eq!(proto.value, rust.value);
         assert_eq!(
@@ -251,12 +319,13 @@ mod test {
             let mut ledger = create_ledger();
             let sender = AccountKey::random(&mut rng);
             let recipient = AccountKey::random(&mut rng);
-            initialize_ledger(&mut ledger, 1, &sender, &mut rng);
+            initialize_ledger(BlockVersion::MAX, &mut ledger, 1, &sender, &mut rng);
 
             let block_contents = ledger.get_block_contents(0).unwrap();
             let tx_out = block_contents.outputs[0].clone();
 
             create_transaction(
+                BlockVersion::MAX,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -267,12 +336,18 @@ mod test {
         };
 
         let utxo = {
-            let tx_out = TxOut {
-                amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+            let amount = Amount {
+                value: 1u64 << 13,
+                token_id: Mob::ID,
             };
+            let tx_out = TxOut::new(
+                BlockVersion::MAX,
+                amount,
+                &PublicAddress::from_random(&mut rng),
+                &RistrettoPrivate::from_random(&mut rng),
+                Default::default(),
+            )
+            .unwrap();
 
             let subaddress_index = 123;
             let key_image = KeyImage::from(456);
@@ -281,20 +356,21 @@ mod test {
             let attempted_spend_tombstone = 1234;
 
             UnspentTxOut {
-                tx_out: tx_out.clone(),
+                tx_out,
                 subaddress_index,
-                key_image: key_image.clone(),
+                key_image,
                 value,
                 attempted_spend_height,
                 attempted_spend_tombstone,
+                token_id: *Mob::ID,
             }
         };
 
         let outlay = {
             let public_addr = AccountKey::random(&mut rng).default_subaddress();
-            Outlay {
-                receiver: public_addr.clone(),
-                value: 1234,
+            OutlayV2 {
+                receiver: public_addr,
+                amount: Amount::new(1234, TokenId::from(0)),
             }
         };
 
@@ -308,9 +384,10 @@ mod test {
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            scis: vec![],
         };
 
-        let proto = mc_mobilecoind_api::TxProposal::from(&rust);
+        let proto = api::TxProposal::from(&rust);
 
         assert_eq!(
             rust.utxos,
@@ -319,7 +396,7 @@ mod test {
 
         assert_eq!(
             rust.outlays,
-            vec![Outlay::try_from(&proto.get_outlay_list()[0]).unwrap()],
+            vec![OutlayV2::try_from(&proto.get_outlay_list()[0]).unwrap()],
         );
 
         assert_eq!(proto.get_outlay_index_to_tx_out_index().len(), 1);

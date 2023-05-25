@@ -1,16 +1,17 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A synchronous connection wrapper around an inner (thread-unsafe) connection
 
 use crate::{
     error::RetryResult,
     traits::{
-        BlockchainConnection, Connection, RetryableBlockchainConnection, RetryableUserTxConnection,
-        UserTxConnection,
+        BlockInfo, BlockchainConnection, Connection, RetryableBlockchainConnection,
+        RetryableUserTxConnection, UserTxConnection,
     },
 };
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::logger::Logger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::Tx;
 use std::{
     cmp::Ordering,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -132,13 +133,13 @@ macro_rules! _retry_wrapper {
     }};
 }
 
-// Generic retry implementation, locks the inner object, calls the underlying function and passes
-// the given argument(s).
+// Generic retry implementation, locks the inner object, calls the underlying
+// function and passes the given argument(s).
 //
 // This will immediately stop on any non-gRPC error, however.
 //
-// This is required to allow the locks on the underlying object to live only for as long as the
-// request itself (not the entire retry interval).
+// This is required to allow the locks on the underlying object to live only for
+// as long as the request itself (not the entire retry interval).
 #[macro_export]
 macro_rules! impl_sync_connection_retry {
     ($obj:expr, $logger:expr, $func:ident, $iter:expr) => {{
@@ -148,7 +149,9 @@ macro_rules! impl_sync_connection_retry {
             stringify!($func),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter, || $crate::_retry_wrapper!($obj.$func()))
+        $crate::_retry::retry($iter.into_iter().map($crate::_retry::delay::jitter), || {
+            $crate::_retry_wrapper!($obj.$func())
+        })
     }};
     ($obj:expr, $logger:expr, $func:ident, $iter:expr, $arg1:expr) => {{
         $crate::_trace_time!(
@@ -158,7 +161,9 @@ macro_rules! impl_sync_connection_retry {
             stringify!($arg1),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter, || $crate::_retry_wrapper!($obj.$func($arg1)))
+        $crate::_retry::retry($iter.into_iter().map($crate::_retry::delay::jitter), || {
+            $crate::_retry_wrapper!($obj.$func($arg1))
+        })
     }};
     ($obj:expr, $logger:expr, $func:ident, $iter:expr, $arg1:expr, $arg2:expr) => {{
         $crate::_trace_time!(
@@ -169,7 +174,9 @@ macro_rules! impl_sync_connection_retry {
             stringify!($arg2),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter, || $crate::_retry_wrapper!($obj.$func($arg1, $arg2)))
+        $crate::_retry::retry($iter.into_iter().map($crate::_retry::delay::jitter), || {
+            $crate::_retry_wrapper!($obj.$func($arg1, $arg2))
+        })
     }};
 }
 
@@ -212,6 +219,13 @@ impl<BC: BlockchainConnection> RetryableBlockchainConnection for SyncConnection<
             fetch_block_height,
             retry_iterator
         )
+    }
+
+    fn fetch_block_info(
+        &self,
+        retry_iterator: impl IntoIterator<Item = Duration>,
+    ) -> RetryResult<BlockInfo> {
+        impl_sync_connection_retry!(self.write(), self.logger, fetch_block_info, retry_iterator)
     }
 }
 

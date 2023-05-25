@@ -23,7 +23,7 @@ spec:
 
     - name: kaniko
       # Need the debug container to get busybox
-      image: gcr.io/kaniko-project/executor:debug-v0.23.0
+      image: gcr.io/kaniko-project/executor:v1.6.0-debug
       imagePullPolicy: Always
       command:
         - /busybox/cat

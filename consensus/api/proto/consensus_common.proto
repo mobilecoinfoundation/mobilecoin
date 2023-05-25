@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Consensus service data types used by both client-facing and peer-facing APIs.
 
@@ -7,6 +7,8 @@ import "google/protobuf/empty.proto";
 import "blockchain.proto";
 
 package consensus_common;
+
+option go_package = "mobilecoin/api";
 
 /// Blockchain API shared between clients and peers.
 service BlockchainAPI {
@@ -18,6 +20,20 @@ service BlockchainAPI {
 message LastBlockInfoResponse {
     // Block index
     uint64 index = 1;
+
+    // Current MOB minimum fee (kept for backwards compatibility)
+    uint64 mob_minimum_fee = 2 [deprecated = true];
+
+    // A map of token id -> minimum fee
+    map<uint64, uint64> minimum_fees = 3;
+
+    // Current network_block version, appropriate for new transactions.
+    //
+    // Note that if the server was just reconfigured, this may be HIGHER than
+    // the highest block version in the ledger, so for clients this is a better
+    // source of truth than the local ledger, if the client might possibly be
+    // creating the first transaction after a reconfigure / redeploy.
+    uint32 network_block_version = 4;
 }
 
 // Requests a range [offset, offset+limit) of Blocks.
@@ -67,6 +83,22 @@ enum ProposeTxResult {
     TxFeeError = 37;
     KeyError = 38;
     UnsortedInputs = 39;
+    MissingMemo = 40;
+    MemosNotAllowed = 41;
+    TokenNotYetConfigured = 42;
+    MissingMaskedTokenId = 43;
+    MaskedTokenIdNotAllowed = 44;
+    UnsortedOutputs = 45;
+    InputRulesNotAllowed = 46;
+    InputRuleMissingRequiredOutput = 47;
+    InputRuleMaxTombstoneBlockExceeded = 48;
+    UnknownMaskedAmountVersion = 49;
+    InputRulePartialFill = 50;
+    InputRuleInvalidAmountSharedSecret = 51;
+    InputRuleTxOutConversion = 52;
+    InputRuleAmount = 53;
+    LedgerTxOutIndexOutOfBounds = 54;
+    FeeMapDigestMismatch = 55;
 }
 
 /// Response from TxPropose RPC call.
@@ -76,4 +108,10 @@ message ProposeTxResponse {
 
     /// The number of blocks in the ledger at the time the request was received.
     uint64 block_count = 2;
+
+    /// The block version which is in effect right now
+    uint32 block_version = 3;
+
+    /// Human-readable error message, in case of nonzero ProposeTxResult
+    string err_msg = 4;
 }

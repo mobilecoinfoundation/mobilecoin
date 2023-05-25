@@ -1,47 +1,60 @@
 [package]
 name = "mc-api"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 links = "mc-api"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
-mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier-types = { path = "../attest/verifier/types" }
+mc-blockchain-types = { path = "../blockchain/types" }
+mc-common = { path = "../common", default-features = false }
 mc-crypto-keys = { path = "../crypto/keys" }
+mc-crypto-multisig = { path = "../crypto/multisig" }
+mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
+mc-transaction-core = { path = "../transaction/core" }
+mc-transaction-extra = { path = "../transaction/extra" }
+mc-transaction-summary = { path = "../transaction/summary" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
-mc-transaction-core = { path = "../transaction/core" }
+mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "../watcher/api" }
 
-bs58 = "0.3.0"
-crc = "1.8.1"
-displaydoc = { version = "0.1.7", default-features = false }
-protobuf = "2.20"
+bs58 = "0.4.0"
+crc = "3.0.0"
+displaydoc = { version = "0.2", default-features = false }
+protobuf = "2.27.1"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
 mc-util-build-script = { path = "../util/build/script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 
 [dev-dependencies]
+mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
+mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }
+mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
 mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }
-mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
-mc-transaction-std = { path = "../transaction/std" }
+mc-transaction-builder = { path = "../transaction/builder", features = ["test-only"] }
 mc-util-from-random = { path = "../util/from-random" }
+mc-util-serial = { path = "../util/serial", features = ["test_utils"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vector = { path = "../util/test-vector" }
+mc-util-test-with-data = { path = "../util/test-with-data" }
+mc-util-zip-exact = { path = "../util/zip-exact" }
 
-datatest = "0.6"
-pem = "0.8"
-prost = { version = "0.6.1", default-features = false }
-rand = "0.7"
+generic-array = "0.14"
+pem = "2.0"
+prost = { version = "0.11", default-features = false }
+rand = "0.8"
+rand_core = "0.6"
+rand_hc = "0.3"

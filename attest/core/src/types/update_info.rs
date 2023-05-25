@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! FFI type for the sgx_update_bit_t
 
@@ -6,7 +6,6 @@ use crate::{impl_sgx_wrapper_reqs, traits::SgxWrapperType};
 use alloc::vec::Vec;
 use core::{
     cmp::{Ord, Ordering},
-    convert::TryInto,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -31,8 +30,7 @@ impl Debug for UpdateInfo {
         let psw_update = self.0.pswUpdate;
         write!(
             f,
-            "UpdateInfo {{ ucodeUpdate: i32({}), csmeFwUpdate: i32({}), pswUpdate: i32({}) }}",
-            ucode_update, csme_fw_update, psw_update,
+            "UpdateInfo {{ ucodeUpdate: i32({ucode_update}), csmeFwUpdate: i32({csme_fw_update}), pswUpdate: i32({psw_update}) }}",
         )
     }
 }
@@ -44,8 +42,7 @@ impl Display for UpdateInfo {
         let psw_update = self.0.pswUpdate;
         write!(
             f,
-            "Microcode {}, Management Engine Firmware {}, Platform Services {}",
-            ucode_update, csme_fw_update, psw_update
+            "Microcode {ucode_update}, Management Engine Firmware {csme_fw_update}, Platform Services {psw_update}"
         )
     }
 }

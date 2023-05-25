@@ -1,8 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::RistrettoPrivate
 
 use crate::{external, ConversionError};
 use mc_crypto_keys::RistrettoPrivate;
-use std::convert::TryFrom;
 
 /// Convert RistrettoPrivate --> external::RistrettoPrivate
 impl From<&RistrettoPrivate> for external::RistrettoPrivate {

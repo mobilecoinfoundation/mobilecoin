@@ -1,0 +1,34 @@
+[package]
+name = "mc-fog-view-protocol"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[dependencies]
+# mobilecoin
+mc-account-keys = { path = "../../../account-keys" }
+mc-common = { path = "../../../common", default-features = false }
+mc-crypto-box = { path = "../../../crypto/box" }
+mc-crypto-hashes = { path = "../../../crypto/hashes" }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-serial = { path = "../../../util/serial", default-features = false }
+
+# fog
+mc-fog-kex-rng = { path = "../../kex_rng" }
+mc-fog-types = { path = "../../types" }
+
+# third-party
+displaydoc = { version = "0.2", default-features = false }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+zeroize = "1.5"
+
+[dev_dependencies]
+mc-util-test-helper = { path = "../../../util/test-helper" }
+mc-watcher-api = { path = "../../../watcher/api" }
+rand_hc = "0.3"

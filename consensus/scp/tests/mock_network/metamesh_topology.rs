@@ -1,22 +1,20 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// "Metamesh" network topologies.
+//! "Metamesh" network topologies.
 
-// A metamesh consists of a set of (n) "organizations", each comprising (m) servers.
-// Quorum is configured with hierarchy, such that each node requires (k_n) of the
-// organizations to agree, and each organization is considered to reach agreement
-// when (k_m) of its constituent servers reach agreement.
+// A metamesh consists of a set of (n) "organizations", each comprising (m)
+// servers. Quorum is configured with hierarchy, such that each node requires
+// (k_n) of the organizations to agree, and each organization is considered to
+// reach agreement when (k_m) of its constituent servers reach agreement.
 
-// As an example, consider a network with n=3 and m=3, with nodes labeled "n-index/m-index"
+// As an example, consider a network with n=3 and m=3, with nodes labeled
+// "n-index/m-index"
 //
 // The quorum set for node "0/0" is as follows:
-// ([k_n], ([k_m - 1], 0/1, 0/2]), ([k_m], 1/0, 1/1, 1/2]), ([k_m], 2/0, 2/1, 2/2]])
-// The quorum set for node "1/2" is:
-// ([k_n], ([k_m], 0/0, 0/1, 0/2]), ([k_m - 1], 1/0, 1/1]), ([k_m], 2/0, 2/1, 2/2]])
-
-// We allow dead code because not all integration tests use all of the common code.
-// https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
+// ([k_n], ([k_m - 1], 0/1, 0/2]), ([k_m], 1/0, 1/1, 1/2]), ([k_m], 2/0, 2/1,
+// 2/2]]) The quorum set for node "1/2" is:
+// ([k_n], ([k_m], 0/0, 0/1, 0/2]), ([k_m - 1], 1/0, 1/1]), ([k_m], 2/0, 2/1,
+// 2/2]])
 
 use crate::mock_network;
 use mc_common::NodeID;
@@ -75,8 +73,7 @@ pub fn metamesh(
                 .cloned()
                 .collect::<Vec<QuorumSet>>();
 
-            let mut inner_quorum_sets = Vec::<QuorumSet>::new();
-            inner_quorum_sets.push(inner_quorum_set_for_this_org);
+            let mut inner_quorum_sets = vec![inner_quorum_set_for_this_org];
             inner_quorum_sets.append(&mut inner_quorum_sets_for_other_orgs);
 
             // connect this node to all other nodes
@@ -90,7 +87,7 @@ pub fn metamesh(
                 .collect::<HashSet<NodeID>>();
 
             nodes.push(mock_network::NodeConfig::new(
-                format!("mm{}-{}", org_index, server_index),
+                format!("mm{org_index}-{server_index}"),
                 node_id,
                 peers,
                 QuorumSet::new_with_inner_sets(k_n as u32, inner_quorum_sets),
@@ -98,5 +95,5 @@ pub fn metamesh(
         }
     }
 
-    mock_network::NetworkConfig::new(format!("{}k{}-{}k{}", n, k_n, m, k_m), nodes)
+    mock_network::NetworkConfig::new(format!("{n}k{k_n}-{m}k{k_m}"), nodes)
 }

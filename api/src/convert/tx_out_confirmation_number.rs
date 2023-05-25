@@ -1,20 +1,21 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::TxOutConfirmationNumber
 
-use crate::{convert::ConversionError, external};
-use mc_transaction_core::tx;
-use std::convert::TryFrom;
+use crate::{external, ConversionError};
+use mc_transaction_extra::TxOutConfirmationNumber;
 
-/// Convert tx::TxOutConfirmationNumber --> external::TxOutConfirmationNumber.
-impl From<&tx::TxOutConfirmationNumber> for external::TxOutConfirmationNumber {
-    fn from(src: &tx::TxOutConfirmationNumber) -> Self {
+/// Convert TxOutConfirmationNumber --> external::TxOutConfirmationNumber.
+impl From<&TxOutConfirmationNumber> for external::TxOutConfirmationNumber {
+    fn from(src: &TxOutConfirmationNumber) -> Self {
         let mut tx_confirmation = external::TxOutConfirmationNumber::new();
         tx_confirmation.set_hash(src.to_vec());
         tx_confirmation
     }
 }
 
-/// Convert  external::TxOutConfirmationNumber --> tx::TxOutConfirmationNumber.
-impl TryFrom<&external::TxOutConfirmationNumber> for tx::TxOutConfirmationNumber {
+/// Convert  external::TxOutConfirmationNumber --> TxOutConfirmationNumber.
+impl TryFrom<&external::TxOutConfirmationNumber> for TxOutConfirmationNumber {
     type Error = ConversionError;
 
     fn try_from(src: &external::TxOutConfirmationNumber) -> Result<Self, Self::Error> {
@@ -24,7 +25,7 @@ impl TryFrom<&external::TxOutConfirmationNumber> for tx::TxOutConfirmationNumber
             return Err(ConversionError::ArrayCastError);
         }
         hash.copy_from_slice(bytes);
-        Ok(tx::TxOutConfirmationNumber::from(hash))
+        Ok(TxOutConfirmationNumber::from(hash))
     }
 }
 
@@ -33,35 +34,37 @@ mod tests {
     use super::*;
 
     #[test]
-    // tx::TxOutConfirmationNumber --> external::TxOutConfirmationNumber.
+    // TxOutConfirmationNumber --> external::TxOutConfirmationNumber.
     fn test_confirmation_number_from() {
-        let source: tx::TxOutConfirmationNumber = tx::TxOutConfirmationNumber::from([7u8; 32]);
+        let source: TxOutConfirmationNumber = TxOutConfirmationNumber::from([7u8; 32]);
         let converted = external::TxOutConfirmationNumber::from(&source);
         assert_eq!(converted.hash.as_slice(), source.as_ref());
     }
 
     #[test]
-    // external::TxOutConfirmationNumber --> tx::TxOutConfirmationNumber
+    // external::TxOutConfirmationNumber --> TxOutConfirmationNumber
     fn test_confirmation_number_try_from() {
         let mut source = external::TxOutConfirmationNumber::new();
         source.set_hash(vec![7u8; 32]);
-        let converted = tx::TxOutConfirmationNumber::try_from(&source).unwrap();
+        let converted = TxOutConfirmationNumber::try_from(&source).unwrap();
         assert_eq!(*converted.as_ref(), [7u8; 32]);
     }
 
     #[test]
-    // Unmarshalling too many bytes into a TxOutConfirmationNumber should produce an error.
+    // Unmarshalling too many bytes into a TxOutConfirmationNumber should produce an
+    // error.
     fn test_confirmation_number_try_from_too_many_bytes() {
         let mut source = external::TxOutConfirmationNumber::new();
         source.set_hash(vec![7u8; 99]); // Too many bytes.
-        assert!(tx::TxOutConfirmationNumber::try_from(&source).is_err());
+        assert!(TxOutConfirmationNumber::try_from(&source).is_err());
     }
 
     #[test]
-    // Unmarshalling too few bytes into a TxOutConfirmationNumber should produce an error.
+    // Unmarshalling too few bytes into a TxOutConfirmationNumber should produce an
+    // error.
     fn test_confirmation_number_try_from_too_few_bytes() {
         let mut source = external::TxOutConfirmationNumber::new();
         source.set_hash(vec![7u8; 3]); // Too few bytes.
-        assert!(tx::TxOutConfirmationNumber::try_from(&source).is_err());
+        assert!(TxOutConfirmationNumber::try_from(&source).is_err());
     }
 }

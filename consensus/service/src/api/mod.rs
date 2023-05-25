@@ -1,6 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! gRPC APIs
+#![allow(clippy::result_large_err)]
 
 mod attested_api_service;
 mod blockchain_api_service;
@@ -11,5 +12,5 @@ mod peer_service_error;
 
 pub use attested_api_service::AttestedApiService;
 pub use blockchain_api_service::BlockchainApiService;
-pub use client_api_service::ClientApiService;
+pub use client_api_service::{ClientApiService, ClientSessionTracking};
 pub use peer_api_service::PeerApiService;

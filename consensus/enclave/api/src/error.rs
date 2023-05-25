@@ -1,15 +1,18 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Enclave API Errors
 
 use alloc::string::String;
-use failure::Fail;
-use mc_attest_core::SgxError;
+use displaydoc::Display;
+use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
 use mc_attest_enclave_api::Error as AttestEnclaveError;
-use mc_crypto_keys::Ed25519SignatureError;
+use mc_blockchain_types::BlockVersion;
+use mc_crypto_keys::{KeyError, SignatureError};
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
-use mc_transaction_core::validation::TransactionValidationError;
+use mc_transaction_core::{
+    mint::MintValidationError, validation::TransactionValidationError, FeeMapError, TokenId,
+};
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
@@ -17,47 +20,84 @@ use mc_util_serial::{
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of errors which can occur inside a consensus enclave.
-#[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
-    /// A call to the SGX SDK has failed
-    #[fail(display = "Error communicating with SGX: {}", _0)]
+    /// Error communicating with SGX: {0}
     Sgx(SgxError),
 
-    /// Error with attestation or ake
-    #[fail(display = "Attested AKE error: {}", _0)]
+    /// Attested AKE error: {0}
     Attest(AttestEnclaveError),
 
-    /// There was an error encrypting or decrypting local data.
-    #[fail(display = "Local cache cipher error: {}", _0)]
+    /// Local cache cipher error: {0}
     CacheCipher(MessageCipherError),
 
-    /// There was an error serializing or deserializing data
-    #[fail(display = "Error while serializing/deserializing")]
+    /// Error while serializing/deserializing
     Serialization,
 
-    /// An panic occurred on another thread
-    #[fail(display = "Another thread crashed while holding a lock")]
+    /// Another thread crashed while holding a lock
     Poison,
 
-    /// Indicates that the transaction is malformed.
-    #[fail(display = "Malformed transaction: {}", _0)]
+    /// Malformed transaction: {0}
     MalformedTx(TransactionValidationError),
 
-    /// A membership proof provided by the local system is invalid.
-    #[fail(display = "Invalid membership proof provided by local system")]
+    /// Malformed minting transaction: {0}
+    MalformedMintingTx(MintValidationError),
+
+    /// Invalid membership proof provided by local system
     InvalidLocalMembershipProof,
 
-    /// Error forming block (not expected to happen if untrusted plays by the rules).
-    #[fail(display = "Form block error: {}", _0)]
+    /// Invalid membership root element provided by local system
+    InvalidLocalMembershipRootElement,
+
+    /// Form block error: {0}
     FormBlock(String),
 
     /// Signature error
-    #[fail(display = "Signature error")]
     Signature,
 
-    /// Fee Public Address Error
-    #[fail(display = "Fee public address error: {}", _0)]
+    /// Fee public address error: {0}
     FeePublicAddress(String),
+
+    /// Invalid fee configuration: {0}
+    FeeMap(FeeMapError),
+
+    /// Enclave not initialized
+    NotInitialized,
+
+    /// Block Version Error: {0}
+    BlockVersion(String),
+
+    /// Sealing Error: {0}
+    IntelSealing(IntelSealingError),
+
+    /// Missing governors signature
+    MissingGovernorsSignature,
+
+    /// Invalid governors signature
+    InvalidGovernorsSignature,
+
+    /// Failed parsing minting trust root public key
+    ParseMintingTrustRootPublicKey(KeyError),
+
+    /// Fee Map Digest Mismatch
+    FeeMapDigestMismatch,
+
+    /** Nested multi-sig governors for token id {0} not supported at block
+     * version {1}
+     */
+    NestedMultiSigGovernorsNotSupported(TokenId, BlockVersion),
+}
+
+impl From<ParseSealedError> for Error {
+    fn from(src: ParseSealedError) -> Self {
+        Error::IntelSealing(src.into())
+    }
+}
+
+impl From<IntelSealingError> for Error {
+    fn from(src: IntelSealingError) -> Self {
+        Error::IntelSealing(src)
+    }
 }
 
 impl From<MessageCipherError> for Error {
@@ -108,14 +148,26 @@ impl From<TransactionValidationError> for Error {
     }
 }
 
+impl From<MintValidationError> for Error {
+    fn from(src: MintValidationError) -> Error {
+        Error::MalformedMintingTx(src)
+    }
+}
+
 impl From<AttestEnclaveError> for Error {
     fn from(src: AttestEnclaveError) -> Error {
         Error::Attest(src)
     }
 }
 
-impl From<Ed25519SignatureError> for Error {
-    fn from(_src: Ed25519SignatureError) -> Error {
+impl From<SignatureError> for Error {
+    fn from(_src: SignatureError) -> Error {
         Error::Signature
+    }
+}
+
+impl From<FeeMapError> for Error {
+    fn from(src: FeeMapError) -> Error {
+        Error::FeeMap(src)
     }
 }

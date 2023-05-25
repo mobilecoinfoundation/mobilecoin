@@ -1,0 +1,46 @@
+[package]
+name = "mc-fog-distribution"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "fog-distribution"
+path = "src/main.rs"
+
+[dependencies]
+mc-account-keys = { path = "../../account-keys" }
+mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
+mc-common = { path = "../../common", features = ["log"] }
+mc-connection = { path = "../../connection" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
+mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
+mc-fog-report-connection = { path = "../../fog/report/connection" }
+mc-fog-report-resolver = { path = "../../fog/report/resolver" }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-transaction-builder = { path = "../../transaction/builder" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-cli = { path = "../../util/cli" }
+mc-util-keyfile = { path = "../../util/keyfile" }
+mc-util-uri = { path = "../../util/uri" }
+
+clap = { version = "4.1", features = ["derive", "env"] }
+crossbeam-channel = "0.5"
+grpcio = "0.12.1"
+lazy_static = "1.4"
+rand = "0.8"
+rayon = "1.7"
+retry = "2.0"
+tempfile = "3.5"
+
+curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+
+[dev-dependencies]
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }

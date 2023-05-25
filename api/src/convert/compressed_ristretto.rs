@@ -1,10 +1,11 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::CompressedRistretto.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_transaction_core::CompressedCommitment;
-use std::convert::TryFrom;
 
 impl From<&CompressedCommitment> for external::CompressedRistretto {
     fn from(source: &CompressedCommitment) -> Self {
@@ -19,10 +20,8 @@ impl TryFrom<&external::CompressedRistretto> for CompressedCommitment {
 
     fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
         let bytes: &[u8] = source.get_data();
-        if bytes.len() != 32 {
-            return Err(ConversionError::ArrayCastError);
-        }
-        let point = CompressedRistretto::from_slice(bytes);
+        let point =
+            CompressedRistretto::from_slice(bytes).map_err(|_e| ConversionError::ArrayCastError)?;
         Ok(CompressedCommitment { point })
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! GRPC authenticator that authenticates everything as an anonymous user.
 
@@ -7,6 +7,8 @@ use super::*;
 /// The username returned for all authenticate calls.
 pub const ANONYMOUS_USER: &str = "<anonymous>";
 
+/// A trivial GRPC authenticator object that authenticates everyone as
+/// "anonymous"
 #[derive(Default)]
 pub struct AnonymousAuthenticator;
 

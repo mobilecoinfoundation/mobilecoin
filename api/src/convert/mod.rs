@@ -1,12 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Conversions between "API types" and "domain/persistence types".
 //!
-//! gRPC and Protobuf provide a reduced selection of types, and so there are some differences between
-//! values stored in the ledger and values transmitted over the API. This module provides conversions
-//! between "equivalent" types, such as `mc_api::blockchain::Block` and `mc_transaction_core::Block`.
-
-mod error;
+//! gRPC and Protobuf provide a reduced selection of types, and so there are
+//! some differences between values stored in the ledger and values transmitted
+//! over the API. This module provides conversions between "equivalent" types,
+//! such as `mc_api::blockchain::Block` and `mc_blockchain_types::Block`.
 
 // blockchain
 mod archive_block;
@@ -14,6 +13,7 @@ mod block;
 mod block_contents;
 mod block_contents_hash;
 mod block_id;
+mod block_metadata;
 mod block_signature;
 
 // external
@@ -21,12 +21,23 @@ mod account_key;
 mod amount;
 mod compressed_ristretto;
 mod curve_scalar;
+mod ed25519_multisig;
 mod ed25519_signature;
+mod input_ring;
+mod input_secret;
 mod key_image;
+mod mint_config;
+mod mint_tx;
+mod node;
+mod output_secret;
 mod public_address;
+mod quorum_set;
+mod reduced_tx_out;
 mod ring_mlsag;
 mod ristretto_private;
 mod signature_rct_bulletproofs;
+mod signed_contingent_input;
+mod signing_data;
 mod tx;
 mod tx_hash;
 mod tx_in;
@@ -35,17 +46,26 @@ mod tx_out_confirmation_number;
 mod tx_out_membership_element;
 mod tx_out_membership_proof;
 mod tx_prefix;
+mod unsigned_tx;
+mod validated_mint_config;
 mod verification_report;
 mod verification_signature;
 mod watcher;
 
-pub use self::error::ConversionError;
+// printable
+mod tx_out_gift_code;
 
+// error
+mod error;
+pub use error::ConversionError;
+
+use mc_blockchain_types::BlockIndex;
 use std::path::PathBuf;
 
-/// Helper method for getting the suggested path/filename for a given block index.
-pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -> PathBuf {
-    let filename = format!("{:016x}.pb", block_index);
+/// Helper method for getting the suggested path/filename for a given block
+/// index.
+pub fn block_num_to_s3block_path(block_index: BlockIndex) -> PathBuf {
+    let filename = format!("{block_index:016x}.pb");
     let mut path = PathBuf::new();
     for i in 0..7 {
         path.push(&filename[i * 2..i * 2 + 2]);
@@ -55,14 +75,14 @@ pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -
 }
 
 /// Helper method for getting the suggested path/filename of a "merged block".
-/// A "merged block" is a consecutive collection of blocks that were joined together to speed up
-/// ledger syncing.
+/// A "merged block" is a consecutive collection of blocks that were joined
+/// together to speed up ledger syncing.
 /// `bucket_size` specifies how many blocks are expected to be joined together.
 pub fn merged_block_num_to_s3block_path(
     bucket_size: u64,
-    first_block_index: mc_transaction_core::BlockIndex,
+    first_block_index: BlockIndex,
 ) -> PathBuf {
-    let base_dir = format!("merged-{}", bucket_size);
+    let base_dir = format!("merged-{bucket_size}");
     let mut path = PathBuf::new();
     path.push(base_dir);
     path.push(block_num_to_s3block_path(first_block_index));
@@ -72,7 +92,6 @@ pub fn merged_block_num_to_s3block_path(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::convert::From;
 
     #[test]
     fn test_block_num_to_s3block_path() {

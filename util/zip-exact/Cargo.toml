@@ -1,0 +1,15 @@
+[package]
+name = "mc-util-zip-exact"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+description = "An iterator helper"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[features]
+default = ["serde"]
+
+[dependencies]
+serde = { version = "1.0", default-features = false, optional = true }

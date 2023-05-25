@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the wrapper type for an sgx_target_info_t
 
@@ -14,7 +14,6 @@ use crate::{
 use alloc::vec::Vec;
 use core::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     mem::size_of,
@@ -240,7 +239,7 @@ mod test {
 
     #[test]
     fn test_bad_ffi_write_len() {
-        let ti: TargetInfo = TARGET_INFO_SAMPLE.clone().into();
+        let ti: TargetInfo = TARGET_INFO_SAMPLE.into();
         let mut outbuf = vec![0u8; size_of::<TargetInfo>() - 1];
 
         assert_eq!(
@@ -251,7 +250,7 @@ mod test {
 
     #[test]
     fn test_bad_ffi_read_len() {
-        let ti: TargetInfo = TARGET_INFO_SAMPLE.clone().into();
+        let ti: TargetInfo = TARGET_INFO_SAMPLE.into();
         let mut outbuf = vec![0u8; size_of::<TargetInfo>() - 1];
 
         assert_eq!(
@@ -262,7 +261,7 @@ mod test {
 
     #[test]
     fn test_target_info_serde() {
-        let ti1: TargetInfo = TARGET_INFO_SAMPLE.clone().into();
+        let ti1: TargetInfo = TARGET_INFO_SAMPLE.into();
         let ti1ser = serialize(&ti1).expect("TargetInfo serialization failure");
         let ti2 = deserialize(&ti1ser).expect("TargetInfo deserialization failure");
         assert_eq!(ti1, ti2);

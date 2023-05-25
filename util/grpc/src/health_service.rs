@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Implementation of the [GRPC Health Checking
 //! Protocol](https://github.com/grpc/grpc/blob/master/doc/health-checking.md) with some added
@@ -10,22 +10,26 @@ use crate::{
         PingResponse,
     },
     health_api_grpc::{create_health, Health},
-    rpc_logger, send_result,
+    rpc_logger, send_result, SVC_COUNTERS,
 };
 use futures::prelude::*;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, ServerStreamingSink, Service, UnarySink};
 use mc_common::logger::{log, Logger};
-use mc_util_metrics::SVC_COUNTERS;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 // Re-export the health check status enum for convenience.
 pub use crate::health_api::HealthCheckResponse_ServingStatus as HealthCheckStatus;
 
-// A prototype of a callback function that receives a service name and returns it's health status.
-// By defauult, `HealthService` would respond SERVING to all health check requests, but passing a
-// callback to it allows customization of this behavior.
+// A prototype of a callback function that receives a service name and returns
+// it's health status. By defauult, `HealthService` would respond SERVING to all
+// health check requests, but passing a callback to it allows customization of
+// this behavior.
 pub type ServiceHealthCheckCallback = Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send>;
 
+/// A service that serves the grpcio health API: https://github.com/grpc/grpc/blob/v1.15.0/src/proto/grpc/health/v1/health.proto
 #[derive(Clone)]
 pub struct HealthService {
     service_health_check_callback: Option<ServiceHealthCheckCallback>,
@@ -33,6 +37,7 @@ pub struct HealthService {
 }
 
 impl HealthService {
+    /// Create a new health service with optional health check callback logic
     pub fn new(
         service_health_check_callback: Option<ServiceHealthCheckCallback>,
         logger: Logger,
@@ -43,6 +48,7 @@ impl HealthService {
         }
     }
 
+    /// Convert it into a grpc service
     pub fn into_service(self) -> Service {
         create_health(self)
     }
@@ -86,13 +92,57 @@ impl Health for HealthService {
         let logger = self.logger.clone();
 
         let resp = sink
-            .fail(RpcStatus::new(
+            .fail(RpcStatus::with_message(
                 RpcStatusCode::UNIMPLEMENTED,
-                Some("Unimplemented".into()),
+                "Unimplemented".into(),
             ))
             .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
             .map(|_| ());
 
         ctx.spawn(resp);
+    }
+}
+
+/// A "global" readiness indicator can be used when your server has an initial
+/// period in which it is unready.
+///
+/// Here "unready" means "the server is still not finished starting up, and
+/// replies to the clients may be less useful". When k8s determines that a
+/// service is unready, it lets it run, but does not route incoming traffic to
+/// it.
+///
+/// We indicate "unready" by making the health check callback return
+/// "NOT_SERVING"
+#[derive(Default, Clone)]
+pub struct ReadinessIndicator {
+    is_ready: Arc<AtomicBool>,
+}
+
+impl ReadinessIndicator {
+    /// Set the status to ready
+    pub fn set_ready(&self) {
+        self.is_ready.store(true, Ordering::SeqCst);
+    }
+
+    /// Set the status to unready
+    pub fn set_unready(&self) {
+        self.is_ready.store(false, Ordering::SeqCst);
+    }
+
+    /// Check the status
+    pub fn ready(&self) -> bool {
+        self.is_ready.load(Ordering::SeqCst)
+    }
+}
+
+impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
+    fn from(src: ReadinessIndicator) -> Self {
+        Arc::new(move |_| -> HealthCheckStatus {
+            if src.ready() {
+                HealthCheckStatus::SERVING
+            } else {
+                HealthCheckStatus::NOT_SERVING
+            }
+        })
     }
 }

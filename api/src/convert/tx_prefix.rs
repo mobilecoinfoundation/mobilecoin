@@ -1,8 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::TxPrefix.
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::tx;
-use std::convert::TryFrom;
 
 /// Convert tx::TxPrefix --> external::TxPrefix.
 impl From<&tx::TxPrefix> for external::TxPrefix {
@@ -17,6 +18,8 @@ impl From<&tx::TxPrefix> for external::TxPrefix {
         tx_prefix.set_outputs(outputs.into());
 
         tx_prefix.set_fee(source.fee);
+
+        tx_prefix.set_fee_token_id(source.fee_token_id);
 
         tx_prefix.set_tombstone_block(source.tombstone_block);
 
@@ -45,6 +48,7 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
             inputs,
             outputs,
             fee: source.get_fee(),
+            fee_token_id: source.get_fee_token_id(),
             tombstone_block: source.get_tombstone_block(),
         };
         Ok(tx_prefix)

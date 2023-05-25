@@ -8,11 +8,9 @@
 
 * Please see [*MAINNET.md*](./MAINNET.md) for instructions on using MobileCoin!
 * You must read and accept the [Terms of Use for MobileCoins and MobileCoin Wallets](./TERMS-OF-USE.md) to use MobileCoin Software.
-* Please note that currently, the MobileCoin Wallet is not available for download or use by U.S. persons or entities, persons or entities located in the U.S., or persons or entities in other prohibited jurisdictions.
 
 ### Note to Developers
 
-* MobileCoin is a prototype. Expect substantial changes before the release.
 * Please see [*CONTRIBUTING.md*](./CONTRIBUTING.md) for notes on contributing bug reports and code.
 
 # MobileCoin
@@ -42,6 +40,7 @@ This distribution includes cryptographic software. Your country may have restric
 | [consensus](./consensus) | Byzantine Fault Tolerant Consensus. |
 | [crypto](./crypto) | Cryptography. |
 | [enclave-boundary](./enclave-boundary) | Intel® SGX ECALL infrastructure. |
+| [fog](./fog) | Private payments for mobile devices |
 | [ledger](./ledger) | Storage and synchronization for the MobileCoin blockchain. |
 | [mcbuild](./mcbuild/) | Tools for building and signing enclaves. |
 | [mcconnection](./mcconnection/) | Attested MobileCoin connections. |
@@ -88,7 +87,7 @@ The total value of the MobileCoin network is fixed by convention at a sum of 250
 
 Ownership of a *utxo* in the MobileCoin network is equivalent to knowledge of two private keys, called the *spend private key* and the *view private key*, that provision control over discovery and transfer of value. Most users will derive these two private key values from a single underlying key we call the *root entropy*.
 
-To receive a payment, a user must calculate the two  public key values corresponding to their private keys to share with their counter-party. MobileCoin specifies a standard encoding scheme using a base-58 symbol library for users to safely exchange payment information.
+To receive a payment, a user must calculate the two public key values corresponding to their private keys to share with their counter-party. MobileCoin specifies a standard encoding scheme using a base-58 symbol library for users to safely exchange payment information.
 
 For more information on how transactions work, and how they use CrytpoNote-style transactions to preserve privacy of both the sender and receiver, see the [transaction](./transaction) crate.
 
@@ -100,7 +99,7 @@ New transactions must be checked for attempts to counterfeit value before new *k
 
 The MobileCoin Consensus Protocol is a high-performance solution to the byzantine agreement problem that allows new payments to be rapidly confirmed. The `consensus-service` target binary uses Intel Software Guard eXtensions (Intel SGX) to provide defense-in-depth improvements to privacy and trust.
 
-To learn how MobileCoin uses Intel SGX to provide integrity in Byzantine Fault Tolerant (BFT) consensus as well as forward secrecy to secure your privacy, see the [consensus/enclave](./consensus/enclave) crate. To build and run consensus, see the [consensus/service](./consensus/service) crate.
+To learn how MobileCoin uses Intel SGX to provide additional integrity in Byzantine Fault Tolerant (BFT) consensus as well as forward secrecy to secure your privacy, see the [consensus/enclave](./consensus/enclave) crate. To build and run consensus, see the [consensus/service](./consensus/service) crate.
 
 *Full validator nodes* additionally use the `ledger-distribution` target binary to publish a copy of their computed blockchain to content delivery networks (currently to Amazon S3 only). The public blockchain is a zero-knowledge data structure that consists only of *utxos*, *key images* and block metadata used to ensure consistency and to construct Merkle proofs. To build and run ledger distribution, see the [ledger/distribution](./ledger/distribution) crate.
 
@@ -126,11 +125,15 @@ To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon
 
 1. I thought you were called *MobileCoin*. Where is the code for mobile devices?
 
-    We are hard at work building mobile SDKs for iOS and Android, as well as additional privacy-preserving infrastructure to support blockchain transactions from mobile devices. We will be releasing this software soon.
+    Please see [`fog`](./fog), [`android-bindings`](https://github.com/mobilecoinofficial/android-bindings), and [`libmobilecoin`](./libmobilecoin), to see how the balance checking and
+    transaction building process works on mobile devices that don't sync the ledger.
+
+    Please see also the MobileCoin [Android](https://github.com/mobilecoinofficial/android-sdk/) and [iOS](https://github.com/mobilecoinofficial/MobileCoin-Swift) SDKs,
+    which can be integrated into your app to enable MobileCoin payments.
 
 1. Will I need to put my keys on a remote server to scan the blockchain for incoming transactions?
 
-    Keys will never leave your mobile device. This is a challenging problem and we are very excited to share our solution when we release our mobile SDK software.
+    Keys will never leave your mobile device. For more details on how this works, please see the [MobileCoin Fog README](./fog).
 
 
 ## Support

@@ -1,0 +1,50 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
+syntax = "proto3";
+
+package report;
+
+import "external.proto";
+
+option go_package = "mobilecoin/api";
+
+/// The public API for getting reports
+service ReportAPI {
+    /// Get all available pubkeys, with Intel SGX reports, fog urls, and expiry info
+    rpc GetReports(ReportRequest) returns (ReportResponse) {}
+}
+
+message ReportRequest {
+}
+
+message ReportResponse {
+    /// All available reports
+    repeated Report reports = 1;
+    /// The X509 chain from the fog authority to the signer
+    repeated bytes chain = 2;
+    /// The signature over the report list made by the last cert in the chain
+    bytes signature = 3;
+}
+
+message Report {
+    /// The fog_report_id of users with which this pubkey should be used
+    /// This should match fog_report_id in Bob's public_address
+    string fog_report_id = 1;
+
+    /// The IAS report of the Fog Ingest node.
+    ///
+    /// This report structure includes the ingest server's ingress public key.
+    external.VerificationReport report = 2;
+
+    /// The first block index in which a well-formed client may not use this public key.
+    /// This is the same semantic as tombstone block of a Tx, which is the first block index
+    /// in which the Tx cannot appear.
+    ///
+    /// The tombstone block of a Tx formed using this public key should not exceed this number.
+    /// This constraint is enforced in the TransactionBuilder.
+    ///
+    /// This number is likely to be e.g. next block index + 50,
+    /// and may be updated (larger) if you come back to the server later.
+    fixed64 pubkey_expiry = 3;
+}

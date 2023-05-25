@@ -1,23 +1,20 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Basic Watcher Node
 
 use crate::{
     error::{WatcherDBError, WatcherError},
+    metrics::WatcherMetrics,
     watcher_db::WatcherDB,
 };
-
 use mc_api::block_num_to_s3block_path;
-use mc_common::{
-    logger::{log, Logger},
-    HashMap, HashSet,
-};
+use mc_blockchain_types::{BlockData, BlockIndex};
+use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use mc_transaction_core::BlockData;
-
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
-    iter::FromIterator,
+    collections::HashMap,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -29,45 +26,75 @@ use url::Url;
 
 /// Watches multiple consensus validators and collects block signatures.
 pub struct Watcher {
-    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
+    /// A transaction fetcher per watched URL.
+    // The reason we keep a transaction fetcher per url has to do with the pre-fetching and caching
+    // mechanism implemented in ReqwestTransactionsFetcher: ReqwestTransactionsFetcher will try and
+    // fetch the large merged-blocks and then try to hand out results from its cache. However, it
+    // is oblivious as to which URL got used to cache the blocks. This behavior is suitable for
+    // LedgerSyncService but in the watcher we want to ensure the blocks are fetched from a
+    // specific URL. If we want to use the cache mechanism (which we do, since it cuts down sync
+    // time significantlly) then the workaround is to have a ReqwestTransactionsFetcher that only
+    // has a single source URL.
+    transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
     watcher_db: WatcherDB,
     store_block_data: bool,
     logger: Logger,
+    metrics: WatcherMetrics,
+}
+
+/// Result of sync loop
+pub enum SyncResult {
+    /// Reached max allowed blocks per iteration
+    ReachedMaxBlocksPerIteration,
+
+    /// All blocks have been synced
+    AllBlocksSynced,
+
+    /// Block syncing error
+    BlockSyncError,
 }
 
 impl Watcher {
     /// Create a new Watcher.
     ///
     /// # Arguments
-    /// * `watcher_db` - The backing database to use for storing and retreiving data
-    /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks from watched source
-    ///   URLs
+    /// * `watcher_db` - The backing database to use for storing and retreiving
+    ///   data
+    /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks
+    ///   from watched source URLs
     /// * `store_block_data` - The fetched BlockData objects into the database
     /// * `logger` - Logger
     pub fn new(
         watcher_db: WatcherDB,
-        transactions_fetcher: ReqwestTransactionsFetcher,
         store_block_data: bool,
         logger: Logger,
-    ) -> Self {
-        // Sanity check that the watcher db and transaction fetcher were initialized with the same
-        // set of URLs.
-        assert_eq!(
-            HashSet::from_iter(transactions_fetcher.source_urls.iter()),
-            HashSet::from_iter(
-                watcher_db
-                    .get_config_urls()
-                    .expect("get_config_urls failed")
-                    .iter()
-            )
+    ) -> Result<Self, WatcherError> {
+        let tx_source_urls = watcher_db.get_config_urls()?;
+
+        let transactions_fetcher_by_url = Arc::new(
+            tx_source_urls
+                .into_iter()
+                .map(|source_url| {
+                    Ok((
+                        source_url.clone(),
+                        ReqwestTransactionsFetcher::new(
+                            vec![source_url.to_string()],
+                            logger.clone(),
+                        )?,
+                    ))
+                })
+                .collect::<Result<HashMap<_, _>, WatcherError>>()?,
         );
 
-        Self {
-            transactions_fetcher: Arc::new(transactions_fetcher),
+        let metrics = WatcherMetrics::new();
+
+        Ok(Self {
+            transactions_fetcher_by_url,
             watcher_db,
             store_block_data,
             logger,
-        }
+            metrics,
+        })
     }
 
     /// The lowest next block we need to try and sync.
@@ -85,24 +112,51 @@ impl Watcher {
             .unwrap_or(0))
     }
 
+    /// Collect number of blocks synced per peer and ledger height (if
+    /// available)
+    pub fn collect_metrics(&self, ledger_height: Option<u64>) {
+        let last_synced = self.watcher_db.last_synced_blocks().unwrap_or_default();
+        self.metrics.collect_peer_blocks_synced(last_synced);
+        if let Some(ledger_height) = ledger_height {
+            self.metrics.set_ledger_height(ledger_height as i64);
+        }
+    }
     /// Sync blocks and collect signatures (and block data, when enabled).
     ///
     /// * `start` - starting block to sync.
-    /// * `max_block_height` - the max block height to sync per archive url. If None, continue polling.
+    /// * `max_block_height` - max block height to sync to
+    /// * `max_blocks_per_iteration` - max blocks to check for in a sync loop
+    /// * `log_sync_failures` - log node syncing failures at error! level
     ///
-    /// Returns true if syncing has reached max_block_height, false if more blocks still need to be
-    /// synced.
+    /// Returns true if syncing has reached max_block_height, false if more
+    /// blocks still need to be synced.
     pub fn sync_blocks(
         &self,
         start: u64,
         max_block_height: Option<u64>,
-    ) -> Result<bool, WatcherError> {
-        log::debug!(
-            self.logger,
-            "Now syncing signatures from {} to {:?}",
-            start,
-            max_block_height,
-        );
+        max_blocks_per_iteration: Option<usize>,
+        log_sync_failures: bool,
+    ) -> Result<SyncResult, WatcherError> {
+        match max_block_height {
+            None => {
+                log::debug!(
+                    self.logger,
+                    "Now syncing signatures from {} to {:?}",
+                    start,
+                    max_block_height,
+                );
+            }
+            Some(_) => {
+                log::info!(
+                    self.logger,
+                    "Now syncing signatures from {} to {:?}",
+                    start,
+                    max_block_height,
+                );
+            }
+        }
+
+        let mut counter = 0usize;
 
         loop {
             // Get the last synced block for each URL we are tracking.
@@ -117,7 +171,7 @@ impl Watcher {
                 });
             }
             if last_synced.is_empty() {
-                return Ok(true);
+                return Ok(SyncResult::AllBlocksSynced);
             }
 
             // Construct a map of src_url -> next block index we want to attempt to sync.
@@ -133,116 +187,118 @@ impl Watcher {
 
             // Attempt to fetch block data for all urls in parallel.
             let url_to_block_data_result =
-                parallel_fetch_blocks(url_to_block_index, self.transactions_fetcher.clone())?;
+                parallel_fetch_blocks(url_to_block_index, self.transactions_fetcher_by_url.clone());
 
-            // Store data for each successfully synced blocked. Track on whether any of the sources
-            // was able to produce block data. If so, more data might be available.
+            // Store data for each successfully synced blocked. Track on whether any of the
+            // sources was able to produce block data. If so, more data might be
+            // available.
             let mut had_success = false;
 
-            for (src_url, (block_index, block_data_result)) in url_to_block_data_result.iter() {
+            for (src_url, (block_index, block_data_result)) in url_to_block_data_result {
                 match block_data_result {
                     Ok(block_data) => {
-                        log::info!(
+                        log::debug!(
                             self.logger,
-                            "Archive block retrieved for {:?} {:?}",
+                            "Archive block retrieved for {} {}",
                             src_url,
                             block_index
                         );
                         if self.store_block_data {
-                            match self.watcher_db.add_block_data(src_url, &block_data) {
+                            match self.watcher_db.add_block_data(&src_url, &block_data) {
                                 Ok(()) => {}
                                 Err(WatcherDBError::AlreadyExists) => {}
-                                Err(err) => {
-                                    return Err(err.into());
-                                }
+                                Err(err) => Err(err)?,
                             };
                         }
 
                         if let Some(signature) = block_data.signature() {
-                            let filename = block_num_to_s3block_path(*block_index)
+                            let filename = block_num_to_s3block_path(block_index)
                                 .into_os_string()
                                 .into_string()
                                 .unwrap();
                             self.watcher_db.add_block_signature(
-                                src_url,
-                                *block_index,
+                                &src_url,
+                                block_index,
                                 signature.clone(),
                                 filename,
                             )?;
                         } else {
-                            self.watcher_db.update_last_synced(src_url, *block_index)?;
+                            self.watcher_db.update_last_synced(&src_url, block_index)?;
                         }
 
                         had_success = true;
                     }
 
                     Err(err) => {
-                        log::debug!(
-                            self.logger,
-                            "Could not sync block {} for url ({:?})",
-                            block_index,
-                            err
-                        );
+                        if log_sync_failures {
+                            log::error!(
+                                self.logger,
+                                "Could not sync block {} for url ({:?})",
+                                block_index,
+                                err
+                            );
+                        } else {
+                            log::debug!(
+                                self.logger,
+                                "Could not sync block {} for url ({:?})",
+                                block_index,
+                                err
+                            );
+                        }
                     }
                 }
             }
 
-            // If nothing succeeded, maybe we are synced all the way through or something else is
-            // wrong.
+            // If nothing succeeded, maybe we are synced all the way through or something
+            // else is wrong.
             if !had_success {
-                return Ok(false);
+                return Ok(SyncResult::BlockSyncError);
+            }
+
+            // If iteration limit was specified, check to see if it's been reached
+            if let Some(max_blocks_per_iteration) = max_blocks_per_iteration {
+                counter += 1;
+                if counter > max_blocks_per_iteration {
+                    log::debug!(
+                        self.logger,
+                        "reached max iteration limit of {} blocks before fully syncing nodes",
+                        max_blocks_per_iteration,
+                    );
+                    return Ok(SyncResult::ReachedMaxBlocksPerIteration);
+                }
             }
         }
     }
 }
 
-/// A naive implementation for fetching blocks from multiple source urls concurrently. It is naive
-/// in the sense that is spawns one thread per source URL, which in theory does not scale but in
-/// reality we do not expect a large number of sources.
+/// Given a map of block indexes per source URL and a map of transaction
+/// fetchers per source URL, perform a parallel fetch of each of the blocks and
+/// return the result.
 fn parallel_fetch_blocks(
-    url_to_block_index: HashMap<Url, u64>,
-    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
-) -> Result<HashMap<Url, (u64, Result<BlockData, WatcherError>)>, WatcherError> {
-    let join_handles = url_to_block_index
-        .into_iter()
+    url_to_block_index: HashMap<Url, BlockIndex>,
+    transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
+) -> HashMap<Url, (u64, Result<BlockData, WatcherError>)> {
+    url_to_block_index
+        .into_par_iter()
         .map(|(src_url, block_index)| {
-            let transactions_fetcher = transactions_fetcher.clone();
+            let block_fetch_result = transactions_fetcher_by_url
+                .get(&src_url)
+                .ok_or_else(|| WatcherError::UnknownTxSourceUrl(src_url.to_string()))
+                .and_then(|transactions_fetcher| {
+                    assert_eq!(transactions_fetcher.source_urls, vec![src_url.clone()]);
 
-            thread::Builder::new()
-                .name("ParallelFetch".into())
-                .spawn(move || {
-                    let block_fetch_result =
-                        fetch_single_block(transactions_fetcher, &src_url, block_index);
-                    (src_url, (block_index, block_fetch_result))
-                })
-                .expect("Failed spawning ParallelFetch thread")
+                    transactions_fetcher
+                        .get_block_data_by_index(block_index, None)
+                        .map_err(WatcherError::from)
+                });
+
+            (src_url, (block_index, block_fetch_result))
         })
-        .collect::<Vec<_>>();
-
-    Ok(HashMap::from_iter(
-        join_handles
-            .into_iter()
-            .map(|handle| handle.join().expect("Thread join failed")),
-    ))
-}
-
-/// A helper for fetching a single block (identified by a given block index) from some source url.
-fn fetch_single_block(
-    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
-    src_url: &Url,
-    block_index: u64,
-) -> Result<BlockData, WatcherError> {
-    let filename = block_num_to_s3block_path(block_index)
-        .into_os_string()
-        .into_string()
-        .unwrap();
-    let block_url = src_url.join(&filename)?;
-
-    Ok(transactions_fetcher.block_from_url(&block_url)?)
+        .collect()
 }
 
 /// Maximal number of blocks to attempt to sync at each loop iteration.
-const MAX_BLOCKS_PER_SYNC_ITERATION: u32 = 10;
+const MAX_BLOCKS_PER_SYNC_ITERATION: usize = 1000;
 
 /// Syncs new ledger materials for the watcher when the local ledger
 /// appends new blocks.
@@ -256,19 +312,13 @@ impl WatcherSyncThread {
     /// Create a new watcher sync thread.
     pub fn new(
         watcher_db: WatcherDB,
-        transactions_fetcher: ReqwestTransactionsFetcher,
         ledger: impl Ledger + 'static,
         poll_interval: Duration,
         store_block_data: bool,
         logger: Logger,
-    ) -> Self {
+    ) -> Result<Self, WatcherError> {
         log::debug!(logger, "Creating watcher sync thread.");
-        let watcher = Watcher::new(
-            watcher_db,
-            transactions_fetcher,
-            store_block_data,
-            logger.clone(),
-        );
+        let watcher = Watcher::new(watcher_db, store_block_data, logger.clone())?;
 
         let currently_behind = Arc::new(AtomicBool::new(false));
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -291,11 +341,11 @@ impl WatcherSyncThread {
                 .expect("Failed spawning WatcherSync thread"),
         );
 
-        Self {
+        Ok(Self {
             join_handle,
             currently_behind,
             stop_requested,
-        }
+        })
     }
 
     /// Stop the watcher sync thread.
@@ -356,13 +406,27 @@ impl WatcherSyncThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                let max_blocks = std::cmp::min(
-                    ledger_num_blocks - 1,
-                    lowest_next_block_to_sync + MAX_BLOCKS_PER_SYNC_ITERATION as u64,
-                );
-                watcher
-                    .sync_blocks(lowest_next_block_to_sync, Some(max_blocks))
+                let sync_result = watcher
+                    .sync_blocks(
+                        lowest_next_block_to_sync,
+                        Some(ledger_num_blocks - 1),
+                        Some(MAX_BLOCKS_PER_SYNC_ITERATION),
+                        true,
+                    )
                     .expect("Could not sync blocks");
+
+                // Collect blocks synced so far vs. ledger height
+                watcher.collect_metrics(Some(ledger_num_blocks));
+
+                // Pause for a second if a node is having trouble
+                if let SyncResult::BlockSyncError = sync_result {
+                    log::trace!(
+                        logger,
+                        "Sleeping due to sync error, lowest watcher block synced = {}... ",
+                        lowest_next_block_to_sync
+                    );
+                    std::thread::sleep(poll_interval);
+                }
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,

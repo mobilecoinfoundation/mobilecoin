@@ -1,7 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! An integration between `PollingNetworkState` and `LedgerSyncService` that performs the sync in
-//! a background thread.
+//! An integration between `PollingNetworkState` and `LedgerSyncService` that
+//! performs the sync in a background thread.
 
 use crate::{LedgerSync, LedgerSyncService, PollingNetworkState, TransactionsFetcher};
 use mc_common::logger::{log, Logger};
@@ -132,8 +132,11 @@ impl LedgerSyncServiceThread {
             if is_behind {
                 let network_state = network_state.read().expect("lock poisoned");
 
-                let _ = ledger_sync_service
-                    .attempt_ledger_sync(&*network_state, MAX_BLOCKS_PER_SYNC_ITERATION);
+                if let Err(err) = ledger_sync_service
+                    .attempt_ledger_sync(&*network_state, MAX_BLOCKS_PER_SYNC_ITERATION)
+                {
+                    log::error!(logger, "Attempt ledger sync failed: {}", err);
+                }
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,

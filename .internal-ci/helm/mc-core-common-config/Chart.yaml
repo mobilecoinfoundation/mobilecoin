@@ -1,0 +1,7 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v2
+name: mc-core-common-config
+description: Set up common configMaps and Secrets for core apps.
+type: application
+version: 0.0.0
+appVersion: 0.0.0

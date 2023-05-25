@@ -1,24 +1,20 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Trait definitions for rust structures with an FFI analogue
 
-// Re-export macros our macros are using
-pub(crate) use alloc::format as _alloc_format;
-
-// Re-export types our macros are using
-pub(crate) use alloc::vec::Vec;
-pub(crate) use binascii::{b64decode, b64encode, bin2hex, hex2bin};
+pub(crate) use alloc::{format as _alloc_format, vec::Vec};
+pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
 pub(crate) use core::{
     cmp::{Ord, Ordering},
-    convert::TryFrom,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-pub(crate) use hex_fmt::HexFmt;
+pub(crate) use hex::{decode_to_slice as hex_decode, encode_to_slice as hex_encode};
 pub(crate) use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, IntelLayout,
     ToBase64, ToHex, ToX64,
 };
+pub(crate) use mc_util_repr_bytes::derive_debug_and_display_hex_from_as_ref;
 pub(crate) use serde::{
     de::{
         Deserialize, DeserializeOwned, Deserializer, Error as DeserializeError, SeqAccess, Visitor,
@@ -79,7 +75,6 @@ macro_rules! impl_sgx_wrapper_reqs {
                         self,
                         value: &'de [u8],
                     ) -> core::result::Result<Self::Value, E> {
-                        use $crate::traits::TryFrom;
                         Self::Value::try_from(value)
                             .map_err(|convert_error| {
                                 E::custom(
@@ -98,8 +93,6 @@ macro_rules! impl_sgx_wrapper_reqs {
                         self,
                         value: &[u8],
                     ) -> core::result::Result<Self::Value, E> {
-                        use $crate::traits::TryFrom;
-
                         Self::Value::try_from(value)
                             .map_err(|convert_error| {
                                 E::custom(
@@ -121,7 +114,6 @@ macro_rules! impl_sgx_wrapper_reqs {
                     where
                         A::Error: $crate::traits::DeserializeError
                     {
-                        use $crate::traits::TryFrom;
                         use $crate::traits::DeserializeError;
 
                         let mut bytes = $crate::traits::Vec::<u8>::with_capacity(<Self::Value as $crate::traits::IntelLayout>::X86_64_CSIZE);
@@ -206,9 +198,9 @@ macro_rules! impl_sgx_wrapper_reqs {
             }
         }
 
-        impl Into<$inner> for $wrapper {
-            fn into(self) -> $inner {
-                self.0
+        impl From<$wrapper> for $inner {
+            fn from(src: $wrapper) -> $inner {
+                src.0
             }
         }
 
@@ -243,6 +235,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
         $crate::impl_sgx_wrapper_reqs! {
             $wrapper, $inner, $size;
         }
+        $crate::traits::derive_debug_and_display_hex_from_as_ref!($wrapper);
 
         impl AsRef<[u8]> for $wrapper {
             fn as_ref(&self) -> &[u8] {
@@ -253,18 +246,6 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
         impl AsMut<[u8]> for $wrapper {
             fn as_mut(&mut self) -> &mut [u8] {
                 &mut (self.0).$fieldname[..]
-            }
-        }
-
-        impl $crate::traits::Debug for $wrapper {
-            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> $crate::traits::FmtResult {
-                write!(formatter, "{}: {:?}", stringify!($wrapper), &(self.0).$fieldname[..])
-            }
-        }
-
-        impl $crate::traits::Display for $wrapper {
-            fn fmt(&self, formatter: &mut $crate::traits::Formatter) -> $crate::traits::FmtResult {
-                write!(formatter, "{}", $crate::traits::HexFmt(&self))
             }
         }
 
@@ -302,12 +283,12 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
                     return Err($crate::traits::EncodingError::InvalidOutputLength);
                 }
 
-                &dest[..$size].copy_from_slice(&src.$fieldname[..]);
+                dest[..$size].copy_from_slice(&src.$fieldname[..]);
                 Ok($size)
             }
         }
 
-        impl<'bytes> $crate::traits::TryFrom<&'bytes [u8]> for $wrapper {
+        impl<'bytes> TryFrom<&'bytes [u8]> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: &[u8]) -> core::result::Result<Self, Self::Error> {
@@ -316,12 +297,12 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
                 }
 
                 let mut retval = $wrapper::default();
-                &(retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
+                (retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
                 Ok(retval)
             }
         }
 
-        impl $crate::traits::TryFrom<$crate::traits::Vec<u8>> for $wrapper {
+        impl TryFrom<$crate::traits::Vec<u8>> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: $crate::traits::Vec<u8>) -> core::result::Result<Self, Self::Error> {
@@ -330,7 +311,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
                 }
 
                 let mut retval = $wrapper::default();
-                &(retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
+                (retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
                 Ok(retval)
             }
         }
@@ -344,6 +325,8 @@ macro_rules! impl_base64str_for_bytestruct {
             type Error = $crate::traits::EncodingError;
 
             fn from_base64(s: &str) -> core::result::Result<Self, $crate::traits::EncodingError> {
+                use base64::Engine;
+
                 if s.len() % 4 != 0 {
                     return Err($crate::traits::EncodingError::InvalidInputLength);
                 }
@@ -355,21 +338,22 @@ macro_rules! impl_base64str_for_bytestruct {
 
                 // Create an output buffer of at least MINSIZE bytes
                 let mut retval = Self::default();
-                $crate::traits::b64decode(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
+                $crate::traits::BASE64_ENGINE.decode_slice(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
                 Ok(retval)
             }
         }
 
         impl $crate::traits::ToBase64 for $wrapper {
             fn to_base64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
+                use base64::Engine;
+
                 let required_buffer_len = $crate::traits::base64_buffer_size($size);
                 if dest.len() < required_buffer_len {
                     Err(required_buffer_len)
                 } else {
-                    match $crate::traits::b64encode(&(self.0).$fieldname[..], dest) {
-                        Ok(buffer) => Ok(buffer.len()),
-                        Err(_convert) => Err(required_buffer_len)
-                    }
+                    Ok(
+                        $crate::traits::BASE64_ENGINE.encode_slice(&(self.0).$fieldname[..], dest).expect(concat!("`base_64_buffer_size()` computed too small of a size to base64 encode `", stringify!($wrapper), "`"))
+                    )
                 }
             }
         }
@@ -392,15 +376,16 @@ macro_rules! impl_hexstr_for_bytestruct {
                 }
 
                 let mut retval = Self::default();
-                $crate::traits::hex2bin(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
+                $crate::traits::hex_decode(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
                 Ok(retval)
             }
         }
 
         impl $crate::traits::ToHex for $wrapper {
             fn to_hex(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                match $crate::traits::bin2hex(&(self.0).$fieldname[..], dest) {
-                    Ok(buffer) => Ok(buffer.len()),
+                let source = &(self.0).$fieldname[..];
+                match $crate::traits::hex_encode(source, dest) {
+                    Ok(()) => Ok(source.len()*2),
                     Err(_e) => Err($size * 2),
                 }
             }
@@ -420,6 +405,7 @@ macro_rules! impl_sgx_newtype_for_bytearray {
         $crate::impl_sgx_wrapper_reqs! {
             $wrapper, $inner, $size;
         }
+        $crate::traits::derive_debug_and_display_hex_from_as_ref!($wrapper);
 
         impl AsRef<[u8]> for $wrapper {
             fn as_ref(&self) -> &[u8] {
@@ -436,18 +422,6 @@ macro_rules! impl_sgx_newtype_for_bytearray {
         impl Default for $wrapper {
             fn default() -> Self {
                 Self([0u8; $size])
-            }
-        }
-
-        impl $crate::traits::Debug for $wrapper {
-            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> $crate::traits::FmtResult {
-                write!(formatter, "{}: {:?}", stringify!($wrapper), &self.0[..])
-            }
-        }
-
-        impl $crate::traits::Display for $wrapper {
-            fn fmt(&self, formatter: &mut $crate::traits::Formatter) -> $crate::traits::FmtResult {
-                write!(formatter, "{}", $crate::traits::HexFmt(&self))
             }
         }
 
@@ -486,7 +460,7 @@ macro_rules! impl_sgx_newtype_for_bytearray {
             }
         }
 
-        impl<'src> $crate::traits::TryFrom<&'src [u8]> for $wrapper {
+        impl<'src> TryFrom<&'src [u8]> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: &[u8]) -> core::result::Result<Self, $crate::traits::EncodingError> {
@@ -499,7 +473,7 @@ macro_rules! impl_sgx_newtype_for_bytearray {
             }
         }
 
-        impl $crate::traits::TryFrom<$crate::traits::Vec<u8>> for $wrapper {
+        impl TryFrom<$crate::traits::Vec<u8>> for $wrapper {
             type Error = $crate::traits::EncodingError;
 
             fn try_from(src: $crate::traits::Vec<u8>) -> core::result::Result<Self, $crate::traits::EncodingError> {
@@ -509,78 +483,6 @@ macro_rules! impl_sgx_newtype_for_bytearray {
                 let mut retval = Self::default();
                 retval.0[..].copy_from_slice(&src[..$size]);
                 Ok(retval)
-            }
-        }
-    )*}
-}
-
-#[macro_export]
-macro_rules! impl_base64str_for_bytearray {
-    ($($wrapper:ident, $size:ident;)*) => {$(
-        impl $crate::traits::FromBase64 for $wrapper {
-            type Error = $crate::traits::EncodingError;
-
-            fn from_base64(s: &str) -> core::result::Result<Self, $crate::traits::EncodingError> {
-                if s.len() % 4 != 0 {
-                    return Err($crate::traits::EncodingError::InvalidInputLength);
-                }
-
-                // Don't try to decode any base64 string that's larger than our size limits or smaller
-                // than our minimum size
-                if s.len() != $crate::traits::base64_size($size) {
-                    return Err($crate::traits::EncodingError::InvalidInputLength);
-                }
-
-                // Create an output buffer of at least MINSIZE bytes
-                let mut retval = Self::default();
-                $crate::traits::b64decode(s.as_bytes(), &mut retval.0[..])?;
-                Ok(retval)
-            }
-        }
-
-        impl $crate::traits::ToBase64 {
-            fn to_base64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                let required_buffer_len = $crate::traits::base64_buffer_size($size)
-                if dest.len() < required_buffer_len {
-                    Err(required_buffer_len)
-                } else {
-                    match $crate::traits::b64encode(&self.0[..], &mut outbuf[..]) {
-                        Ok(buffer) => Ok(buffer.len()),
-                        Err(_convert) => Err(required_buffer_len)
-                    }
-                }
-            }
-        }
-    )*}
-}
-
-#[macro_export]
-macro_rules! impl_hexstr_for_bytearray {
-    ($($wrapper:ident, $size:ident;)*) => {$(
-        impl $crate::traits::FromHex for $wrapper {
-            type Error = $crate::traits::EncodingError;
-
-            fn from_hex(s: &str) -> core::result::Result<Self, $crate::traits::EncodingError> {
-                if s.len() % 2 != 0 {
-                    return Err($crate::traits::EncodingError::InvalidInputLength);
-                }
-
-                if s.len() / 2 != $size {
-                    return Err($crate::traits::EncodingError::InvalidInputLength);
-                }
-
-                let mut retval = Self::default();
-                $crate::traits::hex2bin(s.as_bytes(), &mut retval.0[..])?;
-                Ok(retval)
-            }
-        }
-
-        impl $crate::traits::ToHex for $wrapper {
-            fn to_hex(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                match bin2hex(&self.0[..], dest) {
-                    Ok(buffer) => Ok(buffer.len()),
-                    Err(_e) => Err($size * 2),
-                }
             }
         }
     )*}

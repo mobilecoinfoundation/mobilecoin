@@ -1,8 +1,7 @@
 //! Basic RJSON DOM, taken from rjson tests.
 
-use crate::error::JsonError;
+use crate::JsonError;
 use alloc::{string::String, vec::Vec};
-use core::convert::TryInto;
 use mc_common::HashMap;
 use rjson::{Array, Null, Object, Value};
 
@@ -163,6 +162,6 @@ impl From<JsonObject> for JsonValue {
 pub(crate) fn parse(src: &str) -> (usize, Option<JsonValue>) {
     let data: Vec<char> = src.chars().collect();
     let mut idx = 0;
-    let retval = rjson::parse::<JsonValue, JsonArray, JsonObject, JsonValue>(&*data, &mut idx);
+    let retval = rjson::parse::<JsonValue, JsonArray, JsonObject, JsonValue>(&data, &mut idx);
     (idx, retval)
 }

@@ -1,10 +1,13 @@
 [package]
 name = "mc-consensus-enclave-measurement"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
 description = "MobileCoin Consensus Enclave - Application Code"
+edition = "2021"
+license = "Apache-2.0"
 links = "consensus_enclave_measurement"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 # Whether the enclave should be built in simulation mode when it needs to be built
@@ -12,11 +15,12 @@ sgx-sim = []
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
 [build-dependencies]
 mc-util-build-enclave = { path = "../../../util/build/enclave" }
-mc-util-build-sgx = { path = "../../../util/build/sgx" }
 mc-util-build-script = { path = "../../../util/build/script" }
+mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
-cargo-emit = "0.1"
+cargo-emit = "0.2"

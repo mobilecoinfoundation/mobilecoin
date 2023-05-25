@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! GRPC authentication utilities.
 
@@ -10,6 +10,7 @@ pub use token_authenticator::{
     TokenAuthenticator, TokenBasicCredentialsGenerator, TokenBasicCredentialsGeneratorError,
 };
 
+use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use displaydoc::Display;
 use grpcio::{
     CallOption, Error as GrpcError, Metadata, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode,
@@ -17,7 +18,7 @@ use grpcio::{
 use std::str;
 
 /// Error values for authentication.
-#[derive(Display, Debug)]
+#[derive(Display, Debug, PartialEq)]
 pub enum AuthenticatorError {
     /// Unauthenticated
     Unauthenticated,
@@ -41,23 +42,27 @@ impl From<AuthorizationHeaderError> for AuthenticatorError {
     }
 }
 
-impl<T> Into<Result<T, RpcStatus>> for AuthenticatorError {
-    fn into(self) -> Result<T, RpcStatus> {
-        Err(RpcStatus::new(
+impl<T> From<AuthenticatorError> for Result<T, RpcStatus> {
+    fn from(src: AuthenticatorError) -> Result<T, RpcStatus> {
+        Err(RpcStatus::with_message(
             RpcStatusCode::UNAUTHENTICATED,
-            Some(self.to_string()),
+            src.to_string(),
         ))
     }
 }
 
-/// Interface for performing an authentication using `BasicCredentials`, resulting in a String
-/// username or an error.
+/// Interface for performing an authentication using `BasicCredentials`,
+/// resulting in a String username or an error.
 pub trait Authenticator {
+    /// Attempt to authenticate a user given their credentials
     fn authenticate(
         &self,
         maybe_credentials: Option<BasicCredentials>,
     ) -> Result<String, AuthenticatorError>;
 
+    /// Attempt to authenticate a user given their Metadata object
+    ///
+    /// By default this extracts the BasicCredentials from the Metadata
     fn authenticate_metadata(&self, metadata: &Metadata) -> Result<String, AuthenticatorError> {
         let creds = metadata
             .iter()
@@ -71,9 +76,13 @@ pub trait Authenticator {
             .map(BasicCredentials::try_from)
             .transpose()?;
 
-        Ok(self.authenticate(creds)?)
+        self.authenticate(creds)
     }
 
+    /// Attempt to authenticate a user given the RpcContext
+    ///
+    /// By default this extracts the request headers and calls
+    /// authenticate_metadata
     fn authenticate_rpc(&self, context: &RpcContext) -> Result<String, AuthenticatorError> {
         self.authenticate_metadata(context.request_headers())
     }
@@ -86,7 +95,8 @@ pub struct BasicCredentials {
     password: String,
 }
 
-#[derive(Display, Debug)]
+/// Errors that can occur when parsing an authorization header
+#[derive(Display, Debug, PartialEq)]
 pub enum AuthorizationHeaderError {
     /// Unsupported authorization method
     UnsupportedAuthorizationMethod,
@@ -107,7 +117,8 @@ impl BasicCredentials {
         }
     }
 
-    /// Try and construct `BasicCredentials` from an HTTP Basic Authorization header.
+    /// Try and construct `BasicCredentials` from an HTTP Basic Authorization
+    /// header.
     pub fn try_from(header_value: &[u8]) -> Result<Self, AuthorizationHeaderError> {
         let header = str::from_utf8(header_value)
             .map_err(|_| AuthorizationHeaderError::InvalidAuthorizationHeader)?;
@@ -124,7 +135,8 @@ impl BasicCredentials {
         let base64_value = header_parts
             .next()
             .ok_or(AuthorizationHeaderError::InvalidAuthorizationHeader)?;
-        let concatenated_values_bytes = base64::decode(base64_value)
+        let concatenated_values_bytes = BASE64_ENGINE
+            .decode(base64_value)
             .map_err(|_| AuthorizationHeaderError::InvalidAuthorizationHeader)?;
         let concatenated_values = str::from_utf8(&concatenated_values_bytes)
             .map_err(|_| AuthorizationHeaderError::InvalidCredentials)?;
@@ -152,17 +164,18 @@ impl BasicCredentials {
         &self.password
     }
 
-    /// Convenience method for constructing an HTTP Authorization header based on the username and
-    /// password stored in this object.
+    /// Convenience method for constructing an HTTP Authorization header based
+    /// on the username and password stored in this object.
     pub fn authorization_header(&self) -> String {
         format!(
             "Basic {}",
-            base64::encode(format!("{}:{}", self.username, self.password))
+            BASE64_ENGINE.encode(format!("{}:{}", self.username, self.password))
         )
     }
 
-    /// Convenience method for constructing a `grpcio::CallOption` object that passes an
-    /// Authorization header if this object contains non-empty username or password.
+    /// Convenience method for constructing a `grpcio::CallOption` object that
+    /// passes an Authorization header if this object contains non-empty
+    /// username or password.
     pub fn call_option(&self) -> Result<CallOption, GrpcError> {
         let mut call_option = CallOption::default();
         if !self.username.is_empty() || !self.password.is_empty() {
@@ -220,7 +233,7 @@ mod test {
                 .authenticate_metadata(&metadata_builder.build())
                 .is_ok()
             {
-                panic!("Unexpected success with header {:?}", test_header_value);
+                panic!("Unexpected success with header {test_header_value:?}");
             }
         }
 
@@ -239,7 +252,7 @@ mod test {
     fn authenticate_token() {
         let shared_secret = [66; 32];
         let authenticator = TokenAuthenticator::new(
-            shared_secret.clone(),
+            shared_secret,
             TOKEN_MAX_LIFETIME,
             SystemTimeProvider::default(),
         );
@@ -265,15 +278,13 @@ mod test {
                 .authenticate_metadata(&metadata_builder.build())
                 .is_ok()
             {
-                panic!("Unexpected success with header {:?}", test_header_value);
+                panic!("Unexpected success with header {test_header_value:?}");
             }
         }
 
         // Authorizing with a valid Authorization header should succeed.
-        let generator = TokenBasicCredentialsGenerator::new(
-            shared_secret.clone(),
-            SystemTimeProvider::default(),
-        );
+        let generator =
+            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
         let creds = generator
             .generate_for(TEST_USERNAME)
             .expect("failed generating token");

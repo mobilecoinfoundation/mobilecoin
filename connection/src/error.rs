@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Error types used by this crate
 
@@ -7,10 +7,10 @@ pub use retry::Error as RetryError;
 use crate::traits::AttestationError;
 use displaydoc::Display;
 use grpcio::Error as GrpcError;
+use mc_blockchain_types::ConvertError;
 use mc_consensus_api::{consensus_common::ProposeTxResult, ConversionError};
 use mc_crypto_noise::CipherError;
-use mc_transaction_core::validation::TransactionValidationError;
-use std::{array::TryFromSliceError, convert::TryInto, result::Result as StdResult};
+use std::{array::TryFromSliceError, result::Result as StdResult};
 
 pub type Result<T> = StdResult<T, Error>;
 pub type RetryResult<T> = StdResult<T, RetryError<Error>>;
@@ -30,8 +30,8 @@ pub enum Error {
     Cipher(CipherError),
     /// Attestation failure: {0}
     Attestation(Box<dyn AttestationError + 'static>),
-    /// Transaction validation failure: {0}
-    TransactionValidation(TransactionValidationError),
+    /// Transaction validation failure: {0:?}: {1}
+    TransactionValidation(ProposeTxResult, String),
     /// Other error: {0}
     Other(String),
 }
@@ -40,8 +40,9 @@ impl Error {
     /// Policy decision, whether the call should be retried.
     pub fn should_retry(&self) -> bool {
         match self {
-            Error::Grpc(_ge) => true,
-            Error::Attestation(_ae) => true,
+            Error::Grpc(_) => true,
+            Error::Attestation(err) => err.should_retry(),
+            Error::TransactionValidation(ProposeTxResult::LedgerTxOutIndexOutOfBounds, _) => true,
             _ => false,
         }
     }
@@ -88,16 +89,8 @@ impl From<TryFromSliceError> for Error {
     }
 }
 
-impl From<ProposeTxResult> for Error {
-    fn from(src: ProposeTxResult) -> Self {
-        src.try_into()
-            .map(Self::TransactionValidation)
-            .unwrap_or_else(|err| Error::Other(err.into()))
-    }
-}
-
-impl From<mc_transaction_core::ConvertError> for Error {
-    fn from(_src: mc_transaction_core::ConvertError) -> Self {
+impl From<ConvertError> for Error {
+    fn from(_src: ConvertError) -> Self {
         ConversionError::ArrayCastError.into()
     }
 }

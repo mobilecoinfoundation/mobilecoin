@@ -1,0 +1,58 @@
+[package]
+name = "mc-fog-overseer-server"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "fog_overseer_server"
+path = "src/bin/main.rs"
+
+[dependencies]
+# third-party
+clap = { version = "4.1", features = ["derive", "env"] }
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.12.1"
+lazy_static = "1.4"
+prometheus = "0.13.3"
+retry = "2.0"
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
+serde = "1"
+
+# mc
+mc-api = { path = "../../../api" }
+mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-cli = { path = "../../../util/cli" }
+mc-util-metrics = { path = "../../../util/metrics" }
+
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-ingest-client = { path = "../../ingest/client" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }
+
+[dev-dependencies]
+# third-party
+rand_core = "0.6"
+rand_hc = "0.3"
+regex = "1"
+url = "2.3.1"
+
+# mc
+mc-attest-net = { path = "../../../attest/net" }
+mc-ledger-db = { path = "../../../ledger/db" }
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-watcher = { path = "../../../watcher" }
+
+# fog
+mc-fog-ingest-enclave = { path = "../../ingest/enclave" }
+mc-fog-ingest-server = { path = "../../ingest/server" }
+mc-fog-ingest-server-test-utils = { path = "../../ingest/server/test-utils" }
+mc-fog-test-infra = { path = "../../test_infra" }

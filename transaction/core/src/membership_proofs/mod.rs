@@ -1,64 +1,66 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Validation for merkle proofs of membership
 
 #![allow(clippy::if_same_then_else)]
-
-extern crate alloc;
 
 use crate::{
     domain_separators::{
         TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
     },
-    membership_proofs::errors::Error,
+    membership_proofs::errors::{Error, RangesNotAdjacentError},
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
-use blake2::digest::Update;
 use core::convert::TryInto;
-
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_hashes::{Blake2b256, Digest};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 mod errors;
 mod range;
 
-pub use errors::Error as MembershipProofError;
-pub use range::{Range, RangeError};
+pub use self::{
+    errors::Error as MembershipProofError,
+    range::{Range, RangeError},
+};
 
 lazy_static! {
+    /// A value hashed in connection to a nil node in the tree
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
 }
 
 /// Merkle tree hash function for a leaf node.
 pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.update(&TXOUT_MERKLE_LEAF_DOMAIN_TAG);
-    hasher.update(&tx_out.hash());
-    hasher.result().try_into().unwrap()
+    hasher.update(TXOUT_MERKLE_LEAF_DOMAIN_TAG);
+    hasher.update(tx_out.hash());
+    hasher.finalize().try_into().unwrap()
 }
 
 /// Merkle tree hash function for an internal node.
 pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.update(&TXOUT_MERKLE_NODE_DOMAIN_TAG);
+    hasher.update(TXOUT_MERKLE_NODE_DOMAIN_TAG);
     hasher.update(left);
     hasher.update(right);
-    hasher.result().try_into().unwrap()
+    hasher.finalize().try_into().unwrap()
 }
 
 /// Merkle tree Hash function for hashing a "nil" value.
 fn hash_nil() -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.update(&TXOUT_MERKLE_NIL_DOMAIN_TAG);
-    hasher.result().try_into().unwrap()
+    hasher.update(TXOUT_MERKLE_NIL_DOMAIN_TAG);
+    hasher.finalize().try_into().unwrap()
 }
 
-/// Compose two adjacent TxOutMembershipElements into a larger TxOutMembershipElement.
-/// Fails if they are not actually adjacent.
+/// Compose two adjacent TxOutMembershipElements into a larger
+/// TxOutMembershipElement. Fails if they are not actually adjacent.
 ///
 /// This function can be used to validate a Merkle proof from the bottom up
-/// in a side-channel resistant way. The elements lowest in the tree should be combined,
-/// then the result combined with the next highest element etc. finally getting a range
-/// and hash at the top. This is then checked against the expected hash of the root element.
+/// in a side-channel resistant way. The elements lowest in the tree should be
+/// combined, then the result combined with the next highest element etc.
+/// finally getting a range and hash at the top. This is then checked against
+/// the expected hash of the root element.
 ///
 /// This function MUST not branch except to immediately return an error
 ///
@@ -67,16 +69,19 @@ fn hash_nil() -> [u8; 32] {
 ///
 /// Arguments:
 /// * a: TxOutMembershipElement to be combined
-/// * b: TxOutMembershipElement to be combined with a, and which should be its left or right sibling
+/// * b: TxOutMembershipElement to be combined with a, and which should be its
+///   left or right sibling
 ///
 /// Returns:
-/// * A TxOutMembershipElement for the parent of a and b, with the implied hash value.
-/// * An error if a and b were not adjacent, which implies that the merkle proof was badly structured.
-///   This error can be mapped to e.g. Error::UnexpectedMembershipElement and the caller can provide context.
+/// * A TxOutMembershipElement for the parent of a and b, with the implied hash
+///   value.
+/// * An error if a and b were not adjacent, which implies that the merkle proof
+///   was badly structured. This error can be mapped to e.g.
+///   Error::UnexpectedMembershipElement and the caller can provide context.
 pub fn compose_adjacent_membership_elements(
     a: &TxOutMembershipElement,
     b: &TxOutMembershipElement,
-) -> Result<TxOutMembershipElement, ()> {
+) -> Result<TxOutMembershipElement, RangesNotAdjacentError> {
     // a is to the left if a.to matches b.from
     // a is to the right if a.from matches b.to
     // Because these are inclusive [,] ranges and not half-open ranges [,)
@@ -84,13 +89,14 @@ pub fn compose_adjacent_membership_elements(
     // wrapping_add is used to avoid creating a branch in the generated assembly
     let a_is_left = (a.range.to.wrapping_add(1)).ct_eq(&b.range.from);
     let b_is_left = (b.range.to.wrapping_add(1)).ct_eq(&a.range.from);
-    // If neither is to the left according to above test, then the merkle proof isn't structured
-    // correctly and we can early return with an "unexpected merkle proof" element of some kind.
-    // The client can easily ensure that the merkle proof is well-structured.
-    // If both are to the left according to this test, then one of the ranges must be reversed,
-    // contrary to the precondition.
+    // If neither is to the left according to above test, then the merkle proof
+    // isn't structured correctly and we can early return with an "unexpected
+    // merkle proof" element of some kind. The client can easily ensure that the
+    // merkle proof is well-structured. If both are to the left according to
+    // this test, then one of the ranges must be reversed, contrary to the
+    // precondition.
     if !bool::from(a_is_left ^ b_is_left) {
-        return Err(());
+        return Err(RangesNotAdjacentError);
     }
 
     // Initialize the result as if a is the left and b is right,
@@ -123,34 +129,38 @@ pub fn compose_adjacent_membership_elements(
 
 // Helper: Conditionally assign to [u8; 32]
 //
-// It seems subtle doesn't implement ConditionallySelectable on [u8; 32], not sure why,
-// so we can't just use the conditional_assign function from that API.
+// It seems subtle doesn't implement ConditionallySelectable on [u8; 32], not
+// sure why, so we can't just use the conditional_assign function from that API.
 //
-// If this is slow then we can later used a faster implementation, but it probably won't be that slow.
+// If this is slow then we can later used a faster implementation, but it
+// probably won't be that slow.
 fn conditional_assign_32_bytes(target: &mut [u8; 32], src: &[u8; 32], cond: Choice) {
     for idx in 0..32 {
         target[idx].conditional_assign(&src[idx], cond);
     }
 }
 
-/// Checks that a proof of membership is well-formed, and returns the hash that it implies for the root.
-/// This hash should then be checked against known root hash value.
+/// Checks that a proof of membership is well-formed, and returns the hash that
+/// it implies for the root. This hash should then be checked against known root
+/// hash value.
 ///
 /// Errors if:
 /// - Any proof elements have invalid ranges (from and to out of order)
 /// - The first element is missing or its range doesn't match proof.index
-/// - Any of the proof elements could not be combined with result of combining predecessors
+/// - Any of the proof elements could not be combined with result of combining
+///   predecessors
 ///
 /// This function MUST NOT branch except to immediately return an error
 ///
-/// Note: This is pub in order to allow that it can be used in debugging assertions elsewhere.
-/// This could simply be a member function on TxOutMembershipProof, but that would require
-/// hash_nodes function to be in scope in that module, so for now we didn't do that.
+/// Note: This is pub in order to allow that it can be used in debugging
+/// assertions elsewhere. This could simply be a member function on
+/// TxOutMembershipProof, but that would require hash_nodes function to be in
+/// scope in that module, so for now we didn't do that.
 pub fn compute_implied_merkle_root(
     proof: &TxOutMembershipProof,
 ) -> Result<TxOutMembershipElement, Error> {
-    // All Ranges contained in the proof must be valid. An invalid Range could be created
-    // by deserializing invalid bytes.
+    // All Ranges contained in the proof must be valid. An invalid Range could be
+    // created by deserializing invalid bytes.
     if proof.elements.iter().any(|e| e.range.from > e.range.to) {
         return Err(Error::RangeError(RangeError {}));
     }
@@ -159,7 +169,7 @@ pub fn compute_implied_merkle_root(
     let first = proof
         .elements
         .first()
-        .ok_or_else(|| Error::MissingLeafHash(proof.index))?
+        .ok_or(Error::MissingLeafHash(proof.index))?
         .clone();
     if first.range.from != proof.index || first.range.to != proof.index {
         return Err(Error::MissingLeafHash(proof.index));
@@ -176,11 +186,13 @@ pub fn compute_implied_merkle_root(
         },
     )?;
 
-    // At this point, we could check that implied_root.range.to = proof.highest_index, or that -1, or something,
-    // but I'm not sure at this moment what exactly the right test is, and I don't think we really need this,
-    // it would be mainly a debugging aid. For security we only need to check that the implied root hash
-    // matches what the enclave expects.
-    // We could similarly contemplate testing that implied_root.range.from == 0, but this is omitted for now.
+    // At this point, we could check that implied_root.range.to =
+    // proof.highest_index, or that -1, or something, but I'm not sure at this
+    // moment what exactly the right test is, and I don't think we really need this,
+    // it would be mainly a debugging aid. For security we only need to check that
+    // the implied root hash matches what the enclave expects.
+    // We could similarly contemplate testing that implied_root.range.from == 0, but
+    // this is omitted for now.
 
     Ok(implied_root)
 }
@@ -192,11 +204,10 @@ pub fn compute_implied_merkle_root(
 /// * `proof` - A proof that `tx_out` is in the set of `TxOut`s.
 /// * `known_root_hash` - The known root hash of the Merkle tree.
 ///
-/// Returns a bool indicating if the proof is valid, or an Error if something went wrong
-/// while evaluating the proof.
+/// Returns a bool indicating if the proof is valid, or an Error if something
+/// went wrong while evaluating the proof.
 ///
 /// This function MUST NOT branch except to immediately return an error
-///
 pub fn is_membership_proof_valid(
     tx_out: &TxOut,
     proof: &TxOutMembershipProof,
@@ -210,7 +221,7 @@ pub fn is_membership_proof_valid(
     let first = proof
         .elements
         .first()
-        .ok_or_else(|| Error::MissingLeafHash(proof.index))?;
+        .ok_or(Error::MissingLeafHash(proof.index))?;
     if first.range.from != proof.index || first.range.to != proof.index {
         return Err(Error::MissingLeafHash(proof.index));
     }
@@ -239,14 +250,16 @@ pub fn is_membership_proof_valid(
 
 /// Compute the root hash at the time the TxOut was added.
 ///
-/// This can be used to "roll back" a proof made when the tree contains `n` TxOuts to produce a proof
-/// when the tree contained `m < n` elements.
+/// This can be used to "roll back" a proof made when the tree contains `n`
+/// TxOuts to produce a proof when the tree contained `m < n` elements.
 ///
 /// # Arguments
-/// * `initial_proof` - Proof-of-membership for the TxOut at a given index. Assumed to be valid.
+/// * `initial_proof` - Proof-of-membership for the TxOut at a given index.
+///   Assumed to be valid.
 ///
 /// # Returns
-/// Returns a proof for TxOut where the TxOut is the last member added to the tree.
+/// Returns a proof for TxOut where the TxOut is the last member added to the
+/// tree.
 pub fn derive_proof_at_index(
     initial_proof: &TxOutMembershipProof,
 ) -> Result<TxOutMembershipProof, Error> {
@@ -299,5 +312,6 @@ pub fn derive_proof_at_index(
 
 #[cfg(test)]
 mod tests {
-    // TODO: the tests for derive_proof_at_index are currently in ledger_db/tx_out_store.rs.
+    // TODO: the tests for derive_proof_at_index are currently in
+    // ledger_db/tx_out_store.rs.
 }

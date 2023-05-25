@@ -1,12 +1,13 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::TxOutMembershipProof
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::{
     membership_proofs::Range,
     tx::{TxOutMembershipElement, TxOutMembershipProof},
 };
 use protobuf::RepeatedField;
-use std::convert::TryFrom;
 
 /// Convert TxOutMembershipProof -> external::MembershipProof.
 impl From<&TxOutMembershipProof> for external::TxOutMembershipProof {
@@ -61,20 +62,12 @@ mod tests {
     fn test_membership_proof_from() {
         let index: u64 = 128_465;
         let highest_index: u64 = 781_384_772_994;
-        let mut hashes = Vec::<TxOutMembershipElement>::default();
-        // Add some arbitrary hashes.
-        hashes.push(TxOutMembershipElement::new(
-            Range::new(0, 1).unwrap(),
-            [2u8; 32],
-        ));
-        hashes.push(TxOutMembershipElement::new(
-            Range::new(0, 3).unwrap(),
-            [4u8; 32],
-        ));
-        hashes.push(TxOutMembershipElement::new(
-            Range::new(0, 7).unwrap(),
-            [8u8; 32],
-        ));
+        let hashes = vec![
+            // Add some arbitrary hashes.
+            TxOutMembershipElement::new(Range::new(0, 1).unwrap(), [2u8; 32]),
+            TxOutMembershipElement::new(Range::new(0, 3).unwrap(), [4u8; 32]),
+            TxOutMembershipElement::new(Range::new(0, 7).unwrap(), [8u8; 32]),
+        ];
         let tx_out_membership_proof =
             TxOutMembershipProof::new(index, highest_index, hashes.clone());
 

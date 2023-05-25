@@ -1,7 +1,7 @@
-//! Test that our AST nodes are mapping to the append bytes calls that we expect.
-//! This is basically a test that the default implementations of `append_primitive`
-//! etc. in the DigestTranscript crate match the spec, and that nothing else went
-//! wrong wiring all this stuff up.
+//! Test that our AST nodes are mapping to the append bytes calls that we
+//! expect. This is basically a test that the default implementations of
+//! `append_primitive` etc. in the DigestTranscript crate match the spec, and
+//! that nothing else went wrong wiring all this stuff up.
 use mc_crypto_digestible::DigestTranscript;
 use mc_crypto_digestible_test_utils::{
     ASTAggregate, ASTNode, ASTNone, ASTPrimitive, ASTSequence, ASTVariant, MockMerlin,
@@ -97,7 +97,7 @@ fn digest_sequence_append_bytes() {
     let seq3 = ASTNode::from(ASTSequence {
         context: b"list3",
         len: 2,
-        elems: vec![prim1.clone(), prim2.clone()],
+        elems: vec![prim1, prim2],
     });
 
     ast_test_case(
@@ -166,7 +166,7 @@ fn digest_aggregate_append_bytes() {
     let seq3 = ASTNode::from(ASTAggregate {
         context: b"stuff3",
         name: b"blob".to_vec(),
-        elems: vec![prim1.clone(), prim2.clone()],
+        elems: vec![prim1, prim2],
         is_completed: true,
     });
 
@@ -203,7 +203,7 @@ fn digest_variant_append_bytes() {
         context: b"enum",
         name: b"enum_type".to_vec(),
         which: 0,
-        value: Some(Box::new(prim1.clone())),
+        value: Some(Box::new(prim1)),
     });
 
     ast_test_case(
@@ -221,7 +221,7 @@ fn digest_variant_append_bytes() {
         context: b"enum",
         name: b"enum_type".to_vec(),
         which: 1,
-        value: Some(Box::new(prim2.clone())),
+        value: Some(Box::new(prim2)),
     });
 
     ast_test_case(

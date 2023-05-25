@@ -1,13 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Transducer states used by initiators and/or responders.
 
 use crate::mealy::State;
-use aead::{AeadMut, NewAead};
 use alloc::{string::String, vec::Vec};
-use digest::{BlockInput, FixedOutput, Reset, Update};
 use mc_crypto_keys::Kex;
-use mc_crypto_noise::{CipherError, CipherState, HandshakeState, NoiseCipher};
+use mc_crypto_noise::{CipherError, CipherState, HandshakeState, NoiseCipher, NoiseDigest};
 
 /// The state of a node (initiator or responder) before anything has happened
 /// yet.
@@ -28,31 +26,31 @@ impl State for Start {}
 
 /// The state after an NodeInit or ClientInit event has been added to
 /// the Start state.
-pub struct AuthPending<KexAlgo, Cipher, DigestType>
+pub struct AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// The handshake state
-    pub(crate) state: HandshakeState<KexAlgo, Cipher, DigestType>,
+    pub(crate) state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
 }
 
-impl<KexAlgo, Cipher, DigestType> State for AuthPending<KexAlgo, Cipher, DigestType>
+impl<KexAlgo, Cipher, DigestAlgo> State for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
 }
 
-impl<KexAlgo, Cipher, DigestType> AuthPending<KexAlgo, Cipher, DigestType>
+impl<KexAlgo, Cipher, DigestAlgo> AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
-    pub(crate) fn new(state: HandshakeState<KexAlgo, Cipher, DigestType>) -> Self {
+    pub(crate) fn new(state: HandshakeState<KexAlgo, Cipher, DigestAlgo>) -> Self {
         Self { state }
     }
 }
@@ -61,7 +59,7 @@ where
 /// an initiator.
 pub struct Ready<Cipher>
 where
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
+    Cipher: NoiseCipher,
 {
     pub(crate) writer: CipherState<Cipher>,
     pub(crate) reader: CipherState<Cipher>,
@@ -70,12 +68,13 @@ where
 
 impl<Cipher> Ready<Cipher>
 where
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
+    Cipher: NoiseCipher,
 {
     /// Retrieve the channel binding as a byte slice
     pub fn binding(&self) -> &[u8] {
         self.binding.as_ref()
     }
+
     /// Using the writer cipher, encrypt the given plaintext.
     pub fn encrypt(&mut self, aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
         self.writer.encrypt_with_ad(aad, plaintext)
@@ -85,6 +84,29 @@ where
     pub fn decrypt(&mut self, aad: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, CipherError> {
         self.reader.decrypt_with_ad(aad, ciphertext)
     }
+
+    /// Using the writer cipher, encrypt the given plaintext and return the
+    /// nonce.
+    pub fn encrypt_with_nonce(
+        &mut self,
+        aad: &[u8],
+        plaintext: &[u8],
+    ) -> Result<(Vec<u8>, u64), CipherError> {
+        let nonce = self.writer.next_nonce();
+        let ciphertext = self.encrypt(aad, plaintext)?;
+        Ok((ciphertext, nonce))
+    }
+
+    /// Using the reader cipher, decrypt the provided ciphertext for the nonce.
+    pub fn decrypt_with_nonce(
+        &mut self,
+        aad: &[u8],
+        ciphertext: &[u8],
+        nonce: u64,
+    ) -> Result<Vec<u8>, CipherError> {
+        self.reader.set_nonce(nonce);
+        self.decrypt(aad, ciphertext)
+    }
 }
 
-impl<Cipher> State for Ready<Cipher> where Cipher: AeadMut + NewAead + NoiseCipher + Sized {}
+impl<Cipher> State for Ready<Cipher> where Cipher: NoiseCipher {}

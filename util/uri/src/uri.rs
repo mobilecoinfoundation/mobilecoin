@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::traits::{ConnectionUri, UriScheme};
 use displaydoc::Display;
+use mc_common::ResponderId;
 use percent_encoding::percent_decode_str;
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -10,6 +11,7 @@ use std::{
 };
 use url::Url;
 
+/// Error type for URI parsing.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum UriParseError {
     /// Url parse error: "{0}", "{1}"
@@ -22,6 +24,9 @@ pub enum UriParseError {
     PercentDecoding(String),
 }
 
+impl std::error::Error for UriParseError {}
+
+/// Represents a URI with custom scheme validation and other helpers.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Uri<Scheme: UriScheme> {
     /// The original Url object used to construct this object.
@@ -43,7 +48,17 @@ pub struct Uri<Scheme: UriScheme> {
     password: String,
 
     /// The uri scheme
-    _scheme: PhantomData<fn() -> Scheme>,
+    _scheme: PhantomData<Scheme>,
+}
+
+impl<Scheme: UriScheme> Uri<Scheme> {
+    /// Change the port number of this URI.
+    pub fn set_port(&mut self, port: u16) {
+        self.url
+            .set_port(Some(port))
+            .expect("should never fail on valid url");
+        self.port = port;
+    }
 }
 
 impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
@@ -76,6 +91,22 @@ impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
     }
 }
 
+impl<Scheme: UriScheme> Uri<Scheme> {
+    /// Creates a `Uri` from a `ResponderId`
+    pub fn try_from_responder_id(
+        responder_id: ResponderId,
+        use_tls: bool,
+    ) -> Result<Self, UriParseError> {
+        let scheme = match use_tls {
+            true => Scheme::SCHEME_SECURE,
+            false => Scheme::SCHEME_INSECURE,
+        };
+        let uri_string = format!("{scheme}://{responder_id}");
+
+        Self::from_str(&uri_string)
+    }
+}
+
 impl<Scheme: UriScheme> Display for Uri<Scheme> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let scheme = if self.use_tls {
@@ -91,7 +122,12 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
     type Err = UriParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
+        let mut url =
+            Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
+
+        if Scheme::NORMALIZE_PATH_TRAILING_SLASH && !url.path().ends_with('/') {
+            url.set_path(&format!("{}/", url.path()));
+        }
 
         let host = url
             .host_str()
@@ -101,14 +137,14 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             return Err(UriParseError::MissingHost);
         }
 
-        let use_tls = if url.scheme().starts_with(Scheme::SCHEME_SECURE) {
+        let use_tls = if url.scheme() == Scheme::SCHEME_SECURE {
             true
-        } else if url.scheme().starts_with(Scheme::SCHEME_INSECURE) {
+        } else if url.scheme() == Scheme::SCHEME_INSECURE {
             false
         } else {
             return Err(UriParseError::UnknownScheme(
-                &Scheme::SCHEME_SECURE,
-                &Scheme::SCHEME_INSECURE,
+                Scheme::SCHEME_SECURE,
+                Scheme::SCHEME_INSECURE,
             ));
         };
 

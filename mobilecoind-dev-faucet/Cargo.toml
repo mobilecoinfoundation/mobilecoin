@@ -1,0 +1,41 @@
+[package]
+name = "mc-mobilecoind-dev-faucet"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "mobilecoind-dev-faucet"
+path = "src/bin/main.rs"
+
+[dependencies]
+mc-account-keys = { path = "../account-keys" }
+mc-api = { path = "../api" }
+mc-attest-verifier = { path = "../attest/verifier" }
+mc-common = { path = "../common", features = ["loggers"] }
+mc-connection = { path = "../connection" }
+mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
+mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
+mc-fog-report-resolver = { path = "../fog/report/resolver" }
+mc-mobilecoind-api = { path = "../mobilecoind/api" }
+mc-transaction-builder = { path = "../transaction/builder" }
+mc-transaction-core = { path = "../transaction/core" }
+mc-util-grpc = { path = "../util/grpc" }
+mc-util-keyfile = { path = "../util/keyfile" }
+mc-util-serial = { path = "../util/serial", features = ["std"] }
+mc-util-uri = { path = "../util/uri" }
+
+async-channel = { version = "1" }
+clap = { version = "4.1", features = ["derive", "env"] }
+displaydoc = "0.2"
+grpcio = "0.12.1"
+hex = "0.4"
+rand = "0.8"
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+tokio = "1"

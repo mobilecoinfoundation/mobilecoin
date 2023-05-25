@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Build script for the consensus_enclave_measurement crate.
 
@@ -8,11 +8,12 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
-// Changing this version is a breaking change, you must update the crate version if you do.
-const SGX_VERSION: &str = "2.9.101.2";
+// Changing this version is a breaking change, you must update the crate version
+// if you do.
+const SGX_VERSION: &str = "2.19.100.3";
 
 const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
-const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 1;
+const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 7;
 const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
 const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
 

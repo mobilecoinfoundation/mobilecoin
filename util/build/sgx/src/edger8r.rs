@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Edger8r Tool Wrapper
 
@@ -22,7 +22,10 @@ pub enum Error {
     PkgConfig(PkgConfigError),
     /// There was missing data in the environment
     Environment(EnvironmentError),
-    /// The given SGX library collection did not allow us to deduce the binary location
+    /**
+     * The given SGX library collection did not allow us to deduce the
+     * binary location
+     */
     NoBinDir,
     /// The given SGX library collection did not contain any include paths
     NoIncludePaths,
@@ -30,7 +33,10 @@ pub enum Error {
     Io(IoError),
     /// The edger8r command failed, and also printed invalid UTF-8
     Utf8Error,
-    /// There was an error generating the code, command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
+    /**
+     * There was an error generating the code,
+     * command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
+     */
     Generate(String, String, String),
     /// There was an error building the generated code
     Build,
@@ -121,8 +127,8 @@ impl Edger8r {
         })
     }
 
-    /// Set an enclave name. This will be used to generate the EDL filename if edl_path is
-    /// unspecified.
+    /// Set an enclave name. This will be used to generate the EDL filename if
+    /// edl_path is unspecified.
     pub fn enclave_name(&mut self, enclave_name: &str) -> &mut Self {
         self.enclave_name = enclave_name.to_owned();
         self
@@ -157,7 +163,7 @@ impl Edger8r {
         let mut command = Command::new(&self.edger8r_path);
 
         for path in &self.search_paths {
-            command.args(&[
+            command.args([
                 "--search-path",
                 path.as_os_str()
                     .to_str()
@@ -167,16 +173,16 @@ impl Edger8r {
 
         if self.output_kind == OutputKind::Trusted {
             command
-                .arg(&"--trusted")
+                .arg("--trusted")
                 .arg(&self.edl_path)
-                .arg(&"--trusted-dir");
+                .arg("--trusted-dir");
         } else {
             command
-                .arg(&"--untrusted")
+                .arg("--untrusted")
                 .arg(&self.edl_path)
-                .arg(&"--untrusted-dir");
+                .arg("--untrusted-dir");
         }
-        command.arg(&self.out_dir.to_str().expect("Invalid UTF-8 in out dir"));
+        command.arg(self.out_dir.to_str().expect("Invalid UTF-8 in out dir"));
 
         let output = command.output()?;
 
@@ -184,7 +190,7 @@ impl Edger8r {
             Ok(self)
         } else {
             Err(Error::Generate(
-                format!("{:?}", command),
+                format!("{command:?}"),
                 String::from_utf8(output.stdout)?,
                 String::from_utf8(output.stderr)?,
             ))

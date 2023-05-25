@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! GRPC credentials support
 
@@ -14,7 +14,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
-/// A trait that lets us determine if an error relates to authentication failure.
+/// A trait that lets us determine if an error relates to authentication
+/// failure.
 pub trait AuthenticationError {
     fn is_unauthenticated(&self) -> bool;
 }
@@ -23,7 +24,7 @@ impl AuthenticationError for GrpcError {
     fn is_unauthenticated(&self) -> bool {
         match self {
             GrpcError::RpcFailure(rpc_status) => {
-                rpc_status.status == RpcStatusCode::UNAUTHENTICATED
+                rpc_status.code() == RpcStatusCode::UNAUTHENTICATED
             }
             _ => false,
         }
@@ -62,7 +63,7 @@ impl HardcodedCredentialsProvider {
 
 impl<URI: ConnectionUri> From<&URI> for HardcodedCredentialsProvider {
     fn from(src: &URI) -> Self {
-        Self::new(&src.username(), &src.password())
+        Self::new(src.username(), src.password())
     }
 }
 
@@ -74,8 +75,8 @@ impl CredentialsProvider for HardcodedCredentialsProvider {
     }
 }
 
-/// A credentials provider that uses an underlying TokenBasicCredentialsGenerator for generating
-/// credentials.
+/// A credentials provider that uses an underlying
+/// TokenBasicCredentialsGenerator for generating credentials.
 pub struct TokenBasicCredentialsProvider<TP: TimeProvider> {
     username: String,
     generator: TokenBasicCredentialsGenerator<TP>,
@@ -94,7 +95,7 @@ impl<TP: TimeProvider> CredentialsProvider for TokenBasicCredentialsProvider<TP>
     type Error = TokenBasicCredentialsGeneratorError;
 
     fn get_credentials(&self) -> Result<Option<BasicCredentials>, Self::Error> {
-        Ok(Some(self.generator.generate_for(&self.username)?))
+        Some(self.generator.generate_for(&self.username)).transpose()
     }
 }
 

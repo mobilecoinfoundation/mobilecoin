@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Using the rust core::fmt library to format to a fixed buffer on the stack,
 // in a no_std context, is unfortunately difficult.

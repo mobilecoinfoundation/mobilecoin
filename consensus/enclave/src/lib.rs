@@ -1,26 +1,33 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Consensus Service SGX Enclave Proxy
 
+#![allow(clippy::result_large_err)]
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey, LocallyEncryptedTx,
-    Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey,
+    FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
+    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
+use mc_attest_verifier::DEBUG_ENCLAVE;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
-use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
+use mc_transaction_core::{
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
+    TokenId,
+};
 use std::{path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the consensus service's SGX enclave binary.
@@ -29,7 +36,8 @@ pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
 #[derive(Clone)]
 pub struct ConsensusServiceSgxEnclave {
     /// Hold a reference counter to the enclave to prevent destruction,
-    /// this object is a handle to an enclave rather than having its lifetime tied to the actual enclave.
+    /// this object is a handle to an enclave rather than having its lifetime
+    /// tied to the actual enclave.
     enclave: Arc<SgxEnclave>,
 }
 
@@ -39,6 +47,7 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
+        blockchain_config: BlockchainConfig,
     ) -> (
         ConsensusServiceSgxEnclave,
         SealedBlockSigningKey,
@@ -52,7 +61,7 @@ impl ConsensusServiceSgxEnclave {
             misc_select: 0,
         };
         let enclave = SgxEnclave::create(
-            &enclave_path,
+            enclave_path,
             DEBUG_ENCLAVE as i32,
             &mut launch_token,
             &mut launch_token_updated,
@@ -65,7 +74,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, &sealed_key)
+            .enclave_init(self_peer_id, self_client_id, sealed_key, blockchain_config)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -76,7 +85,7 @@ impl ConsensusServiceSgxEnclave {
         Ok(make_variable_length_ecall(
             self.enclave.geteid(),
             mobileenclave_call,
-            &inbuf,
+            inbuf,
         )?)
     }
 }
@@ -109,19 +118,28 @@ impl ReportableEnclave for ConsensusServiceSgxEnclave {
     }
 }
 
-/// Proxy API for talking to the corresponding implementation inside the enclave.
+/// Proxy API for talking to the corresponding implementation inside the
+/// enclave.
 impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     fn enclave_init(
         &self,
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
+        blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
+            blockchain_config,
         ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMinimumFee(*token_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
@@ -140,6 +158,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
 
     fn get_fee_recipient(&self) -> Result<FeePublicKey> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetFeeRecipient)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMintingTrustRoot)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
@@ -235,11 +259,13 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        inputs: FormBlockInputs,
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
-            txs_with_proofs.to_vec(),
+            inputs,
+            root_element.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
@@ -268,14 +294,14 @@ extern "C" {
     /// Other sgx_status_t values are not similarly overloaded.
     ///
     /// The implementation of this method is auto-generated by edger8r,
-    /// in two parts. The first part is the literal `consensus_enclave_api()` C function,
-    /// which lives in the untrusted code. The second part is a corresponding
-    /// function that will run inside the enclave as an ECALL. The generated
-    /// untrusted function will call the generated trusted function. This
-    /// implicitly depends on a real function inside the enclave that is
-    /// similar, but not identical, in that it does not include the `eid`
-    /// parameter. As a result, the call stack will look something like
-    /// this:
+    /// in two parts. The first part is the literal `consensus_enclave_api()` C
+    /// function, which lives in the untrusted code. The second part is a
+    /// corresponding function that will run inside the enclave as an ECALL.
+    /// The generated untrusted function will call the generated trusted
+    /// function. This implicitly depends on a real function inside the
+    /// enclave that is similar, but not identical, in that it does not
+    /// include the `eid` parameter. As a result, the call stack will look
+    /// something like this:
     ///
     ///  1. Application Code
     ///  2. Untrusted generated_enclave_api(eid, retval, inbuf, ...) function

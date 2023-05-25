@@ -1,11 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// Implement LocalCipher trait around an AesGcm object that does rekeying
-use alloc::vec;
-use alloc::vec::Vec;
-use core::convert::TryInto;
-
-use aes_gcm::aead::{AeadInPlace, NewAead};
+use aes_gcm::aead::{AeadInPlace, KeyInit};
+use alloc::{vec, vec::Vec};
 use generic_array::{typenum, ArrayLength, GenericArray};
 use rand_core::{CryptoRng, RngCore};
 use subtle::Choice;
@@ -13,14 +9,15 @@ use typenum::Unsigned;
 
 use crate::{CipherError, MessageCipher};
 
-pub struct AeadMessageCipher<C: NewAead + AeadInPlace> {
+/// Implement [MessageCipher] trait around an `AesGcm` object that does rekeying
+pub struct AeadMessageCipher<C: KeyInit + AeadInPlace> {
     // ciphers is a list of ciphers, and the keys we used to make them
     ciphers: Vec<(C, GenericArray<u8, C::KeySize>)>,
     // nonce is the current nonce, starts from 0 every time we re-key.
     nonce: Nonce<C::NonceSize>,
 }
 
-impl<C: AeadInPlace + NewAead> MessageCipher for AeadMessageCipher<C> {
+impl<C: AeadInPlace + KeyInit> MessageCipher for AeadMessageCipher<C> {
     fn new<T: CryptoRng + RngCore>(rng: &mut T) -> Self {
         let mut key: GenericArray<u8, C::KeySize> = Default::default();
         rng.fill_bytes(key.as_mut_slice());
@@ -118,7 +115,8 @@ impl<C: AeadInPlace + NewAead> MessageCipher for AeadMessageCipher<C> {
 // Details
 ////
 
-/// A representation of a nonce suitable for e.g. AES, supporting inc(), copy_to_slice(), and other functions
+/// A representation of a nonce suitable for e.g. AES, supporting inc(),
+/// copy_to_slice(), and other functions
 struct Nonce<L: ArrayLength<u8>> {
     bytes: GenericArray<u8, L>,
 }

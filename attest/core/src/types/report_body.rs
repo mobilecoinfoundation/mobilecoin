@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A structure for handling report bodies
 
@@ -20,7 +20,6 @@ use crate::{
 use alloc::vec::Vec;
 use core::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     mem::size_of,
@@ -224,7 +223,7 @@ impl Ord for ReportBody {
     /// Attributes, Misc Select, ConfigId, ConfigSVN, CPU SVN, and
     /// ReportData, in that order
     fn cmp(&self, other: &Self) -> Ordering {
-        match (&self.0.isv_family_id[..]).cmp(&other.0.isv_family_id[..]) {
+        match self.0.isv_family_id[..].cmp(&other.0.isv_family_id[..]) {
             Ordering::Equal => match self.0.isv_prod_id.cmp(&other.0.isv_prod_id) {
                 Ordering::Equal => match self.0.isv_ext_prod_id.cmp(&other.0.isv_ext_prod_id) {
                     Ordering::Equal => match self.0.isv_svn.cmp(&other.0.isv_svn) {
@@ -455,7 +454,7 @@ mod test {
     #[test]
     #[allow(clippy::cognitive_complexity)]
     fn test_ord() {
-        let body1: ReportBody = REPORT_BODY_SRC.clone().into();
+        let body1: ReportBody = REPORT_BODY_SRC.into();
         let mut body2 = body1;
 
         let orig_value = body2.0.cpu_svn.svn[0];
@@ -541,7 +540,7 @@ mod test {
     fn test_serde() {
         assert_eq!(REPORT_BODY_SIZE, size_of::<sgx_report_body_t>());
 
-        let body: ReportBody = REPORT_BODY_SRC.clone().into();
+        let body: ReportBody = REPORT_BODY_SRC.into();
         let serialized = serialize(&body).expect("Error serializing report.");
         let body2: ReportBody = deserialize(&serialized).expect("Error deserializing report");
         assert_eq!(body, body2);

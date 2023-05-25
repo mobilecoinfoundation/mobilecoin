@@ -1,44 +1,40 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 mod config;
 
+use clap::Parser;
 use config::LedgerFromArchiveConfig;
-use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{create_app_logger, log, o};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{create_ledger_in, Ledger};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use structopt::StructOpt;
 
 fn main() {
-    mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
 
-    let config = LedgerFromArchiveConfig::from_args();
+    let config = LedgerFromArchiveConfig::parse();
 
     let transactions_fetcher =
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    log::debug!(logger, "Creating local ledger at {:?}", config.ledger_db);
-    // Open LedgerDB
-    LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
-    let mut local_ledger = LedgerDB::open(config.ledger_db).expect("Failed creating LedgerDB");
+    log::info!(
+        logger,
+        "Creating local ledger at {}",
+        config.ledger_db.display()
+    );
+    let mut local_ledger = create_ledger_in(&config.ledger_db);
 
     // Sync Origin Block
-    log::debug!(logger, "Getting origin block");
+    log::info!(logger, "Getting origin block");
     let block_data = transactions_fetcher
         .get_origin_block_and_transactions()
         .expect("Could not retrieve origin block");
     local_ledger
-        .append_block(
-            block_data.block(),
-            block_data.contents(),
-            block_data.signature().clone(),
-        )
+        .append_block_data(&block_data)
         .expect("Could not append origin block to ledger");
 
     // Sync all blocks
@@ -46,7 +42,7 @@ fn main() {
     loop {
         if let Some(block_limit) = config.num_blocks {
             if block_index >= block_limit {
-                log::debug!(
+                log::info!(
                     logger,
                     "Done fetching transactions for {} blocks",
                     block_index,
@@ -54,33 +50,18 @@ fn main() {
                 return;
             }
         }
-        // Construct URL for the block we are trying to fetch.
-        let filename = block_num_to_s3block_path(block_index)
-            .into_os_string()
-            .into_string()
-            .unwrap();
-        let url = transactions_fetcher.source_urls[0].join(&filename).unwrap();
 
         // Try and get the block.
-        log::debug!(
-            logger,
-            "Attempting to fetch block {} from {}",
-            block_index,
-            url
-        );
-        match transactions_fetcher.block_from_url(&url) {
+        log::info!(logger, "Attempting to fetch block {}", block_index,);
+        match transactions_fetcher.get_block_data_by_index(block_index, None) {
             Ok(block_data) => {
                 // Append new data to the ledger
                 local_ledger
-                    .append_block(
-                        block_data.block(),
-                        block_data.contents(),
-                        block_data.signature().clone(),
-                    )
-                    .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
+                    .append_block_data(&block_data)
+                    .unwrap_or_else(|_| panic!("Could not append block {block_index:?}"))
             }
             Err(err) => {
-                log::debug!(
+                log::info!(
                     logger,
                     "Done fetching transactions for {} blocks ({:?})",
                     block_index,

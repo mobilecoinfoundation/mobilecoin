@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Database storage for discovered outputs.
 //! * Manages the mapping of (monitor id, subaddress index) -> [UnspentTxOut]s.
@@ -9,10 +9,13 @@ use crate::{
 };
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_common::{logger::Logger, HashMap};
+use mc_common::{
+    logger::{log, Logger},
+    HashMap,
+};
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOut};
 use mc_util_serial::Message;
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 // LMDB Database Names
 pub const SUBADDRESS_ID_TO_UTXO_ID_DB_NAME: &str =
@@ -42,9 +45,10 @@ pub struct UnspentTxOut {
     #[prost(uint64, tag = "4")]
     pub value: u64,
 
-    /// The block height at which the transaction manager last attempted to spend this UnspentTxOut
-    /// An output can only be considered as spent if its KeyImage appears in the ledger, but
-    /// this flag can provide a useful hint to the TransactionManager that the UnspentTxOut may have
+    /// The block height at which the transaction manager last attempted to
+    /// spend this UnspentTxOut An output can only be considered as spent if
+    /// its KeyImage appears in the ledger, but this flag can provide a
+    /// useful hint to the TransactionManager that the UnspentTxOut may have
     /// been used in a recent transaction that is still pending.
     #[prost(uint64, tag = "5")]
     pub attempted_spend_height: u64,
@@ -52,6 +56,10 @@ pub struct UnspentTxOut {
     /// The tombstone block used when we attempted to spend the UTXO.
     #[prost(uint64, tag = "6")]
     pub attempted_spend_tombstone: u64,
+
+    /// The token id of this TxOut
+    #[prost(uint64, tag = "7")]
+    pub token_id: u64,
 }
 
 /// Type used as the key in the utxo_id_to_utxo  database.
@@ -59,30 +67,33 @@ pub type UtxoId = DatabaseByteArrayKey;
 
 impl From<&UnspentTxOut> for UtxoId {
     fn from(src: &UnspentTxOut) -> Self {
-        // The key image uniquely identifies a TxOut, which uniquely identifies an UnspentTxOut.
-        Self::from(&src.key_image)
+        // The key image uniquely identifies a TxOut, which uniquely identifies an
+        // UnspentTxOut.
+        (&src.key_image).into()
     }
 }
 
 impl From<&KeyImage> for UtxoId {
     fn from(src: &KeyImage) -> Self {
-        Self::from(src.as_bytes())
+        src.as_bytes().into()
     }
 }
 
 /// The outputs database.
 #[derive(Clone)]
 pub struct UtxoStore {
-    env: Arc<Environment>,
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
 
     /// Mapping of SubaddressId -> [UtxoId].
-    /// This holds the list of UtxoIds associated with a (monitor id, subaddress index tuple) and
-    /// is used to lookup utxos for a specific index.
+    /// This holds the list of UtxoIds associated with a (monitor id, subaddress
+    /// index tuple) and is used to lookup utxos for a specific index.
     subaddress_id_to_utxo_id: Database,
 
     /// Mapping of KeyImage -> SubaddressId.
-    /// This is needed for more efficient removal of an UnspentTxOut based on a key image, as well
-    /// as to allow checking of which monitor a given UnspentTxOut belongs to.
+    /// This is needed for more efficient removal of an UnspentTxOut based on a
+    /// key image, as well as to allow checking of which monitor a given
+    /// UnspentTxOut belongs to.
     key_image_to_subaddress_id: Database,
 
     /// Mapping of UtxoId -> UnspentTxOut.
@@ -112,7 +123,7 @@ impl UtxoStore {
         )?;
 
         Ok(Self {
-            env,
+            _env: env,
             subaddress_id_to_utxo_id,
             key_image_to_subaddress_id,
             utxo_id_to_utxo,
@@ -120,10 +131,11 @@ impl UtxoStore {
         })
     }
 
-    /// Append a discovered transaction to the list stored for a given subaddress.
-    pub fn append_utxo<'env>(
+    /// Append a discovered transaction to the list stored for a given
+    /// subaddress.
+    pub fn append_utxo(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         index: u64,
         utxo: &UnspentTxOut,
@@ -176,16 +188,17 @@ impl UtxoStore {
     }
 
     /// Removes all utxos associated with a given address.
-    pub fn remove_utxos<'env>(
+    pub fn remove_utxos(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         index: u64,
     ) -> Result<(), Error> {
         let subaddress_id = SubaddressId::new(monitor_id, index);
         let subaddress_id_bytes = subaddress_id.to_vec();
 
-        // Go over the list of all UtxoIds associated with this subaddress and remove them.
+        // Go over the list of all UtxoIds associated with this subaddress and remove
+        // them.
         let mut deleted_something = false;
         for utxo_id in self.get_utxo_ids(db_txn, &subaddress_id)? {
             db_txn.del(self.utxo_id_to_utxo, &utxo_id, None)?;
@@ -216,16 +229,16 @@ impl UtxoStore {
     }
 
     /// Removes utxos based on a list of key images.
-    /// This method silently ignores key images that were not found in the database.
-    /// It returns the list of utxos that were removed.
-    pub fn remove_utxos_by_key_images<'env>(
+    /// This method silently ignores key images that were not found in the
+    /// database. It returns the list of utxos that were removed.
+    pub fn remove_utxos_by_key_images(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         key_images: &[KeyImage],
     ) -> Result<Vec<UnspentTxOut>, Error> {
-        // Break down the key images by SubaddressId. We need key images bytes, so the mapping as
-        // to the actual byte array.
+        // Break down the key images by SubaddressId. We need key images bytes, so the
+        // mapping as to the actual byte array.
         let mut subaddress_id_to_key_images = HashMap::<SubaddressId, Vec<&[u8]>>::default();
         for key_image in key_images.iter() {
             match db_txn.get(self.key_image_to_subaddress_id, key_image.as_bytes()) {
@@ -244,7 +257,7 @@ impl UtxoStore {
                     Ok(())
                 }
                 Err(lmdb::Error::NotFound) => Ok(()),
-                Err(err) => Err(Error::LMDB(err)),
+                Err(err) => Err(Error::Lmdb(err)),
             }?;
         }
 
@@ -253,9 +266,10 @@ impl UtxoStore {
 
         // Go over the key images by subaddress id.
         for (subaddress_id, key_images) in subaddress_id_to_key_images.iter() {
-            // Go over the list of utxo ids associated with the subaddress_id, and remove the ones that
-            // match the list of key images. Keep track of which ones were successfully
-            // removed so that we could clear their utxo data and return them to the caller.
+            // Go over the list of utxo ids associated with the subaddress_id, and remove
+            // the ones that match the list of key images. Keep track of which
+            // ones were successfully removed so that we could clear their utxo
+            // data and return them to the caller.
             let mut cursor = db_txn.open_rw_cursor(self.subaddress_id_to_utxo_id)?;
             let _ = cursor
                 .iter_dup_of(&subaddress_id.to_vec())
@@ -268,10 +282,10 @@ impl UtxoStore {
 
                             // Remember: The utxo id bytes are equal to the KeyImage
                             if key_images.contains(&utxo_id_bytes) {
-                                // utxo ids and key images are interchangeable so this is not expected to
-                                // fail.
-                                // Note that it is critical to read `utxo_id_bytes` BEFORE deleting due to
-                                // this bug: https://github.com/danburkert/lmdb-rs/issues/57
+                                // utxo ids and key images are interchangeable so this is not
+                                // expected to fail.
+                                // Note that it is critical to read `utxo_id_bytes` BEFORE deleting
+                                // due to this bug: https://github.com/danburkert/lmdb-rs/issues/57
                                 removed_key_images.push(KeyImage::try_from(utxo_id_bytes).unwrap());
 
                                 cursor.del(WriteFlags::empty())?;
@@ -283,12 +297,14 @@ impl UtxoStore {
                 .collect::<Result<Vec<()>, Error>>()?;
         }
 
-        // Collect and remove the actual UnspentTxOut data for every key image we successfully removed, as well
-        // as the key image -> subaddress association as that is no longer going to be needed.
+        // Collect and remove the actual UnspentTxOut data for every key image we
+        // successfully removed, as well as the key image -> subaddress
+        // association as that is no longer going to be needed.
         let mut removed_utxos = Vec::new();
 
         for key_image in removed_key_images.iter() {
             let utxo_id = UtxoId::from(key_image);
+            log::debug!(self.logger, "removing utxo for key image {:?}", key_image);
 
             removed_utxos.push(self.get_utxo_by_id(db_txn, &utxo_id)?);
 
@@ -330,10 +346,11 @@ impl UtxoStore {
         }
     }
 
-    /// Update a list of UnspentTxOuts attempted_spend_height and attempted_spend_tombstone.
-    pub fn update_attempted_spend<'env>(
+    /// Update a list of UnspentTxOuts attempted_spend_height and
+    /// attempted_spend_tombstone.
+    pub fn update_attempted_spend(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         utxo_ids: &[UtxoId],
         attempted_spend_height: u64,
         attempted_spend_tombstone: u64,
@@ -375,8 +392,8 @@ impl UtxoStore {
         subaddress_id: &SubaddressId,
     ) -> Result<Vec<UtxoId>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.subaddress_id_to_utxo_id)?;
-        Ok(cursor
-            .iter_dup_of(&subaddress_id.to_vec())
+        cursor
+            .iter_dup_of(subaddress_id.to_vec())
             .map(|result| {
                 result
                     .map_err(Error::from)
@@ -384,10 +401,10 @@ impl UtxoStore {
                         // Sanity check.
                         assert_eq!(subaddress_id.to_vec(), subaddress_id_bytes);
 
-                        Ok(UtxoId::try_from(utxo_id_bytes)?)
+                        UtxoId::try_from(utxo_id_bytes)
                     })
             })
-            .collect::<Result<Vec<_>, Error>>()?)
+            .collect::<Result<Vec<_>, Error>>()
     }
 
     /// Get a single UnspentTxOut by its id.
@@ -407,24 +424,24 @@ impl UtxoStore {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id};
+    use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion};
     use mc_common::{
         logger::{test_with_logger, Logger},
         HashSet,
     };
-    use mc_crypto_rand::{CryptoRng, RngCore};
     use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_rand::{CryptoRng, RngCore};
+    use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     fn setup_test_utxo_store(
         mut rng: &mut (impl CryptoRng + RngCore),
         logger: &Logger,
-    ) -> (LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
+    ) -> (Arc<Environment>, LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
         // Set up a db with 3 random recipients and 10 blocks.
         let (ledger_db, _mobilecoind_db) =
-            get_test_databases(3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger.clone(), &mut rng);
 
         // Get a few TxOuts to play with, and use them to construct UnspentTxOuts.
         let utxos: Vec<UnspentTxOut> = (0..5)
@@ -437,13 +454,13 @@ mod test {
                     value: idx,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    token_id: *Mob::ID,
                 }
             })
             .collect();
 
         // The instance to test.
-        let db_tmp =
-            TempDir::new("utxo_store_db").expect("Could not make tempdir for utxo store db");
+        let db_tmp = TempDir::new().expect("Could not make tempdir for utxo store db");
         let db_path = db_tmp
             .path()
             .to_str()
@@ -457,17 +474,17 @@ mod test {
                 .unwrap(),
         );
 
-        let utxo_store = UtxoStore::new(env, logger.clone()).unwrap();
+        let utxo_store = UtxoStore::new(env.clone(), logger.clone()).unwrap();
 
         // Return
-        (ledger_db, utxo_store, utxos)
+        (env, ledger_db, utxo_store, utxos)
     }
 
     // UtxoStore basic functionality tests
     #[test_with_logger]
     fn test_utxo_store(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (_ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
+        let (env, _ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
         let utxo_ids: Vec<UtxoId> = utxos.iter().map(UtxoId::from).collect();
 
         // Some random monitor ids to play with
@@ -485,7 +502,7 @@ mod test {
         for _ in 0..3 {
             // Initially we should have no utxo ids in our database.
             {
-                let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+                let db_txn = env.begin_ro_txn().unwrap();
 
                 for subaddress in &[
                     &subaddress0_0,
@@ -502,7 +519,7 @@ mod test {
 
             // Append two outputs to the subaddress0_0
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .append_utxo(&mut db_txn, &monitor_id0, 0, &utxos[0])
@@ -546,10 +563,10 @@ mod test {
                 db_txn.commit().unwrap();
             }
 
-            // Appending an output that is already in the database should fail, regardless of the
-            // monitor/subaddress it is being appended to.
+            // Appending an output that is already in the database should fail, regardless
+            // of the monitor/subaddress it is being appended to.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 for subaddress in &[
                     &subaddress0_0,
@@ -568,15 +585,15 @@ mod test {
                     ) {
                         Ok(_) => panic!("unexpected success"),
                         Err(Error::DuplicateUnspentTxOut) => {}
-                        Err(err) => panic!("unexpected error {:?}", err),
+                        Err(err) => panic!("unexpected error {err:?}"),
                     }
                 }
             }
 
-            // Appending new utxos to a different monitor/index should succeed, and not get mixed with
-            // the previously addded ones.
+            // Appending new utxos to a different monitor/index should succeed, and not get
+            // mixed with the previously addded ones.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 let mut utxo = utxos[2].clone();
                 utxo.subaddress_index = subaddress1_1.index;
@@ -617,7 +634,7 @@ mod test {
 
             // Remove all utxos for subaddress0_0 and check only it got affected.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .remove_utxos(&mut db_txn, &subaddress0_0.monitor_id, subaddress0_0.index)
@@ -648,9 +665,10 @@ mod test {
                 db_txn.commit().unwrap();
             }
 
-            // Remove the remaining utxo, and by that restore the database into its empty state.
+            // Remove the remaining utxo, and by that restore the database into its empty
+            // state.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .remove_utxos(&mut db_txn, &subaddress1_1.monitor_id, subaddress1_1.index)
@@ -674,7 +692,7 @@ mod test {
 
             // Removing utxos when none exist should not error.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .remove_utxos(&mut db_txn, &subaddress1_1.monitor_id, subaddress0_0.index)
@@ -687,8 +705,8 @@ mod test {
     #[test_with_logger]
     fn test_remove_utxos_by_key_images(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (_ledger_db, utxo_store, mut utxos) = setup_test_utxo_store(&mut rng, &logger);
-        let key_images: Vec<KeyImage> = utxos.iter().map(|utxo| utxo.key_image.clone()).collect();
+        let (env, _ledger_db, utxo_store, mut utxos) = setup_test_utxo_store(&mut rng, &logger);
+        let key_images: Vec<KeyImage> = utxos.iter().map(|utxo| utxo.key_image).collect();
 
         // Some random monitor ids to play with
         let (_monitor_data, monitor_id0) = get_test_monitor_data_and_id(&mut rng);
@@ -696,7 +714,7 @@ mod test {
 
         // Removing nonexistent key images should return success and remove nothing.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &[])
@@ -711,7 +729,7 @@ mod test {
 
         // Add a few utxos to monitor_id0.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             // Three for monitor_id0
             utxos[0].subaddress_index = 123;
@@ -768,9 +786,10 @@ mod test {
             db_txn.commit().unwrap();
         }
 
-        // Attempting to remove the utxos from a different monitor should not remove them.
+        // Attempting to remove the utxos from a different monitor should not remove
+        // them.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             // The first key images are associated with monitor_id0.
             let removed_utxos = utxo_store
@@ -783,7 +802,7 @@ mod test {
 
         // Nothing should've been removed
         {
-            let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             assert_eq!(
                 HashSet::from_iter(utxo_store.get_utxos(&db_txn, &monitor_id0, 123).unwrap()),
@@ -808,18 +827,14 @@ mod test {
 
         // Remove with the correct parameters.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
                 .unwrap();
             assert_eq!(
-                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image.clone())),
-                HashSet::from_iter(vec![
-                    key_images[0].clone(),
-                    key_images[1].clone(),
-                    key_images[2].clone()
-                ])
+                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image)),
+                HashSet::from_iter(vec![key_images[0], key_images[1], key_images[2]])
             );
 
             assert_eq!(
@@ -852,7 +867,7 @@ mod test {
 
         // Removing again should do nothing.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
@@ -886,12 +901,12 @@ mod test {
     #[test_with_logger]
     fn test_update_attempted_spend(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (_ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
+        let (env, _ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
         let (_monitor_data, monitor_id) = get_test_monitor_data_and_id(&mut rng);
 
         // Append utxos to database
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             assert!(!utxos.is_empty());
             for utxo in utxos.iter() {
@@ -903,9 +918,10 @@ mod test {
             db_txn.commit().unwrap();
         }
 
-        // We should have the original attempted_spend_height/attempted_spend_tombstone in the database.
+        // We should have the original attempted_spend_height/attempted_spend_tombstone
+        // in the database.
         {
-            let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             for utxo in utxos.iter() {
                 let utxo2 = utxo_store
@@ -921,7 +937,7 @@ mod test {
 
         // Update some of our utxos and one that doesn't exist.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
             utxo_store
                 .update_attempted_spend(
                     &mut db_txn,
@@ -939,7 +955,7 @@ mod test {
 
         // Verify that utxos 0 and 1 got updated as expected.
         {
-            let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             for (i, orig_utxo) in utxos.iter().enumerate() {
                 let utxo = utxo_store

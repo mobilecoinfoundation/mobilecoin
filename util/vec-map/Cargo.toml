@@ -1,0 +1,13 @@
+[package]
+name = "mc-util-vec-map"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+description = "A map object based on heapless Vec"
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[dependencies]
+displaydoc = { version = "0.2", default-features = false }
+heapless = { version = "0.7.16", default-features = false }

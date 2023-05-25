@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Generate the binding code that lives inside the enclave and link it in.
 
@@ -12,8 +12,9 @@ use pkg_config::{Config, Error as PkgConfigError, Library};
 const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
 const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
 
-// Changing this version is a breaking change, you must update the crate version if you do.
-const SGX_VERSION: &str = "2.9.101.2";
+// Changing this version is a breaking change, you must update the crate version
+// if you do.
+const SGX_VERSION: &str = "2.19.100.3";
 
 fn main() {
     let env = Environment::default();

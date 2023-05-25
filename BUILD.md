@@ -26,11 +26,32 @@ If you have SGX-enabled hardware (activated in BIOS, and with SGX kernel module 
 you can use `./mob prompt --hw` to get SGX in the container. Then you can both build and
 run the tests in `SGX_MODE=HW`. (See below for an explanation.)
 
+##### IDE Support using the docker environment
+
+You can use `./mob '<command>'` to run `<command>` from within
+the docker environment. For IDE support, this can be used to run `cargo check`.
+
+An example workspace configuration for Rust Analyzer is provided below:
+
+```json
+"rust-analyzer.checkOnSave.overrideCommand": [
+    "./mob",
+    "cargo check --workspace --message-format=json --all-targets"
+],
+"rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "./mob",
+    "cargo check --workspace --message-format=json --all-targets"
+],
+"rust-analyzer.cargo.buildScripts.useRustcWrapper": false,
+"rust-analyzer.cargo.buildScripts.enable": false,
+"rust-analyzer.procMacro.enable": false,
+```
+
 #### No-docker build
 
 A docker-less build also works fine for development:
 - Follow instructions [consensus/service/BUILD.md](consensus/service/BUILD.md)
-- Set up your environment like the [Dockerfile](docker/Dockerfile)
+- Set up your environment with `docker/init_debian.sh` and possibly `docker/install_sgx.sh`
 
 ## Build configuration
 
@@ -40,7 +61,9 @@ These are set by environment variables, and they must be the same for all artifa
 even those that don't depend directly on SGX. E.g. `mobilecoind` must have the same configuration
 as `consensus_service` for Intel Remote Attestation to work, otherwise an error will occur at runtime.
 
-For testing, you should usually use `SGX_MODE=SW` and `IAS_MODE=DEV`.
+For local testing, you should usually use `SGX_MODE=SW` and `IAS_MODE=DEV`.
+If you are seeking to build a client that you can test against MobileCoin's official testnet,
+you must use `SGX_MODE=HW` and `IAS_MODE=PROD`, because testnet is configured as a production environment.
 
 #### SGX_MODE
 

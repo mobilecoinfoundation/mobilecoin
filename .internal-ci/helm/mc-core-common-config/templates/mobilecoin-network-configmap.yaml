@@ -1,0 +1,10 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mobilecoin-network
+  labels:
+    {{- include "mcCoreCommonConfig.labels" . | nindent 4 }}
+data:
+  network: {{ tpl .Values.mobileCoinNetwork.network . | default "" | quote }}
+  partner: {{ tpl .Values.mobileCoinNetwork.partner . | default "" | quote }}

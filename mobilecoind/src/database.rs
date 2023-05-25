@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The mobilecoind database
 
@@ -28,9 +28,10 @@ const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 #[derive(Clone, Default, Debug)]
 pub struct MobilecoindDbMetadataStoreSettings;
 impl MetadataStoreSettings for MobilecoindDbMetadataStoreSettings {
-    // Default database version. This should be bumped when breaking changes are introduced.
-    // If this is properly maintained, we could check during ledger db opening for any
-    // incompatibilities, and either refuse to open or perform a migration.
+    // Default database version. This should be bumped when breaking changes are
+    // introduced. If this is properly maintained, we could check during ledger
+    // db opening for any incompatibilities, and either refuse to open or
+    // perform a migration.
     #[allow(clippy::unreadable_literal)]
     const LATEST_VERSION: u64 = 20200805;
 
@@ -61,9 +62,6 @@ pub struct Database {
 
     /// Processed block store.
     processed_block_store: ProcessedBlockStore,
-
-    /// Metadata store.
-    metadata_store: MetadataStore<MobilecoindDbMetadataStoreSettings>,
 
     /// Logger.
     logger: Logger,
@@ -107,7 +105,6 @@ impl Database {
             subaddress_store,
             utxo_store,
             processed_block_store,
-            metadata_store,
             logger,
         })
     }
@@ -117,21 +114,23 @@ impl Database {
         self.crypto_provider.is_db_encrypted()
     }
 
-    /// Check if the data is currently accessible (this checks if the correct encryption key has
-    /// been provided)
+    /// Check if the data is currently accessible (this checks if the correct
+    /// encryption key has been provided)
     pub fn is_unlocked(&self) -> bool {
         self.crypto_provider.is_unlocked()
     }
 
-    /// Check if a given password is the correct password to decrypt the database.
-    /// This also stores it for future encryption/decryption operations.
+    /// Check if a given password is the correct password to decrypt the
+    /// database. This also stores it for future encryption/decryption
+    /// operations.
     pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), Error> {
         Ok(self.crypto_provider.check_and_store_password(password)?)
     }
 
     /// Re-encrypt the encrypted parts of the database with a new password.
-    /// This will fail if the current password is not set in the crypto_provider since part of the
-    /// re-encryption process relies on being able to decrypt the existing data.
+    /// This will fail if the current password is not set in the crypto_provider
+    /// since part of the re-encryption process relies on being able to
+    /// decrypt the existing data.
     pub fn re_encrypt(&self, new_password: &[u8]) -> Result<(), Error> {
         let mut db_txn = self.env.begin_rw_txn()?;
 
@@ -165,7 +164,7 @@ impl Database {
 
         let mut db_txn = self.env.begin_rw_txn()?;
 
-        let data = self.monitor_store.get_data(&db_txn, &id)?;
+        let data = self.monitor_store.get_data(&db_txn, id)?;
 
         for index in data.subaddress_indexes() {
             self.subaddress_store.delete(&mut db_txn, &data, index)?;
@@ -267,7 +266,7 @@ impl Database {
         // Store new utxos
         for utxo in discovered_utxos {
             self.utxo_store
-                .append_utxo(&mut db_txn, &monitor_id, utxo.subaddress_index, &utxo)?;
+                .append_utxo(&mut db_txn, monitor_id, utxo.subaddress_index, utxo)?;
         }
 
         // Remove spent utxos
@@ -350,10 +349,10 @@ mod test {
     use super::*;
     use crate::{error::Error, test_utils::get_test_databases};
     use mc_account_keys::AccountKey;
+    use mc_blockchain_types::BlockVersion;
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     // Test that encryption happy path works as expected.
     #[test_with_logger]
@@ -361,14 +360,13 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let account_key = AccountKey::random(&mut rng);
 
-        let mobilecoind_db_tmp =
-            TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+        let mobilecoind_db_tmp = TempDir::new().expect("Could not make tempdir for mobilecoind db");
         let mobilecoind_db_path = mobilecoind_db_tmp
             .path()
             .to_str()
             .expect("Could not get path as string");
 
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+        let mobilecoind_db = Database::new(mobilecoind_db_path, logger.clone())
             .expect("failed creating new mobilecoind db");
 
         // The db starts unencrypted.
@@ -377,7 +375,7 @@ mod test {
 
         // We should be able to insert a monitor at this point.
         let monitor_data = MonitorData::new(
-            account_key.clone(),
+            account_key,
             0,  // first_subaddress
             10, // num_subaddresses
             0,  // first_block
@@ -392,7 +390,7 @@ mod test {
         // We should be able to get our monitor.
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Re-encrypting with an empty password should not affect things.
@@ -403,7 +401,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Checking an empty password should not affect anything.
@@ -414,7 +412,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Checking a non-empty password should error and not affect things.
@@ -425,7 +423,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Set a password.
@@ -436,11 +434,11 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Re-open the db.
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+        let mobilecoind_db = Database::new(mobilecoind_db_path, logger.clone())
             .expect("failed creating new mobilecoind db");
 
         // This time we're encrypted and locked.
@@ -469,13 +467,13 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Re-encrypt and repeat the test.
         mobilecoind_db.re_encrypt(&[11; 32]).unwrap();
 
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+        let mobilecoind_db = Database::new(mobilecoind_db_path, logger.clone())
             .expect("failed creating new mobilecoind db");
 
         assert!(mobilecoind_db.is_db_encrypted());
@@ -499,14 +497,14 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Remove password and try again.
         mobilecoind_db.re_encrypt(&[]).unwrap();
 
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)
-            .expect("failed creating new mobilecoind db");
+        let mobilecoind_db =
+            Database::new(mobilecoind_db_path, logger).expect("failed creating new mobilecoind db");
 
         assert!(!mobilecoind_db.is_db_encrypted());
         assert!(mobilecoind_db.is_unlocked());
@@ -515,18 +513,19 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data)])
         );
     }
 
-    // Inserting a monitor that overlaps subaddresses of another monitor should result in an error.
+    // Inserting a monitor that overlaps subaddresses of another monitor should
+    // result in an error.
     #[test_with_logger]
     fn test_overlapping_add_monitor_fails(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger, &mut rng);
 
         // A test accouunt.
         let account_key = AccountKey::random(&mut rng);
@@ -558,7 +557,7 @@ mod test {
         match mobilecoind_db.add_monitor(&data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::MonitorIdExists) => {}
-            Err(err) => panic!("unexpected error {:?}", err),
+            Err(err) => panic!("unexpected error {err:?}"),
         };
 
         // Inserting a monitor with overlapping subaddresses should fail.
@@ -574,11 +573,11 @@ mod test {
         match mobilecoind_db.add_monitor(&data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
-            Err(err) => panic!("unexpected error {:?}", err),
+            Err(err) => panic!("unexpected error {err:?}"),
         };
 
-        // Inserting a monitor with overlapping subaddresses and a different `first_block` should
-        // fail.
+        // Inserting a monitor with overlapping subaddresses and a different
+        // `first_block` should fail.
         let data = MonitorData::new(
             account_key.clone(),
             0,  // first_subaddress
@@ -591,7 +590,7 @@ mod test {
         match mobilecoind_db.add_monitor(&data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
-            Err(err) => panic!("unexpected error {:?}", err),
+            Err(err) => panic!("unexpected error {err:?}"),
         };
 
         // Inserting a monitor with non overlapping subaddresses should succeed.

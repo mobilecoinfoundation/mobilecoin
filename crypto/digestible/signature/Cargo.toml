@@ -1,15 +1,21 @@
 [package]
 name = "mc-crypto-digestible-signature"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "Digestible Signatures"
+license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
+
+[features]
+alloc = ["mc-crypto-digestible/alloc"]
+dalek = ["mc-crypto-digestible/dalek"]
+derive = ["mc-crypto-digestible/derive"]
+default = ["alloc", "derive", "dalek"]
 
 [dependencies]
-mc-crypto-digestible = { path = ".." }
+mc-crypto-digestible = { path = "..", default_features = false }
 
-signature = { version = "1.2", default-features = false }
-
-# Overridden since we need a not-yet-released commit that uprevs a bunch of dependencies.
-schnorrkel = { git = "https://github.com/w3f/schnorrkel", rev = "cfdbe9ae865a4d3ffa2566d896d4dbedf5107028", default-features = false }
+schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
+signature = { version = "2.0.0", default-features = false }

@@ -1,8 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::TxHash
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_transaction_core::tx;
-use std::convert::TryFrom;
 
 /// Convert tx::TxHash --> external::TxHash.
 impl From<&tx::TxHash> for external::TxHash {

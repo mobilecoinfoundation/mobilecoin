@@ -1,24 +1,40 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::Error;
-use mc_common::Hash;
+use crate::{ActiveMintConfig, ActiveMintConfigs, Error};
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
+};
+use mc_common::{Hash, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockIndex, BlockSignature,
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
+    TokenId,
 };
 use mockall::*;
 
 #[automock]
 pub trait Ledger: Send {
-    /// Appends a block along with transactions.
-    fn append_block(
+    /// Appends a block with contents, signature and metadata.
+    fn append_block<'b>(
         &mut self,
-        block: &Block,
-        block_contents: &BlockContents,
-        signature: Option<BlockSignature>,
+        block: &'b Block,
+        block_contents: &'b BlockContents,
+        signature: Option<&'b BlockSignature>,
+        metadata: Option<&'b BlockMetadata>,
     ) -> Result<(), Error>;
+
+    /// Appends a block with contents, signature and metadata, using the
+    /// BlockData holder.
+    fn append_block_data(&mut self, block_data: &BlockData) -> Result<(), Error> {
+        self.append_block(
+            block_data.block(),
+            block_data.contents(),
+            block_data.signature(),
+            block_data.metadata(),
+        )
+    }
 
     /// Get the total number of blocks in the ledger.
     fn num_blocks(&self) -> Result<u64, Error>;
@@ -29,10 +45,14 @@ pub trait Ledger: Send {
     /// Get the contents of a block.
     fn get_block_contents(&self, block_number: BlockIndex) -> Result<BlockContents, Error>;
 
-    /// Gets a block signature by its index in the blockchain.
+    /// Gets a block's signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: BlockIndex) -> Result<BlockSignature, Error>;
 
-    /// Gets a block and all of its associated data by its index in the blockchain.
+    /// Gets a block's metadata by its index in the blockchain.
+    fn get_block_metadata(&self, block_number: BlockIndex) -> Result<BlockMetadata, Error>;
+
+    /// Gets a block and all of its associated data by its index in the
+    /// blockchain.
     fn get_block_data(&self, block_number: BlockIndex) -> Result<BlockData, Error>;
 
     /// Gets block index by a TxOut global index.
@@ -77,4 +97,48 @@ pub trait Ledger: Send {
 
     /// Gets the key images used by transactions in a single block.
     fn get_key_images_by_block(&self, block_number: BlockIndex) -> Result<Vec<KeyImage>, Error>;
+
+    /// Get the tx out root membership element from the tx out Merkle Tree.
+    fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error>;
+
+    /// Get the latest block header, if any. NotFound if the ledger-db is empty.
+    fn get_latest_block(&self) -> Result<Block, Error> {
+        let num_blocks = self.num_blocks()?;
+        if num_blocks == 0 {
+            return Err(Error::NotFound);
+        }
+        self.get_block(num_blocks - 1)
+    }
+
+    /// Get active mint configurations for a given token id.
+    fn get_active_mint_configs(
+        &self,
+        token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error>;
+
+    /// Return the full map of TokenId -> ActiveMintConfigs.
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error>;
+
+    /// Checks if the ledger contains a given MintConfigTx nonce for a given
+    /// token id. If so, returns the index of the block in which it entered
+    /// the ledger. Ok(None) is returned when the nonce is not in the
+    /// ledger.
+    fn check_mint_config_tx_nonce(
+        &self,
+        token_id: u64,
+        nonce: &[u8],
+    ) -> Result<Option<BlockIndex>, Error>;
+
+    /// Checks if the ledger contains a given MintTx nonce for a given token id.
+    /// If so, returns the index of the block in which it entered the ledger.
+    /// Ok(None) is returned when the nonce is not in the ledger.
+    fn check_mint_tx_nonce(&self, token_id: u64, nonce: &[u8])
+        -> Result<Option<BlockIndex>, Error>;
+
+    /// Attempt to get an active mint configuration that is able to verify and
+    /// accommodate a given MintTx.
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error>;
 }

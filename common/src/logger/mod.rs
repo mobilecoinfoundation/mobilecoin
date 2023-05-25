@@ -1,27 +1,25 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin Logging.
 //!
-//! The configuration of our logging is affected by environment variables. The following variables
-//! are relevant:
+//! The configuration of our logging is affected by environment variables. The
+//! following variables are relevant:
 //! - MC_LOG - Specifies the logging level (see
 //! https://docs.rs/slog-envlogger/2.1.0/slog_envlogger/ for format)
-//! - MC_LOG_GELF - When set to host:port, enables logging into a
-//! [GELF](https://docs.graylog.org/en/3.0/pages/gelf.html) UDP receiver. Suitable for use with
-//! [logstash](https://www.elastic.co/products/logstash).
-//! - MC_LOG_UDP_JSON - When set to host:port, enables logging JSON log messages into a UDP socket.
+//! - MC_LOG_UDP_JSON - When set to host:port, enables logging JSON log messages
+//!   into a UDP socket.
 //! Suitable for use with [filebeat](https://www.elastic.co/products/beats/filebeat).
-//! - MC_LOG_EXTRA_CONTEXT - Adds an extra logging context (key=val, separated by comma).
+//! - MC_LOG_EXTRA_CONTEXT - Adds an extra logging context (key=val, separated
+//!   by comma).
 
 /// Expose the standard crit! debug! error! etc macros from slog
 /// (those are the ones that accept a Logger instance)
 pub mod log {
-    pub use slog::{crit, debug, error, info, trace, warn};
+    pub use slog::{crit, debug, error, info, log, trace, warn};
 }
 
 /// Expose slog and select useful primitives.
-pub use slog;
-pub use slog::{o, FnValue, Logger, PushFnValue};
+pub use slog::{self, o, FnValue, Level, Logger, PushFnValue};
 
 /// Create a logger that discards everything.
 pub fn create_null_logger() -> Logger {
@@ -30,66 +28,6 @@ pub fn create_null_logger() -> Logger {
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "log")] {
-        /// Wrap calls to assert! macros to record an error message before panic
-        #[macro_export]
-        macro_rules! log_assert {
-            ($logger:expr, $cond:expr) => ({
-                if !$cond {
-                    let cond_str = stringify!($cond);
-                    log::crit!($logger, "assert!({}) failed", cond_str);
-                    std::thread::sleep(Duration::from_millis(500));
-                    panic!("assert!({}) failed", cond_str);
-                }
-            });
-            ($logger:expr, $cond:expr,) => ({
-                if !$cond {
-                    let cond_str = stringify!($cond);
-                    log::crit!($logger, "assert!({}) failed", cond_str);
-                    std::thread::sleep(Duration::from_millis(500));
-                    panic!("assert!({}) failed", cond_str);
-                }
-            });
-            ($logger:expr, $cond:expr, $($arg:tt)+) => ({
-                if !$cond {
-                    let m = format!($($arg)+);
-                    let cond_str = stringify!($cond);
-                    log::crit!($logger, "assert!({}) failed, {}", cond_str, m);
-                    std::thread::sleep(Duration::from_millis(500));
-                    panic!("assert!({}) failed, {}", cond_str, m);
-                }
-            })
-        }
-
-        /// Wrap calls to assert_eq! macros to record an error message before panic
-        #[macro_export]
-        macro_rules! log_assert_eq {
-            ($logger:expr, $left:expr, $right:expr) => ({
-                log_assert!($logger, ($left) == ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr,) => ({
-                log_assert!($logger, ($left) == ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr, $($arg:tt)+) => ({
-                let m = format!($($arg)+);
-                log_assert!($logger, ($left) == ($right), "{}", m);
-            })
-        }
-
-        /// Wrap calls to assert_ne! macros to record an error message before panic
-        #[macro_export]
-        macro_rules! log_assert_ne {
-            ($logger:expr, $left:expr, $right:expr) => ({
-                log_assert!($logger, ($left) != ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr,) => ({
-                log_assert!($logger, ($left) != ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr, $($arg:tt)+) => ({
-                let m = format!($($arg)+);
-                log_assert!($logger, ($left) != ($right), "{}", m);
-            })
-        }
-
         /// A global logger, for when passing a Logger instance is impractical.
         pub mod global_log {
             pub use slog_scope::{crit, debug, error, info, trace, warn};
@@ -110,7 +48,7 @@ cfg_if::cfg_if! {
         where
             F: FnOnce(&Logger) -> R,
         {
-            slog_scope::scope(&logger, || f(&logger))
+            slog_scope::scope(logger, || f(logger))
         }
     }
 }
@@ -130,6 +68,7 @@ cfg_if::cfg_if! {
             )
         }
 
+        /// Helper struct for tracing elapsed time.
         pub struct TraceTime<'a> {
             logger: Logger,
             rstatic: slog::RecordStatic<'a>,
@@ -138,6 +77,7 @@ cfg_if::cfg_if! {
         }
 
         impl<'a> TraceTime<'a> {
+            /// Start a timer with the given message.
             pub fn new(logger: Logger, rstatic: slog::RecordStatic<'a>, msg: String) -> Self {
                 let start = Instant::now();
                 Self {
@@ -155,7 +95,7 @@ cfg_if::cfg_if! {
                     + (self.start.elapsed().subsec_nanos() as f64 / 1_000_000.0);
 
                 let time = match time_in_ms as u64 {
-                    0..=3000 => format!("{}ms", time_in_ms),
+                    0..=3000 => format!("{time_in_ms}ms"),
                     3001..=60000 => format!("{:.2}s", time_in_ms / 1000.0),
                     _ => format!("{:.2}m", time_in_ms / 1000.0 / 60.0),
                 };
@@ -176,7 +116,7 @@ cfg_if::cfg_if! {
             fn basic_trace_time() {
                 let logger = create_test_logger("basic_trace_time".to_string());
 
-                slog_scope::scope(&logger.clone(), || {
+                slog_scope::scope(&logger, || {
                     trace_time!(global_logger(), "test global");
 
                     {

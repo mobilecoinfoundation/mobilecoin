@@ -1,0 +1,41 @@
+[package]
+name = "mc-fog-load-testing"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "fog_ingest_server_load_test"
+path = "src/bin/ingest.rs"
+
+[dependencies]
+# third party
+clap = { version = "4.1", features = ["derive", "env"] }
+grpcio = "0.12"
+retry = "2.0"
+tempfile = "3.5"
+
+# mc
+mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-rand = "1.0"
+mc-util-build-info = { path = "../../util/build/info" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-uri = { path = "../../util/uri" }
+mc-watcher = { path = "../../watcher" }
+
+# fog
+mc-fog-api = { path = "../api" }
+mc-fog-ingest-client = { path = "../ingest/client" }
+mc-fog-ingest-server = { path = "../ingest/server" } # This ensures the server is built
+mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../sql_recovery_db" }
+mc-fog-uri = { path = "../uri" }

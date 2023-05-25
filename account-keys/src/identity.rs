@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! In cryptography, several private keys can be derived from a single source of
 //! entropy using a strong KDF (key derivation function).
@@ -6,32 +6,35 @@
 //! at least enough entropy as the length of any one of the derived keys.
 //!
 //! The RootIdentity object contains 32 bytes of "root entropy", used with HKDF
-//! to produce the other MobileCoin private keys. This is useful because an AccountKey
-//! derived this way can be represented with a smaller amount of information.
+//! to produce the other MobileCoin private keys. This is useful because an
+//! AccountKey derived this way can be represented with a smaller amount of
+//! information.
 //!
 //! The other (fog-related) fields of RootIdentity are analogous to AccountKey.
 
 use crate::AccountKey;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
-use core::{
-    convert::{From, TryFrom},
-    hash::Hash,
-};
+use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
-use hkdf::Hkdf;
+use hkdf::SimpleHkdf;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_util_from_random::FromRandom;
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 use mc_util_repr_bytes::{
-    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from, typenum::U32,
-    LengthMismatch,
+    derive_debug_and_display_hex_from_as_ref, derive_repr_bytes_from_as_ref_and_try_from,
+    typenum::U32, LengthMismatch,
 };
+
+#[cfg(feature = "prost")]
 use prost::Message;
+
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
 /// A secret value used as input key material to derive private keys.
-#[derive(Clone, Default, Debug, PartialEq, Eq, Hash, Zeroize)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Zeroize)]
 #[zeroize(drop)]
 pub struct RootEntropy {
     /// 32 bytes of input key material.
@@ -77,28 +80,33 @@ impl FromRandom for RootEntropy {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(RootEntropy, U32);
+derive_debug_and_display_hex_from_as_ref!(RootEntropy);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RootEntropy);
 
 /// A RootIdentity contains 32 bytes of root entropy (for deriving private keys
 /// using a KDF), together with any fog data for the account.
-#[derive(Clone, PartialEq, Eq, Hash, Message)]
+#[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "prost", derive(Message))]
 pub struct RootIdentity {
     /// Root entropy used to derive a user's private keys.
-    #[prost(message, required, tag = 1)]
+    #[cfg_attr(feature = "prost", prost(message, required, tag = 1))]
     pub root_entropy: RootEntropy,
     /// Fog report url
-    #[prost(string, tag = 2)]
+    #[cfg_attr(feature = "prost", prost(string, tag = 2))]
     pub fog_report_url: String,
     /// Fog report id
-    #[prost(string, tag = 3)]
+    #[cfg_attr(feature = "prost", prost(string, tag = 3))]
     pub fog_report_id: String,
     /// Fog authority subjectPublicKeyInfo
-    #[prost(bytes, tag = 4)]
+    #[cfg_attr(feature = "prost", prost(bytes, tag = 4))]
     pub fog_authority_spki: Vec<u8>,
 }
 
 impl RootIdentity {
-    /// Generate a random root identity with a specific fog_report_url configured
+    /// Generate a random root identity with a specific fog_report_url
+    /// configured
     pub fn random_with_fog<T: RngCore + CryptoRng>(
         rng: &mut T,
         fog_report_url: &str,
@@ -167,7 +175,7 @@ impl From<&[u8; 32]> for RootIdentity {
 // Helper function for using hkdf to derive a key
 fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
     let mut result = [0u8; 32];
-    let (_, hk) = Hkdf::<Blake2b256>::extract(None, ikm);
+    let hk = SimpleHkdf::<Blake2b256>::new(None, ikm);
 
     // expand cannot fail because 32 bytes is a valid keylength for blake2b/256
     hk.expand(info, &mut result)
@@ -184,10 +192,9 @@ fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use alloc::boxed::Box;
-    use datatest::data;
-    use mc_test_vectors_account_keys::*;
+    use mc_test_vectors_account_keys::AcctPrivKeysFromRootEntropy;
     use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
 
     // Protobuf deserialization should recover a serialized RootIdentity.
     #[test]
@@ -206,8 +213,7 @@ mod testing {
         })
     }
 
-    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
     fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
         let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));
         assert_eq!(

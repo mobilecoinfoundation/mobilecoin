@@ -1,51 +1,74 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
+//! A utility to generate a sample ledger.
+
+use clap::Parser;
 use mc_common::logger::create_root_logger;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+/// Configuration.
+#[derive(Debug, Parser)]
 struct Config {
+    /// Output path.
+    #[clap(long, short, default_value = "ledger", env = "MC_OUTPUT_DIR")]
+    pub output_dir: PathBuf,
+
+    /// Keys path.
+    #[clap(long, default_value = "keys", env = "MC_KEYS_DIR")]
+    pub keys_dir: PathBuf,
+
     /// Number of transactions per key to generate
-    #[structopt(long = "txs", short = "t", default_value = "100")]
-    pub num_txs: usize,
+    #[clap(long, short, default_value = "100", env = "MC_TXS")]
+    pub txs: usize,
 
     /// Number of blocks to divide transactions.
-    #[structopt(long = "blocks", short = "b", default_value = "1")]
-    pub num_blocks: usize,
+    #[clap(long, short, default_value = "1", env = "MC_BLOCKS")]
+    pub blocks: usize,
 
     /// Key images per transaction
-    #[structopt(long = "key-images", short = "k", default_value = "0")]
-    pub num_key_images: usize,
+    #[clap(long, short, default_value = "1", env = "MC_KEY_IMAGES")]
+    pub key_images: usize,
 
-    // Seed to use when generating blocks (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
-    #[structopt(long = "seed", short = "s", parse(try_from_str=hex::FromHex::from_hex))]
+    /// Seed to use when generating blocks (e.g.
+    // 1234567812345678123456781234567812345678123456781234567812345678).
+    #[clap(long, short, value_parser = mc_util_parse::parse_hex::<[u8; 32]>, env = "MC_SEED")]
     pub seed: Option<[u8; 32]>,
 
-    #[structopt(long = "hint-text")]
-    pub hint_text: Option<String>,
+    /// Max token id. If set to 1, then this will double the number of tx's in
+    /// the bootstrap. First will come all token id 0, then all token id 1.
+    ///
+    /// Historically this was not present, and is only added to support testing
+    /// of confidential token ids.
+    #[clap(long, default_value = "0", env = "MC_MAX_TOKEN_ID")]
+    pub max_token_id: u64,
 }
 
 fn main() {
-    let config = Config::from_args();
-
     mc_common::setup_panic_handler();
     let logger = create_root_logger();
 
+    let config = Config::parse();
+
     // Read user public keys from disk
-    let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles("keys")
-        .expect("Could not read default pubfiles from ./keys");
-    assert_ne!(0, pub_addrs.len());
+    let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles(&config.keys_dir)
+        .unwrap_or_else(|err| {
+            panic!(
+                "Could not read default pubfiles from {:?}: {:?}",
+                config.keys_dir, err
+            )
+        });
+    assert!(!pub_addrs.is_empty());
 
     // Bootstrap the ledger db
     mc_util_generate_sample_ledger::bootstrap_ledger(
-        &PathBuf::from("ledger"),
+        &config.output_dir,
         &pub_addrs,
-        config.num_txs,
-        config.num_blocks,
-        config.num_key_images,
+        config.txs,
+        config.blocks,
+        config.key_images,
         config.seed,
-        config.hint_text.as_deref(),
+        config.max_token_id,
         logger,
     );
 }

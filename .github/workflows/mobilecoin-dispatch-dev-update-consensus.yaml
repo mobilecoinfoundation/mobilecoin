@@ -1,0 +1,39 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Update consensus nodes in a development namespace.
+
+name: (Manual) Upgrade Consensus Config in Dev Namespace
+
+run-name: Update Consensus Block Version - ${{ inputs.namespace }} - ${{ inputs.block_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+      block_version:
+        description: "Block Version"
+        type: string
+        required: true
+        default: '3'
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: true
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+
+jobs:
+  update-consensus-block-version:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-update-consensus.yaml
+    with:
+      namespace: ${{ inputs.namespace }}
+      version: ${{ inputs.version }}
+      chart_repo: ${{ inputs.chart_repo }}
+      block_version: "${{ inputs.block_version }}"
+    secrets: inherit

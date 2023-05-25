@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! A thin wrapper around Dalek libraries for key handling.
 //!
@@ -48,6 +48,7 @@
 
 #![no_std]
 
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 mod ed25519;
@@ -56,10 +57,28 @@ mod traits;
 mod x25519;
 
 pub use crate::{
-    ed25519::{
-        Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Ed25519SignatureError,
+    ed25519::{Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature},
+    ristretto::{
+        CompressedRistrettoPublic, Ristretto, RistrettoEphemeralPrivate, RistrettoPrivate,
+        RistrettoPublic, RistrettoSecret, RistrettoSignature,
     },
-    ristretto::*,
-    traits::*,
-    x25519::*,
+    traits::{
+        DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate, KexPublic,
+        KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey,
+    },
+    x25519::{
+        X25519EphemeralPrivate, X25519Private, X25519Public, X25519Secret, X25519, X25519_LEN,
+    },
 };
+
+// Engine for base64 strings
+pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
+
+pub use digest::Digest;
+pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
+pub use schnorrkel_og::SignatureError as SchnorrkelError;
+pub use signature::{
+    DigestSigner, DigestVerifier, Error as SignatureError, SignatureEncoding, Signer, Verifier,
+};
+
+pub use traits::DER_MAX_LEN;

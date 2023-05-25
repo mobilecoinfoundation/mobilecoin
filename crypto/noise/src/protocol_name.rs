@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A set of static ZWTs designed to aid the handling of noise protocol strings.
 
@@ -6,8 +6,8 @@ use crate::patterns::{HandshakeIX, HandshakeNX, HandshakePattern};
 use aead::AeadMut;
 use aes_gcm::Aes256Gcm;
 use core::marker::PhantomData;
-use digest::{FixedOutput, Update};
-use failure::Fail;
+use digest::Digest;
+use displaydoc::Display;
 use mc_crypto_keys::{Kex, X25519};
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
@@ -15,9 +15,11 @@ use subtle::ConstantTimeEq;
 
 /// An enumeration of errors which can be generated while parsing a protocol
 /// name string.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum ProtocolNameError {
-    #[fail(display = "The string given does not match the type in question")]
+    /// The string given does not match the type in question
     Unknown,
 }
 
@@ -27,52 +29,52 @@ pub enum ProtocolNameError {
 /// implementation of the protocol names described in
 /// [section 8](http://noiseprotocol.org/noise.html#protocol-names-and-modifiers)
 /// of the specification.
-#[derive(Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ProtocolName<Handshake, KexAlgo, Cipher, DigestType>
+#[derive(Copy, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Update + FixedOutput,
+    DigestAlgo: Digest,
 {
-    _pattern: PhantomData<fn() -> Handshake>,
-    _kex: PhantomData<fn() -> KexAlgo>,
-    _cipher: PhantomData<fn() -> Cipher>,
-    _digest: PhantomData<fn() -> DigestType>,
+    _pattern: PhantomData<Handshake>,
+    _kex: PhantomData<KexAlgo>,
+    _cipher: PhantomData<Cipher>,
+    _digest: PhantomData<DigestAlgo>,
 }
 
-impl<Handshake, KexAlgo, Cipher, DigestType> Clone
-    for ProtocolName<Handshake, KexAlgo, Cipher, DigestType>
+impl<Handshake, KexAlgo, Cipher, DigestAlgo> Clone
+    for ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Update + FixedOutput,
+    DigestAlgo: Digest,
 {
     fn clone(&self) -> Self {
         Self {
-            _pattern: PhantomData::default(),
-            _kex: PhantomData::default(),
-            _cipher: PhantomData::default(),
-            _digest: PhantomData::default(),
+            _pattern: PhantomData,
+            _kex: PhantomData,
+            _cipher: PhantomData,
+            _digest: PhantomData,
         }
     }
 }
 
-impl<Handshake, KexAlgo, Cipher, DigestType> Default
-    for ProtocolName<Handshake, KexAlgo, Cipher, DigestType>
+impl<Handshake, KexAlgo, Cipher, DigestAlgo> Default
+    for ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Update + FixedOutput,
+    DigestAlgo: Digest,
 {
     fn default() -> Self {
         Self {
-            _pattern: PhantomData::default(),
-            _kex: PhantomData::default(),
-            _cipher: PhantomData::default(),
-            _digest: PhantomData::default(),
+            _pattern: PhantomData,
+            _kex: PhantomData,
+            _cipher: PhantomData,
+            _digest: PhantomData,
         }
     }
 }
@@ -96,6 +98,12 @@ macro_rules! impl_protocol_names {
             }
         }
 
+        impl core::fmt::Debug for ProtocolName<$handshake, $kex, $cipher, $hash> {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, $name)
+            }
+        }
+
         /// Retrieve the string value of the given ProtocolName.
         impl AsRef<str> for ProtocolName<$handshake, $kex, $cipher, $hash> {
             fn as_ref(&self) -> &'static str {
@@ -113,8 +121,6 @@ macro_rules! impl_protocol_names {
     )*}
 }
 
-// We prefix our own extension protocols with "McNoise" to distinguish them
-// from those in the framework specification.
 impl_protocol_names! {
     "Noise_IX_25519_AESGCM_SHA512", HandshakeIX, X25519, Aes256Gcm, Sha512;
     "Noise_NX_25519_AESGCM_SHA512", HandshakeNX, X25519, Aes256Gcm, Sha512;
@@ -123,20 +129,13 @@ impl_protocol_names! {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use aes_gcm::Aes256Gcm;
     use core::str::FromStr;
 
     #[test]
     fn mobilecoin_ix_25519_aesgcm_sha512_from_str() {
         let name = "Noise_IX_25519_AESGCM_SHA512";
-        let parsed_name = ProtocolName::<
-            HandshakeIX,
-            X25519,    // Kex
-            Aes256Gcm, // AEAD
-            Sha512,    // Digest
-        >::from_str(name)
-        .unwrap_or_else(|_| panic!("Could not parse '{}'", name));
+        let parsed_name =
+            ProtocolName::<HandshakeIX, X25519, Aes256Gcm, Sha512>::from_str(name).unwrap();
         let new_name: &str = parsed_name.as_ref();
         assert_eq!(name, new_name);
     }
@@ -144,31 +143,20 @@ mod test {
     #[test]
     fn mobilecoin_nx_25519_aesgcm_sha512_from_str() {
         let name = "Noise_NX_25519_AESGCM_SHA512";
-        let parsed_name = ProtocolName::<
-            HandshakeNX,
-            X25519,    // Kex
-            Aes256Gcm, // AEAD
-            Sha512,    // Digest
-        >::from_str(name)
-        .unwrap_or_else(|_| panic!("Could not parse '{}'", name));
+        let parsed_name =
+            ProtocolName::<HandshakeNX, X25519, Aes256Gcm, Sha512>::from_str(name).unwrap();
         let new_name: &str = parsed_name.as_ref();
         assert_eq!(name, new_name);
     }
 
     #[test]
-    #[should_panic(
-        expected = "Could not parse 'McNoise_XX_25519_CHACHA_SHA256': The string given does not match the type in question"
-    )]
     fn bogus_str() {
-        let name = "McNoise_XX_25519_CHACHA_SHA256";
-        let parsed_name = ProtocolName::<
-            HandshakeNX,
-            X25519,    // Kex
-            Aes256Gcm, // AEAD
-            Sha512,    // Digest
-        >::from_str(name)
-        .unwrap_or_else(|e| panic!("Could not parse '{}': {}", name, e));
-        let new_name: &str = parsed_name.as_ref();
-        assert_eq!(name, new_name);
+        assert_eq!(
+            ProtocolName::<HandshakeNX, X25519, Aes256Gcm, Sha512>::from_str(
+                "Noise_XX_25519_CHACHA_SHA256"
+            )
+            .unwrap_err(),
+            ProtocolNameError::Unknown
+        );
     }
 }

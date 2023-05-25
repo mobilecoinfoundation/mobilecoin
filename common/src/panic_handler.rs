@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use super::logger;
 use backtrace::Backtrace;
@@ -16,18 +16,15 @@ pub fn setup_panic_handler() {
 }
 
 fn handle_panic(panic_info: &PanicInfo<'_>) {
-    let details = format!("{}", panic_info);
+    let details = format!("{panic_info}");
     let backtrace = format!("{:#?}", Backtrace::new());
     let thread_name = thread::current().name().unwrap_or("?").to_string();
     let process_name = env::args().next().unwrap_or_else(|| "?".to_string());
 
     // First, print the crash details.
-    println!(
-        "OH NO, WE CRASHED :( thread {} on {}",
-        thread_name, process_name
-    );
-    println!("Details: {}", details);
-    println!("{}", backtrace);
+    println!("OH NO, WE CRASHED :( thread {thread_name} on {process_name}");
+    println!("Details: {details}");
+    println!("{backtrace}");
 
     // Also attempt to log using the logger.
     logger::global_log::crit!(
@@ -41,7 +38,7 @@ fn handle_panic(panic_info: &PanicInfo<'_>) {
     // Give the logger, filebeat and sentry time to process the message.
     thread::sleep(time::Duration::from_millis(1000));
 
-    // Kill the process. 13 is a random exit code to make it easier to tell a process exited using
-    // this code flow.
+    // Kill the process. 13 is a random exit code to make it easier to tell a
+    // process exited using this code flow.
     process::exit(13);
 }

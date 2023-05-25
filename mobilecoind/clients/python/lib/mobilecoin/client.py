@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 # Python wrappers for the gRPC service `MobilecoindAPI` organized as a `Client` object
 
@@ -10,6 +10,7 @@ import grpc
 from google.protobuf import empty_pb2
 from .external_pb2 import *
 from .blockchain_pb2 import *
+from .quorum_set_pb2 import *
 from .mobilecoind_api_pb2 import *
 from .mobilecoind_api_pb2_grpc import *
 
@@ -142,16 +143,29 @@ class Client(object):
     # Utilities
     #
 
-    def generate_entropy(self):
+    def generate_entropy(self) -> bytes:
         """ Generate 32 bytes of entropy using a cryptographically secure RNG.
         """
-        return self.stub.GenerateEntropy(empty_pb2.Empty())
+        response = self.stub.GenerateRootEntropy(empty_pb2.Empty())
+        return response.root_entropy
+
+    def generate_mnemonic(self) -> str:
+        """ Generate entropy mnemonic using a cryptographically secure RNG.
+        """
+        response = self.stub.GenerateMnemonic(empty_pb2.Empty())
+        return response.mnemonic
 
     def get_account_key(self, entropy: bytes):
         """ Get the private keys from entropy.
         """
-        request = GetAccountKeyRequest(entropy=entropy)
-        return self.stub.GetAccountKey(request)
+        request = GetAccountKeyFromRootEntropyRequest(root_entropy=entropy)
+        return self.stub.GetAccountKeyFromRootEntropy(request)
+
+    def get_account_key_from_mnemonic(self, mnemonic: str):
+        """ Get the private keys from the entropy mnemonic.
+        """
+        request = GetAccountKeyFromMnemonicRequest(mnemonic=mnemonic)
+        return self.stub.GetAccountKeyFromMnemonic(request)
 
     def get_public_address(self,
                            monitor_id: bytes,
@@ -300,11 +314,10 @@ class Client(object):
         request = GetBlockRequest(block=block)
         return self.stub.GetBlock(request)
 
-    def get_tx_status_as_sender(self, sender_tx_receipt):
+    def get_tx_status_as_sender(self, submit_response):
         """ Check if a key image appears in the ledger.
         """
-        request = GetTxStatusAsSenderRequest(receipt=sender_tx_receipt)
-        return self.stub.GetTxStatusAsSender(request)
+        return self.stub.GetTxStatusAsSender(submit_response)
 
     def get_tx_status_as_receiver(self, receiver_tx_receipt):
         """ Check if a transaction public key appears in the ledger.

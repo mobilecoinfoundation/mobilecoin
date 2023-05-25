@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains traits to support remote attestation using the
 //! Intel Attestation Service.
@@ -9,8 +9,8 @@ use mc_attest_core::{
     EpidGroupId, IasNonce, Quote, SigRL, VerificationReport, VerificationSignature,
 };
 use mc_common::logger::global_log;
-use mc_util_encodings::{FromBase64, FromHex, ToBase64};
-use pem::parse_many;
+use mc_util_encodings::{FromBase64, ToBase64};
+use pem::Pem;
 use percent_encoding::percent_decode;
 use reqwest::{
     blocking::Client,
@@ -103,23 +103,20 @@ impl RaClient for IasClient {
         let sig_str = headers
             .get(IAS_SIGNATURE)
             .ok_or(Error::MissingSignatureError)?;
-        let sig = VerificationSignature::from_hex(sig_str.to_str()?)?;
+        let sig = VerificationSignature::from_base64(sig_str.to_str()?)?;
 
         let pem_str = percent_decode(
             headers
                 .get(IAS_SIGNING_CERTS)
                 .ok_or(Error::MissingSigningCertsError)?
-                .to_str()
-                .map_err(|_e| Error::BadSigningCertsError)?
+                .to_str()?
                 .as_bytes(),
         )
-        .decode_utf8()
-        .map_err(|_e| Error::BadSigningCertsError)?;
+        .decode_utf8()?;
 
-        // It would be nice to eliminate the double-copy here, but... meh.
-        let chain: Vec<Vec<u8>> = parse_many(pem_str.as_bytes())
-            .iter()
-            .map(|p| p.contents.clone())
+        let chain = pem::parse_many(pem_str.as_bytes())?
+            .into_iter()
+            .map(Pem::into_contents)
             .collect();
         let http_body = response.text()?;
 
@@ -132,45 +129,5 @@ impl RaClient for IasClient {
         global_log::trace!("Received report from IAS: {:?}", &retval);
 
         Ok(retval)
-    }
-}
-
-#[cfg(all(test, feature = "network-tests"))]
-mod test {
-    use super::*;
-    use mc_attest_core::Nonce;
-    use rand::{prelude::StdRng, SeedableRng};
-    use std::ops::Deref;
-
-    const QUOTE_OK: &str = include_str!("../data/quote_ok.txt");
-    const DEV_SIGNING_CHAIN: &[&str] = &[concat!(
-        include_str!("../data/Dev_AttestationReportSigningCACert.pem"),
-        "\0"
-    )];
-
-    #[test]
-    // FIXME: MC-174
-    #[ignore]
-    fn test_ok() {
-        let quote = Quote::from_base64(QUOTE_OK).expect("Could not parse 'OK' quote");
-        let client = IasClient::new("").expect("Could not create IAS client");
-
-        let mut csprng: StdRng = SeedableRng::seed_from_u64(0);
-        let nonce = IasNonce::new(&mut csprng).expect("Could not create IAS nonce");
-
-        let report = client
-            .verify_quote(&quote, Some(nonce))
-            .expect("Could not verify result from IAS");
-
-        let signing_chain = DEV_SIGNING_CHAIN
-            .to_vec()
-            .iter()
-            .map(Deref::deref)
-            .map(String::from)
-            .collect();
-
-        report
-            .verify_signature(Some(signing_chain))
-            .expect("Could not verify signature");
     }
 }

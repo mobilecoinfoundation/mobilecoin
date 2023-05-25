@@ -50,18 +50,6 @@ If you have an SGX-capable machine, or if you are willing to operate an SGX-capa
 
 1. Send an email to [support@mobilecoin.com](mailto://support@mobilecoin.com) and let us know how you'd like to get involved!
 
-## MobileCoin TestNet Schedule
-
-The MobileCoin ledger will be reset at the end of each TestNet period to accommodate breaking changes. Each time the ledger is reset, new TestNet *mobilecoins* will be allocated to all registered users.
-
-During *Operating Hours* our goal will be to maintain 100% uptime. We plan to rehearse enclave updates that will cause service interruption during maintenance hours.
-
-|Period | Start Date | End Date | Operating Hours |
-| -- | -- | -- | -- |
-| 1 | Wed Apr 22 | Wed Apr 29 |  M-F 10AM-5PM PST |
-| 2 | Wed Apr 29 | Wed May 13 |  M-F 10AM-5PM PST |
-| 3 | Wed May 13 | (TBD) | M-F 10AM-5PM PST |
-
 ## Getting Help
 
 For troubleshooting and questions, please visit the community forum at https://community.mobilecoin.foundation. You can also open a technical support ticket via email to <support@mobilecoin.com>.

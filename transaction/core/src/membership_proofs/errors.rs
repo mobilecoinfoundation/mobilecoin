@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::membership_proofs;
 use displaydoc::Display;
@@ -15,7 +15,10 @@ pub enum Error {
     /// Invalid Range: {0}
     RangeError(membership_proofs::RangeError),
 
-    /// An unexpected tx out membership element was provided, which was not adjacent to the preceding elements, at index {0}
+    /**
+     * An unexpected tx out membership element was provided, which was not
+     * adjacent to the preceding elements, at index {0}
+     */
     UnexpectedMembershipElement(usize),
 
     /// The value provided for proof.highest_index doesn't match the other data
@@ -42,3 +45,8 @@ impl From<membership_proofs::RangeError> for Error {
         Error::RangeError(e)
     }
 }
+
+/// Error type for `compose_adjacent_membership_elements`, returned when the
+/// ranges passed to the function are not adjacent, which implies that the
+/// merkle proof was badly structured.
+pub struct RangesNotAdjacentError;

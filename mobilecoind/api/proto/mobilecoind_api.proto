@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // MUST BE KEPT IN SYNC WITH RUST CODE!
 
@@ -23,8 +23,10 @@ service MobilecoindAPI {
     rpc GetUnspentTxOutList (GetUnspentTxOutListRequest) returns (GetUnspentTxOutListResponse) {}
 
     // Utilities
-    rpc GenerateEntropy (google.protobuf.Empty) returns (GenerateEntropyResponse) {}
-    rpc GetAccountKey (GetAccountKeyRequest) returns (GetAccountKeyResponse) {}
+    rpc GenerateRootEntropy (google.protobuf.Empty) returns (GenerateRootEntropyResponse) {}
+    rpc GenerateMnemonic (google.protobuf.Empty) returns (GenerateMnemonicResponse) {}
+    rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
+    rpc GetAccountKeyFromMnemonic (GetAccountKeyFromMnemonicRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
 
     // b58 Codes
@@ -42,7 +44,12 @@ service MobilecoindAPI {
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
     rpc GenerateTransferCodeTx (GenerateTransferCodeTxRequest) returns (GenerateTransferCodeTxResponse) {}
     rpc GenerateTxFromTxOutList (GenerateTxFromTxOutListRequest) returns (GenerateTxFromTxOutListResponse) {}
+    rpc GenerateBurnRedemptionTx (GenerateBurnRedemptionTxRequest) returns (GenerateBurnRedemptionTxResponse) {}
     rpc SubmitTx (SubmitTxRequest) returns (SubmitTxResponse) {}
+
+    // Swaps
+    rpc GenerateSwap (GenerateSwapRequest) returns (GenerateSwapResponse) {}
+    rpc GenerateMixedTx (GenerateMixedTxRequest) returns (GenerateMixedTxResponse) {}
 
     // Databases
     rpc GetLedgerInfo (google.protobuf.Empty) returns (GetLedgerInfoResponse) {}
@@ -64,6 +71,9 @@ service MobilecoindAPI {
     // Database encryption
     rpc SetDbPassword (SetDbPasswordRequest) returns (google.protobuf.Empty) {}
     rpc UnlockDb (UnlockDbRequest) returns (google.protobuf.Empty) {}
+
+    // Versioning
+    rpc GetVersion(google.protobuf.Empty) returns (MobilecoindVersionResponse) {}
 }
 
 //*********************************
@@ -98,9 +108,18 @@ enum TxStatus {
 }
 
 // Structure used in specifying the list of outputs when generating a transaction.
+// Here the token id is implied from context, and matches the fee token id.
 message Outlay {
     uint64 value = 1;
     external.PublicAddress receiver = 2;
+}
+
+// Structure used in specifying the list of outputs in a transaction.
+// Here the token id is explicit.
+message OutlayV2 {
+    uint64 value = 1;
+    external.PublicAddress receiver = 2;
+    uint64 token_id = 3;
 }
 
 // Structure used to refer to a TxOut in the ledger that is presumed to be spendable.
@@ -124,9 +143,30 @@ message UnspentTxOut {
     // The tombstone block used when we attempted to spend the UTXO.
     uint64 attempted_spend_tombstone = 6;
 
+    // The token id of the TxOut
+    uint64 token_id = 7;
+
     // The monitor id this UnspentTxOut belongs to.
     // Note that this field is not included in the Rust `utxo_store::UnspentTxOut` struct.
     bytes monitor_id = 10;
+}
+
+// Structure used to refer to an SCI that we want to add to a transaction.
+// The structure has additional information -- if it's a partial fill SCI, we need to know the partial fill amount.
+message SciForTx {
+    /// The signed input we want to add
+    external.SignedContingentInput sci = 1;
+
+    /// If it's a partial fill SCI, the value we wish to fill it for
+    /// This is the amount that, we, the counter-party, take from the SCI originator,
+    /// in exchange for a corresponding fraction of the partial fill outputs in the SCI.
+    ///
+    /// This is a u64 value corresponding to an amount less or equal to the partial_fill_change amount
+    /// in the SCI.
+    ///
+    /// In case of a non partial fill SCI (without partial_fill_change output),
+    /// this must be zero.
+    uint64 partial_fill_value = 2;
 }
 
 // Structure used to refer to a prepared transaction
@@ -136,7 +176,7 @@ message TxProposal {
 
     // List of outputs being created.
     // This excludes the fee output.
-    repeated Outlay outlay_list = 2;
+    repeated OutlayV2 outlay_list = 2;
 
     // The actual transaction object.
     // Together with the private view/spend keys, this structure contains all information in existence about the transaction.
@@ -154,6 +194,9 @@ message TxProposal {
     /// A list of the confirmation numbers, in the same order
     /// as the outlays.
     repeated bytes outlay_confirmation_numbers = 6;
+
+    /// A list of the scis that were incorporated into this transaction, if any
+    repeated SciForTx scis = 7;
 }
 
 // Structure used to check transaction status as a Sender.
@@ -243,6 +286,9 @@ message ProcessedTxOut {
 
     // The b58-encoded Address Code for the subaddress that owns the TxOut.
     string address_code = 7;
+
+    // The token id of the TxOut.
+    uint64 token_id = 8;
 }
 
 //*********************************
@@ -297,10 +343,12 @@ message GetMonitorStatusResponse {
     MonitorStatus status = 1;
 }
 
-// Get a list of UnspentTxOuts for a given monitor and subadddress index.
+// Get a list of UnspentTxOuts for a given monitor and subadddress index,
+// filtered to a specific token id.
 message GetUnspentTxOutListRequest {
     bytes monitor_id = 1;
     uint64 subaddress_index = 2;
+    uint64 token_id = 3;
 }
 message GetUnspentTxOutListResponse {
     repeated UnspentTxOut output_list = 1;
@@ -312,14 +360,30 @@ message GetUnspentTxOutListResponse {
 
 // Generate a new random root entropy value.
 // - empty request
-message GenerateEntropyResponse {
-	  // 32 bytes generated using a cryptographically secure RNG.
-    bytes entropy = 1;
+message GenerateRootEntropyResponse {
+    // 32 bytes generated using a cryptographically secure RNG.
+    bytes root_entropy = 1;
+}
+
+// Generate a new random mnemomic.
+// - empty request
+message GenerateMnemonicResponse {
+    // mnemonic generated using a cryptographically secure RNG.
+    string mnemonic = 1;
+
+    // The mnemonic represented as 32 bytes entropy.
+    bytes bip39_entropy = 2;
 }
 
 // Generate an AccountKey from a 32 byte root entropy value.
-message GetAccountKeyRequest {
-    bytes entropy = 1;
+message GetAccountKeyFromRootEntropyRequest {
+    bytes root_entropy = 1;
+}
+
+// Generate an AccountKey from a mnemonic.
+message GetAccountKeyFromMnemonicRequest {
+    string mnemonic = 1;
+    uint32 account_index = 2;
 }
 message GetAccountKeyResponse {
     external.AccountKey account_key = 1;
@@ -347,6 +411,7 @@ message ParseRequestCodeResponse {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
+    uint64 token_id = 4;
 }
 
 // Encode receiver's public address, value, and memo into a base-58 "MobileCoin Request Code".
@@ -354,6 +419,7 @@ message CreateRequestCodeRequest {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
+    uint64 token_id = 4;
 }
 message CreateRequestCodeResponse {
     string b58_code = 1;
@@ -365,17 +431,19 @@ message ParseTransferCodeRequest {
     string b58_code = 1;
 }
 message ParseTransferCodeResponse {
-    bytes entropy = 1;
+    bytes root_entropy = 1 [deprecated=true];
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
     UnspentTxOut utxo = 4;
+    bytes bip39_entropy = 5;
 }
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message CreateTransferCodeRequest {
-    bytes entropy = 1;
+    bytes root_entropy = 1 [deprecated=true];
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
+    bytes bip39_entropy = 4;
 }
 message CreateTransferCodeResponse {
     string b58_code = 1;
@@ -428,7 +496,7 @@ message GetMembershipProofsResponse {
 // - Sum of inputs needs to be greater than sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
-// Right now that fee is hardcoded.
+// Right now that fee is the network-reported minimum fee for the given token id.
 message GenerateTxRequest {
     // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
@@ -445,15 +513,67 @@ message GenerateTxRequest {
     // Outputs to be generated by the transaction. This excludes change and fee.
     repeated Outlay outlay_list = 4;
 
-    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // Fee value, in smallest representable units (u64).
+    // (For MOB this is picoMOB.)
+    // Setting to 0 causes mobilecoind to choose a value.
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 5;
 
     // Tombstone block (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
     uint64 tombstone = 6;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 7;
+
+    // List of SCIs to be added to the transaction
+    repeated SciForTx scis = 8;
 }
+
 message GenerateTxResponse {
+    TxProposal tx_proposal = 1;
+}
+
+// Generate a transaction proposal object with mixed token types.
+// Notes:
+// - Sum of inputs needs to be greater than or equal to the sum of outlays and fee.
+// - The set of inputs to use would be chosen automatically by mobilecoind.
+// - The fee field could be set to zero, in which case mobilecoind would choose a fee.
+// Right now that fee is the network-reported minimum fee for the fee token id.
+message GenerateMixedTxRequest {
+    // Monitor id sending the funds.
+    bytes sender_monitor_id = 1;
+
+    // Subaddress to return change to.
+    uint64 change_subaddress = 2;
+
+    // List of UnspentTxOuts to be spent by the transaction.
+    // All UnspentTxOuts must belong to the same sender_monitor_id.
+    // mobilecoind would choose a subset of these inputs to construct the transaction.
+    // Total input amount must be >= sum of outlays + fees, for each token id involved.
+    repeated UnspentTxOut input_list = 3;
+
+    // List of SCIs to be added to the transaction
+    repeated SciForTx scis = 4;
+
+    // Outputs to be generated by the transaction. This excludes change and fee.
+    repeated OutlayV2 outlay_list = 5;
+
+    // Fee value, in smallest representable units (u64).
+    // (For MOB this is picoMOB.)
+    // Setting to 0 causes mobilecoind to choose a value.
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
+    uint64 fee = 6;
+
+    // Token id to use for the transaction fee.
+    uint64 fee_token_id = 7;
+
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
+    uint64 tombstone = 8;
+}
+
+message GenerateMixedTxResponse {
     TxProposal tx_proposal = 1;
 }
 
@@ -464,6 +584,12 @@ message GenerateOptimizationTxRequest {
 
     // Subaddress to operate on.
     uint64 subaddress = 2;
+
+    // Add an optional fee
+    uint64 fee = 3;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 4;
 }
 message GenerateOptimizationTxResponse {
     TxProposal tx_proposal = 1;
@@ -478,13 +604,13 @@ message GenerateTransferCodeTxRequest {
     uint64 fee = 5;
     uint64 tombstone = 6;
     string memo = 7;
+    uint64 token_id = 8;
 }
 message GenerateTransferCodeTxResponse {
     // The tx proposal to submit to the network.
     TxProposal tx_proposal = 1;
 
-    // The entropy for constructing the AccountKey that can access the funds.
-    bytes entropy = 2;
+    // Deprecated - left here as an explanation to why we skip tag 2: bytes root_entropy = 2;
 
     // The TxOut public key that has the funds.
     external.CompressedRistretto tx_public_key = 3;
@@ -494,11 +620,15 @@ message GenerateTransferCodeTxResponse {
 
     // The b58-encoded Transfer Code
     string b58_code = 5;
+
+    // The entropy for constructing the AccountKey that can access the funds.
+    bytes bip39_entropy = 6;
 }
 
 // Generate a transaction without a monitor, requires an account key and
 // a list of UnspentTxOuts. All coins (minus the fee) are transferred to
 // a single recipient. Used for temporary accounts like gift codes.
+// All inputs must be of the same token id.
 message GenerateTxFromTxOutListRequest {
     // Account key that owns the transactions
     external.AccountKey account_key = 1;
@@ -511,10 +641,104 @@ message GenerateTxFromTxOutListRequest {
 
     // Fee
     uint64 fee = 4;
+
+    // Token id
+    uint64 token_id = 5;
 }
 
 message GenerateTxFromTxOutListResponse {
     TxProposal tx_proposal = 1;
+}
+
+// Generate a burn redemption transaction proposal object.
+// Notes:
+// - Sum of inputs needs to be greater than or equal to the burn amount and fee.
+// - The set of inputs to use would be chosen automatically by mobilecoind.
+// - The fee field could be set to zero, in which case mobilecoind would try and choose a fee.
+message GenerateBurnRedemptionTxRequest {
+    // Monitor id sending the funds.
+    bytes sender_monitor_id = 1;
+
+    // Subaddress to return change to.
+    uint64 change_subaddress = 2;
+
+    // List of UnspentTxOuts to be spent by the transaction.
+    // All UnspentTxOuts must belong to the same sender_monitor_id.
+    // mobilecoind would choose a subset of these inputs to construct the transaction.
+    // Total input amount must be >= burn amount + fee.
+    repeated UnspentTxOut input_list = 3;
+
+    // Amount to be burnt. This excludes change and fee.
+    uint64 burn_amount = 4;
+
+    // Fee (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
+    uint64 fee = 5;
+
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
+    uint64 tombstone = 6;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 7;
+
+    // Optional 64 bytes of data to include in the burn redemption memo that is attached to the burn TxOut.
+    // If not provided zeros will be used.
+    bytes redemption_memo = 8;
+
+    // Enable RTH destination memo.
+    bool enable_destination_memo = 9;
+}
+message GenerateBurnRedemptionTxResponse {
+    TxProposal tx_proposal = 1;
+}
+
+// Generate a simple swap proposal. The result is a signed contingent input
+// which trades one currency for another and is suitable for use with the deqs.
+// (This API is restrictive and doesn't let you build more complex SCIs.)
+message GenerateSwapRequest {
+    // Monitor id sending the funds.
+    bytes sender_monitor_id = 1;
+
+    // Subaddress to return change to.
+    uint64 change_subaddress = 2;
+
+    // A specific input, whose value will be offered in full by the swap.
+    //
+    // This becomes the "base token" amount from the point of view of a quoting service.
+    //
+    // You may need to conduct a self-spend first to make an input of exactly
+    // the correct value before using this API if none of your inputs match
+    // the volume of the quote you want to make.
+    UnspentTxOut input = 3;
+
+    // The u64 value we are asking for in exchange for our input
+    //
+    // This becomes the "counter token" value from the point of view of a quoting service.
+    uint64 counter_value = 4;
+
+    // The token_id we are asking for in exchange for our input
+    //
+    // This becomes the "counter token" token id from the point of view of a quoting service.
+    uint64 counter_token_id = 5;
+
+    // If set to false, the offer is "all or nothing", the entire counter token value must be supplied,
+    // in exchange for the entire value of the input we are signing over.
+    // Otherwise, it is a "partial-fill" SCI, and can be filled at less than the maximum volume for
+    // proportionally more of the input value.
+    bool allow_partial_fill = 6;
+
+    // The smallest u64 value that we will accept to conduct the swap.
+    // This can be set to avoid receiving "dust" amounts when allow_partial_fill is true.
+    // This is ignored if allow_partial_fill is false.
+    uint64 minimum_fill_value = 7;
+
+    // Tombstone block (setting to 0 means this offer does not expire).
+    uint64 tombstone = 8;
+}
+
+message GenerateSwapResponse {
+    external.SignedContingentInput sci = 1;
 }
 
 // Submits a transaction to the network.
@@ -624,16 +848,19 @@ message GetBlockIndexByTxPubKeyResponse {
 // Convenience calls
 ///
 
-// Get the balance for a given monitor and subadddress index, in picoMOB.
+// Get the balance for a given monitor, subadddress index and a specific token id.
 message GetBalanceRequest {
     // Monitor id to query balance for.
     bytes monitor_id = 1;
 
     // Subaddress to query balance for.
     uint64 subaddress_index = 2;
+
+    // Token id to filter for.
+    uint64 token_id = 3;
 }
 message GetBalanceResponse {
-    // Sum of all utxos associated with the requested monitor_id/subaddress_index.
+    // Sum of all utxos associated with the requested monitor_id/subaddress_index/token_id.
     uint64 balance = 1;
 }
 
@@ -648,7 +875,7 @@ message SendPaymentRequest {
     // Outputs to be generated by the transaction. This excludes change and fee.
     repeated Outlay outlay_list = 3;
 
-    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // Fee (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 4;
 
@@ -663,6 +890,9 @@ message SendPaymentRequest {
     // Optional: Return change to a different subaddress than the sender
     bool override_change_subaddress = 7;
     uint64 change_subaddress = 8;
+
+    // Token id to transact in.
+    uint64 token_id = 9;
 }
 message SendPaymentResponse {
     // Information the sender can use to check if the transaction landed in the ledger.
@@ -690,7 +920,7 @@ message PayAddressCodeRequest {
     // Amount to pay
     uint64 amount = 4;
 
-    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // Fee (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 5;
 
@@ -705,6 +935,9 @@ message PayAddressCodeRequest {
     // Optional: Return change to a different subaddress than the sender
     bool override_change_subaddress = 8;
     uint64 change_subaddress = 9;
+
+    // Token id to transact in.
+    uint64 token_id = 10;
 }
 
 //
@@ -726,7 +959,34 @@ message GetNetworkStatusResponse {
 
     // Whether we are behind.
     bool is_behind = 4;
+
+    // The latest block info data reported by a consensus node
+    LastBlockInfo last_block_info = 5;
+
+    // The chain id of the network we are connected to
+    string chain_id = 6;
 }
+
+// Data about the network state and last block processed by the consensus network
+message LastBlockInfo {
+    // Block index
+    uint64 index = 1;
+
+    // Current MOB minimum fee (kept for backwards compatibility)
+    uint64 mob_minimum_fee = 2 [deprecated = true];
+
+    // A map of token id -> minimum fee
+    map<uint64, uint64> minimum_fees = 3;
+
+    // Current network_block version, appropriate for new transactions.
+    //
+    // Note that if the server was just reconfigured, this may be HIGHER than
+    // the highest block version in the ledger, so for clients this is a better
+    // source of truth than the local ledger, if the client might possibly be
+    // creating the first transaction after a reconfigure / redeploy.
+    uint32 network_block_version = 4;
+}
+
 
 //
 // Database encryption
@@ -740,4 +1000,10 @@ message SetDbPasswordRequest {
 // Unlock a currently password-protected database.
 message UnlockDbRequest {
     bytes password = 1;
+}
+
+// Get the mobilecoind version
+// empty request
+message MobilecoindVersionResponse {
+    string version = 1;
 }

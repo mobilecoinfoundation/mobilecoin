@@ -1,12 +1,13 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![allow(non_snake_case)]
 
-use crate::traits::*;
-use alloc::vec::Vec;
+use crate::{
+    GenericArray, Kex, KexEphemeralPrivate, KexPrivate, KexPublic, KexReusablePrivate, KexSecret,
+    KeyError, PrivateKey, PublicKey, SignatureEncoding, SignatureError,
+};
 use core::{
     cmp::Ordering,
-    convert::{AsRef, TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -21,23 +22,43 @@ use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
-    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
-    derive_serde_from_repr_bytes, derive_try_from_slice_from_repr_bytes, ReprBytes,
+    derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
+    derive_repr_bytes_from_as_ref_and_try_from, derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
-use schnorrkel::{
+use schnorrkel_og::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
 };
+
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use signature::{Error as SignatureError, Error};
+
+#[cfg(feature = "serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
+
+#[cfg(feature = "prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+
+use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
-#[derive(Clone, Copy, Default, Zeroize)]
+#[derive(Clone, Copy, Default, Digestible, Zeroize)]
+#[digestible(transparent)]
 pub struct RistrettoPrivate(pub(crate) Scalar);
+
+impl Eq for RistrettoPrivate {}
+
+impl PartialEq for RistrettoPrivate {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other).unwrap_u8() == 1u8
+    }
+}
 
 impl AsRef<[u8; 32]> for RistrettoPrivate {
     fn as_ref(&self) -> &[u8; 32] {
@@ -50,7 +71,7 @@ impl TryFrom<&[u8; 32]> for RistrettoPrivate {
 
     fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
         Ok(Self(
-            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
+            Option::from(Scalar::from_canonical_bytes(*src)).ok_or(KeyError::InvalidPrivateKey)?,
         ))
     }
 }
@@ -72,8 +93,14 @@ impl TryFrom<&[u8]> for RistrettoPrivate {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(RistrettoPrivate, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(RistrettoPrivate);
+
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoPrivate);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoPrivate);
 
 impl RistrettoPrivate {
@@ -85,13 +112,13 @@ impl RistrettoPrivate {
 
     /// Sign the given bytes using a deterministic scheme based on Schnorrkel.
     pub fn sign_schnorrkel(&self, context: &[u8], message: &[u8]) -> RistrettoSignature {
-        // Create a deterministic nonce using a merlin transcript. See this crate's README
-        // for a security statement.
+        // Create a deterministic nonce using a merlin transcript. See this crate's
+        // README for a security statement.
         let nonce = {
             let mut transcript = MerlinTranscript::new(b"SigningNonce");
-            transcript.append_message(b"context", &context);
+            transcript.append_message(b"context", context);
             transcript.append_message(b"private", &self.to_bytes());
-            transcript.append_message(b"message", &message);
+            transcript.append_message(b"message", message);
             let mut nonce = [0u8; 32];
             transcript.challenge_bytes(b"nonce", &mut nonce);
             nonce
@@ -107,8 +134,9 @@ impl RistrettoPrivate {
         // SigningContext provides domain separation for signature
         let mut t = MerlinTranscript::new(b"SigningContext");
         t.append_message(b"", context);
-        t.append_message(b"sign-bytes", &message);
-        // NOTE: This signature is deterministic due to using the above nonce as the rng seed
+        t.append_message(b"sign-bytes", message);
+        // NOTE: This signature is deterministic due to using the above nonce as the rng
+        // seed
         let csprng = Hc128Rng::from_seed(nonce);
         let transcript = attach_rng(t, csprng);
         RistrettoSignature::from(keypair.sign(transcript))
@@ -147,7 +175,7 @@ impl<T: Digestible> DigestibleSigner<RistrettoSignature, T> for RistrettoPrivate
         &self,
         context: &'static [u8],
         message: &T,
-    ) -> Result<RistrettoSignature, Error> {
+    ) -> Result<RistrettoSignature, SignatureError> {
         Ok(self.sign_digestible(context, message))
     }
 }
@@ -182,6 +210,12 @@ impl KexPrivate for RistrettoPrivate {
 
 impl PrivateKey for RistrettoPrivate {
     type Public = RistrettoPublic;
+}
+
+impl ConstantTimeEq for RistrettoPrivate {
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.0.ct_eq(&other.0)
+    }
 }
 
 /// A private ristretto key which is ephemeral, should never be copied,
@@ -224,7 +258,7 @@ impl Debug for RistrettoEphemeralPrivate {
 }
 
 /// A Ristretto-format curve point for use as a public key
-#[derive(Clone, Copy, Default, Digestible)]
+#[derive(Clone, Copy, Default, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct RistrettoPublic(pub(crate) RistrettoPoint);
 
@@ -253,6 +287,7 @@ impl ReprBytes for RistrettoPublic {
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, KeyError> {
         Ok(Self(
             CompressedRistretto::from_slice(src.as_slice())
+                .map_err(|_e| KeyError::InvalidPublicKey)?
                 .decompress()
                 .ok_or(KeyError::InvalidPublicKey)?,
         ))
@@ -263,9 +298,15 @@ impl ReprBytes for RistrettoPublic {
     }
 }
 
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoPublic);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoPublic);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(RistrettoPublic);
+
 derive_try_from_slice_from_repr_bytes!(RistrettoPublic);
 
 // Many historical APIs assumed TryFrom<&[u8;32]> existed for RistrettoPublic
@@ -278,22 +319,23 @@ impl TryFrom<&[u8; 32]> for RistrettoPublic {
 }
 
 impl RistrettoPublic {
-    // Many historical APIs based on ReprBytes32 in mobilecoin use to_bytes() -> [u8;32].
-    // This is okay in non-generic code
+    // Many historical APIs based on ReprBytes32 in mobilecoin use to_bytes() ->
+    // [u8;32]. This is okay in non-generic code
     pub fn to_bytes(&self) -> [u8; 32] {
         self.0.compress().to_bytes()
     }
 
-    /// Verify a deterministic Schnorrkel signature created with the corresponding [`RistrettoPrivate::sign_schnorrkel()`] method.
+    /// Verify a deterministic Schnorrkel signature created with the
+    /// corresponding [`RistrettoPrivate::sign_schnorrkel()`] method.
     pub fn verify_schnorrkel(
         &self,
         context: &'static [u8],
         message: &[u8],
         signature: &RistrettoSignature,
     ) -> Result<(), SchnorrkelError> {
-        let ctx = schnorrkel::signing_context(context);
+        let ctx = schnorrkel_og::signing_context(context);
         let pubkey = SchnorrkelPublic::from_point(*self.as_ref());
-        pubkey.verify(ctx.bytes(&message), &signature.try_into()?)
+        pubkey.verify(ctx.bytes(message), &signature.try_into()?)
     }
 }
 
@@ -316,7 +358,6 @@ impl Hash for RistrettoPublic {
 }
 
 impl Eq for RistrettoPublic {}
-
 impl PartialEq for RistrettoPublic {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
@@ -345,12 +386,6 @@ impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
     }
 }
 
-impl Debug for RistrettoPublic {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "RistrettoPublic({})", HexFmt(self.to_bytes()))
-    }
-}
-
 impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPublic {
     fn verify_digestible(
         &self,
@@ -359,9 +394,14 @@ impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPubli
         signature: &RistrettoSignature,
     ) -> Result<(), SignatureError> {
         let message = message.digest32::<MerlinTranscript>(context);
-        Ok(self
-            .verify_schnorrkel(context, &message, &signature)
-            .map_err(|_e| SignatureError::new())?)
+        self.verify_schnorrkel(context, &message, signature)
+            .map_err(|_e| SignatureError::new())
+    }
+}
+
+impl Debug for RistrettoPublic {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "RistrettoPublic({})", HexFmt(self.to_bytes()))
     }
 }
 
@@ -371,10 +411,11 @@ impl Display for RistrettoPublic {
     }
 }
 
-impl From<&RistrettoPublic> for Vec<u8> {
-    fn from(src: &RistrettoPublic) -> Vec<u8> {
+#[cfg(feature = "alloc")]
+impl From<&RistrettoPublic> for alloc::vec::Vec<u8> {
+    fn from(src: &RistrettoPublic) -> alloc::vec::Vec<u8> {
         let compressed = src.as_ref().compress();
-        Vec::from(&compressed.as_bytes()[..])
+        alloc::vec::Vec::from(&compressed.as_bytes()[..])
     }
 }
 
@@ -394,7 +435,8 @@ impl TryFrom<&CompressedRistrettoPublic> for RistrettoPublic {
 /// This is a (compressed) curve point on the ristretto curve, but we make it a
 /// different type from RistrettoPublic in order to avoid bugs where the secret
 /// is publicized.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RistrettoSecret([u8; 32]);
 
 impl Drop for RistrettoSecret {
@@ -426,7 +468,7 @@ impl KexSecret for RistrettoSecret {}
 ///
 /// As a result, this does not implement the `PublicKey` interface, nor is it
 /// usable in a key-exchange.
-#[derive(Clone, Copy, Default, Eq, Digestible)]
+#[derive(Clone, Copy, Default, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct CompressedRistrettoPublic(pub(crate) CompressedRistretto);
 
@@ -438,7 +480,7 @@ impl CompressedRistrettoPublic {
 
 impl AsRef<[u8]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8] {
-        self.0.as_bytes()
+        self.as_bytes()
     }
 }
 
@@ -448,40 +490,24 @@ impl TryFrom<&[u8]> for CompressedRistrettoPublic {
         if src.len() != 32 {
             return Err(KeyError::LengthMismatch(src.len(), 32));
         }
-        Ok(Self(CompressedRistretto::from_slice(src)))
+        let compressed_ristretto =
+            CompressedRistretto::from_slice(src).map_err(|_e| KeyError::InvalidPublicKey)?;
+        Ok(Self(compressed_ristretto))
     }
 }
 
-derive_repr_bytes_from_as_ref_and_try_from!(CompressedRistrettoPublic, U32);
-derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
-derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
-derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
-
-impl From<&[u8; 32]> for CompressedRistrettoPublic {
-    fn from(src: &[u8; 32]) -> Self {
-        Self(CompressedRistretto::from_slice(&src[..]))
+impl TryFrom<&[u8; 32]> for CompressedRistrettoPublic {
+    type Error = KeyError;
+    fn try_from(src: &[u8; 32]) -> Result<Self, Self::Error> {
+        let compressed_ristretto = CompressedRistretto::from_slice(src.as_slice())
+            .map_err(|_e| KeyError::InvalidPublicKey)?;
+        Ok(Self(compressed_ristretto))
     }
 }
 
 impl AsRef<[u8; 32]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8; 32] {
-        self.0.as_bytes()
-    }
-}
-
-derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
-
-impl Debug for CompressedRistrettoPublic {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let bytes: &[u8] = self.as_ref();
-        write!(f, "CompressedRistrettoPublic({})", HexFmt(bytes))
-    }
-}
-
-impl Display for CompressedRistrettoPublic {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let bytes: &[u8] = self.as_ref();
-        write!(f, "{}", HexFmt(bytes))
+        self.as_bytes()
     }
 }
 
@@ -523,6 +549,20 @@ impl FromRandom for CompressedRistrettoPublic {
 
 impl PublicKey for CompressedRistrettoPublic {}
 
+derive_repr_bytes_from_as_ref_and_try_from!(CompressedRistrettoPublic, U32);
+
+#[cfg(feature = "alloc")]
+derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
+
+#[cfg(feature = "serde")]
+derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
+
+#[cfg(feature = "prost")]
+derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
+
+derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
+derive_debug_and_display_hex_from_as_ref!(CompressedRistrettoPublic);
+
 /// A zero-width type used to identify the Ristretto key exchange system.
 pub struct Ristretto;
 
@@ -535,7 +575,18 @@ impl Kex for Ristretto {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct RistrettoSignature([u8; SIGNATURE_LENGTH]);
+
+impl SignatureEncoding for RistrettoSignature {
+    type Repr = [u8; SIGNATURE_LENGTH];
+}
+
+impl From<RistrettoSignature> for [u8; 64] {
+    fn from(src: RistrettoSignature) -> Self {
+        src.0
+    }
+}
 
 impl AsRef<[u8]> for RistrettoSignature {
     fn as_ref(&self) -> &[u8] {
@@ -549,25 +600,11 @@ impl AsRef<[u8; SIGNATURE_LENGTH]> for RistrettoSignature {
     }
 }
 
-impl Debug for RistrettoSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{:?}", &self.0[..])
-    }
-}
-
 impl Default for RistrettoSignature {
     fn default() -> RistrettoSignature {
         Self([0u8; 64])
     }
 }
-
-impl Display for RistrettoSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", HexFmt(&self))
-    }
-}
-
-impl Eq for RistrettoSignature {}
 
 impl From<SchnorrkelSignature> for RistrettoSignature {
     fn from(src: SchnorrkelSignature) -> RistrettoSignature {
@@ -578,12 +615,6 @@ impl From<SchnorrkelSignature> for RistrettoSignature {
 impl From<&SchnorrkelSignature> for RistrettoSignature {
     fn from(src: &SchnorrkelSignature) -> RistrettoSignature {
         Self(src.to_bytes())
-    }
-}
-
-impl Signature for RistrettoSignature {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
-        Self::try_from(bytes)
     }
 }
 
@@ -613,20 +644,29 @@ impl TryFrom<RistrettoSignature> for SchnorrkelSignature {
     }
 }
 
-derive_core_cmp_from_as_ref!(RistrettoSignature, [u8]);
-derive_into_vec_from_repr_bytes!(RistrettoSignature);
+derive_core_cmp_from_as_ref!(RistrettoSignature);
+derive_debug_and_display_hex_from_as_ref!(RistrettoSignature);
 derive_repr_bytes_from_as_ref_and_try_from!(RistrettoSignature, U64);
+
+#[cfg(feature = "alloc")]
+derive_into_vec_from_repr_bytes!(RistrettoSignature);
+
+#[cfg(feature = "serde")]
 derive_serde_from_repr_bytes!(RistrettoSignature);
+
+#[cfg(feature = "prost")]
 derive_prost_message_from_repr_bytes!(RistrettoSignature);
 
 #[cfg(test)]
 mod test {
     extern crate mc_util_test_helper;
 
+    #[cfg(feature = "serde")]
     use super::*;
 
     // Test that mc-util-serial can serialize a pubkey
     #[test]
+    #[cfg(feature = "serde")]
     fn test_pubkey_serialize() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let pubkey = RistrettoPublic::from_random(&mut rng);
@@ -640,6 +680,7 @@ mod test {
 
     // Test that mc-util-serial can serialize a private key
     #[test]
+    #[cfg(feature = "serde")]
     fn test_privkey_serialize() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let privkey = RistrettoPrivate::from_random(&mut rng);

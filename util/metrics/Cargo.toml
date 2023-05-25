@@ -1,14 +1,17 @@
 [package]
 name = "mc-util-metrics"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [dependencies]
-chrono = "0.4"
 mc-common = { path = "../../common", features = ["log"] }
-grpcio = "0.6.0"
+
+chrono = "0.4"
+grpcio = "0.12.1"
 lazy_static = "1.4"
-prometheus = "0.9"
-protobuf = "2.12"
+prometheus = "0.13"
+protobuf = "2.27.1"
 serde_json = "1.0"

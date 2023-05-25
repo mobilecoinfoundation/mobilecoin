@@ -1,9 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! AKE Errors
 
 use displaydoc::Display;
-use mc_attest_core::VerifierError;
+use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_noise::{CipherError, HandshakeError};
 use serde::{Deserialize, Serialize};
 

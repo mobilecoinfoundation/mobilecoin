@@ -1,8 +1,10 @@
 [package]
 name = "mc-test-vectors-b58-encodings"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-test-vectors-definitions = { path = "../definitions" }

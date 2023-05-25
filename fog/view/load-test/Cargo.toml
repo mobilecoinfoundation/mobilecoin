@@ -1,0 +1,32 @@
+[package]
+name = "mc-fog-view-load-test"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "fog-view-load-test"
+path = "src/main.rs"
+
+[dependencies]
+# third party
+clap = { version = "4.1", features = ["derive", "env"] }
+ctrlc = "3.2"
+grpcio = "0.12.1"
+rand = "0.8"
+
+# mobilecoin
+mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-common = { path = "../../../common", features = ["log"] }
+mc-util-cli = { path = "../../../util/cli" }
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-grpc = { path = "../../../util/grpc" }
+
+# fog
+mc-fog-kex-rng = { path = "../../kex_rng" }
+mc-fog-uri = { path = "../../uri" }
+mc-fog-view-connection = { path = "../connection" }
+mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
+mc-fog-view-protocol = { path = "../protocol" }

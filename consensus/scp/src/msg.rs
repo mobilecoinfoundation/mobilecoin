@@ -1,22 +1,16 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Message types for the phases of SCP.
-use crate::{
-    core_types::{Ballot, GenericNodeId, SlotIndex, Value},
-    msg::Topic::*,
-    quorum_set::QuorumSet,
-};
-use mc_common::NodeID;
+use crate::{ballot::Ballot, GenericNodeId, QuorumSet, SlotIndex, Topic::*, Value};
+use mc_common::{HashSet, HasherBuilder, NodeID};
 use mc_crypto_digestible::Digestible;
-use mc_util_serial::prost::alloc::fmt::Formatter;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
     cmp::Ordering,
-    collections::{hash_map::DefaultHasher, BTreeSet, HashSet},
+    collections::BTreeSet,
     fmt,
-    fmt::{Debug, Display},
-    hash::{Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
 };
 
 /// The highest possible ballot counter.
@@ -82,15 +76,16 @@ pub struct PreparePayload<V: Value> {
     /// The highest accepted prepared ballot.
     pub P: Option<Ballot<V>>,
 
-    /// Prepared prime: the highest ballot that satisfies the same criteria as `prepared`,
-    /// but has a different value than `prepared`.
+    /// Prepared prime: the highest ballot that satisfies the same criteria as
+    /// `prepared`, but has a different value than `prepared`.
     pub PP: Option<Ballot<V>>,
 
     /// The counter for the lowest ballot the sender is attempting to confirm.
     pub CN: u32,
 
-    /// The counter for the highest ballot in a sender's quorum for which all members have
-    /// sent `prepared` with at least this counter, or `prepared_prime` with at least this counter.
+    /// The counter for the highest ballot in a sender's quorum for which all
+    /// members have sent `prepared` with at least this counter, or
+    /// `prepared_prime` with at least this counter.
     pub HN: u32,
 }
 
@@ -136,7 +131,8 @@ pub struct CommitPayload<V: Value> {
     /// The counter of the lowest ballot for which the node has accepted commit.
     pub CN: u32,
 
-    /// The counter of the highest ballot for which the node has accepted commit.
+    /// The counter of the highest ballot for which the node has accepted
+    /// commit.
     pub HN: u32,
 }
 
@@ -285,19 +281,7 @@ pub struct Msg<V: Value, ID: GenericNodeId = NodeID> {
     pub topic: Topic<V>,
 }
 
-impl<
-        V: Value,
-        ID: GenericNodeId
-            + Clone
-            + Debug
-            + Display
-            + Serialize
-            + DeserializeOwned
-            + Eq
-            + PartialEq
-            + Hash,
-    > Msg<V, ID>
-{
+impl<V: Value, ID: GenericNodeId + DeserializeOwned> Msg<V, ID> {
     /// Creates a new Msg.
     pub fn new(
         sender_id: ID,
@@ -321,7 +305,7 @@ impl<
 
         let validate_nominate = |payload: &NominatePayload<V>| -> Result<(), String> {
             if payload.X.intersection(&payload.Y).next().is_some() {
-                Err(format!("X intersects Y, msg: {}", self))
+                Err(format!("X intersects Y, msg: {self}"))
             } else {
                 Ok(())
             }
@@ -330,21 +314,21 @@ impl<
         let validate_prepare = |payload: &PreparePayload<V>| -> Result<(), String> {
             if let Some(P) = &payload.P {
                 if payload.B < *P {
-                    return Err(format!("B < P, msg: {}", self));
+                    return Err(format!("B < P, msg: {self}"));
                 }
 
                 if let Some(PP) = &payload.PP {
                     if *PP >= *P {
-                        return Err(format!("PP >= P, msg: {}", self));
+                        return Err(format!("PP >= P, msg: {self}"));
                     }
                 }
             }
 
             if payload.CN > payload.HN {
-                return Err(format!("CN > HN, msg: {}", self));
+                return Err(format!("CN > HN, msg: {self}"));
             }
             if payload.HN > payload.B.N {
-                return Err(format!("HN > BN, msg: {}", self));
+                return Err(format!("HN > BN, msg: {self}"));
             }
 
             Ok(())
@@ -366,7 +350,7 @@ impl<
 
             Commit(ref payload) => {
                 if payload.CN > payload.HN {
-                    return Err(format!("CN > HN, msg: {}", self));
+                    return Err(format!("CN > HN, msg: {self}"));
                 }
             }
 
@@ -376,8 +360,8 @@ impl<
         Ok(())
     }
 
-    /// Return the ballot counter (if any) used for checking if this node has fallen behind
-    /// other nodes.
+    /// Return the ballot counter (if any) used for checking if this node has
+    /// fallen behind other nodes.
     ///
     /// "Note that for the purposes of determining whether a quorum has
     /// a particular "ballot.counter", a node considers "ballot" fields
@@ -386,9 +370,9 @@ impl<
     /// "ballot.counter" of "infinity"."
     /// (p.14 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf))
     ///
-    /// "Note that the blocking threshold may include ballots from "SCPCommit" messages *as well as
-    /// "SCPExternalize" messages, which implicitly have an infinite ballot counter."
-    /// (p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf))
+    /// "Note that the blocking threshold may include ballots from "SCPCommit"
+    /// messages *as well as "SCPExternalize" messages, which implicitly
+    /// have an infinite ballot counter." (p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf))
     pub fn bN(&self) -> u32 {
         match self.topic {
             Nominate(_) => 0,
@@ -497,7 +481,8 @@ impl<
     pub fn votes_or_accepts_commits(&self, value: &[V], min: u32, max: u32) -> Option<(u32, u32)> {
         assert!(min <= max);
 
-        // Range of ballot counters for which this message implies "vote_or_accept commit" for these values.
+        // Range of ballot counters for which this message implies "vote_or_accept
+        // commit" for these values.
         let range = match self.topic {
             NominatePrepare(_, ref payload) | Prepare(ref payload) => {
                 if &payload.B.X[..] == value && payload.CN != 0 {
@@ -619,16 +604,17 @@ impl<
 }
 
 impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let format_opt_ballot = |b: &Option<Ballot<V>>| match b {
             None => "<>".to_string(),
-            Some(b) => format!("{}", b),
+            Some(b) => format!("{b}"),
         };
 
         // Returns "<set.len, hash(set)>".
+        let hasher_builder = HasherBuilder::default();
         let format_b_tree_set = |b_tree_set: &BTreeSet<V>| {
             let hash = {
-                let mut hasher = DefaultHasher::new();
+                let mut hasher = hasher_builder.build_hasher();
                 b_tree_set.hash(&mut hasher);
                 hasher.finish()
             };
@@ -674,9 +660,8 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
 mod msg_tests {
     use super::*;
     use crate::test_utils::test_node_id;
+    use core::iter::FromIterator;
     use rand::seq::SliceRandom;
-    use std::iter::FromIterator;
-    extern crate mc_util_test_helper;
 
     #[test]
     /// Prepare implies "vote_or_accept prepare" for B, P, and PP.
@@ -700,7 +685,8 @@ mod msg_tests {
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
 
-        // ballot, prepared, and prepared_prime have all been voted or accepted prepared.
+        // ballot, prepared, and prepared_prime have all been voted or accepted
+        // prepared.
         assert_eq!(3, votes_or_accepts_prepared.len());
         assert!(votes_or_accepts_prepared.contains(&ballot));
         assert!(votes_or_accepts_prepared.contains(&prepared));
@@ -729,7 +715,7 @@ mod msg_tests {
         );
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
         assert_eq!(votes_or_accepts_prepared, expected);
     }
 
@@ -750,7 +736,7 @@ mod msg_tests {
         );
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
 
         assert_eq!(votes_or_accepts_prepared, expected);
     }
@@ -773,16 +759,17 @@ mod msg_tests {
                 QuorumSet::empty(),
                 1,
                 Prepare(PreparePayload {
-                    B: ballot.clone(),
+                    B: ballot,
                     P: Some(prepared.clone()),
                     PP: Some(prepared_prime.clone()),
-                    CN: 0, // c_counter -> if h_counter > 0, and ballot is confirmed prepared, c_counter = ballot.counter
+                    CN: 0, /* c_counter -> if h_counter > 0, and ballot is confirmed prepared,
+                            * c_counter = ballot.counter */
                     HN: 0, // h_counter -> highest confirmed prepared counter
                 }),
             );
 
             let accepts_prepared = msg.accepts_prepared();
-            let expected = HashSet::from_iter(vec![prepared, prepared_prime]);
+            let expected = HashSet::from_iter([prepared, prepared_prime]);
             assert_eq!(accepts_prepared, expected);
         }
 
@@ -795,8 +782,11 @@ mod msg_tests {
                 Prepare(PreparePayload {
                     B: Ballot::new(10, &["meow"]), // ballot
                     P: None,                       // prepared -> highest accepted prepared ballot
-                    PP: None, // prepared_prime -> highest accepted prepared < prepared with with value != ballot.value
-                    CN: 0, // c_counter -> if h_counter > 0, and ballot is confirmed prepared, c_counter = ballot.counter
+                    PP: None,                      /* prepared_prime -> highest accepted prepared
+                                                    * < prepared with with
+                                                    * value != ballot.value */
+                    CN: 0, /* c_counter -> if h_counter > 0, and ballot is confirmed prepared,
+                            * c_counter = ballot.counter */
                     HN: 0, // h_counter -> highest confirmed prepared counter
                 }),
             );
@@ -824,7 +814,7 @@ mod msg_tests {
         );
 
         let accepts_prepared = msg.accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(9, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(9, &ballot.X)]);
         assert_eq!(accepts_prepared, expected);
     }
 
@@ -844,7 +834,7 @@ mod msg_tests {
         );
 
         let accepts_prepared = msg.accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
         assert_eq!(accepts_prepared, expected);
     }
 
@@ -925,7 +915,8 @@ mod msg_tests {
     }
 
     #[test]
-    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n >= commit.counter"
+    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n
+    // >= commit.counter"
     fn test_votes_or_accepts_commits_with_externalize_topic() {
         let msg = Msg::new(
             test_node_id(1),
@@ -995,7 +986,8 @@ mod msg_tests {
     }
 
     #[test]
-    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n >= ballot.counter".
+    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n
+    // >= ballot.counter".
     fn test_accepts_commits_with_externalize_topic() {
         let ballot = Ballot::new(5, &["meow"]);
 
@@ -1017,8 +1009,8 @@ mod msg_tests {
     }
 
     #[test]
-    // NominatePayload's BTreeSet's that are populated in a random order gets serialized
-    // deterministically.
+    // NominatePayload's BTreeSet's that are populated in a random order gets
+    // serialized deterministically.
     fn nominatepayload_deterministic_serialize() {
         let values = "kantzzcemc xzbvuwkjae wllqmutprx hkhdtpehmo myfcxwjtim rihkjzfayw ykifmibexv fbyzrjpjte ylbycdyprn cflmqswwrf".split(' ').map(|s| s.to_string()).collect::<Vec<String>>();
         let mut rng = mc_util_test_helper::get_seeded_rng();
@@ -1045,8 +1037,8 @@ mod msg_tests {
     // NominatePayload serialize/deserialize work as expected.
     fn nominatepayload_deserialize_works() {
         let payload = NominatePayload::<u32> {
-            X: BTreeSet::from_iter(vec![1, 2, 3]),
-            Y: BTreeSet::from_iter(vec![10, 20, 30]),
+            X: BTreeSet::from_iter([1, 2, 3]),
+            Y: BTreeSet::from_iter([10, 20, 30]),
         };
 
         let serialized_payload = mc_util_serial::serialize(&payload).unwrap();

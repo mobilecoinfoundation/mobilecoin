@@ -1,8 +1,10 @@
 [package]
 name = "mc-attest-ake"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [features]
 default = ["std"]
@@ -12,31 +14,33 @@ std = [
     "serde/std",
 ]
 sgx-sim = [
-    "mc-attest-core/sgx-sim",
+    "mc-attest-verifier/sgx-sim",
 ]
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 
-aead = "0.3"
-digest = { version = "0.9", default-features = false }
-displaydoc = { version = "0.1.7", default-features = false }
-prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
-rand_core = "0.5"
+aead = "0.5"
+digest = "0.10"
+displaydoc = { version = "0.2", default-features = false }
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+rand_core = "0.6"
 serde = { version = "1.0", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 mc-attest-net = { path = "../net" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
-aes-gcm = "0.6"
-rand_hc = "0.2"
-sha2 = "0.9"
+
+aes-gcm = "0.10.1"
+rand_hc = "0.3"
+sha2 = { version = "0.10", default-features = false }
 
 [build-dependencies]
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }
 
-cargo-emit = "0.1"
+cargo-emit = "0.2"

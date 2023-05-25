@@ -1,9 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 mod mock_network;
 
 use mc_common::logger::{test_with_logger, Logger};
-use serial_test_derive::serial;
+use serial_test::serial;
 
 /// Performs a consensus test for a mesh network of (n) nodes.
 fn mesh_test_helper(
@@ -20,7 +20,7 @@ fn mesh_test_helper(
     let mut test_options = mock_network::TestOptions::new();
     test_options.values_to_submit = 10000;
     let network_config = mock_network::mesh_topology::dense_mesh(n, k);
-    mock_network::build_and_test(&network_config, &test_options, logger.clone());
+    mock_network::build_and_test(&network_config, &test_options, logger);
 }
 
 #[test_with_logger]

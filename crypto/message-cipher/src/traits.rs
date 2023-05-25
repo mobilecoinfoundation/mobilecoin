@@ -1,7 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use alloc::vec::Vec;
-use failure::Fail;
+use displaydoc::Display;
 use mc_util_serial::prost;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 
 ////
 // A message cipher is a symmetric cipher meant to be used by the enclave as an
-// alternative to intel's "Sealing" when persistence across power cycles is not needed.
+// alternative to intel's "Sealing" when persistence across power cycles is not
+// needed.
 //
 // The trait also provides convenient wrappers over prost serialization.
 //
@@ -22,11 +23,13 @@ pub trait MessageCipher {
     fn new<R: CryptoRng + RngCore>(rng: &mut R) -> Self;
 
     // Encrypt plaintext bytes.
-    // An allocation is required when using this API, but we reuse the allocation made by caller.
+    // An allocation is required when using this API, but we reuse the allocation
+    // made by caller.
     fn encrypt_bytes<R: CryptoRng + RngCore>(&mut self, rng: &mut R, plaintext: Vec<u8>)
         -> Vec<u8>;
     // Decrypt bytes produced by encrypt_bytes
-    // An allocation is required when using this API, but we reuse the allocation made by caller.
+    // An allocation is required when using this API, but we reuse the allocation
+    // made by caller.
     fn decrypt_bytes(&mut self, ciphertext: Vec<u8>) -> Result<Vec<u8>, CipherError>;
 
     ////
@@ -46,25 +49,25 @@ pub trait MessageCipher {
     }
 }
 
-////
 // Error types
-////
 
-#[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
+/// An error which occurred while decrypting the encrypted message
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum CipherError {
-    #[fail(display = "The ciphertext was too short")]
+    /// The ciphertext was too short
     TooShort,
-    #[fail(display = "The ciphertext refers to a key that doesn't exist")]
+    /// The ciphertext refers to a key that doesn't exist
     UnknownKey,
-    #[fail(display = "Mac mismatch when decrypting")]
+    /// Mac mismatch when decrypting
     MacFailure,
 }
 
-#[derive(Debug, Fail, Serialize, Deserialize)]
+/// An error occurred while decrypting an protobuf-encoded encrypted message
+#[derive(Debug, Display, Serialize, Deserialize)]
 pub enum ProstCipherError {
-    #[fail(display = "An error with the underlying cipher: {}", _0)]
+    /// Error with the underlying cipher: {0}
     Cipher(CipherError),
-    #[fail(display = "An error with prost deserialization")]
+    /// Error while deserializing
     Prost,
 }
 

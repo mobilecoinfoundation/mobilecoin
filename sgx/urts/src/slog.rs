@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Backend which forwards EnclaveLogMessages to slog with appropriate source
 //! information
@@ -20,7 +20,8 @@ static ENCLAVE_SLOG_LOCATION: RecordLocation = RecordLocation {
     module: "<enclave>",
 };
 
-// This function is unsafe, if the caller misuses the API it can cause undefined behavior
+// This function is unsafe, if the caller misuses the API it can cause undefined
+// behavior
 #[no_mangle]
 pub unsafe extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
     enclave_log_impl(slice::from_raw_parts(msg, msg_len));

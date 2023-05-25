@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use slog::{o, Drain, Key, Level, Logger, Never, OwnedKVList, Record, Serializer, KV};
 
@@ -76,7 +76,7 @@ pub struct KeyValueList(pub Vec<(Key, String)>);
 
 impl Serializer for KeyValueList {
     fn emit_arguments(&mut self, key: Key, val: &std::fmt::Arguments) -> slog::Result {
-        self.0.push((key, format!("{}", val)));
+        self.0.push((key, format!("{val}")));
         Ok(())
     }
 }

@@ -1,28 +1,28 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Helper for managing database encryption.
 
 use aes_gcm::{
     aead::{
         generic_array::{sequence::Split, GenericArray},
-        Aead, AeadInPlace, Error as AeadError, NewAead,
+        Aead,
     },
-    Aes256Gcm,
+    AeadCore, Aes256Gcm, Error as AeadError, KeyInit, KeySizeUser,
 };
-use blake2::{Blake2b, Digest};
-use failure::Fail;
+use displaydoc::Display;
 use lmdb::{
     Database, DatabaseFlags, Environment, Error as LmdbError, RwTransaction, Transaction,
     WriteFlags,
 };
+use mc_crypto_hashes::{Blake2b512, Digest};
 use std::sync::{Arc, Mutex};
 
 /// Domain tag for database-wide encryption.
 pub const MOBILECOIND_DB_KEY_DOMAIN_TAG: &str = "mc_mobilecoind";
 
 /// Required password length.
-/// This is set to 32 bytes as the intended purpose is for the user to pass a hash of a
-/// password and not the actual password the user typed.
+/// This is set to 32 bytes as the intended purpose is for the user to pass a
+/// hash of a password and not the actual password the user typed.
 pub const PASSWORD_LEN: usize = 32;
 
 /// LMDB database name for storing metadata.
@@ -33,21 +33,21 @@ const ENCRYPTION_STATE_KEY: &str = "db_encrypted";
 const ENCRYPTION_STATE_VAL: &str = "true";
 
 /// Possible db crypto error types.
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum DbCryptoError {
-    #[fail(display = "Invalid password length")]
+    /// Invalid password length
     InvalidPasswordLength,
 
-    #[fail(display = "Invalid password")]
+    /// Invalid password
     InvalidPassword,
 
-    #[fail(display = "Password needed")]
+    /// Password needed
     PasswordNeeded,
 
-    #[fail(display = "AEAD: {}", _0)]
+    /// AEAD: {0}
     Aead(AeadError),
 
-    #[fail(display = "LMDB: {}", _0)]
+    /// LMDB: {0}
     Lmdb(LmdbError),
 }
 
@@ -68,9 +68,10 @@ struct DbCryptoProviderState {
     /// Is the database currently encrypted?
     is_db_encrypted: bool,
 
-    /// The current encryption key, stored inside Arc/Mutex so that this object could be safely
-    /// shared.
-    /// This should only be set once the password has been determined to be valid!
+    /// The current encryption key, stored inside Arc/Mutex so that this object
+    /// could be safely shared.
+    /// This should only be set once the password has been determined to be
+    /// valid!
     encryption_key: Vec<u8>,
 }
 
@@ -80,7 +81,8 @@ pub struct DbCryptoProvider {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
-    /// Database used for testing whether we have the correct encryption key or not.
+    /// Database used for testing whether we have the correct encryption key or
+    /// not.
     database: Database,
 
     /// Shared state.
@@ -96,11 +98,13 @@ impl DbCryptoProvider {
             let db_txn = env.begin_ro_txn()?;
             match db_txn.get(database, &ENCRYPTION_STATE_KEY.as_bytes()) {
                 Ok(_test_val) => {
-                    // The encryption indicator key is present in the database, this means encryption is enabled.
+                    // The encryption indicator key is present in the database, this means
+                    // encryption is enabled.
                     true
                 }
                 Err(LmdbError::NotFound) => {
-                    // The encryption indicator key is not in the database, this means encryption is not enabled.
+                    // The encryption indicator key is not in the database, this means encryption is
+                    // not enabled.
                     false
                 }
                 Err(err) => {
@@ -125,8 +129,8 @@ impl DbCryptoProvider {
         state.is_db_encrypted
     }
 
-    /// Check if a given password is the password used to encrypt data in the db, and if so store
-    /// it for future encryption/decryption operations.
+    /// Check if a given password is the password used to encrypt data in the
+    /// db, and if so store it for future encryption/decryption operations.
     pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), DbCryptoError> {
         let mut state = self.state.lock().expect("mutex poisoned");
         if state.is_db_encrypted {
@@ -153,8 +157,9 @@ impl DbCryptoProvider {
         }
     }
 
-    /// Check if the database has been "unlocked" - meaning, whether we are able to successfully
-    /// decrypt data using the information in our state object.
+    /// Check if the database has been "unlocked" - meaning, whether we are able
+    /// to successfully decrypt data using the information in our state
+    /// object.
     pub fn is_unlocked(&self) -> bool {
         let state = self.state.lock().expect("mutex poisoned");
         if state.is_db_encrypted {
@@ -167,12 +172,12 @@ impl DbCryptoProvider {
         }
     }
 
-    /// Change the password that will be used for all future encryption/decryption operations.
-    /// This should only be called after all existing data has been re-encrypted to the new
-    /// password!
-    pub fn change_password<'env>(
+    /// Change the password that will be used for all future
+    /// encryption/decryption operations. This should only be called after
+    /// all existing data has been re-encrypted to the new password!
+    pub fn change_password(
         &self,
-        mut db_txn: RwTransaction<'env>,
+        mut db_txn: RwTransaction<'_>,
         password: &[u8],
     ) -> Result<(), DbCryptoError> {
         let mut state = self.state.lock().expect("muted poisoned");
@@ -220,18 +225,18 @@ impl DbCryptoProvider {
 
             let cipher = Aes256Gcm::new(&key);
 
-            Ok(cipher.encrypt(&nonce, &plaintext_bytes[..])?)
+            Ok(cipher.encrypt(&nonce, plaintext_bytes)?)
         } else {
             Ok(plaintext_bytes.to_vec())
         }
     }
 
     /// Encrypt data with a specific password.
-    /// This is used when we want to re-encrypt data as a result of a password change:
-    /// 1. Go over all encrypted data, decrypt it with the current password and re-encrypt with the
-    ///    new password using this method.
-    /// 2. Once all data has been re-encrypted, call set_password so that future operations use the
-    ///    new password.
+    /// This is used when we want to re-encrypt data as a result of a password
+    /// change: 1. Go over all encrypted data, decrypt it with the current
+    /// password and re-encrypt with the    new password using this method.
+    /// 2. Once all data has been re-encrypted, call set_password so that future
+    /// operations use the    new password.
     pub fn encrypt_with_password(
         &self,
         password: &[u8],
@@ -249,7 +254,7 @@ impl DbCryptoProvider {
         let (key, nonce) = Self::expand_password(password)?;
 
         let cipher = Aes256Gcm::new(&key);
-        Ok(cipher.encrypt(&nonce, &plaintext_bytes[..])?)
+        Ok(cipher.encrypt(&nonce, plaintext_bytes)?)
     }
 
     /// Decrypt data with the currently set password.
@@ -290,20 +295,20 @@ impl DbCryptoProvider {
         password: &[u8],
     ) -> Result<
         (
-            GenericArray<u8, <Aes256Gcm as NewAead>::KeySize>,
-            GenericArray<u8, <Aes256Gcm as AeadInPlace>::NonceSize>,
+            GenericArray<u8, <Aes256Gcm as KeySizeUser>::KeySize>,
+            GenericArray<u8, <Aes256Gcm as AeadCore>::NonceSize>,
         ),
         DbCryptoError,
     > {
-        // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey, second 32 for nonce
-        let mut hasher = Blake2b::new();
-        hasher.update(&MOBILECOIND_DB_KEY_DOMAIN_TAG);
-        hasher.update(&password);
+        // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey,
+        // second 32 for nonce
+        let mut hasher = Blake2b512::new();
+        hasher.update(MOBILECOIND_DB_KEY_DOMAIN_TAG);
+        hasher.update(password);
         let result = hasher.finalize();
 
-        let (key, remainder) = Split::<u8, <Aes256Gcm as NewAead>::KeySize>::split(result);
-        let (nonce, _remainder) =
-            Split::<u8, <Aes256Gcm as AeadInPlace>::NonceSize>::split(remainder);
+        let (key, remainder) = Split::<u8, <Aes256Gcm as KeySizeUser>::KeySize>::split(result);
+        let (nonce, _remainder) = Split::<u8, <Aes256Gcm as AeadCore>::NonceSize>::split(remainder);
 
         Ok((key, nonce))
     }
@@ -312,11 +317,11 @@ impl DbCryptoProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
     const TEST_DATA: &[u8; 10] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     fn get_test_db_crypto_provider() -> (DbCryptoProvider, TempDir) {
-        let path = TempDir::new("db_crypto_test").expect("Could not make tempdir for ledger db");
+        let path = TempDir::new().expect("Could not make tempdir for ledger db");
 
         let env = Arc::new(
             Environment::new()
@@ -337,8 +342,8 @@ mod tests {
         assert!(!crypto_provider.is_db_encrypted());
         assert!(crypto_provider.is_unlocked());
 
-        // check_and_store_password should only accept an empty password and we should stay
-        // unencrypted.
+        // check_and_store_password should only accept an empty password and we should
+        // stay unencrypted.
         assert!(crypto_provider
             .check_and_store_password(&[1, 2, 3])
             .is_err());
@@ -411,8 +416,8 @@ mod tests {
             TEST_DATA.to_vec()
         );
 
-        // Changing a password should indicate we are now encrypted, and encryption/decryption
-        // should no longer be the identity function.
+        // Changing a password should indicate we are now encrypted, and
+        // encryption/decryption should no longer be the identity function.
         let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
         crypto_provider
             .change_password(db_txn, &[6; PASSWORD_LEN])

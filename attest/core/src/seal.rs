@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module defines `Sealable` trait, `IntelSealed` object, and
 //! `ParseSealedError` These objects are portable and can be used without
@@ -7,9 +7,11 @@
 
 use crate::SgxError;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
-use failure::Fail;
+use core::fmt::Display as DisplayTrait;
+use displaydoc::Display;
+use mc_sgx_types::sgx_status_t;
 use prost::Message;
+use serde::{Deserialize, Serialize};
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
 /// mac text which has been computed from T and whcih is visible.
@@ -24,7 +26,7 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
     /// Type for the mac bytes
     type MacType: AsRef<[u8]>;
     /// Type for the parsing error, which must generalize ParseSealedError
-    type Error: Fail + From<ParseSealedError> + From<SgxError>;
+    type Error: DisplayTrait + From<ParseSealedError> + From<SgxError>;
 
     /// Given an object, get the bytes to be used as mac text when it is sealed.
     fn compute_mac_txt(obj: &Self::Source) -> Self::MacType;
@@ -55,7 +57,7 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
 
     /// Rust does not let us implement Into<Vec<u8>> for all Sealed because of
     /// coherence issues
-    fn to_bytes(self) -> Vec<u8> {
+    fn into_bytes(self) -> Vec<u8> {
         <Self as Into<IntelSealed>>::into(self).into()
     }
 }
@@ -73,14 +75,14 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
 #[macro_export]
 macro_rules! impl_sealed_traits {
     ($sealed:ty) => {
-        impl ::core::convert::TryFrom<&[u8]> for $sealed {
+        impl TryFrom<&[u8]> for $sealed {
             type Error = <Self as ::mc_attest_core::Sealed>::Error;
             fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
                 <Self as ::mc_attest_core::Sealed>::try_from_slice(src)
             }
         }
 
-        impl ::core::convert::TryFrom<alloc::vec::Vec<u8>> for $sealed {
+        impl TryFrom<alloc::vec::Vec<u8>> for $sealed {
             type Error = <Self as ::mc_attest_core::Sealed>::Error;
             fn try_from(src: ::alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
                 <Self as ::mc_attest_core::Sealed>::try_from_vec(src)
@@ -92,8 +94,8 @@ macro_rules! impl_sealed_traits {
                 <Self as ::mc_attest_core::Sealed>::as_bytes(self)
             }
         }
-        impl Into<::alloc::vec::Vec<u8>> for $sealed {
-            fn into(self) -> ::alloc::vec::Vec<u8> {
+        impl From<$sealed> for ::alloc::vec::Vec<u8> {
+            fn from(src: $sealed) -> ::alloc::vec::Vec<u8> {
                 <Self as ::mc_attest_core::Sealed>::to_bytes(self)
             }
         }
@@ -133,9 +135,9 @@ impl AsRef<[u8]> for IntelSealed {
     }
 }
 
-impl Into<Vec<u8>> for IntelSealed {
-    fn into(self) -> Vec<u8> {
-        self.payload
+impl From<IntelSealed> for Vec<u8> {
+    fn from(src: IntelSealed) -> Vec<u8> {
+        src.payload
     }
 }
 
@@ -187,38 +189,57 @@ pub fn get_add_mac_txt_offset(sealed_data: &[u8]) -> Result<u32, ParseSealedErro
     Ok(result)
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Fail)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, PartialOrd, Serialize)]
 pub enum ParseSealedError {
-    /// The bytes were too short to contain a sgx_sealed_data_t header
-    #[fail(
-        display = "Byte range is too short to be a sealed blob: {} < {}",
-        _0, _1
-    )]
+    /// Byte range is too short to be a sealed blob: {0} < {1}
     TooShort(usize, usize),
-    /// The mac_text_offset parameter pointed out of the buffer
-    #[fail(
-        display = "The mac text offset is invalid, because it points outside the buffer: {} > {}",
-        _0, _1
-    )]
+    /**
+     * The mac text offset is invalid, because it points outside the buffer:
+     * {0} > {1}
+     */
     MacTxtOffsetOutOfBounds(usize, usize),
-    /// Unexpected mac text length
-    #[fail(
-        display = "The mac text length doesn't match what we expected: actual {} != {}",
-        _0, _1
-    )]
+    /// The mac text length doesn't match what we expected: actual {0} != {1}
     UnexpectedMacTextLen(usize, usize),
+}
+
+/// Represents an error that can occur during sealing an IntelSealed blob
+/// This is the error type of seal_raw
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, PartialOrd, Serialize)]
+pub enum IntelSealingError {
+    /// SGX error: {0}
+    Sgx(SgxError),
+    /// Bad sealed format: {0}
+    SealFormat(ParseSealedError),
+}
+
+impl From<SgxError> for IntelSealingError {
+    fn from(src: SgxError) -> Self {
+        Self::Sgx(src)
+    }
+}
+
+impl From<sgx_status_t> for IntelSealingError {
+    fn from(src: sgx_status_t) -> Self {
+        Self::Sgx(SgxError::from(src))
+    }
+}
+
+impl From<ParseSealedError> for IntelSealingError {
+    fn from(src: ParseSealedError) -> Self {
+        Self::SealFormat(src)
+    }
 }
 
 // Serde implementations for IntelSealed
 
-impl ::serde::ser::Serialize for IntelSealed {
+impl Serialize for IntelSealed {
     #[inline]
     fn serialize<S: ::serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_bytes(self.as_ref())
     }
 }
 
-impl<'de> ::serde::de::Deserialize<'de> for IntelSealed {
+impl<'de> Deserialize<'de> for IntelSealed {
     fn deserialize<DS: ::serde::de::Deserializer<'de>>(
         deserializer: DS,
     ) -> Result<Self, DS::Error> {

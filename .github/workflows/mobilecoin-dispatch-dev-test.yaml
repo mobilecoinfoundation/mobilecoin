@@ -1,0 +1,56 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Run integration tests in a development namespace.
+
+name: (Manual) Run Tests in Dev Namespace
+
+run-name: Test ${{ inputs.namespace }} - ${{ inputs.ingest_color }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: choice
+        required: true
+        default: blue
+        options:
+        - blue
+        - green
+      fog_distribution:
+        description: "Run fog-distribution test"
+        type: boolean
+        required: false
+        default: false
+      testing_block_v0:
+        description: "Run block v0 tests"
+        type: boolean
+        required: false
+        default: true
+      testing_block_v2:
+        description: "Run block v2 tests"
+        type: boolean
+        required: false
+        default: true
+      testing_block_v3:
+        description: "Run block v3 tests"
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
+    with:
+      namespace: ${{ inputs.namespace }}
+      ingest_color: ${{ inputs.ingest_color }}
+      fog_distribution: ${{ inputs.fog_distribution }}
+      testing_block_v0 : ${{ inputs.testing_block_v0 }}
+      testing_block_v2: ${{ inputs.testing_block_v2 }}
+      testing_block_v3: ${{ inputs.testing_block_v3 }}
+      generate_and_submit_mint_config_tx_uses_json: true
+    secrets: inherit

@@ -1,14 +1,11 @@
-mc-fog-types
-============
+fog_types
+=========
 
-This crate provides prost versions of some types related to fog reports.
+Fog types is a `no_std` crate containing many grpc API types used in Fog.
 
-This is needed because some of these types are consumed by `fog-report-validation`
-crate which is needed to build transaction. However, when we use the version of
-these types crates using the `protobuf` crate, we end up with a dependency
-on grpcio. However, this is not acceptable to android-bindings and libmobilecoin,
-which do not want (and should not need) to compile grpcio for their targets.
+These generally cannot be in the same crate as GRPC API's because grpc is not `no_std`.
 
-This will also help with eventually making `fog-report-validation` eventually
-`no_std` compatible, which is desirable for making embedded devices that can
-construct mobilecoin transactions to fog recipients.
+These types may be consumed by both clients and fog enclaves, and encoded versions of them
+may be written to fog databases.
+
+In `fog/api` we test that these conform to protos.

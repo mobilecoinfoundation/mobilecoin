@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Serves node-to-node attested gRPC requests.
 
+use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, UnarySink};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApi};
 use mc_attest_enclave_api::{ClientSession, PeerSession, Session};
@@ -10,12 +11,14 @@ use mc_common::{
     HashSet,
 };
 use mc_consensus_enclave::ConsensusEnclave;
-use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
-use mc_util_metrics::SVC_COUNTERS;
+use mc_util_grpc::{
+    check_request_chain_id, rpc_logger, rpc_permissions_error, send_result, Authenticator,
+};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct AttestedApiService<S: Session> {
+    chain_id: String,
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
@@ -24,11 +27,13 @@ pub struct AttestedApiService<S: Session> {
 
 impl<S: Session> AttestedApiService<S> {
     pub fn new(
+        chain_id: String,
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
+            chain_id,
             enclave,
             authenticator,
             logger,
@@ -41,8 +46,12 @@ impl AttestedApi for AttestedApiService<PeerSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             // TODO: Use the prost message directly, once available
@@ -54,7 +63,7 @@ impl AttestedApi for AttestedApiService<PeerSession> {
                             .expect("Thread crashed while inserting new session ID")
                             .insert(session_id);
                     }
-                    send_result(ctx, sink, Ok(response.into()), &logger);
+                    send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(peer_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -70,9 +79,9 @@ impl AttestedApi for AttestedApiService<PeerSession> {
                         Err(rpc_permissions_error(
                             "peer_auth",
                             "Permission denied",
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }
@@ -84,8 +93,12 @@ impl AttestedApi for AttestedApiService<ClientSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
+                return send_result(ctx, sink, Err(err), logger);
+            }
+
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             // TODO: Use the prost message directly, once available
@@ -97,7 +110,7 @@ impl AttestedApi for AttestedApiService<ClientSession> {
                             .expect("Thread crashed while inserting client sesssion ID")
                             .insert(session_id);
                     }
-                    send_result(ctx, sink, Ok(response.into()), &logger);
+                    send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(client_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -113,9 +126,9 @@ impl AttestedApi for AttestedApiService<ClientSession> {
                         Err(rpc_permissions_error(
                             "client_auth",
                             "Permission denied",
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }
@@ -128,20 +141,13 @@ mod peer_tests {
     use super::*;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+        ServerCredentials,
     };
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::TokenAuthenticator;
-    use std::{
-        sync::atomic::{AtomicUsize, Ordering::SeqCst},
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30300
-    }
+    use std::time::Duration;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: AttestedApiService<PeerSession>) -> (AttestedApiClient, Server) {
@@ -149,18 +155,20 @@ mod peer_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .expect("Could not create anonymous bind");
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = AttestedApiClient::new(ch);
         (client, server)
     }
 
     #[test_with_logger]
-    // `auth` should reject unauthenticated responses when configured with an authenticator.
+    // `auth` should reject unauthenticated responses when configured with an
+    // authenticator.
     fn test_peer_auth_unauthenticated(logger: Logger) {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
@@ -169,20 +177,24 @@ mod peer_tests {
         ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
-        let attested_api_service =
-            AttestedApiService::<PeerSession>::new(enclave, authenticator, logger);
+        let attested_api_service = AttestedApiService::<PeerSession>::new(
+            "local".to_string(),
+            enclave,
+            authenticator,
+            logger,
+        );
 
         let (client, _server) = get_client_server(attested_api_service);
 
         match client.auth(&AuthMessage::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
-                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
-                panic!("Unexpected error {:?}", err);
+            Err(err) => {
+                panic!("Unexpected error {err:?}");
             }
         }
     }
@@ -193,20 +205,13 @@ mod client_tests {
     use super::*;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+        ServerCredentials,
     };
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::TokenAuthenticator;
-    use std::{
-        sync::atomic::{AtomicUsize, Ordering::SeqCst},
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30350
-    }
+    use std::time::Duration;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(
@@ -216,18 +221,20 @@ mod client_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .expect("Could not create anonymous bind");
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = AttestedApiClient::new(ch);
         (client, server)
     }
 
     #[test_with_logger]
-    // `auth` should reject unauthenticated responses when configured with an authenticator.
+    // `auth` should reject unauthenticated responses when configured with an
+    // authenticator.
     fn test_client_auth_unauthenticated(logger: Logger) {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
@@ -236,20 +243,24 @@ mod client_tests {
         ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
-        let attested_api_service =
-            AttestedApiService::<ClientSession>::new(enclave, authenticator, logger);
+        let attested_api_service = AttestedApiService::<ClientSession>::new(
+            "local".to_string(),
+            enclave,
+            authenticator,
+            logger,
+        );
 
         let (client, _server) = get_client_server(attested_api_service);
 
         match client.auth(&AuthMessage::default()) {
             Ok(response) => {
-                panic!("Unexpected response {:?}", response);
+                panic!("Unexpected response {response:?}");
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
-                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
-                panic!("Unexpected error {:?}", err);
+            Err(err) => {
+                panic!("Unexpected error {err:?}");
             }
         }
     }

@@ -1,39 +1,39 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! dalek-cryptography based keys implementations
 
-// Badly-named Macros
-use alloc::vec;
+use crate::{
+    Digest, DistinguishedEncoding, Fingerprintable, Kex, KexEphemeralPrivate, KexPrivate,
+    KexPublic, KexReusablePrivate, KexSecret, KeyError, PrivateKey, PublicKey, BASE64_ENGINE,
+    DER_MAX_LEN,
+};
 
-// Dependencies
-use crate::traits::*;
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
-use binascii::b64encode;
-use core::{
-    convert::{AsRef, TryFrom},
-    fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
-    str::from_utf8,
-};
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+use base64::Engine;
+use core::fmt::{Debug, Formatter, Result as FmtResult};
 use digest::generic_array::typenum::U32;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_repr_bytes::{
-    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
-    derive_repr_bytes_from_as_ref_and_try_from,
-};
+use mc_util_repr_bytes::{derive_core_cmp_from_as_ref, derive_repr_bytes_from_as_ref_and_try_from};
+
+#[cfg(feature = "alloc")]
+use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
+
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::{
     de::{Deserialize, Deserializer, Error as DeserializeError, Visitor},
     ser::{Serialize, Serializer},
 };
+
 use sha2::{self, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 
-/// The length in bytes of canonical representation of x25519 (public and private keys)
+/// The length in bytes of canonical representation of x25519 (public and
+/// private keys)
 pub const X25519_LEN: usize = 32;
 
 /// A structure for keeping an X25519 shared secret
@@ -48,29 +48,30 @@ impl AsRef<[u8]> for X25519Secret {
     }
 }
 
-/// The debug implementation will output the SHA-256 sum of the secret, but not the secret itself
+/// The debug implementation will output the SHA-256 sum of the secret, but not
+/// the secret itself
 impl Debug for X25519Secret {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let mut hasher = Sha256::new();
         hasher.update(self.as_ref());
         let hash_results = hasher.finalize();
-        let mut hash_strbuf: Vec<u8> = Vec::with_capacity(hash_results.len() * 2);
-        let hash_len = {
-            let hash_strslice =
-                binascii::bin2hex(&hash_results, &mut hash_strbuf).map_err(|_e| FmtError)?;
-            hash_strslice.len()
-        };
-        hash_strbuf.truncate(hash_len);
-        write!(
-            f,
-            "X25519Secret SHA-256: {}",
-            from_utf8(&hash_strbuf).map_err(|_e| FmtError)?
-        )
+
+        write!(f, "X25519Secret SHA-256: ")?;
+        for i in 0..hash_results.len() {
+            write!(f, "{:02x}", hash_results[i])?;
+            if i < hash_results.len() - 1 {
+                write!(f, ":")?
+            }
+        }
+
+        Ok(())
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for X25519Secret {
-    /// Secret keys are serialized as bytes, as there is no ASN.1 representation of a symmetric key
+    /// Secret keys are serialized as bytes, as there is no ASN.1 representation
+    /// of a symmetric key
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_bytes(self.as_ref())
     }
@@ -88,8 +89,8 @@ pub struct X25519Public(DalekPublicKey);
 //        OBJECT IDENTIFIER(06), Length = 03  -- T,L,V
 //           curveX25519(1.3.101.110 = 2B 65 6E)
 //     BIT STRING(03), Length = 21            -- T,L
-//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits to fill an octet)
-//        actualKeyBitsGoesHere
+//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits
+// to fill an octet)        actualKeyBitsGoesHere
 const X25519_SPKI_DER_PREFIX: [u8; 12] = [
     0x30, 0x2A, 0x30, 0x05, 0x06, 0x03, 0x2B, 0x65, 0x6E, 0x03, 0x21, 0x00,
 ];
@@ -98,6 +99,8 @@ const X25519_SPKI_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const X25519_SPKI_DER_LEN: usize = 0x02 + 0x2A;
 
+static_assertions::const_assert!(X25519_SPKI_DER_LEN <= super::DER_MAX_LEN);
+
 impl PublicKey for X25519Public {}
 
 impl DistinguishedEncoding for X25519Public {
@@ -105,7 +108,8 @@ impl DistinguishedEncoding for X25519Public {
         X25519_SPKI_DER_LEN
     }
 
-    /// Constructs a new X25519Public from a DER-encoded SubjectPublicKeyInfo structure
+    /// Constructs a new X25519Public from a DER-encoded SubjectPublicKeyInfo
+    /// structure
     ///
     /// # Examples
     ///
@@ -139,13 +143,14 @@ impl DistinguishedEncoding for X25519Public {
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
-    fn to_der(&self) -> Vec<u8> {
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
         let data = self.as_ref();
-        let mut retval = vec![0u8; X25519_SPKI_DER_LEN];
+        Zeroize::zeroize(&mut buff[..X25519_SPKI_DER_LEN]);
+
         let prefix_len = X25519_SPKI_DER_PREFIX.len();
-        retval[..prefix_len].copy_from_slice(&X25519_SPKI_DER_PREFIX);
-        retval[prefix_len..].copy_from_slice(data);
-        retval
+        buff[..prefix_len].copy_from_slice(&X25519_SPKI_DER_PREFIX);
+        buff[prefix_len..X25519_SPKI_DER_LEN].copy_from_slice(data);
+        &buff[..X25519_SPKI_DER_LEN]
     }
 }
 
@@ -158,7 +163,6 @@ impl AsRef<[u8]> for X25519Public {
     ///
     /// ```
     /// use mc_crypto_keys::*;
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -172,7 +176,6 @@ impl AsRef<[u8]> for X25519Public {
     /// use mc_crypto_keys::*;
     /// use mc_crypto_digestible::Digestible;
     /// use sha2::{Digest, Sha256};
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -205,6 +208,8 @@ impl TryFrom<&[u8]> for X25519Public {
 }
 
 derive_repr_bytes_from_as_ref_and_try_from!(X25519Public, U32);
+
+#[cfg(feature = "alloc")]
 derive_into_vec_from_repr_bytes!(X25519Public);
 
 impl Clone for X25519Public {
@@ -214,7 +219,6 @@ impl Clone for X25519Public {
     ///
     /// ```
     /// use mc_crypto_keys::X25519Public;
-    /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
     /// let pubkey1 = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
@@ -245,34 +249,25 @@ impl Debug for X25519Public {
     /// assert_eq!(format!("{:?}", pubkey), PUBKEY);
     /// ```
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let der = self.to_der();
-        let mut b64_output = vec![0u8; der.len() * 4 / 3 + 4];
-        let final_len = loop {
-            match b64encode(&der, &mut b64_output) {
-                Ok(val) => break val.len(),
-                Err(e) => match e {
-                    binascii::ConvertError::InvalidOutputLength => {
-                        let target_len = b64_output.len() * 2;
-                        b64_output.resize(target_len, 0u8);
-                    }
-                    binascii::ConvertError::InvalidInputLength => {
-                        return Err(FmtError);
-                    }
-                    binascii::ConvertError::InvalidInput => {
-                        return Err(FmtError);
-                    }
-                },
-            }
-        };
-        b64_output.truncate(final_len);
+        // Encode key to DER
+        let mut der_buff = [0u8; DER_MAX_LEN];
+        let der = self.to_der_slice(&mut der_buff);
+
+        // Encode DER to base64
+        let mut b64_buff = [0u8; DER_MAX_LEN / 4 * 3];
+        let n = BASE64_ENGINE
+            .encode_slice(der, &mut b64_buff)
+            .map_err(|_| core::fmt::Error)?;
+        let b64_str = core::str::from_utf8(&b64_buff[..n]).map_err(|_| core::fmt::Error)?;
+
         write!(
             f,
-            "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
-            String::from_utf8(b64_output).map_err(|_e| FmtError)?
+            "-----BEGIN PUBLIC KEY-----\n{b64_str}\n-----END PUBLIC KEY-----\n",
         )
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for X25519Public {
     /// Public keys are deserialized from DER-encoded SubjectPublicKeyInfo
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<X25519Public, D::Error> {
@@ -286,7 +281,7 @@ impl<'de> Deserialize<'de> for X25519Public {
             }
 
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
-                Ok(X25519Public::try_from_der(value).map_err(|err| E::custom(err.to_string()))?)
+                X25519Public::try_from_der(value).map_err(E::custom)
             }
         }
 
@@ -301,12 +296,13 @@ impl AsRef<[u8; X25519_LEN]> for X25519Public {
 }
 
 derive_core_cmp_from_as_ref!(X25519Public, [u8; X25519_LEN]);
-impl Eq for X25519Public {}
 
+#[cfg(feature = "serde")]
 impl Serialize for X25519Public {
     /// Public keys are serialized as simple DER-encoded byte streams
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_bytes(self.to_der().as_slice())
+        let mut buff = [0u8; X25519_PKI_DER_LEN];
+        serializer.serialize_bytes(self.to_der_slice(&mut buff))
     }
 }
 
@@ -325,7 +321,7 @@ impl From<&X25519Private> for X25519Public {
     /// let privkey = X25519Private::from_random(&mut rng);
     /// let pubkey = X25519Public::from(&privkey);
     /// assert_eq!("0b:5e:58:80:55:b2:3b:f4:d6:df:71:c5:ae:be:3c:30:23:37:41:06:64:b5:55:69:4d:04:a2:35:21:36:2d:c3",
-    ///            pubkey.fingerprint::<Sha256>().expect("Could not take fingerprint of pubkey."));
+    ///            pubkey.fingerprint::<Sha256>().to_string());
     /// ```
     fn from(pair: &X25519Private) -> Self {
         Self(DalekPublicKey::from(&pair.0))
@@ -347,17 +343,18 @@ impl From<&X25519EphemeralPrivate> for X25519Public {
     /// let privkey = X25519EphemeralPrivate::from_random(&mut rng);
     /// let pubkey = X25519Public::from(&privkey);
     /// assert_eq!("0b:5e:58:80:55:b2:3b:f4:d6:df:71:c5:ae:be:3c:30:23:37:41:06:64:b5:55:69:4d:04:a2:35:21:36:2d:c3",
-    ///            pubkey.fingerprint::<Sha256>().expect("Could not take fingerprint of pubkey."));
+    ///            pubkey.fingerprint::<Sha256>().to_string());
     /// ```
     fn from(pair: &X25519EphemeralPrivate) -> Self {
         Self(DalekPublicKey::from(&pair.0))
     }
 }
 
-impl From<&X25519Public> for Vec<u8> {
-    fn from(src: &X25519Public) -> Vec<u8> {
+#[cfg(feature = "alloc")]
+impl From<&X25519Public> for alloc::vec::Vec<u8> {
+    fn from(src: &X25519Public) -> alloc::vec::Vec<u8> {
         let bytes = src.0.as_bytes();
-        Vec::from(&bytes[..])
+        alloc::vec::Vec::from(&bytes[..])
     }
 }
 
@@ -428,6 +425,8 @@ const X25519_PKI_DER_PREFIX: [u8; 16] = [
 
 const X25519_PKI_DER_LEN: usize = 0x02 + 0x2E;
 
+static_assertions::const_assert!(X25519_PKI_DER_LEN <= super::DER_MAX_LEN);
+
 impl DistinguishedEncoding for X25519Private {
     fn der_size() -> usize {
         X25519_PKI_DER_LEN
@@ -447,13 +446,16 @@ impl DistinguishedEncoding for X25519Private {
         Self::try_from(&src[prefix_len..])
     }
 
-    fn to_der(&self) -> Vec<u8> {
-        let mut retval = vec![0u8; X25519_PKI_DER_LEN];
-        let key = self.0.to_bytes();
+    fn to_der_slice<'a>(&self, buff: &'a mut [u8]) -> &'a [u8] {
+        let mut key = self.0.to_bytes();
+        buff[..X25519_PKI_DER_LEN].iter_mut().for_each(|b| *b = 0);
+
         let prefix_len = X25519_PKI_DER_PREFIX.len();
-        retval[..prefix_len].copy_from_slice(&X25519_PKI_DER_PREFIX);
-        retval[prefix_len..].copy_from_slice(&key);
-        retval
+        buff[..prefix_len].copy_from_slice(&X25519_PKI_DER_PREFIX);
+        buff[prefix_len..X25519_PKI_DER_LEN].copy_from_slice(&key);
+        key.zeroize();
+
+        &buff[..X25519_PKI_DER_LEN]
     }
 }
 
@@ -469,7 +471,6 @@ impl Clone for X25519Private {
     /// # Examples
     ///
     /// ```
-    /// use core::convert::TryFrom;
     /// use mc_crypto_keys::*;
     ///
     /// let key = [0x55u8; 32];
@@ -486,18 +487,18 @@ impl Clone for X25519Private {
 }
 
 impl Debug for X25519Private {
-    /// Output the public key corresponding to this private key as a debug string
+    /// Output the public key corresponding to this private key as a debug
+    /// string
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(
             f,
             "X25519Private with public SHA2-256 fingerprint {}",
-            X25519Public::from(self)
-                .fingerprint::<Sha256>()
-                .map_err(|_e| FmtError)?
+            X25519Public::from(self).fingerprint::<Sha256>()
         )
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for X25519Private {
     /// Public keys are deserialized from DER-encoded PrivateKeyInfo
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<X25519Private, D::Error> {
@@ -511,7 +512,7 @@ impl<'de> Deserialize<'de> for X25519Private {
             }
 
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
-                Ok(X25519Private::try_from_der(value).map_err(|err| E::custom(err.to_string()))?)
+                X25519Private::try_from_der(value).map_err(E::custom)
             }
         }
 
@@ -525,7 +526,6 @@ impl<'de> Deserialize<'de> for X25519Private {
 ///
 /// ```
 /// use mc_crypto_keys::*;
-/// use std::convert::TryFrom;
 ///
 /// let mut key = [0x55u8; 32];
 /// key[0] = 0x50u8; // scalar values are clamped by dalek
@@ -533,18 +533,20 @@ impl<'de> Deserialize<'de> for X25519Private {
 /// let keyout: Vec<u8> = privkey.into();
 /// assert_eq!(&key as &[u8], keyout.as_slice());
 /// ```
-impl Into<Vec<u8>> for X25519Private {
-    fn into(self) -> Vec<u8> {
-        self.0.to_bytes().to_vec()
+#[cfg(feature = "alloc")]
+impl From<X25519Private> for Vec<u8> {
+    fn from(src: X25519Private) -> Vec<u8> {
+        src.0.to_bytes().to_vec()
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for X25519Private {
     /// Private keys are serialized as simple DER-encoded byte streams
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut der_bytes = self.to_der();
-        let retval = serializer.serialize_bytes(der_bytes.as_slice());
-        der_bytes.zeroize();
+        let mut buff = [0u8; X25519_PKI_DER_LEN];
+        let retval = serializer.serialize_bytes(self.to_der_slice(&mut buff));
+        buff.zeroize();
         retval
     }
 }
@@ -558,7 +560,6 @@ impl<'bytes> TryFrom<&'bytes [u8]> for X25519Private {
     ///
     /// ```
     /// use mc_crypto_keys::X25519Private;
-    /// use std::convert::TryFrom;
     ///
     /// let mut key = [0x55u8; 32];
     /// key[0] = 0x50u8; // scalar values are clamped by dalek
@@ -590,6 +591,9 @@ impl Kex for X25519 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{ReprBytes, Unsigned};
+
+    #[cfg(feature = "serde")]
     use mc_util_serial::{deserialize, serialize};
 
     #[test]
@@ -598,6 +602,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn test_pubkey_serialize() {
         let pubkey = X25519Public::try_from(&[0x55u8; 32] as &[u8]).expect("Could not load pubkey");
         let serialized = serialize(&pubkey).expect("Could not serialize pubkey");
@@ -607,6 +612,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn test_privkey_serialize() {
         let privkey: X25519Private =
             X25519Private::try_from(&[0x55u8; 32] as &[u8]).expect("Could not load privkey.");

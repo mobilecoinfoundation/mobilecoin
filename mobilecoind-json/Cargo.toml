@@ -1,8 +1,11 @@
 [package]
 name = "mc-mobilecoind-json"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "mobilecoind-json"
@@ -13,26 +16,22 @@ mc-api = { path = "../api" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-util-grpc = { path = "../util/grpc" }
+mc-util-serial = { path = "../util/serial", features = ["std"] }
 
-grpcio = "0.6.0"
+clap = { version = "4.1", features = ["derive", "env"] }
+grpcio = "0.12.1"
 hex = "0.4"
-rocket = { version = "0.4.6", default-features = false }
-rocket_contrib = { version = "0.4.6", default-features = false, features = ["json"] }
+protobuf = "2.27.1"
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
-structopt = "0.3"
-protobuf = "2.12"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }
-mc-ledger-db = { path = "../ledger/db" }
-mc-util-from-random = { path = "../util/from-random" }
+mc-ledger-db = { path = "../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
+mc-transaction-extra = { path = "../transaction/extra" }
+mc-util-from-random = { path = "../util/from-random" }
 
-rand = "0.7"
-
-[build-dependencies]
-# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
-# Go figure ¯\_(ツ)_/¯
-serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+rand = "0.8"

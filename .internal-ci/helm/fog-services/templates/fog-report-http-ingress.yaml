@@ -1,0 +1,35 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- $hosts := split "\n" (include "fogServices.fogReportHosts" . | trim) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fogServices.fullname" . }}-fog-report-http
+  labels:
+    app: fog-report
+    {{- include "fogServices.labels" . | nindent 4 }}
+  annotations:
+    {{- if eq (include "fogServices.blocklist.enabled" .) "true" }}
+    haproxy.org/blacklist: {{ include "fogServices.blocklist.pattern" . }}
+    {{- end }}
+    {{- toYaml .Values.fogReport.ingress.common.annotations | nindent 4 }}
+    {{- toYaml .Values.fogReport.ingress.http.annotations | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    {{- range $hosts }}
+    - {{ . }}
+    {{- end }}
+    secretName: {{ include "fogServices.fullname" . }}-fog-tls
+  rules:
+  {{- range $hosts }}
+  - host: {{ . }}
+    http:
+      paths:
+      - path: /gw/report.ReportAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fogServices.fullname" $ }}-fog-report
+            port:
+              name: report-http
+  {{- end }}

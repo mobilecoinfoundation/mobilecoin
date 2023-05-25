@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 # TODO
 # - Better errors on missing env vars
@@ -11,7 +11,6 @@ import os
 import shutil
 import socketserver
 import subprocess
-import sys
 import threading
 import time
 from pprint import pformat
@@ -25,22 +24,31 @@ MOBILECOIND_PORT = 4444
 
 # TODO make these command line arguments
 LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
-IAS_API_KEY = os.getenv('IAS_API_KEY')
-IAS_SPID = os.getenv('IAS_SPID')
+IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
+IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
-CARGO_FLAGS = '--release'
-TARGET_DIR = 'target/release'
-WORK_DIR = '/tmp/mc-local-network'
-CLI_PORT = 31337
-
-if MOB_RELEASE == '0':
+MOB_RELEASE = os.getenv('MOB_RELEASE', '1') == '1'
+if MOB_RELEASE:
+    CARGO_FLAGS = '--release'
+    BUILD_TYPE = 'release'
+else:
     CARGO_FLAGS = ''
-    TARGET_DIR = 'target/debug'
+    BUILD_TYPE = 'debug'
+
+DEFAULT_TARGET_DIR = os.path.join(PROJECT_DIR, 'target')
+BASE_TARGET_DIR = os.path.abspath(os.getenv('CARGO_TARGET_DIR', DEFAULT_TARGET_DIR))
+TARGET_DIR = os.path.join(BASE_TARGET_DIR, BUILD_TYPE)
+WORK_DIR = os.path.join(TARGET_DIR, 'mc-local-network')
+MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
+CLI_PORT = 31337
 
 # Sane default log configuration
 if 'MC_LOG' not in os.environ:
     os.environ['MC_LOG'] = 'debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error'
+
+# Set a sane chain id if none is provided
+if 'MC_CHAIN_ID' not in os.environ:
+    os.environ['MC_CHAIN_ID'] = 'local'
 
 # Cloud logging-sepcific configuration
 LOG_BRANCH = os.getenv('LOG_BRANCH', None)
@@ -61,11 +69,13 @@ class CloudLogging:
         if LOGSTASH_HOST:
             self.start_filebeat(LOG_BRANCH, LOGSTASH_HOST)
 
-        if GRAFANA_PASSWORD:
-            hosts = ', '.join(
-                f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
-            )
-            self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
+        if not GRAFANA_PASSWORD:
+            print('No grafana password - logs will not be pushed to grafana.')
+
+        hosts = ', '.join(
+            f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
+        )
+        self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
 
     def start_filebeat(self, log_branch, logstash_host):
         print(f'Starting filebeat, branch={log_branch}')
@@ -95,9 +105,10 @@ class CloudLogging:
         with open(os.path.join(WORK_DIR, 'prometheus.yml'), 'w') as f:
             f.write(template
                 .replace('${BRANCH}', log_branch)
-                .replace('${GRAFANA_PASSWORD}', grafana_password)
                 .replace('${HOSTS}', hosts)
+                .replace('${GRAFANA_PASSWORD}', grafana_password or "")
             )
+
         cmd = ' '.join([
             'prometheus',
             '--web.listen-address=:18181',
@@ -140,7 +151,7 @@ class Peer:
 
 
 class Node:
-    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set):
+    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set, block_version):
         assert all(isinstance(peer, Peer) for peer in peers)
         assert isinstance(quorum_set, QuorumSet)
 
@@ -152,6 +163,8 @@ class Node:
         self.admin_http_gateway_port = admin_http_gateway_port
         self.peers = peers
         self.quorum_set = quorum_set
+        self.minimum_fee = 400_000_000
+        self.block_version = block_version or 3
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -159,6 +172,7 @@ class Node:
         self.ledger_dir = os.path.join(WORK_DIR, f'node-ledger-{self.node_num}')
         self.ledger_distribution_dir = os.path.join(WORK_DIR, f'node-ledger-distribution-{self.node_num}')
         self.msg_signer_key_file = os.path.join(WORK_DIR, f'node-scp-{self.node_num}.pem')
+        self.tokens_config_file = os.path.join(WORK_DIR, f'node-tokens-{self.node_num}.json')
         subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {self.msg_signer_key_file}', shell=True)
 
     def peer_uri(self, broadcast_consensus_msgs=True):
@@ -212,6 +226,46 @@ class Node:
         except FileNotFoundError:
             pass
 
+        # Tokens config file
+        tokens_config = {
+            "tokens": [
+                { "token_id": 0, "minimum_fee": self.minimum_fee },
+                {
+                    "token_id": 1,
+                    "minimum_fee": 1024,
+                    "governors": {
+                        "type": "MultiSig",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Single", "pub_key": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read()},
+                        ],
+                    },
+                },
+                {
+                    "token_id": 2,
+                    "minimum_fee": 1024,
+                    "governors": {
+                        "type": "MultiSig",
+                        "threshold": 1,
+                        "signers": [
+                            {"type": "Single", "pub_key": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read()},
+                        ],
+                    },
+                },
+             ],
+        }
+        with open(self.tokens_config_file, 'w') as f:
+            json.dump(tokens_config, f)
+
+        #  Sign the governors with the admin key.
+        subprocess.check_output(' '.join([
+            f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
+            'sign-governors',
+            f'--tokens {self.tokens_config_file}',
+            f'--signing-key {MINTING_KEYS_DIR}/minting-trust-root.pem',
+            f'--output-json {self.tokens_config_file}',
+        ]), shell=True)
+
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/consensus-service',
             f'--client-responder-id localhost:{self.client_port}',
@@ -221,12 +275,14 @@ class Node:
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--origin-block-path {LEDGER_BASE}',
+            f'--block-version {self.block_version}',
             f'--ledger-path {self.ledger_dir}',
             f'--admin-listen-uri="insecure-mca://0.0.0.0:{self.admin_port}/"',
             f'--client-listen-uri="insecure-mc://0.0.0.0:{self.client_port}/"',
             f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
+            f'--tokens={self.tokens_config_file}',
         ])
 
         print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')
@@ -240,8 +296,11 @@ class Node:
         # Wait for ledger db to become available
         ledger_db = os.path.join(self.ledger_dir, 'data.mdb')
         while not os.path.exists(ledger_db):
-            time.sleep(1)
+            if self.consensus_process.poll() is not None:
+                print('consensus process crashed')
+                return self.stop()
             print(f'Waiting for {ledger_db}')
+            time.sleep(1)
 
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/ledger-distribution',
@@ -250,7 +309,7 @@ class Node:
             f'--state-file {WORK_DIR}/ledger-distribution-state-{self.node_num}',
         ])
         print(f'Starting local ledger distribution: {cmd}')
-        self.ledger_distribution_process= subprocess.Popen(cmd, shell=True)
+        self.ledger_distribution_process = subprocess.Popen(cmd, shell=True)
 
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {TARGET_DIR}/mc-admin-http-gateway',
@@ -315,8 +374,10 @@ class Mobilecoind:
         self.process = subprocess.Popen(cmd, shell=True)
         print()
 
-        print('Waiting for watcher db to become available')
         while not os.path.exists(os.path.join(self.watcher_db, 'data.mdb')):
+            if self.process.poll() is not None:
+                print('mobilecoind process crashed')
+                return self.stop()
             print('Waiting for watcher db to become available')
             time.sleep(1)
 
@@ -332,6 +393,7 @@ class NetworkCLI(threading.Thread):
     def __init__(self, network):
         super().__init__()
         self.network = network
+        self.server = None
 
     def run(self):
         network = self.network
@@ -384,20 +446,25 @@ class NetworkCLI(threading.Thread):
 
                     self.send('> ')
 
+        assert self.server is None
         socketserver.TCPServer.allow_reuse_address = True
-        server = socketserver.TCPServer(('0.0.0.0', CLI_PORT), NetworkCLITCPHandler)
-        server.serve_forever()
+        self.server = socketserver.TCPServer(('0.0.0.0', CLI_PORT), NetworkCLITCPHandler)
+        self.server.serve_forever()
+
+    def stop(self):
+        self.server.shutdown()
 
 class Network:
     def __init__(self):
         self.cloud_logging = None
         self.nodes = []
         self.ledger_distribution = None
+        self.cli = None
         try:
             shutil.rmtree(WORK_DIR)
         except FileNotFoundError:
             pass
-        os.mkdir(WORK_DIR)
+        os.makedirs(WORK_DIR)
 
     def build_binaries(self):
         print('Building binaries...')
@@ -409,17 +476,14 @@ class Network:
                 check=True,
             )
 
+        # Note: bypass-ip-check feature of mobilecoind is used here,
+        # because ip-check is sometimes problematic for devs or CI machines.
+        # If the service rate limits you then mobilecoind fails to start.
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --features mc-mobilecoind/bypass-ip-check {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
-        subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build --no-default-features -p mc-mobilecoind {CARGO_FLAGS}',
-            shell=True,
-            check=True,
-        )
-
 
     def add_node(self, name, peers, quorum_set):
         node_num = len(self.nodes)
@@ -432,6 +496,7 @@ class Network:
             BASE_ADMIN_HTTP_GATEWAY_PORT + node_num,
             peers,
             quorum_set,
+            self.block_version,
         ))
 
     def get_node(self, name):
@@ -439,24 +504,36 @@ class Network:
             if node.name == name:
                 return node
 
+    def generate_minting_keys(self):
+       os.mkdir(MINTING_KEYS_DIR)
+
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/governor1', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor1 -out {MINTING_KEYS_DIR}/governor1.pub', shell=True)
+
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/governor2', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor2 -out {MINTING_KEYS_DIR}/governor2.pub', shell=True)
+
+       # This matches the hardcoded key in consensus/enclave/impl/build.rs
+       subprocess.check_output(f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-util-seeded-ed25519-key-gen --seed abababababababababababababababababababababababababababababababab > {MINTING_KEYS_DIR}/minting-trust-root.pem', shell=True)
+
     def start(self):
-        print("Killing any existing processes")
-        try:
-            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway mobilecoind 2>/dev/null", shell=True)
-        except subprocess.CalledProcessError as exc:
-            if exc.returncode != 1:
-                raise
+        self.stop()
 
         self.cloud_logging = CloudLogging()
         self.cloud_logging.start(self)
+
+        print("Generating minting keys")
+        self.generate_minting_keys()
 
         print("Starting nodes")
         for node in self.nodes:
             node.start(self)
 
+        print("Starting network CLI")
         self.cli = NetworkCLI(self)
         self.cli.start()
 
+        print("Starting mobilecoind")
         self.mobilecoind = Mobilecoind(MOBILECOIND_PORT)
         self.mobilecoind.start(self)
 
@@ -476,9 +553,28 @@ class Network:
                     print(f'Node {node} ledger distribution died with exit code {node.ledger_distribution_process.poll()}')
                     return False
 
+            if self.mobilecoind.process and self.mobilecoind.process.poll() is not None:
+                print(f'mobilecoind died with exit code {self.mobilecoind.process.poll()}')
+                return False
+
             time.sleep(1)
 
-    def default_entry_point(self, network_type, skip_build=False):
+    def stop(self):
+        if self.cli is not None:
+            self.cli.stop()
+            self.cli = None
+
+        print("Killing any existing processes")
+        try:
+            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway mobilecoind 2>/dev/null", shell=True)
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode != 1:
+                raise
+
+
+    def default_entry_point(self, network_type, skip_build=False, block_version=None):
+        self.block_version = block_version
+
         if network_type == 'dense5':
             #  5 node interconnected network requiring 4 out of 5  nodes.
             num_nodes = 5
@@ -486,6 +582,14 @@ class Network:
                 other_nodes = [str(j) for j in range(num_nodes) if i != j]
                 peers = [Peer(p) for p in other_nodes]
                 self.add_node(str(i), peers, QuorumSet(3, other_nodes))
+
+        elif network_type == 'dense3':
+            #  3 node interconnected network requiring 2 out of 3 nodes.
+            num_nodes = 3
+            for i in range(num_nodes):
+                other_nodes = [str(j) for j in range(num_nodes) if i != j]
+                peers = [Peer(p) for p in other_nodes]
+                self.add_node(str(i), peers, QuorumSet(1, other_nodes))
 
         elif network_type == 'a-b-c':
             # 3 nodes, where all 3 are required but node `a` and `c` are not peered together.
@@ -522,11 +626,13 @@ class Network:
 
         self.start()
         self.wait()
+        self.stop()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
     parser.add_argument('--network-type', help='Type of network to create', required=True)
     parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
+    parser.add_argument('--block-version', help='Set the block version argument', type=int)
     args = parser.parse_args()
 
-    Network().default_entry_point(args.network_type, args.skip_build)
+    Network().default_entry_point(args.network_type, args.skip_build, args.block_version)

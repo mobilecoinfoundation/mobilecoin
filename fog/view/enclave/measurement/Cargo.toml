@@ -1,0 +1,25 @@
+[package]
+name = "mc-fog-view-enclave-measurement"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+description = "MobileCoin Fog View Enclave - Application Code"
+edition = "2021"
+license = "GPL-3.0"
+links = "view_enclave_measurement"
+rust-version = { workspace = true }
+
+[features]
+# Whether the enclave should be built in simulation mode when it needs to be built
+sgx-sim = []
+
+[dependencies]
+mc-attest-core = { path = "../../../../attest/core" }
+mc-attest-verifier = { path = "../../../../attest/verifier" }
+mc-sgx-css = { path = "../../../../sgx/css" }
+
+[build-dependencies]
+mc-util-build-enclave = { path = "../../../../util/build/enclave" }
+mc-util-build-script = { path = "../../../../util/build/script" }
+mc-util-build-sgx = { path = "../../../../util/build/sgx" }
+
+cargo-emit = "0.2"

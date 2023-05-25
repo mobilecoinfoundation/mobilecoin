@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Code for computing and decrypting fog hints
 
@@ -28,6 +28,7 @@ pub type PlaintextArray = GenericArray<
     Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
 >;
 
+/// A (decrypted) Fog hint
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FogHint {
     view_pubkey: CompressedRistrettoPublic, // aka A from cryptonote public address
@@ -50,16 +51,21 @@ impl From<&PublicAddress> for FogHint {
 }
 
 impl FogHint {
+    /// Create a new fog hint payload
     pub fn new(view_pubkey: RistrettoPublic) -> Self {
         Self {
             view_pubkey: CompressedRistrettoPublic::from(view_pubkey),
         }
     }
+
+    /// Create from a byte slice
     pub fn from_slice(bytes: &[u8]) -> Result<Self, CryptoBoxError> {
         Ok(Self {
             view_pubkey: CompressedRistrettoPublic::try_from(bytes).map_err(CryptoBoxError::Key)?,
         })
     }
+
+    /// Convert to a byte array
     pub fn to_bytes(&self) -> [u8; RISTRETTO_PUBLIC_LEN] {
         *self.view_pubkey.as_bytes()
     }
@@ -104,8 +110,8 @@ impl FogHint {
 
     /// ct_decrypt
     ///
-    /// Try to decrypt an encrypted payload onto this FogHint object in constant time.
-    /// Fails if decryption fails, or the magic number is wrong.
+    /// Try to decrypt an encrypted payload onto this FogHint object in constant
+    /// time. Fails if decryption fails, or the magic number is wrong.
     ///
     /// # Arguments
     /// * ingest_server_private_key
@@ -128,7 +134,8 @@ impl FogHint {
             {
                 Ok((success, plaintext)) => (Choice::from(success), plaintext),
                 Err(_) => {
-                    // An error that we don't have to be constant time with respect to, since rust Result was used
+                    // An error that we don't have to be constant time with respect to, since rust
+                    // Result was used
                     return Choice::from(0);
                 }
             };
@@ -138,7 +145,8 @@ impl FogHint {
             success &= byte.ct_eq(&MAGIC_NUMBER);
         }
 
-        // Write pubkey bytes to output if success is true, otherwise don't change output
+        // Write pubkey bytes to output if success is true, otherwise don't change
+        // output
         let mut output_bytes = output.view_pubkey.to_bytes();
         for idx in 0..output_bytes.len() {
             output_bytes[idx].conditional_assign(&plaintext[idx], success);

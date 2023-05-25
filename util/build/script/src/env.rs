@@ -1,15 +1,13 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains a structure wrapping up the build environment.
 
 use crate::vars::*;
-use failure::Fail;
+use displaydoc::Display;
 use std::{
     borrow::ToOwned,
     collections::{hash_map::Iter as HashMapIter, hash_set::Iter as HashSetIter, HashMap, HashSet},
-    convert::TryFrom,
     env::{split_paths, var, var_os, vars, VarError},
-    iter::FromIterator,
     num::ParseIntError,
     path::{Path, PathBuf},
     str::FromStr,
@@ -22,13 +20,15 @@ pub enum TargetFamily {
     Unix,
     /// The environment is some form of windows
     Windows,
+    /// The environment is wasm
+    Wasm,
 }
 
-/// An enumeration of errors which can occur while parsing the target family environment variable
-#[derive(Clone, Debug, Fail)]
+/// An enumeration of errors which can occur while parsing the target family
+/// environment variable
+#[derive(Clone, Debug, Display)]
 pub enum TargetFamilyError {
-    /// The family was not one of the values
-    #[fail(display = "Unknown family: {}", _0)]
+    /// Unknown family: {0}
     Unknown(String),
 }
 
@@ -39,6 +39,7 @@ impl TryFrom<&str> for TargetFamily {
         match src {
             "unix" => Ok(TargetFamily::Unix),
             "windows" => Ok(TargetFamily::Windows),
+            "wasm" => Ok(TargetFamily::Wasm),
             other => Err(TargetFamilyError::Unknown(other.to_owned())),
         }
     }
@@ -53,11 +54,11 @@ pub enum Endianness {
     Big,
 }
 
-/// An enumeration of errors which can occur while parsing the endianness environment variable
-#[derive(Clone, Debug, Fail)]
+/// An enumeration of errors which can occur while parsing the endianness
+/// environment variable
+#[derive(Clone, Debug, Display)]
 pub enum EndiannessError {
-    /// The endianness value given was neither "big" nor "little".
-    #[fail(display = "Unknown endianness: {}", _0)]
+    /// Unknown endianness: {0}
     Unknown(String),
 }
 
@@ -74,22 +75,17 @@ impl TryFrom<&str> for Endianness {
 }
 
 /// An enumeration of errors which can occur when parsing the build environment
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Display)]
 pub enum EnvironmentError {
-    /// An environment variable which we expected was not set
-    #[fail(display = "Environment variable {} not readable: {}", _0, _1)]
+    /// Environment variable {0} not readable: {1}
     Var(String, VarError),
-    /// The endianness could not be parsed
-    #[fail(display = "Endianness error: {}", _0)]
+    /// Endianness error: {0}
     Endianness(EndiannessError),
-    /// The target family could not be parsed
-    #[fail(display = "Target family error: {}", _0)]
+    /// Target family error: {0}
     TargetFamily(TargetFamilyError),
-    /// There was an error parsing a variable which was supposed to be a numeric value
-    #[fail(display = "Could not parse {}: {}", _0, _1)]
+    /// Could not parse {0}: {1}
     ParseInt(String, ParseIntError),
-    /// The output directory was not in the form `.../<target-dir>/<profile>/out/etc.`
-    #[fail(display = "Output directory badly constructed: {:?}", _0)]
+    /// Output directory badly constructed: {0:?}
     OutDir(PathBuf),
 }
 
@@ -333,12 +329,11 @@ impl Environment {
                     ))
                 }
             },
-            authors: HashSet::from_iter(
-                var(ENV_CARGO_PKG_AUTHORS)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_PKG_AUTHORS.to_owned(), e))?
-                    .split(':')
-                    .map(ToOwned::to_owned),
-            ),
+            authors: var(ENV_CARGO_PKG_AUTHORS)
+                .map_err(|e| EnvironmentError::Var(ENV_CARGO_PKG_AUTHORS.to_owned(), e))?
+                .split(':')
+                .map(ToOwned::to_owned)
+                .collect(),
             name: var(ENV_CARGO_PKG_NAME)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_PKG_NAME.to_owned(), e))?,
             description: var(ENV_CARGO_PKG_DESCRIPTION)
@@ -365,12 +360,11 @@ impl Environment {
                     .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FAMILY.to_owned(), e))?
                     .as_ref(),
             )?,
-            target_features: HashSet::from_iter(
-                var(ENV_CARGO_CFG_TARGET_FEATURE)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FEATURE.to_owned(), e))?
-                    .split(',')
-                    .map(ToOwned::to_owned),
-            ),
+            target_features: var(ENV_CARGO_CFG_TARGET_FEATURE)
+                .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FEATURE.to_owned(), e))?
+                .split(',')
+                .map(ToOwned::to_owned)
+                .collect(),
             target_has_atomic,
             target_has_atomic_load_store,
             target_os: var(ENV_CARGO_CFG_TARGET_OS)
@@ -396,19 +390,22 @@ impl Environment {
         self.locked
     }
 
-    /// Get a reference to a hash set of enabled cargo features (as `lower-kebab-case` strings)
+    /// Get a reference to a hash set of enabled cargo features (as
+    /// `lower-kebab-case` strings)
     pub fn features(&self) -> HashSetIter<String> {
         self.features.iter()
     }
 
     /// Get whether a feature is enabled or not.
     ///
-    /// Feature names are normalized into `lower-kebab-case` (as opposed to `UPPER_SNAKE_CASE`).
+    /// Feature names are normalized into `lower-kebab-case` (as opposed to
+    /// `UPPER_SNAKE_CASE`).
     pub fn feature(&self, feature: &str) -> bool {
         self.features.contains(feature)
     }
 
-    /// Get a reference to a hash map of variables injected by the current crate's dependencies
+    /// Get a reference to a hash map of variables injected by the current
+    /// crate's dependencies
     pub fn depvars(&self) -> HashMapIter<String, String> {
         self.depvars.iter()
     }
@@ -563,7 +560,8 @@ impl Environment {
         &self.target_features
     }
 
-    /// Get a list of types which support atomic operations on the target platform
+    /// Get a list of types which support atomic operations on the target
+    /// platform
     pub fn target_has_atomic(&self) -> &HashSet<String> {
         &self.target_has_atomic
     }

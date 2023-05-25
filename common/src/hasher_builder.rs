@@ -1,13 +1,14 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
-//! This file provides a no-std Hasher object that is wired to take seeds from mcrand
-//! RdRandRng. This hasher is used in `mc_common::HashMap` in and out of the enclave.
+//! This file provides [HasherBuilder], used in `mc_common::HashMap`
+//! in and out of the enclave.
 
 use core::hash::BuildHasher;
-use mc_crypto_rand::McRng;
+use mc_rand::McRng;
 use rand_core::RngCore;
 use siphasher::sip::SipHasher13;
 
+/// A `no_std`-compatible [BuildHasher] using [McRng].
 #[derive(Clone)]
 pub struct HasherBuilder {
     k0: u64,

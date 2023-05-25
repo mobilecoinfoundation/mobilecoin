@@ -1,11 +1,22 @@
 [package]
 name = "mc-crypto-hashes"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[features]
+default = [ "mc-crypto-digestible/default" ]
 
 [dependencies]
-blake2 = { version = "0.9", default-features = false, features = ["simd"] }
-digest = { version = "0.9", default-features = false }
+mc-crypto-digestible = { path = "../digestible", default_features = false }
 
-mc-crypto-digestible = { path = "../digestible" }
+digest = { version = "0.10.1", default-features = false }
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+blake2 = { version = "0.10.2", default-features = false, features = ["simd"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+blake2 = { version = "0.10.2", default-features = false }

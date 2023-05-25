@@ -1,18 +1,16 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
+#![doc = include_str!("../README.md")]
 #![no_std]
 
 use core::{
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Formatter, Result as FmtResult},
     mem::size_of,
     ptr::read_unaligned,
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use sha2::{digest::Digest, Sha256};
+use sha2::{Digest, Sha256};
 
 type Result = StdResult<Signature, Error>;
 
@@ -63,6 +61,10 @@ pub enum Error {
     NonZeroReserved,
 }
 
+/// The length of the header1 field, in bytes
+pub const HEADER_LEN: usize = 16;
+/// The length of the header2 field, in bytes
+pub const HEADER2_LEN: usize = 16;
 /// The length of the SWDEFINED field, in bytes
 pub const SWDEFINED_LEN: usize = 4;
 /// The length of the MODULUS field, in bytes
@@ -91,7 +93,8 @@ pub struct Signature {
     header: [u8; 16],
     /// Intel enclaves will use 0x00008086, other enclaves will use 0x00000000
     vendor: [u8; 4],
-    /// The build date of the enclave, as an 8-decimal date (YYYYMMDD) stored as little-endian bytes
+    /// The build date of the enclave, as an 8-decimal date (YYYYMMDD) stored as
+    /// little-endian bytes
     date: [u8; 4],
     /// The byte stream 0x01010000600000006000000001000000
     header2: [u8; 16],
@@ -132,6 +135,11 @@ pub struct Signature {
 }
 
 impl Signature {
+    /// Retrieve a reference to the header bytes
+    pub fn header(&self) -> &[u8; HEADER_LEN] {
+        &self.header
+    }
+
     /// Retrieve the enclave vendor type.
     pub fn vendor(&self) -> EnclaveVendor {
         u32::from_le_bytes(self.vendor)
@@ -142,10 +150,16 @@ impl Signature {
     /// Retrieve the date (without timezone) the enclave was built as a
     /// [Binary-Coded Decimal](https://en.wikipedia.org/wiki/Binary-coded_decimal).
     ///
-    /// This means that a date like April 15, 2020 will be encoded as the hexadecimal 0x20200415.
-    /// It's a terrible way of encoding dates, but it's how SIGSTRUCT works internally.
+    /// This means that a date like April 15, 2020 will be encoded as the
+    /// hexadecimal 0x20200415. It's a terrible way of encoding dates, but
+    /// it's how SIGSTRUCT works internally.
     pub fn date(&self) -> u32 {
         u32::from_le_bytes(self.date)
+    }
+
+    /// Retrieve a reference to the secondary header bytes
+    pub fn header2(&self) -> &[u8; HEADER2_LEN] {
+        &self.header2
     }
 
     /// Retrieve the software-defined bytes
@@ -193,7 +207,8 @@ impl Signature {
         &self.enclavehash
     }
 
-    /// Generate the MRSIGNER value for this signature and return it as an array of bytes
+    /// Generate the MRSIGNER value for this signature and return it as an array
+    /// of bytes
     pub fn mrsigner(&self) -> [u8; MRSIGNER_LEN] {
         Sha256::digest(&self.modulus[..]).into()
     }
@@ -323,7 +338,8 @@ mod tests {
 
     const VALID: &[u8] = include_bytes!("valid.css");
 
-    // values copied from the sgx_sign generated dump file at the time valid.css was generated
+    // values copied from the sgx_sign generated dump file at the time valid.css was
+    // generated
     const VALID_PARSED: Signature = Signature {
         header: HEADER1,
         vendor: [0x0, 0x0, 0x0, 0x0],

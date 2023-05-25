@@ -1,8 +1,11 @@
 [package]
 name = "mc-ledger-from-archive"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "ledger-from-archive"
@@ -14,4 +17,4 @@ mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 
-structopt = "0.3"
+clap = { version = "4.1", features = ["derive", "env"] }

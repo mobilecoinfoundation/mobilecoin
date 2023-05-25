@@ -1,4 +1,3 @@
-use datatest::DataTestCaseDesc;
 use serde::{de, ser};
 use std::{
     fs::{self, File},
@@ -10,27 +9,22 @@ pub trait TestVector: Sized {
     const FILE_NAME: &'static str;
     const MODULE_SUBDIR: &'static str;
 
-    fn from_jsonl(dir: &str) -> Vec<DataTestCaseDesc<Self>>
+    fn from_jsonl(dir: &str) -> Vec<Self>
     where
         for<'a> Self: de::Deserialize<'a>,
     {
         let filename = format!("{}/{}/{}.jsonl", dir, Self::MODULE_SUBDIR, Self::FILE_NAME);
         let file = File::open(filename.clone())
-            .unwrap_or_else(|_| panic!("cannot read file '{}'", filename));
+            .unwrap_or_else(|_| panic!("cannot read file '{filename}'"));
 
         BufReader::new(file)
             .lines()
             .enumerate()
             .map(|(i, line)| {
-                let line = line
-                    .unwrap_or_else(|_| panic!("cannot read line {} of file '{}'", i, filename));
-                let case: Self = serde_json::from_str(&line)
-                    .unwrap_or_else(|_| panic!("cannot parse line {} of file '{}'", i, filename));
-                DataTestCaseDesc {
-                    name: None,
-                    case,
-                    location: format!("test_vector {}", i),
-                }
+                let line =
+                    line.unwrap_or_else(|_| panic!("cannot read line {i} of file '{filename}'"));
+                serde_json::from_str(&line)
+                    .unwrap_or_else(|_| panic!("cannot parse line {i} of file '{filename}'"))
             })
             .collect()
     }

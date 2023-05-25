@@ -1,13 +1,14 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Connection mock and test utilities
 
+use mc_blockchain_types::{Block, BlockID, BlockIndex, BlockVersion};
 use mc_connection::{
-    BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
-    UserTxConnection,
+    BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
+    Result as ConnectionResult, UserTxConnection,
 };
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::{tx::Tx, FeeMap};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},
@@ -31,15 +32,19 @@ pub struct MockBlockchainConnection<L: Ledger + Sync> {
 
     /// Proposed transactions.
     pub proposed_txs: Vec<Tx>,
+
+    /// The fee map for this peer.
+    pub fee_map: FeeMap,
 }
 
 impl<L: Ledger + Sync> MockBlockchainConnection<L> {
-    pub fn new(uri: ConsensusClientUri, ledger: L, latency_millis: u64) -> Self {
+    pub fn new(uri: ConsensusClientUri, ledger: L, latency_millis: u64, fee_map: FeeMap) -> Self {
         Self {
             uri,
             ledger,
             latency_millis,
             proposed_txs: Vec::new(),
+            fee_map,
         }
     }
 }
@@ -99,7 +104,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
         real_range
             .map(|block_index| {
                 self.ledger
-                    .get_block(block_index as u64)
+                    .get_block(block_index)
                     .or(Err(ConnectionError::NotFound))
             })
             .collect::<Result<Vec<Block>, ConnectionError>>()
@@ -111,6 +116,14 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
 
     fn fetch_block_height(&mut self) -> ConnectionResult<BlockIndex> {
         Ok(self.ledger.num_blocks().unwrap() - 1)
+    }
+
+    fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
+        Ok(BlockInfo {
+            block_index: self.ledger.num_blocks().unwrap() - 1,
+            minimum_fees: self.fee_map.as_ref().clone(),
+            network_block_version: *BlockVersion::MAX,
+        })
     }
 }
 
@@ -131,8 +144,9 @@ mod tests {
     // Mock peer should return the correct range of blocks.
     fn fetch_blocks() {
         let mock_ledger = get_mock_ledger(25);
-        assert_eq!(mock_ledger.lock().blocks_by_block_number.len(), 25);
-        let mut mock_peer = MockBlockchainConnection::new(test_client_uri(123), mock_ledger, 50);
+        assert_eq!(mock_ledger.num_blocks().unwrap(), 25);
+        let mut mock_peer =
+            MockBlockchainConnection::new(test_client_uri(123), mock_ledger, 50, FeeMap::default());
 
         {
             // Get a subset of the peer's blocks.
@@ -147,9 +161,10 @@ mod tests {
         }
 
         {
-            // Get blocks 25,26,27. These are entirely out of range, so should return an error.
+            // Get blocks 25,26,27. These are entirely out of range, so should return an
+            // error.
             if let Ok(blocks) = mock_peer.fetch_blocks(25..28) {
-                println!("Blocks: {:?}", blocks);
+                println!("Blocks: {blocks:?}");
                 panic!();
             }
         }

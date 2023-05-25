@@ -1,40 +1,53 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+#![allow(clippy::result_large_err)]
 
 //! Entrypoint for the MobileCoin server.
 
-use mc_attest_core::DEBUG_ENCLAVE;
 use mc_attest_net::{Client, RaClient};
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
     logger::{create_app_logger, log, o},
     time::SystemTimeProvider,
 };
-use mc_consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
+use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
 use mc_consensus_service::{
-    config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
+    mint_tx_manager::MintTxManagerImpl,
     tx_manager::TxManagerImpl,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
+use mc_consensus_service_config::Config;
 use mc_ledger_db::LedgerDB;
+use mc_util_cli::ParserWithBuildInfo;
 use std::{
     env,
     fs::File,
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
-use structopt::StructOpt;
 
 fn main() -> Result<(), ConsensusServiceError> {
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
-
-    let config = Config::from_args();
+    let config = Config::parse();
     let local_node_id = config.node_id();
+    let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
+    let governors_map = config
+        .tokens()
+        .token_id_to_governors()
+        .expect("Could not parse governors map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
     ));
+    mc_common::setup_panic_handler();
+
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[("local_node_id", local_node_id.responder_id.to_string())],
+    )
+    .expect("Failed setting telemetry tracer");
 
     // load the sealed block signing key fron storage
     let cached_key = match File::open(&config.sealed_block_signing_key) {
@@ -52,6 +65,13 @@ fn main() -> Result<(), ConsensusServiceError> {
         scope.set_tag("local_node_id", local_node_id.responder_id.to_string());
     });
 
+    let blockchain_config = BlockchainConfig {
+        fee_map: fee_map.clone(),
+        governors_map: governors_map.clone(),
+        governors_signature: config.tokens().governors_signature,
+        block_version: config.block_version,
+    };
+
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);
@@ -60,9 +80,11 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
+        blockchain_config,
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
+    log::info!(logger, "Configured minimum fees: {:?}", fee_map);
 
     // write the sealed block signing key
     let mut sealed_key_file =
@@ -73,8 +95,7 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     setup_ledger_dir(&config.origin_block_path, &config.ledger_path);
 
-    let local_ledger =
-        LedgerDB::open(config.ledger_path.clone()).expect("Failed creating LedgerDB");
+    let local_ledger = LedgerDB::open(&config.ledger_path).expect("Failed creating LedgerDB");
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
 
@@ -93,12 +114,20 @@ fn main() -> Result<(), ConsensusServiceError> {
         logger.clone(),
     );
 
+    let mint_tx_manager = MintTxManagerImpl::new(
+        local_ledger.clone(),
+        config.block_version,
+        governors_map,
+        logger.clone(),
+    );
+
     let mut consensus_service = ConsensusService::new(
         config,
         enclave,
         local_ledger,
         ias_client,
         Arc::new(tx_manager),
+        Arc::new(mint_tx_manager),
         Arc::new(SystemTimeProvider::default()),
         logger.clone(),
     );
@@ -114,10 +143,10 @@ fn main() -> Result<(), ConsensusServiceError> {
     panic!("Oh oh, our threads died");
 }
 
-fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf) {
+fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &Path) {
     if let Some(origin_block_path) = config_origin_path.clone() {
-        // Copy origin block to ledger_db path if there are not already contents in ledger_db.
-        // If ledger_path does not exist, create the dir.
+        // Copy origin block to ledger_db path if there are not already contents in
+        // ledger_db. If ledger_path does not exist, create the dir.
         std::fs::create_dir_all(ledger_path).expect("Could not create ledger directory");
         let mut options = fs_extra::dir::CopyOptions::new();
         options.skip_exist = true;
@@ -138,27 +167,28 @@ mod tests {
         fs::File,
         io::{Read, Write},
     };
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     #[should_panic]
     fn test_missing_origin_dir() {
         // If a origin directory is provided but doesn't exist we should panic
-        let origin_block_path = TempDir::new("origin").unwrap();
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let origin_block_path = TempDir::new().unwrap();
+        let ledger_path = TempDir::new().unwrap();
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
     }
 
     #[test]
     fn test_empty_ledger_dir() {
-        // If the ledger directory exists and is empty, the origin files should be copied
-        let origin_block_path = TempDir::new("origin").unwrap();
+        // If the ledger directory exists and is empty, the origin files should be
+        // copied
+        let origin_block_path = TempDir::new().unwrap();
 
         // This will create the ledger path
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let ledger_path = TempDir::new().unwrap();
         assert!(ledger_path.path().exists());
 
         let data_path = origin_block_path.path().join("data.mdb");
@@ -166,7 +196,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let new_data_path = ledger_path.path().join("data.mdb");
@@ -175,9 +205,10 @@ mod tests {
 
     #[test]
     fn test_new_ledger_dir() {
-        // If the ledger directory does not exist, it should be created and the origin files copied
-        let origin_block_path = TempDir::new("origin").unwrap();
-        let ledger_path = TempDir::new("ledger").unwrap();
+        // If the ledger directory does not exist, it should be created and the origin
+        // files copied
+        let origin_block_path = TempDir::new().unwrap();
+        let ledger_path = TempDir::new().unwrap();
 
         // TempDir will create the ledger path, remove it to make sure it gets created
         std::fs::remove_dir(&ledger_path).unwrap();
@@ -188,7 +219,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let new_data_path = ledger_path.path().join("data.mdb");
@@ -198,8 +229,8 @@ mod tests {
     #[test]
     fn test_existing_ledger_data() {
         // If there is already ledger data it should not be overwritten
-        let origin_block_path = TempDir::new("origin").unwrap();
-        let ledger_path = TempDir::new("ledger").unwrap();
+        let origin_block_path = TempDir::new().unwrap();
+        let ledger_path = TempDir::new().unwrap();
 
         // Create empty files in origin
         let data_path = origin_block_path.path().join("data.mdb");
@@ -216,7 +247,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let mut data_file = File::open(&ledger_data_path).unwrap();

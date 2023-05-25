@@ -1,42 +1,33 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Node ID type
 
 use crate::responder_id::ResponderId;
-use binascii::ConvertError as BinConvertError;
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use failure::Fail;
-use hex_fmt::HexFmt;
+use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Public, KeyError};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum NodeIDError {
-    #[fail(display = "Could not create NodeID due to serialization failure")]
+    /// Could not create NodeID due to serialization failure
     Deserialization,
-    #[fail(display = "The input length was too short or not right (padding)")]
+    /// The input length was too short or not right (padding)
     InvalidInputLength,
-    #[fail(display = "The output buffer was too short for the data")]
+    /// The output buffer was too short for the data
     InvalidOutputLength,
-    #[fail(display = "The input data contained invalid characters")]
+    /// The input data contained invalid characters
     InvalidInput,
-    #[fail(display = "Could not parse public key for NodeID")]
+    /// Could not parse public key for NodeID
     KeyParseError,
-}
-
-impl From<BinConvertError> for NodeIDError {
-    fn from(src: BinConvertError) -> Self {
-        match src {
-            BinConvertError::InvalidInputLength => NodeIDError::InvalidInputLength,
-            BinConvertError::InvalidOutputLength => NodeIDError::InvalidOutputLength,
-            BinConvertError::InvalidInput => NodeIDError::InvalidInput,
-        }
-    }
 }
 
 impl From<KeyError> for NodeIDError {
@@ -45,33 +36,23 @@ impl From<KeyError> for NodeIDError {
     }
 }
 
-/// Node unique identifier containing a responder_id as well as a unique public key
-#[derive(Clone, Serialize, Deserialize, Digestible)]
+/// Node unique identifier containing a responder_id as well as a unique public
+/// key
+#[derive(Clone, Deserialize, Digestible, Message, Serialize)]
 pub struct NodeID {
+    /// The Responder ID for this node
+    #[prost(message, required, tag = 1)]
     pub responder_id: ResponderId,
+    /// The public message-signing key for this node
+    #[prost(message, required, tag = 2)]
     pub public_key: Ed25519Public,
 }
 
 impl Display for NodeID {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let pubkey_bytes: &[u8] = self.public_key.as_ref();
-        write!(f, "{}:{:?}", self.responder_id, HexFmt(pubkey_bytes))
+        write!(f, "{}:{}", self.responder_id, self.public_key)
     }
 }
-
-impl Debug for NodeID {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let pubkey_bytes: &[u8] = self.public_key.as_ref();
-        write!(
-            f,
-            "NodeID({}:{:?})",
-            self.responder_id,
-            HexFmt(pubkey_bytes)
-        )
-    }
-}
-
-impl Eq for NodeID {}
 
 impl Hash for NodeID {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
@@ -85,15 +66,17 @@ impl PartialEq for NodeID {
     }
 }
 
-impl Ord for NodeID {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.public_key.cmp(&other.public_key)
-    }
-}
+impl Eq for NodeID {}
 
 impl PartialOrd for NodeID {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.public_key.partial_cmp(&other.public_key)
+    }
+}
+
+impl Ord for NodeID {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.public_key.cmp(&other.public_key)
     }
 }
 

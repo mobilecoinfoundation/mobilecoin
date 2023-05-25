@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the wrapper type for an sgx_attributes_t
 
@@ -6,7 +6,6 @@ use crate::{impl_sgx_wrapper_reqs, traits::SgxWrapperType};
 use alloc::vec::Vec;
 use core::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     mem::size_of,
@@ -134,7 +133,7 @@ mod test {
         let attr_ser = serialize(&attrs).expect("Could not serialize attributes");
         let attrs2: Attributes = deserialize(&attr_ser).expect("Could not deserialize attributes");
         assert_eq!(attrs, attrs2);
-        assert_eq!(0x0102_0304_0506_0708, attrs2.flags());
-        assert_eq!(0x0807_0605_0403_0201, attrs2.xfrm());
+        assert_eq!(src.flags, attrs2.flags());
+        assert_eq!(src.xfrm, attrs2.xfrm());
     }
 }

@@ -1,0 +1,29 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Delete target dev env components and optionally the k8s namespace.
+
+name: (Manual) Delete a Dev Namespace
+
+run-name: Reset and Delete ${{ inputs.namespace }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      delete_namespace:
+        description: "Delete Target Namespace"
+        type: boolean
+        required: true
+        default: true
+
+jobs:
+  reset:
+    name: Reset Dev Namespace - ${{ inputs.namespace }}
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ inputs.namespace }}
+      delete_namespace: ${{ inputs.delete_namespace }}
+    secrets: inherit

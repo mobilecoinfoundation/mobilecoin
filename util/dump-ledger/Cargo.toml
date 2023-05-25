@@ -1,0 +1,26 @@
+[package]
+name = "mc-util-dump-ledger"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[[bin]]
+name = "dump-ledger"
+path = "src/bin/dump_ledger.rs"
+
+[dependencies]
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-common = { path = "../../common", features = ["log", "loggers"] }
+mc-ledger-db = { path = "../../ledger/db" }
+
+clap = { version = "4.1", features = ["derive", "env"] }
+displaydoc = "0.2"
+serde_json = "1.0"
+
+[dev-dependencies]
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+
+tempfile = "3.5"

@@ -1,8 +1,10 @@
 [package]
 name = "mc-util-grpc-token-generator"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
 
 [[bin]]
 name = "mc-util-grpc-token-generator"
@@ -11,12 +13,7 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-common = { path = "../../common", features = ["std"] }
 mc-util-grpc = { path = "../grpc" }
+mc-util-parse = { path = "../parse" }
 
-hex = "0.4"
-percent-encoding = "2.1.0"
-structopt = "0.3"
-
-[build-dependencies]
-# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
-# Go figure ¯\_(ツ)_/¯
-serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+clap = { version = "4.1", features = ["derive", "env"] }
+percent-encoding = "2.2.0"

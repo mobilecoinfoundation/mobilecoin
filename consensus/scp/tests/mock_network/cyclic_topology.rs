@@ -1,10 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// Ring style network topologies.
-
-// We allow dead code because not all integration tests use all of the common code.
-// https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
+//! Ring style network topologies.
 
 use crate::mock_network;
 use mc_common::NodeID;
@@ -33,12 +29,12 @@ pub fn directed_cycle(num_nodes: usize) -> mock_network::NetworkConfig {
             .collect::<Vec<NodeID>>();
 
         nodes.push(mock_network::NodeConfig::new(
-            format!("c{}", node_index),
+            format!("c{node_index}"),
             test_utils::test_node_id(node_index as u32),
             peers_vector.iter().cloned().collect::<HashSet<NodeID>>(),
             QuorumSet::new_with_node_ids(1, vec![next_node_id]),
         ));
     }
 
-    mock_network::NetworkConfig::new(format!("cyclic{}", num_nodes), nodes)
+    mock_network::NetworkConfig::new(format!("cyclic{num_nodes}"), nodes)
 }

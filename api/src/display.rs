@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Character encodings for public addresses and request types for easy
 //! cut-and-paste.
 
 use crate::printable;
-use crc::crc32;
+use crc::Crc;
 use displaydoc::Display;
 use protobuf::Message;
 
@@ -27,11 +27,15 @@ pub enum Error {
     InsufficientBytes(usize),
 }
 
+impl std::error::Error for Error {}
+
 /// A little-endian IEEE CRC32 checksum is prepended to payloads.
-/// Since this is public information with a possibility of transcription failure,
-/// a checksum is more appropriate than a hash function
+/// Since this is public information with a possibility of transcription
+/// failure, a checksum is more appropriate than a hash function
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
-    crc32::checksum_ieee(data).to_le_bytes()
+    Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
+        .checksum(data)
+        .to_le_bytes()
 }
 
 /// The B58 wrapper supports encoding the protocol buffer bytes as a b58
@@ -74,9 +78,11 @@ mod display_tests {
         external,
         printable::{PaymentRequest, PrintableWrapper, TransferPayload},
     };
-    use datatest::data;
-    use mc_test_vectors_b58_encodings::*;
+    use mc_test_vectors_b58_encodings::{
+        B58EncodePublicAddressWithFog, B58EncodePublicAddressWithoutFog,
+    };
     use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
 
     fn sample_public_address() -> external::PublicAddress {
         let mut public_address = external::PublicAddress::new();
@@ -123,15 +129,13 @@ mod display_tests {
         wrapper
     }
 
-    #[data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_encode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
         let wrapper = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
         assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
     }
 
-    #[data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_decode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
         let decoded_wrapper = PrintableWrapper::b58_decode(case.b58_encoded.clone()).unwrap();
         let expected = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
@@ -161,15 +165,13 @@ mod display_tests {
         wrapper
     }
 
-    #[data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_encode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
         let wrapper = printable_wrapper_from_b58_encode_public_address_with_fog(&case);
         assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
     }
 
-    #[data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_decode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
         let decoded_wrapper = PrintableWrapper::b58_decode(case.b58_encoded.clone()).unwrap();
         let expected = printable_wrapper_from_b58_encode_public_address_with_fog(&case);
@@ -195,7 +197,8 @@ mod display_tests {
     #[test]
     fn test_transfer_payload_roundtrip() {
         let mut transfer_payload = TransferPayload::new();
-        transfer_payload.set_entropy(vec![1u8; 32]);
+        transfer_payload.set_root_entropy(vec![1u8; 32]);
+        transfer_payload.set_bip39_entropy(vec![12u8; 32]);
         transfer_payload
             .mut_tx_out_public_key()
             .set_data(vec![2u8; 32]);

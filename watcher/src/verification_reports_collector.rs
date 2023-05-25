@@ -1,10 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Worker thread for collecting verification reports from nodes.
 
 use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use grpcio::Environment;
-use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
+use mc_attest_core::{VerificationReport, VerificationReportData};
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -19,7 +20,6 @@ use mc_util_grpc::TokenBasicCredentialsGenerator;
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
-    convert::TryFrom,
     marker::PhantomData,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -30,8 +30,9 @@ use std::{
 };
 use url::Url;
 
-/// A trait that specifies the functionality VerificationReportsCollector needs in order to go from
-/// a ConsensusClientUri into a VerificationReport, and the associated signer key.
+/// A trait that specifies the functionality VerificationReportsCollector needs
+/// in order to go from a ConsensusClientUri into a VerificationReport, and the
+/// associated signer key.
 pub trait NodeClient {
     /// Get a verification report for a given client.
     fn get_verification_report(
@@ -44,7 +45,8 @@ pub trait NodeClient {
     fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String>;
 }
 
-/// An implementation of `NodeClient` that talks to a consensus node using `ThickClient`.
+/// An implementation of `NodeClient` that talks to a consensus node using
+/// `ThickClient`.
 pub struct ConsensusNodeClient;
 impl NodeClient for ConsensusNodeClient {
     fn get_verification_report(
@@ -73,33 +75,30 @@ impl NodeClient for ConsensusNodeClient {
         // Contact node and get a VerificationReport.
         let verifier = Verifier::default();
         let mut client = ThickClient::new(
+            // TODO: Supply a chain-id to watcher?
+            String::default(),
             node_url.clone(),
             verifier,
             env,
             credentials_provider,
             logger,
         )
-        .map_err(|err| {
-            format!(
-                "Failed constructing client to connect to {}: {}",
-                node_url, err
-            )
-        })?;
+        .map_err(|err| format!("Failed constructing client to connect to {node_url}: {err}"))?;
 
-        Ok(client
+        client
             .attest()
-            .map_err(|err| format!("Failed attesting {}: {}", node_url, err))?)
+            .map_err(|err| format!("Failed attesting {node_url}: {err}"))
     }
 
     /// Get the block signer key out of a VerificationReport
     fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String> {
         let report_data = VerificationReportData::try_from(verification_report)
-            .map_err(|err| format!("Failed constructing VerificationReportData: {}", err))?;
+            .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
 
         let report_body = report_data
             .quote
             .report_body()
-            .map_err(|err| format!("Failed getting report body: {}", err))?;
+            .map_err(|err| format!("Failed getting report body: {err}"))?;
 
         let custom_data = report_body.report_data();
         let custom_data_bytes: &[u8] = custom_data.as_ref();
@@ -114,14 +113,14 @@ impl NodeClient for ConsensusNodeClient {
         let signer_bytes = &custom_data_bytes[32..];
 
         let signer_public_key = Ed25519Public::try_from(signer_bytes)
-            .map_err(|err| format!("Unable to construct key: {}", err))?;
+            .map_err(|err| format!("Unable to construct key: {err}"))?;
 
         Ok(signer_public_key)
     }
 }
 
-/// Periodically checks the verification report poll queue in the database and attempts to contact
-/// nodes and get their verification report.
+/// Periodically checks the verification report poll queue in the database and
+/// attempts to contact nodes and get their verification report.
 pub struct VerificationReportsCollector<NC: NodeClient = ConsensusNodeClient> {
     join_handle: Option<thread::JoinHandle<()>>,
     stop_requested: Arc<AtomicBool>,
@@ -276,7 +275,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
 
             // Contact node and get a VerificationReport.
             let verification_report = match NC::get_verification_report(
-                &source_config,
+                source_config,
                 self.grpcio_env.clone(),
                 self.logger.clone(),
             ) {
@@ -309,7 +308,16 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
         verification_report: &VerificationReport,
     ) {
         let verification_report_block_signer = match NC::get_block_signer(verification_report) {
-            Ok(key) => key,
+            Ok(key) => {
+                // TODO: Add encode to key's Display impl
+                log::info!(
+                    self.logger,
+                    "Verification report from {} has block signer {}",
+                    node_url,
+                    hex::encode(key.to_bytes())
+                );
+                key
+            }
             Err(err) => {
                 log::error!(
                     self.logger,
@@ -321,15 +329,9 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
             }
         };
 
-        log::info!(
-            self.logger,
-            "Verification report from {} has block signer {}",
-            node_url,
-            hex::encode(verification_report_block_signer.to_bytes())
-        );
-
         // Store the VerificationReport in the database, and also remove
-        // verification_report_block_signer and potential_signers from the polling queue.
+        // verification_report_block_signer and potential_signers from the polling
+        // queue.
         match self.watcher_db.add_verification_report(
             tx_src_url,
             &verification_report_block_signer,
@@ -363,17 +365,17 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_attest_core::VerificationSignature;
+    use mc_blockchain_types::BlockSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
-    use mc_transaction_core::BlockSignature;
-    use serial_test_derive::serial;
-    use std::{iter::FromIterator, str::FromStr, sync::Mutex, thread::sleep};
+    use serial_test::serial;
+    use std::{str::FromStr, sync::Mutex, thread::sleep};
 
-    // A contraption that allows us to return a specific VerificationReport for a given
-    // ConsensusClientUri while also allowing the tests to control it.
-    // Due to the global scope of this, mandated by the NodeClient trait, the tests have to run in
-    // serial.
+    // A contraption that allows us to return a specific VerificationReport for a
+    // given ConsensusClientUri while also allowing the tests to control it.
+    // Due to the global scope of this, mandated by the NodeClient trait, the tests
+    // have to run in serial.
     lazy_static::lazy_static! {
         static ref REPORT_VERSION: Arc<Mutex<HashMap<ConsensusClientUri, u8>>> =
         Arc::new(Mutex::new(HashMap::default()));
@@ -388,7 +390,7 @@ mod tests {
 
         pub fn current_expected_report(node_url: &ConsensusClientUri) -> VerificationReport {
             let report_version_map = REPORT_VERSION.lock().unwrap();
-            let report_version = report_version_map.get(&node_url).map(|v| *v).unwrap_or(1);
+            let report_version = report_version_map.get(node_url).copied().unwrap_or(1);
 
             VerificationReport {
                 sig: VerificationSignature::from(vec![report_version; 32]),
@@ -398,8 +400,8 @@ mod tests {
         }
 
         pub fn report_signer(verification_report: &VerificationReport) -> Ed25519Pair {
-            // Convert the report into a 32 bytes hash so that we could construct a consistent key
-            // from it.
+            // Convert the report into a 32 bytes hash so that we could construct a
+            // consistent key from it.
             let bytes = mc_util_serial::encode(verification_report);
             let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"verification_report");
             let priv_key = Ed25519Private::try_from(&hash[..]).unwrap();
@@ -463,8 +465,8 @@ mod tests {
             logger,
         );
 
-        // Get the current signers for node1, node2 and node3. They should all be different and
-        // consistent.
+        // Get the current signers for node1, node2 and node3. They should all be
+        // different and consistent.
         let signer1 = TestNodeClient::current_signer(&node1_url);
         let signer2 = TestNodeClient::current_signer(&node2_url);
         let signer3 = TestNodeClient::current_signer(&node3_url);
@@ -506,10 +508,10 @@ mod tests {
             HashMap::default()
         );
 
-        // Add a block signature for signer1, this should get the background thread to get the
-        // VerificationReport from node1 and put it into the database.
+        // Add a block signature for signer1, this should get the background thread to
+        // get the VerificationReport from node1 and put it into the database.
         let signed_block_a1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer1).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer1).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 1, signed_block_a1, filename.clone())
             .unwrap();
@@ -534,9 +536,10 @@ mod tests {
             sleep(Duration::from_millis(100));
         }
 
-        // Add a block signature for signer2, while the returned report is still signer1.
+        // Add a block signature for signer2, while the returned report is still
+        // signer1.
         let signed_block_a2 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signer2).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[1].block(), &signer2).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 1, signed_block_a2, filename.clone())
             .unwrap();
@@ -583,7 +586,7 @@ mod tests {
         );
 
         let signed_block_a3 =
-            BlockSignature::from_block_and_keypair(&blocks[2].0, &updated_signer1).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[2].block(), &updated_signer1).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 3, signed_block_a3, filename.clone())
             .unwrap();
@@ -613,25 +616,25 @@ mod tests {
             sleep(Duration::from_millis(100));
         }
 
-        // Add two more blocks, one for node2 (that we can reach) and one for node3 (that we can't
-        // reach)
+        // Add two more blocks, one for node2 (that we can reach) and one for node3
+        // (that we can't reach)
         let signed_block_b1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer2).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer2).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url2, 1, signed_block_b1, filename.clone())
             .unwrap();
 
         let signed_block_c1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer3).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer3).unwrap();
         watcher_db
-            .add_block_signature(&tx_src_url3, 1, signed_block_c1, filename.clone())
+            .add_block_signature(&tx_src_url3, 1, signed_block_c1, filename)
             .unwrap();
 
         let mut tries = 30;
         let expected_reports_signer2 = HashMap::from_iter(vec![
-            (tx_src_url1.clone(), vec![None]),
+            (tx_src_url1, vec![None]),
             (
-                tx_src_url2.clone(),
+                tx_src_url2,
                 vec![Some(TestNodeClient::current_expected_report(&node2_url))],
             ),
         ]);
@@ -653,8 +656,7 @@ mod tests {
 
             if tries == 0 {
                 panic!(
-                    "report not synced: reports_signer2:{:?} reports_signer3:{:?}",
-                    reports_signer2, reports_signer3
+                    "report not synced: reports_signer2:{reports_signer2:?} reports_signer3:{reports_signer3:?}"
                 );
             }
             tries -= 1;

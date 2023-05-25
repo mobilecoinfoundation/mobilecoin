@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
 
@@ -10,19 +10,16 @@
 //!
 //! There is also a versioning tag used to allow for a wire-stable format
 //!
-//! To use, create the object `VersionedCryptoBox`, then use the CryptoBox trait to
-//! encrypt and decrypt.
+//! To use, create the object `VersionedCryptoBox`, then use the CryptoBox trait
+//! to encrypt and decrypt.
 
 extern crate alloc;
-
-pub use aead::generic_array;
-pub use mc_crypto_ct_aead::aead;
 
 mod hkdf_box;
 mod traits;
 mod versioned;
 
-pub use aead::Error as AeadError;
+pub use aead::{self, generic_array, Error as AeadError};
 pub use traits::{CryptoBox, Error};
 pub use versioned::{VersionError, VersionedCryptoBox};
 
@@ -56,7 +53,7 @@ mod test {
                         algo.decrypt(&a, &ciphertext).expect("decryption failed!");
                     assert_eq!(plaintext.len(), decrypted.len());
                     assert_eq!(plaintext, &&decrypted[..]);
-                    assert_eq!(bool::from(success), true);
+                    assert!(bool::from(success));
                 }
             }
         });
@@ -78,7 +75,7 @@ mod test {
                 for _reps in 0..50 {
                     let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
                     let (success, _decrypted) = algo.decrypt(&not_a, &ciphertext).unwrap();
-                    assert_eq!(bool::from(success), false);
+                    assert!(!bool::from(success));
                 }
             }
         });
@@ -103,7 +100,7 @@ mod test {
                         .decrypt_fixed_length(&a, &ciphertext)
                         .expect("decryption failed!");
                     assert_eq!(plaintext, &decrypted);
-                    assert_eq!(bool::from(success), true);
+                    assert!(bool::from(success));
                 }
             }
         });

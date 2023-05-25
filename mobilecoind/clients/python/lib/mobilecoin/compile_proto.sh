@@ -25,12 +25,16 @@ case "$(uname -s)" in
   CYGWIN*|MINGW32*|MSYS*|MINGW*)
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
+    py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/quorum_set.proto
+    py.exe -m grpc_tools.protoc -I$MC_API -I$CONSENSUS_API --python_out=. $CONSENSUS_API/consensus_common.proto
     py.exe -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
   ;;
 
   *)
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
+    python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/quorum_set.proto
+    python3 -m grpc_tools.protoc -I$MC_API -I$CONSENSUS_API --python_out=. $CONSENSUS_API/consensus_common.proto
     python3 -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
   ;;
 esac

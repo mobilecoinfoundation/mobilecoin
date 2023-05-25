@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mix-in application of local peers traits to SyncConnection.
 
@@ -14,8 +14,8 @@ use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use mc_transaction_core::tx::TxHash;
 use std::time::Duration;
 
-/// Blanket implementation of RetryableConsensusConnection for SyncConnection objects which own a
-/// ConsensusConnection.
+/// Blanket implementation of RetryableConsensusConnection for SyncConnection
+/// objects which own a ConsensusConnection.
 impl<CC: ConsensusConnection> RetryableConsensusConnection for SyncConnection<CC> {
     fn remote_responder_id(&self) -> ResponderId {
         self.read().remote_responder_id()

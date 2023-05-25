@@ -1,29 +1,33 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Noise Protocol CipherState
 
 use alloc::vec;
 
-use aead::{AeadMut, Error as AeadError, NewAead, Payload};
-use aes_gcm::Aes256Gcm;
+use aead::{AeadMut, Error as AeadError, KeyInit, Payload};
 use alloc::vec::Vec;
 use core::cmp::min;
-use failure::Fail;
+use digest::{core_api::BlockSizeUser, Digest};
+use displaydoc::Display;
 use generic_array::{typenum::Unsigned, GenericArray};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+const MAX_BYTES_SENT: u64 = (1u64 << 56) + 4;
+
+#[derive(
+    Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum CipherError {
-    #[fail(display = "Key is the wrong length")]
+    /// Key is the wrong length
     KeyLength,
-    #[fail(display = "Nonce rollover or too many bytes encrypted")]
+    /// Nonce rollover or too many bytes encrypted
     ReKeyNeeded,
-    #[fail(display = "The chosen cipher does not support re-keying")]
+    /// The chosen cipher does not support re-keying
     ReKeyNotSupported,
-    #[fail(display = "Rekey attempted when no key was set")]
+    /// Rekey attempted when no key was set
     NoKey,
-    #[fail(display = "Authenticated encryption error")]
+    /// Authenticated encryption error
     Aead,
 }
 
@@ -38,7 +42,7 @@ impl From<AeadError> for CipherError {
 /// Specifically, this trait and `aead::AeadMut` should cover the requirements
 /// of [section 4.2](http://noiseprotocol.org/noise.html#cipher-functions) of
 /// the spec.
-pub trait NoiseCipher: AeadMut + NewAead + Sized {
+pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     /// Generic re-keying method, will be called by NoiseCipher implementations
     /// for legit ciphers.
     ///
@@ -109,20 +113,24 @@ pub trait NoiseCipher: AeadMut + NewAead + Sized {
     }
 }
 
-impl NoiseCipher for Aes256Gcm {}
+impl<C> NoiseCipher for C where C: AeadMut + KeyInit + Sized {}
+
+// Essentially an alias for Digest + BlockSizeUser + Clone.
+pub trait NoiseDigest: Digest + BlockSizeUser + Clone {}
+impl<D> NoiseDigest for D where D: Digest + BlockSizeUser + Clone {}
 
 /// The Noise Protocol CipherState object, modified to support AEADs with
 /// differing key/nonce lengths.
 ///
 /// This is defined by [section 5.1](http://noiseprotocol.org/noise.html#the-cipherstate-object)
 /// of the specification.
-pub struct CipherState<Cipher: AeadMut + NewAead + Sized + NoiseCipher> {
+pub struct CipherState<Cipher: NoiseCipher> {
     cipher: Option<Cipher>,
     nonce: u64,
     bytes_sent: u64,
 }
 
-impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
+impl<Cipher: NoiseCipher> CipherState<Cipher> {
     /// The noise protocol `InitializeKey(k)` operation.
     ///
     /// This will reset the internal key, create a new AEAD cipher instance,
@@ -153,12 +161,19 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
         self.cipher.is_some()
     }
 
+    /// Retrieve the nonce value which will be used in the next operation.
+    ///
+    /// This is an extension of the noise protocol to allow for implicit-nonce
+    /// writers with explicit-nonce readers to co-exist in the same stream.
+    pub fn next_nonce(&self) -> u64 {
+        self.nonce
+    }
+
     /// The noise protocol `SetNonce()` operation.
     ///
     /// This will irrevocably override the current nonce value.
     pub fn set_nonce(&mut self, nonce: u64) {
         self.nonce = nonce;
-        // TODO: return current nonce? We don't provide any access otherwise...
     }
 
     /// The noise protocol `EncryptWithAd()` operation.
@@ -168,7 +183,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
     /// implementation returned an error.
     pub fn encrypt_with_ad(&mut self, aad: &[u8], msg: &[u8]) -> Result<Vec<u8>, CipherError> {
         let msg_len = msg.len() as u64;
-        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > 72_057_594_037_927_940 {
+        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > MAX_BYTES_SENT {
             return Err(CipherError::ReKeyNeeded);
         }
 
@@ -209,7 +224,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
 
             // This is a little weird down here, but it indicates the far side
             // encrypted some data it shouldn't have...
-            if self.bytes_sent + retval.len() as u64 > 72_057_594_037_927_940 {
+            if self.bytes_sent + retval.len() as u64 > MAX_BYTES_SENT {
                 return Err(CipherError::ReKeyNeeded);
             }
 
@@ -240,7 +255,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
 }
 
 /// Initialize a new `CipherState` with no existing data.
-impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> Default for CipherState<Cipher> {
+impl<Cipher: NoiseCipher> Default for CipherState<Cipher> {
     fn default() -> Self {
         Self {
             cipher: None,
@@ -253,6 +268,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> Default for CipherState<Ci
 #[cfg(test)]
 mod test {
     use super::*;
+    use aes_gcm::{Aes256Gcm, KeySizeUser};
 
     #[test]
     fn default() {
@@ -265,7 +281,7 @@ mod test {
     #[test]
     fn initialize_key() {
         let mut cipher = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         cipher
             .initialize_key(Some(key))
@@ -276,38 +292,25 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "KeyLength")]
     fn bad_initialize_key() {
         let mut cipher = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize() - 1];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize() - 1];
 
-        cipher
-            .initialize_key(Some(key))
-            .expect("Could not intialize key");
+        assert_eq!(
+            cipher.initialize_key(Some(key)),
+            Err(CipherError::KeyLength)
+        );
     }
 
     #[test]
-    #[should_panic(expected = "Could not encrypt: NoKey")]
     fn dont_encrypt_decrypt() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
-        let ciphertext = encryptor
-            .encrypt_with_ad(&[], &key)
-            .expect("Could not encrypt");
-
-        assert_eq!(key, ciphertext);
-        assert_eq!(encryptor.nonce, 0);
-        assert_eq!(encryptor.bytes_sent, 0);
-
-        let mut decryptor = CipherState::<Aes256Gcm>::default();
-        let plaintext = decryptor
-            .decrypt_with_ad(&[], &ciphertext)
-            .expect("Could not decrypt");
-
-        assert_eq!(plaintext, key);
-        assert_eq!(decryptor.nonce, 0);
-        assert_eq!(decryptor.bytes_sent, 0);
+        assert_eq!(
+            encryptor.encrypt_with_ad(&[], &key),
+            Err(CipherError::NoKey)
+        );
     }
 
     #[test]
@@ -316,7 +319,7 @@ mod test {
     fn encrypt_decrypt() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
         let mut decryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         encryptor
             .initialize_key(Some(key.clone()))
@@ -343,10 +346,9 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Could not encrypt without key: NoKey")]
     fn remove_key() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         encryptor
             .initialize_key(Some(key.clone()))
@@ -363,12 +365,12 @@ mod test {
             .initialize_key(None)
             .expect("Could not de-initialize key");
 
-        let ciphertext2 = encryptor
-            .encrypt_with_ad(&[], &key)
-            .expect("Could not encrypt without key");
+        assert_eq!(
+            encryptor.encrypt_with_ad(&[], &key),
+            Err(CipherError::NoKey)
+        );
 
         assert!(!encryptor.has_key());
-        assert_eq!(key, ciphertext2);
         assert_eq!(encryptor.nonce, 0);
         assert_eq!(encryptor.bytes_sent, 0);
     }
@@ -377,7 +379,7 @@ mod test {
     /// Try to use the rekey method
     fn rekey() {
         let mut encryptor = CipherState::<Aes256Gcm>::default();
-        let key = vec![0u8; <Aes256Gcm as NewAead>::KeySize::to_usize()];
+        let key = vec![0u8; <Aes256Gcm as KeySizeUser>::KeySize::to_usize()];
 
         encryptor
             .initialize_key(Some(key.clone()))
@@ -397,5 +399,15 @@ mod test {
 
         assert_eq!(encryptor.nonce, 2);
         assert_eq!(encryptor.bytes_sent, key.len() as u64);
+    }
+
+    /// Try to set the nonce, and retrieve it.
+    #[test]
+    fn set_nonce() {
+        let mut encryptor = CipherState::<Aes256Gcm>::default();
+        let expected = 1234;
+        encryptor.set_nonce(expected);
+        let actual = encryptor.next_nonce();
+        assert_eq!(expected, actual);
     }
 }

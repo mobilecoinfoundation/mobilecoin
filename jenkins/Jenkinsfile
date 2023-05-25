@@ -62,7 +62,7 @@ pipeline {
 
           // Copy relevant binaries to staging area
           sh '''
-            for file in $(find $WORKSPACE/target/release -maxdepth 1 -type f "(" -name '*.so' -o -executable ")" -not -name '*_test' ); do
+            for file in $(find ${CARGO_TARGET_DIR:-$WORKSPACE/target}/release -maxdepth 1 -type f "(" -name '*.so' -o -executable ")" -not -name '*_test' ); do
               cp -v ${file} $WORKSPACE/ops/bin/
             done
             ls -la $WORKSPACE/ops/bin

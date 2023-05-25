@@ -1,34 +1,40 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! mobilecoind daemon entry point
 
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use clap::Parser;
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
+use mc_util_telemetry::setup_default_tracer;
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
 use std::{
     path::Path,
     sync::{Arc, RwLock},
 };
-use structopt::StructOpt;
 
 fn main() {
-    let config = Config::from_args();
+    let _sentry_guard = mc_common::sentry::init();
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
+
+    let config = Config::parse();
     if !cfg!(debug_assertions) && !config.offline {
         config.validate_host().expect("Could not validate host");
     }
 
-    mc_common::setup_panic_handler();
-    let _sentry_guard = mc_common::sentry::init();
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let _tracer =
+        setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer");
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-    mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+    mr_signer_verifier
+        .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
 
     let mut verifier = Verifier::default();
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -75,25 +81,27 @@ fn main() {
 
             log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
             let watcher_db = create_or_open_rw_watcher_db(
-                watcher_db_path.clone(),
+                watcher_db_path,
                 &transactions_fetcher.source_urls,
                 logger.clone(),
             )
             .expect("Could not create or open WatcherDB");
 
             // Start watcher db sync thread, unless running in offline mode.
-            log::info!(logger, "Starting watcher sync thread from mobilecoind.");
             let watcher_sync_thread = if config.offline {
-                None
+                panic!("Attempted to start watcher but we are configured in offline mode");
             } else {
-                Some(WatcherSyncThread::new(
-                    watcher_db.clone(),
-                    transactions_fetcher,
-                    ledger_db.clone(),
-                    config.poll_interval,
-                    false,
-                    logger.clone(),
-                ))
+                log::info!(logger, "Starting watcher sync thread from mobilecoind.");
+                Some(
+                    WatcherSyncThread::new(
+                        watcher_db.clone(),
+                        ledger_db.clone(),
+                        config.poll_interval,
+                        false,
+                        logger.clone(),
+                    )
+                    .expect("Failed starting watcher thread"),
+                )
             };
             (Some(watcher_db), watcher_sync_thread)
         }
@@ -126,6 +134,7 @@ fn main() {
                 network_state,
                 listen_uri,
                 config.num_workers,
+                config.peers_config.chain_id.clone(),
                 logger,
             );
 
@@ -154,25 +163,46 @@ fn create_or_open_ledger_db(
     logger: &Logger,
     transactions_fetcher: &ReqwestTransactionsFetcher,
 ) -> LedgerDB {
-    // Attempt to open the ledger and see if it has anything in it.
-    if let Ok(ledger_db) = LedgerDB::open(config.ledger_db.clone()) {
-        if let Ok(num_blocks) = ledger_db.num_blocks() {
-            if num_blocks > 0 {
-                // Successfully opened a ledger that has blocks in it.
-                log::info!(
-                    logger,
-                    "Ledger DB {:?} opened: num_blocks={} num_txos={}",
-                    config.ledger_db,
-                    num_blocks,
-                    ledger_db.num_txos().expect("Failed getting number of txos")
-                );
-                return ledger_db;
-            }
-        }
+    let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
+
+    // Attempt to run migrations, if requested and ledger is available.
+    if config.ledger_db_migrate && ledger_db_file.exists() {
+        mc_ledger_migration::migrate(&config.ledger_db, logger);
     }
 
-    // Ledger doesn't exist, or is empty. Copy a bootstrapped ledger or try and get it from the network.
-    let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
+    // Attempt to open the ledger and see if it has anything in it.
+    match LedgerDB::open(&config.ledger_db) {
+        Ok(ledger_db) => {
+            if let Ok(num_blocks) = ledger_db.num_blocks() {
+                if num_blocks > 0 {
+                    // Successfully opened a ledger that has blocks in it.
+                    log::info!(
+                        logger,
+                        "Ledger DB {:?} opened: num_blocks={} num_txos={}",
+                        config.ledger_db,
+                        num_blocks,
+                        ledger_db.num_txos().expect("Failed getting number of txos")
+                    );
+                    return ledger_db;
+                }
+            }
+        }
+        Err(mc_ledger_db::Error::MetadataStore(
+            mc_ledger_db::MetadataStoreError::VersionIncompatible(old, new),
+        )) => {
+            panic!("Ledger DB {:?} requires migration from version {} to {}. Please run mobilecoind with --ledger-db-migrate or use the mc-ledger-migration utility.", config.ledger_db, old, new);
+        }
+        Err(err) => {
+            // If the ledger database exists and we failed to open it, something is wrong
+            // with it and this requires manual intervention.
+            if ledger_db_file.exists() {
+                panic!("Failed to open ledger db {:?}: {:?}", config.ledger_db, err);
+            }
+        }
+    };
+
+    // Ledger doesn't exist, or is empty. Copy a bootstrapped ledger or try and get
+    // it from the network.
     match &config.ledger_db_bootstrap {
         Some(ledger_db_bootstrap) => {
             log::debug!(
@@ -182,15 +212,15 @@ fn create_or_open_ledger_db(
                 ledger_db_bootstrap
             );
 
-            // Try and create directory in case it doesn't exist. We need it to exist before we
-            // can copy the data.mdb file.
+            // Try and create directory in case it doesn't exist. We need it to exist before
+            // we can copy the data.mdb file.
             if !Path::new(&config.ledger_db).exists() {
-                std::fs::create_dir_all(config.ledger_db.clone())
+                std::fs::create_dir_all(&config.ledger_db)
                     .unwrap_or_else(|_| panic!("Failed creating directory {:?}", config.ledger_db));
             }
 
-            let src = format!("{}/data.mdb", ledger_db_bootstrap);
-            std::fs::copy(src.clone(), ledger_db_file.clone()).unwrap_or_else(|_| {
+            let src = format!("{ledger_db_bootstrap}/data.mdb");
+            std::fs::copy(src.clone(), &ledger_db_file).unwrap_or_else(|_| {
                 panic!(
                     "Failed copying ledger from {} into directory {}",
                     src,
@@ -204,26 +234,21 @@ fn create_or_open_ledger_db(
                     "Ledger DB {:?} does not exist, bootstrapping from peer, this may take a few minutes",
                     config.ledger_db
                 );
-            std::fs::create_dir_all(config.ledger_db.clone()).expect("Could not create ledger dir");
-            LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
+            std::fs::create_dir_all(&config.ledger_db).expect("Could not create ledger dir");
+            LedgerDB::create(&config.ledger_db).expect("Could not create ledger_db");
             let block_data = transactions_fetcher
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
-            let mut db =
-                LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
-            db.append_block(
-                block_data.block(),
-                block_data.contents(),
-                block_data.signature().clone(),
-            )
-            .expect("Failed to appened initial transactions");
+            let mut db = LedgerDB::open(&config.ledger_db).expect("Could not open ledger_db");
+            db.append_block_data(&block_data)
+                .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }
 
     // Open ledger and verify it has (at least) the origin block.
     log::debug!(logger, "Opening Ledger DB {:?}", config.ledger_db);
-    let ledger_db = LedgerDB::open(config.ledger_db.clone())
+    let ledger_db = LedgerDB::open(&config.ledger_db)
         .unwrap_or_else(|_| panic!("Could not open ledger db inside {:?}", config.ledger_db));
 
     let num_blocks = ledger_db

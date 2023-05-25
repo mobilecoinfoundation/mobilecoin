@@ -1,6 +1,9 @@
 Cargo.lock merge=theirs
 .circleci merge=theirs
 consensus/enclave/trusted/Cargo.lock merge=theirs
+fog/ledger/enclave/trusted/Cargo.lock merge=theirs
+fog/ingest/enclave/trusted/Cargo.lock merge=theirs
+fog/view/enclave/trusted/Cargo.lock merge=theirs
 *.pem binary
 *.der binary
 **/*.bin binary

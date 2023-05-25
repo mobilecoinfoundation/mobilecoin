@@ -1,8 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Database storage for subaddress indices
-//! * A lookup table, mapping subaddress_spend_public_key to monitor_id and subaddress index.
-//!   This is used by the ledger sync code, allowing it to match TxOuts into specific monitor_ids.
+//! * A lookup table, mapping subaddress_spend_public_key to monitor_id and
+//!   subaddress index. This is used by the ledger sync code, allowing it to
+//!   match TxOuts into specific monitor_ids.
 
 use crate::{
     database_key::DatabaseByteArrayKey,
@@ -14,7 +15,7 @@ use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, Wri
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 // LMDB Database Names
 pub const SUBADDRESS_PUBLIC_SPEND_KEY_TO_INDEX_DATA_DB_NAME: &str =
@@ -86,8 +87,8 @@ impl From<&RistrettoPublic> for SubaddressSPKId {
 
 #[derive(Clone)]
 pub struct SubaddressStore {
-    env: Arc<Environment>,
-
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
     /// Mapping of Subaddress Spend Public Key -> SubaddressId
     spk_to_index_data: Database,
 
@@ -102,16 +103,16 @@ impl SubaddressStore {
             DatabaseFlags::empty(),
         )?;
         Ok(Self {
-            env,
+            _env: env,
             spk_to_index_data,
             logger,
         })
     }
 
     /// Insert a new subaddress spend public key into the database.
-    pub fn insert<'env>(
+    pub fn insert(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         data: &MonitorData,
         index: u64,
@@ -157,9 +158,9 @@ impl SubaddressStore {
     }
 
     /// deletes the SubaddressId stored for a subaddress spend public key
-    pub fn delete<'env>(
+    pub fn delete(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         data: &MonitorData,
         index: u64,
     ) -> Result<(), Error> {

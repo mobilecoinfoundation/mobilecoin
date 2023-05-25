@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
 // Needed for a #[may_dangle] appearing in mutex.rs
 #![feature(dropck_eyepatch)]
 // Needed to suppress errors, we inherited this from rust-sgx-sdk sgx_tstd
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 // Needed because condvar and rwlock are dropping Result sometimes
 #![allow(unused_must_use)]
 // Needed because condvar does this
@@ -13,8 +13,6 @@
 #![allow(clippy::drop_copy)]
 // rwlock does this in its spinlock
 #![allow(clippy::while_immutable_condition)]
-// Various ::new() calls are const fn
-#![feature(const_fn)]
 // !Send = https://github.com/rust-lang/rust/issues/68318
 #![feature(negative_impls)]
 

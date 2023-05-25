@@ -1,10 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Error types converting to/from encodings.
 
 use alloc::string::FromUtf8Error;
-use base64::DecodeError;
-use binascii::ConvertError;
+use base64::{DecodeError, DecodeSliceError};
 use core::{array::TryFromSliceError, fmt::Error as FmtError, str::Utf8Error};
 use displaydoc::Display;
 use hex::FromHexError;
@@ -26,22 +25,22 @@ pub enum Error {
     InvalidInput,
 }
 
-impl From<ConvertError> for Error {
-    fn from(src: ConvertError) -> Self {
+impl From<DecodeError> for Error {
+    fn from(src: DecodeError) -> Self {
         match src {
-            ConvertError::InvalidInputLength => Error::InvalidInputLength,
-            ConvertError::InvalidOutputLength => Error::InvalidOutputLength,
-            ConvertError::InvalidInput => Error::InvalidInput,
+            DecodeError::InvalidByte(_, _)
+            | DecodeError::InvalidLastSymbol(_, _)
+            | DecodeError::InvalidPadding => Error::InvalidInput,
+            DecodeError::InvalidLength => Error::InvalidInputLength,
         }
     }
 }
 
-impl From<DecodeError> for Error {
-    fn from(src: DecodeError) -> Self {
+impl From<DecodeSliceError> for Error {
+    fn from(src: DecodeSliceError) -> Self {
         match src {
-            DecodeError::InvalidByte(_offset, _byte) => Error::InvalidInput,
-            DecodeError::InvalidLength => Error::InvalidInputLength,
-            DecodeError::InvalidLastSymbol(_offset, _byte) => Error::InvalidInput,
+            DecodeSliceError::DecodeError(e) => e.into(),
+            DecodeSliceError::OutputSliceTooSmall => Error::InvalidOutputLength,
         }
     }
 }
@@ -85,3 +84,6 @@ impl From<Error> for FmtError {
         FmtError
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}

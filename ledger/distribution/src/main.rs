@@ -1,29 +1,36 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
-//! A helper utility for collecting blocks from a local ledger file and storing them as
-//! Protobuf-serialized files on S3.
+//! A helper utility for collecting blocks from a local ledger file and storing
+//! them as Protobuf-serialized files on S3.
 
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
+use clap::{Parser, ValueEnum};
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
+use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{BlockData, BlockIndex};
+use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use protobuf::Message;
-use rusoto_core::{Region, RusotoError};
-use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
+use retry::{delay, retry, OperationResult};
+use rusoto_core::Region;
+use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, str::FromStr};
-use structopt::StructOpt;
+use std::{fs, path::PathBuf};
+use tokio::runtime::Handle;
 
+/// Block writer.
 pub trait BlockHandler {
+    /// Write a single block.
     fn write_single_block(&mut self, block_data: &BlockData);
+    /// Write multiple blocks, possibly merged.
     fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]);
 }
 
 /// Block to start syncing from.
-#[derive(Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 pub enum StartFrom {
     /// Start from the origin block.
     Zero,
@@ -31,47 +38,41 @@ pub enum StartFrom {
     /// Sync new blocks only, skipping all blocks initially in the ledger.
     Next,
 
-    /// Start from the last block we successfully synced (stored inside a state file).
+    /// Start from the last block we successfully synced (stored inside a state
+    /// file).
     Last,
 }
 
-impl FromStr for StartFrom {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "zero" => Ok(Self::Zero),
-            "next" => Ok(Self::Next),
-            "last" => Ok(Self::Last),
-            _ => Err("Unknown value, valid values are zero/next/last".into()),
-        }
-    }
-}
-
-#[derive(Clone, Debug, StructOpt)]
-#[structopt(
+/// Configuration for ledger distribution.
+#[derive(Clone, Debug, Parser)]
+#[clap(
     name = "ledger_distribution",
     about = "The MobileCoin Ledger Distribution Service."
 )]
 pub struct Config {
     /// Path to local LMDB db file.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// Destination to upload to.
-    #[structopt(long = "dest")]
+    #[clap(long = "dest", env = "MC_DEST")]
     pub destination: Uri,
 
     /// Block to start from.
-    #[structopt(long, default_value = "zero")]
+    #[clap(value_enum, long, default_value = "zero", env = "MC_START_FROM")]
     pub start_from: StartFrom,
 
     /// State file, defaults to ~/.mc-ledger-distribution-state
-    #[structopt(long)]
+    #[clap(long, env = "MC_STATE_FILE")]
     pub state_file: Option<PathBuf>,
 
     /// Merged blocks bucket sizes. Use 0 to disable.
-    #[structopt(long, default_value = "100,1000,10000", use_delimiter = true)]
+    #[clap(
+        long,
+        default_value = "100,1000,10000",
+        use_value_delimiter = true,
+        env = "MC_MERGE_BUCKETS"
+    )]
     merge_buckets: Vec<u64>,
 }
 
@@ -106,38 +107,37 @@ impl S3BlockWriter {
     }
 
     fn write_bytes_to_s3(&self, path: &str, filename: &str, value: &[u8]) {
-        let result: Result<
-            retry::OperationResult<(), ()>,
-            retry::Error<retry::OperationResult<(), RusotoError<PutObjectError>>>,
-        > = retry::retry(
-            retry::delay::Exponential::from_millis(10).map(retry::delay::jitter),
+        let runtime = Handle::current();
+        let result = retry(
+            delay::Exponential::from_millis_with_base_factor(10).map(delay::jitter),
             || {
                 let req = PutObjectRequest {
                     bucket: path.to_string(),
-                    key: String::from(filename),
+                    key: filename.to_string(),
                     body: Some(value.to_vec().into()),
                     acl: Some("public-read".to_string()),
                     ..Default::default()
                 };
 
-                self.s3_client
-                    .put_object(req)
-                    .sync()
-                    .map(|_| retry::OperationResult::Ok(()))
-                    .map_err(|err: RusotoError<PutObjectError>| {
-                        log::warn!(
-                            self.logger,
-                            "Failed writing {}: {:?}, retrying...",
-                            filename,
-                            err
-                        );
-                        retry::OperationResult::Retry(err)
-                    })
+                runtime
+                    .block_on(self.s3_client.put_object(req))
+                    .map_or_else(
+                        |err| {
+                            log::warn!(
+                                self.logger,
+                                "Failed writing {}: {:?}, retrying...",
+                                filename,
+                                err
+                            );
+                            OperationResult::Retry(err)
+                        },
+                        OperationResult::Ok,
+                    )
             },
         );
 
         // We should always succeed since retrying should never stop until that happens.
-        assert!(result.is_ok());
+        result.expect("failed to write to S3");
     }
 }
 
@@ -240,12 +240,13 @@ impl BlockHandler for LocalBlockWriter {
         let dir = dest.as_path().parent().expect("failed getting parent");
 
         fs::create_dir_all(dir)
-            .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
-        fs::write(&dest, bytes).unwrap_or_else(|_| {
+            .unwrap_or_else(|e| panic!("failed creating directory {dir:?}: {e:?}"));
+        fs::write(&dest, bytes).unwrap_or_else(|err| {
             panic!(
-                "failed writing block #{} to {:?}",
+                "failed writing block #{} to {:?}: {}",
                 block_data.block().index,
-                dest
+                dest,
+                err
             )
         });
     }
@@ -280,11 +281,10 @@ impl BlockHandler for LocalBlockWriter {
         let dir = dest.as_path().parent().expect("failed getting parent");
 
         fs::create_dir_all(dir)
-            .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
-        fs::write(&dest, bytes).unwrap_or_else(|_| {
+            .unwrap_or_else(|e| panic!("failed creating directory {dir:?}: {e:?}"));
+        fs::write(&dest, bytes).unwrap_or_else(|err| {
             panic!(
-                "failed writing merged block #{}-{} to {:?}",
-                first_block_index, last_block_index, dest
+                "failed writing merged block #{first_block_index}-{last_block_index} to {dest:?}: {err}",
             )
         });
     }
@@ -292,11 +292,20 @@ impl BlockHandler for LocalBlockWriter {
 
 // Implements the ledger db polling loop
 fn main() {
-    let config = Config::from_args();
-
-    mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+    mc_common::setup_panic_handler();
+
+    let config = Config::parse();
+
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+    let _enter_guard = runtime.enter();
 
     // Get path to our state file.
     let state_file_path = config.state_file.clone().unwrap_or_else(|| {
@@ -309,7 +318,7 @@ fn main() {
 
     // Open ledger
     log::info!(logger, "Opening ledger db {:?}", config.ledger_path);
-    let ledger_db = LedgerDB::open(config.ledger_path.clone()).expect("Could not read ledger DB");
+    let ledger_db = LedgerDB::open(&config.ledger_path).expect("Could not read ledger DB");
 
     // Figure out the first block to sync from.
     let first_desired_block = match config.start_from {
@@ -326,10 +335,10 @@ fn main() {
             // See if the state file exists and read it if it does.
             if state_file_path.as_path().exists() {
                 let file_data = fs::read_to_string(&state_file_path).unwrap_or_else(|e| {
-                    panic!("Failed reading state file {:?}: {:?}", state_file_path, e)
+                    panic!("Failed reading state file {state_file_path:?}: {e:?}")
                 });
                 let state_data: StateData = serde_json::from_str(&file_data).unwrap_or_else(|e| {
-                    panic!("Failed parsing state file {:?}: {:?}", state_file_path, e)
+                    panic!("Failed parsing state file {state_file_path:?}: {e:?}")
                 });
                 state_data.next_block
             } else {
@@ -345,9 +354,8 @@ fn main() {
         }
 
         Destination::Local { path } => {
-            fs::create_dir_all(&path).unwrap_or_else(|_| {
-                panic!("Failed creating local destination directory {:?}", path)
-            });
+            fs::create_dir_all(&path)
+                .unwrap_or_else(|_| panic!("Failed creating local destination directory {path:?}"));
             Box::new(LocalBlockWriter::new(path, logger.clone()))
         }
     };
@@ -359,11 +367,18 @@ fn main() {
         first_desired_block
     );
     let mut next_block_num = first_desired_block;
+    let tracer = tracer!();
+
     loop {
         while let Ok(block_data) = ledger_db.get_block_data(next_block_num) {
             log::trace!(logger, "Handling block #{}", next_block_num);
 
-            block_handler.write_single_block(&block_data);
+            let span = start_block_span(&tracer, "distribute-block", next_block_num);
+            let _active_span = mark_span_as_active(span);
+
+            tracer.in_span("write_single_block", |_cx| {
+                block_handler.write_single_block(&block_data);
+            });
 
             let cur_block_index = block_data.block().index;
             for bucket_size in config.merge_buckets.iter() {
@@ -389,16 +404,19 @@ fn main() {
 
                 let mut blocks_data = Vec::new();
                 for block_index in first_block_index..=last_block_index {
-                    // We panic here since this block and its associated data is expected to be in the ledger
-                    // due to block_index <= next_block_num (which we successfully fetched or otherwise
-                    // this code wouldn't be running).
-                    let block_data = ledger_db.get_block_data(block_index).unwrap_or_else(|err| {
-                        panic!("failed getting block #{}: {}", block_index, err)
-                    });
+                    // We panic here since this block and its associated data is expected to be in
+                    // the ledger due to block_index <= next_block_num (which we
+                    // successfully fetched or otherwise this code wouldn't be
+                    // running).
+                    let block_data = ledger_db
+                        .get_block_data(block_index)
+                        .unwrap_or_else(|err| panic!("failed getting block #{block_index}: {err}"));
                     blocks_data.push(block_data);
                 }
 
-                block_handler.write_multiple_blocks(&blocks_data);
+                tracer.in_span("write_multiple_blocks", |_cx| {
+                    block_handler.write_multiple_blocks(&blocks_data);
+                });
             }
 
             next_block_num += 1;

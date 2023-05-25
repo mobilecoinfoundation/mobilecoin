@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the traits for creating and verifying signatures over
 //! fog authority public keys and the canonical signing context/domain separator
@@ -13,7 +13,7 @@ extern crate alloc;
 mod ristretto;
 
 use core::fmt::{Debug, Display};
-use signature::Signature;
+use mc_crypto_keys::SignatureEncoding;
 
 /// Retrieve the canonical signing context byte string.
 ///
@@ -27,7 +27,7 @@ pub fn context() -> &'static [u8] {
 /// types.
 pub trait Signer {
     /// The signature output type
-    type Sig: Signature;
+    type Sig: SignatureEncoding;
     /// The error type
     type Error: Debug + Display;
 
@@ -39,7 +39,7 @@ pub trait Signer {
 /// public key types.
 pub trait Verifier {
     /// The signature type to be verified
-    type Sig: Signature;
+    type Sig: SignatureEncoding;
     /// The error type if a signature could not be verified
     type Error: Debug + Display;
 

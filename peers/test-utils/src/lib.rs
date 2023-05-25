@@ -1,34 +1,34 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mock Peer test utilities
 
+pub use mc_consensus_scp::test_utils::{test_node_id, test_node_id_and_signer};
+
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{NodeID, ResponderId};
 use mc_connection::{
-    BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
+    BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
+    Result as ConnectionResult,
 };
 use mc_consensus_api::consensus_peer::{ConsensusMsgResponse, ConsensusMsgResult};
 use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use mc_consensus_scp::{
     msg::{Msg, NominatePayload},
-    quorum_set::QuorumSet,
-    SlotIndex, Topic,
+    QuorumSet, SlotIndex, Topic,
 };
-use mc_crypto_keys::Ed25519Pair;
-use mc_ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
-use mc_peers::{ConsensusConnection, ConsensusMsg, Error as PeerError, Result as PeerResult};
-use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
-use mc_util_from_random::FromRandom;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
+use mc_ledger_db::{test_utils::MockLedger, Ledger};
+use mc_peers::{
+    ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError, Result as PeerResult,
+};
+use mc_transaction_core::tx::TxHash;
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
-use rand::SeedableRng;
-use rand_hc::Hc128Rng as FixedRng;
-use sha2::{digest::Digest, Sha512Trunc256};
+use sha2::{Digest, Sha512_256};
 use std::{
     cmp::{min, Ordering},
     collections::{BTreeSet, VecDeque},
-    convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
-    iter::FromIterator,
     ops::Range,
     str::FromStr,
     sync::{Arc, Mutex},
@@ -44,12 +44,13 @@ pub struct MockPeerState {
     /// Number of times send_consensus_msg was called.
     pub send_consensus_msg_call_count: usize,
 
-    /// Number of times to return an error code when send_consensus_msg is called.
+    /// Number of times to return an error code when send_consensus_msg is
+    /// called.
     pub send_consensus_msg_should_error_count: usize,
 }
 
-/// MockPeerConnection simulates a network-connected peer and adds a configurable amount of latency
-/// to each request.
+/// MockPeerConnection simulates a network-connected peer and adds a
+/// configurable amount of latency to each request.
 #[derive(Clone)]
 pub struct MockPeerConnection<L: Ledger + Sync = MockLedger> {
     pub uri: PeerUri,
@@ -82,14 +83,13 @@ impl<L: Ledger + Sync> MockPeerConnection<L> {
     }
 
     pub fn msgs(&self) -> Vec<ConsensusMsg> {
-        Vec::from_iter(
-            self.state
-                .lock()
-                .expect("mutex poisoned")
-                .msgs
-                .iter()
-                .cloned(),
-        )
+        self.state
+            .lock()
+            .expect("mutex poisoned")
+            .msgs
+            .iter()
+            .cloned()
+            .collect()
     }
 
     pub fn reset_call_count(&mut self) {
@@ -173,6 +173,10 @@ impl<L: Ledger + Sync> BlockchainConnection for MockPeerConnection<L> {
     fn fetch_block_height(&mut self) -> ConnectionResult<BlockIndex> {
         unimplemented!()
     }
+
+    fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
+        unimplemented!()
+    }
 }
 
 impl<L: Ledger + Sync> ConsensusConnection for MockPeerConnection<L> {
@@ -224,48 +228,31 @@ pub fn create_consensus_msg(
     msg: &str,
     signer_key: &Ed25519Pair,
 ) -> ConsensusMsg {
-    let msg_hash = TxHash::try_from(Sha512Trunc256::digest(msg.as_bytes()).as_slice())
+    let msg_hash = TxHash::try_from(Sha512_256::digest(msg.as_bytes()).as_slice())
         .expect("Could not hash message into TxHash");
+    let value = ConsensusValue::TxHash(msg_hash);
     let mut payload = NominatePayload {
         X: BTreeSet::default(),
         Y: BTreeSet::default(),
     };
 
-    payload.X.insert(msg_hash);
+    payload.X.insert(value);
     let topic = Topic::Nominate(payload);
     let scp_msg = Msg::new(sender_id, quorum_set, slot_index, topic);
     ConsensusMsg::from_scp_msg(ledger, scp_msg, signer_key)
         .expect("Could not create consensus message")
 }
 
-pub fn test_node_id(node_id: u32) -> NodeID {
-    let (node_id, _signer) = test_node_id_and_signer(node_id);
-    node_id
+pub fn test_peer_uri(node_id: u32) -> PeerUri {
+    let (_node_id, signer) = test_node_id_and_signer(node_id);
+    test_peer_uri_with_key(node_id, &signer.public_key())
 }
 
-pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
-    let mut seed_bytes = [0u8; 32];
-    let node_id_bytes = node_id.to_be_bytes();
-    seed_bytes[..node_id_bytes.len()].copy_from_slice(&node_id_bytes[..]);
-
-    let mut seeded_rng: FixedRng = SeedableRng::from_seed(seed_bytes);
-    let signer_keypair = Ed25519Pair::from_random(&mut seeded_rng);
-    (
-        NodeID {
-            responder_id: ResponderId::from_str(&format!("node{}.test.com:8443", node_id)).unwrap(),
-            public_key: signer_keypair.public_key(),
-        },
-        signer_keypair,
-    )
-}
-
-pub fn test_peer_uri(node_id_int: u32) -> PeerUri {
-    let (_node_id, signer_keypair) = test_node_id_and_signer(node_id_int);
-
+pub fn test_peer_uri_with_key(node_id: u32, public_key: &Ed25519Public) -> PeerUri {
     PeerUri::from_str(&format!(
         "mcp://node{}.test.com?consensus-msg-key={}",
-        node_id_int,
-        hex::encode(signer_keypair.public_key()),
+        node_id,
+        hex::encode(public_key),
     ))
     .expect("Could not construct peer URI from string")
 }
@@ -277,6 +264,9 @@ mod peer_manager_tests {
     use mc_connection::ConnectionManager;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers::RetryableConsensusConnection;
+    use mc_util_from_random::FromRandom;
+    use rand::SeedableRng;
+    use rand_hc::Hc128Rng as FixedRng;
     use retry::delay::Fibonacci;
 
     #[test]
@@ -284,7 +274,7 @@ mod peer_manager_tests {
     fn mock_peer_fetch_blocks() {
         let (local_node_id, _) = test_node_id_and_signer(1);
         let mock_ledger = get_mock_ledger(25);
-        assert_eq!(mock_ledger.lock().blocks_by_block_number.len(), 25);
+        assert_eq!(mock_ledger.num_blocks().unwrap(), 25);
         let mut mock_peer =
             MockPeerConnection::new(test_peer_uri(123), local_node_id, mock_ledger, 50);
 
@@ -301,9 +291,10 @@ mod peer_manager_tests {
         }
 
         {
-            // Get blocks 25,26,27. These are entirely out of range, so should return an error.
+            // Get blocks 25,26,27. These are entirely out of range, so should return an
+            // error.
             if let Ok(blocks) = mock_peer.fetch_blocks(25..28) {
-                println!("Blocks: {:?}", blocks);
+                println!("Blocks: {blocks:?}");
                 panic!();
             }
         }
@@ -358,15 +349,9 @@ mod peer_manager_tests {
             .expect("failed getting peer conn")
             .send_consensus_msg(&msg, Fibonacci::from_millis(10).take(7));
 
-        match ret {
-            Ok(_) => panic!("should've failed"),
-            Err(retry::Error::Operation { .. }) => {
-                // This is expected
-            }
-            Err(e) => {
-                panic!("got unexpected error {:?}", e);
-            }
-        };
+        if ret.is_ok() {
+            panic!("should've failed");
+        }
 
         assert_eq!(peer.state().send_consensus_msg_call_count, 8);
 
@@ -393,17 +378,20 @@ mod threaded_broadcaster_tests {
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_connection::ConnectionManager;
-    use mc_consensus_scp::QuorumSet;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers::{
         Broadcast, ThreadedBroadcaster,
         ThreadedBroadcasterFibonacciRetryPolicy as FibonacciRetryPolicy,
         DEFAULT_RETRY_MAX_ATTEMPTS,
     };
+    use mc_util_from_random::FromRandom;
+    use rand::SeedableRng;
+    use rand_hc::Hc128Rng as FixedRng;
 
     #[test_with_logger]
-    // A message from a local node (who is not in the peers list) should be broadcasted
-    // to all peers exactly once. A different message should also be broadcasted exactly once.
+    // A message from a local node (who is not in the peers list) should be
+    // broadcasted to all peers exactly once. A different message should also be
+    // broadcasted exactly once.
     fn test_local_broadcast(logger: Logger) {
         let (local_node_id, _) = test_node_id_and_signer(1);
         let node2_uri = test_peer_uri(2);
@@ -419,11 +407,8 @@ mod threaded_broadcaster_tests {
         let peer_manager =
             ConnectionManager::new(vec![peer2.clone(), peer3.clone()], logger.clone());
 
-        let mut broadcaster = ThreadedBroadcaster::new(
-            &peer_manager,
-            &FibonacciRetryPolicy::default(),
-            logger.clone(),
-        );
+        let mut broadcaster =
+            ThreadedBroadcaster::new(&peer_manager, &FibonacciRetryPolicy::default(), logger);
 
         // Initially, nothing is broadcasted to either of our nodes.
         {
@@ -444,9 +429,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -469,9 +454,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -508,11 +493,8 @@ mod threaded_broadcaster_tests {
             logger.clone(),
         );
 
-        let mut broadcaster = ThreadedBroadcaster::new(
-            &peer_manager,
-            &FibonacciRetryPolicy::default(),
-            logger.clone(),
-        );
+        let mut broadcaster =
+            ThreadedBroadcaster::new(&peer_manager, &FibonacciRetryPolicy::default(), logger);
 
         // Initially, nothing is broadcasted to either of our nodes.
         {
@@ -535,9 +517,9 @@ mod threaded_broadcaster_tests {
                 &node2_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -555,9 +537,9 @@ mod threaded_broadcaster_tests {
             let msg2 =
                 create_consensus_msg(&ledger, node2, quorum_set, 1, "msg2", &node2_signer_key);
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -593,7 +575,7 @@ mod threaded_broadcaster_tests {
         let mut broadcaster = ThreadedBroadcaster::new(
             &peer_manager,
             FibonacciRetryPolicy::default().initial_delay(Duration::from_millis(10)),
-            logger.clone(),
+            logger,
         );
 
         // Initially, nothing is broadcasted to either of our nodes.
@@ -602,8 +584,8 @@ mod threaded_broadcaster_tests {
             assert!(peer3.msgs().is_empty());
         }
 
-        // Configure peer2 to fail a lot of times - we should see RETRY_MAX_ATTEMPTS attempts made
-        // but no message delivered.
+        // Configure peer2 to fail a lot of times - we should see RETRY_MAX_ATTEMPTS
+        // attempts made but no message delivered.
         peer2.set_send_consensus_msg_should_error_count(100);
 
         let mut seeded_rng: FixedRng = SeedableRng::from_seed([1u8; 32]);
@@ -620,9 +602,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -654,9 +636,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 

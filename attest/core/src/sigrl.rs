@@ -1,11 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! SigRL Type
 
-use alloc::vec;
-
+use crate::BASE64_ENGINE;
 use alloc::{borrow::ToOwned, vec::Vec};
-use binascii::b64decode;
+use base64::Engine;
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::Deref,
@@ -70,14 +69,8 @@ impl FromBase64 for SigRL {
     type Error = EncodingError;
 
     fn from_base64(s: &str) -> Result<Self, EncodingError> {
-        let mut data;
-        if s.is_empty() {
-            // Ensure size of data remains 0 if empty string
-            data = vec![];
-        } else {
-            data = vec![0u8; 4 * (s.len() / 3) + 4];
-            b64decode(s.as_bytes(), data.as_mut_slice())?;
-        }
-        Ok(SigRL { data })
+        Ok(SigRL {
+            data: BASE64_ENGINE.decode(s.as_bytes())?,
+        })
     }
 }

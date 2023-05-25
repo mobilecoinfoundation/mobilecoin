@@ -5,48 +5,48 @@ use crate::{
             typenum::{Sum, Unsigned},
             ArrayLength, GenericArray,
         },
-        AeadInPlace, Error as AeadError, NewAead,
+        AeadInPlace, Error as AeadError, KeyInit,
     },
     traits::{CryptoBox, Error},
 };
-
 use core::{
-    convert::TryFrom,
     marker::PhantomData,
     ops::{Add, Sub},
 };
-use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use hkdf::Hkdf;
-use mc_crypto_ct_aead::{CtAeadDecrypt, CtDecryptResult};
+use digest::{core_api::BlockSizeUser, Digest};
+use hkdf::SimpleHkdf;
 use mc_crypto_keys::{Kex, ReprBytes};
+use mc_oblivious_aes_gcm::{CtAeadDecrypt, CtDecryptResult};
 use rand_core::{CryptoRng, RngCore};
 
-/// Represents a generic implementation of CryptoBox using Hkdf, a KexAlgo, and an Aead.
+/// Represents a generic implementation of CryptoBox using Hkdf, a KexAlgo, and
+/// an Aead.
 ///
 /// This structure contains the actual cryptographic primitive details, and
 /// specifies part of the wire format of the "footer" where the ephemeral
 /// public key comes first, and the mac comes second.
 ///
 /// Preconditions:
-/// - Only stateless AEAD is supported. The build will fail if you only have AeadMut.
+/// - Only stateless AEAD is supported. The build will fail if you only have
+///   AeadMut.
 pub struct HkdfBox<KexAlgo, DigestAlgo, AeadAlgo>
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
+    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
 {
-    _kex: PhantomData<fn() -> KexAlgo>,
-    _digest: PhantomData<fn() -> DigestAlgo>,
-    _aead: PhantomData<fn() -> AeadAlgo>,
+    _kex: PhantomData<KexAlgo>,
+    _digest: PhantomData<DigestAlgo>,
+    _aead: PhantomData<AeadAlgo>,
 }
 
 impl<KexAlgo, DigestAlgo, AeadAlgo> CryptoBox<KexAlgo> for HkdfBox<KexAlgo, DigestAlgo, AeadAlgo>
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
+    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
     // Note: I think all of these bounds should go away after RFC 2089 is implemented
     // https://github.com/rust-lang/rfcs/blob/master/text/2089-implied-bounds.md
     <<KexAlgo as Kex>::Public as ReprBytes>::Size:
@@ -120,21 +120,22 @@ impl<KexAlgo, DigestAlgo, AeadAlgo> HkdfBox<KexAlgo, DigestAlgo, AeadAlgo>
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
+    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
     AeadAlgo::KeySize: Add<AeadAlgo::NonceSize>,
     Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>:
         ArrayLength<u8> + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
 {
     /// KDF part, factored out to avoid duplication
-    /// This part must produce the key and IV/nonce for Aead, from the IKM, using Hkdf.
+    /// This part must produce the key and IV/nonce for Aead, from the IKM,
+    /// using Hkdf.
     fn kdf_step(
         dh_secret: &KexAlgo::Secret,
     ) -> (
         GenericArray<u8, AeadAlgo::KeySize>,
         GenericArray<u8, AeadAlgo::NonceSize>,
     ) {
-        let kdf = Hkdf::<DigestAlgo>::new(Some(b"dei-salty-box"), dh_secret.as_ref());
+        let kdf = SimpleHkdf::<DigestAlgo>::new(Some(b"dei-salty-box"), dh_secret.as_ref());
         let mut okm = GenericArray::<u8, Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>>::default();
         kdf.expand(b"aead-key-iv", okm.as_mut_slice())
             .expect("Digest output size is insufficient");
@@ -148,8 +149,8 @@ impl<KexAlgo, DigestAlgo, AeadAlgo> Default for HkdfBox<KexAlgo, DigestAlgo, Aea
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
+    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
 {
     fn default() -> Self {
         Self {

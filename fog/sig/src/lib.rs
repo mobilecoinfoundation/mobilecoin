@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This crate provides new traits to provide the following functionality:
 //!
@@ -50,11 +50,10 @@ mod public_address;
 
 use core::fmt::{Debug, Display};
 use displaydoc::Display;
-use mc_crypto_keys::KeyError;
+use mc_crypto_keys::{KeyError, SignatureError};
 use mc_crypto_x509_utils::ChainError;
+use mc_fog_report_types::ReportResponse;
 use mc_fog_sig_authority::Verifier as AuthorityVerifier;
-use mc_fog_types::ReportResponse;
-use signature::Error as SignatureError;
 
 /// An eneumeration of errors which can occur when verifying a signature set.
 #[derive(Debug, Display)]

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_util_metrics::{
     register, register_histogram, Collector, Desc, Histogram, IntCounter, IntCounterVec, IntGauge,
@@ -6,7 +6,7 @@ use mc_util_metrics::{
 };
 
 lazy_static::lazy_static! {
-    pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_service");
+    pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_scp");
     pub static ref TX_VALIDATION_ERROR_COUNTER: TxValidationErrorMetrics = TxValidationErrorMetrics::new_and_registered();
     pub static ref PENDING_VALUE_PROCESSING_TIME: Histogram = register_histogram!(
         "pending_value_processing_time",
@@ -102,12 +102,24 @@ lazy_static::lazy_static! {
     // Consensus enclave report timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
     pub static ref ENCLAVE_REPORT_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_report_timestamp");
 
+    // Number of times a ProposeMintConfigTx call has been initiated.
+    pub static ref PROPOSE_MINT_CONFIG_TX_INITIATED: IntCounter = OP_COUNTERS.counter("propose_mint_config_tx_initiated");
+
+    // Number of times a ProposeMintConfigTx call has returned a response.
+    pub static ref PROPOSE_MINT_CONFIG_TX: IntCounter = OP_COUNTERS.counter("propose_mint_config_tx");
+
+    // Number of times a ProposeMintTx call has been initiated.
+    pub static ref PROPOSE_MINT_TX_INITIATED: IntCounter = OP_COUNTERS.counter("propose_mint_tx_initiated");
+
+    // Number of times a ProposeMintTx call has returned a response.
+    pub static ref PROPOSE_MINT_TX: IntCounter = OP_COUNTERS.counter("propose_mint_tx");
 }
 
-/// TxValidationErrorMetrics keeps track of tx validation errors upon ingress (with the add tx GRPC
-/// call). This cannot use the standard OpMetrics since we want to have a separate counter per each
-/// error (OpMetrics uses an "op" label to distinguish between different counters, this metric will
-/// have an "err" label).
+/// TxValidationErrorMetrics keeps track of tx validation errors upon ingress
+/// (with the add tx GRPC call). This cannot use the standard OpMetrics since we
+/// want to have a separate counter per each error (OpMetrics uses an "op" label
+/// to distinguish between different counters, this metric will have an "err"
+/// label).
 #[derive(Clone)]
 pub struct TxValidationErrorMetrics {
     counters: IntCounterVec,

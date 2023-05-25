@@ -1,8 +1,9 @@
 [package]
 name = "mc-crypto-digestible-derive-test"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-crypto-digestible = { path = "../.." }

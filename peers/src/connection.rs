@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Peer-to-Peer Networking with SGX.
 
@@ -12,12 +12,13 @@ use grpcio::{ChannelBuilder, Environment, Error as GrpcError};
 use mc_attest_api::attest_grpc::AttestedApiClient;
 use mc_attest_core::VerificationReport;
 use mc_attest_enclave_api::PeerSession;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
     trace_time, NodeID, ResponderId,
 };
 use mc_connection::{
-    AttestedConnection, BlockchainConnection, Connection, Error as ConnectionError,
+    AttestedConnection, BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
     Result as ConnectionResult,
 };
 use mc_consensus_api::{
@@ -32,27 +33,27 @@ use mc_consensus_api::{
     ConversionError,
 };
 use mc_consensus_enclave_api::{ConsensusEnclave, TxContext, WellFormedEncryptedTx};
-use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::{deserialize, serialize};
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use protobuf::RepeatedField;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     hash::{Hash, Hasher},
     ops::Range,
     result::Result as StdResult,
     sync::Arc,
 };
 
-/// This is a PeerConnection implementation which ensures transparent attestation between the local
-/// and remote enclaves.
+/// This is a PeerConnection implementation which ensures transparent
+/// attestation between the local and remote enclaves.
 pub struct PeerConnection<Enclave: ConsensusEnclave + Clone + Send + Sync> {
     /// The local enclave, which the remote node will be peered with.
     enclave: Enclave,
 
-    /// When communicating with the remote enclave, this is the handshake hash / session ID / channel ID.
+    /// When communicating with the remote enclave, this is the handshake hash /
+    /// session ID / channel ID.
     channel_id: Option<PeerSession>,
 
     /// The local node ID
@@ -250,6 +251,16 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
             })?
             .index)
     }
+
+    fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
+        trace_time!(self.logger, "PeerConnection::fetch_block_info");
+
+        let block_info = self.log_attested_call("fetch_block_info", |this| {
+            this.blockchain_api_client
+                .get_last_block_info(&Empty::new())
+        })?;
+        Ok(block_info.into())
+    }
 }
 
 impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
@@ -336,7 +347,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
     }
 
     fn fetch_latest_msg(&mut self) -> Result<Option<ConsensusMsg>> {
-        let response = self.log_attested_call("gte_latest_msg", |this| {
+        let response = self.log_attested_call("get_latest_msg", |this| {
             this.consensus_api_client.get_latest_msg(&Empty::new())
         })?;
         if response.get_payload().is_empty() {

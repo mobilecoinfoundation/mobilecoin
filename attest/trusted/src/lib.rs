@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains code intended to operate within an SGX enclave.
 
@@ -7,20 +7,19 @@
 
 extern crate alloc;
 
-use alloc::vec;
-
-use alloc::vec::Vec;
-use core::convert::TryFrom;
-use failure::Fail;
+use alloc::{vec, vec::Vec};
+use displaydoc::Display;
 use mc_attest_core::{
-    IntelSealed, ParseSealedError, Report, ReportData, Sealed, SgxError, SgxResult, TargetInfo,
+    IntelSealed, IntelSealingError, ParseSealedError, Report, ReportData, Sealed, SgxError,
+    SgxResult, TargetInfo,
 };
-use mc_sgx_types::sgx_status_t;
 use prost::Message;
 
-/// Methods on the `mc_attest_core::Report` object which are only usable inside a running SGX enclave.
+/// Methods on the `mc_attest_core::Report` object which are only usable inside
+/// a running SGX enclave.
 pub trait EnclaveReport: Sized {
-    /// Create a new EREPORT for the specified target enclave, with the given user data.
+    /// Create a new EREPORT for the specified target enclave, with the given
+    /// user data.
     fn new(target_info: Option<&TargetInfo>, report_data: Option<&ReportData>) -> SgxResult<Self>;
 
     /// Verify a report was created for the currently running enclave.
@@ -53,7 +52,7 @@ pub fn seal<S: Sealed>(obj: &S::Source) -> Result<S, S::Error> {
     let mac_txt = S::compute_mac_txt(obj);
     let blob = IntelSealed::seal_raw(&buf[..], mac_txt.as_ref())
         .map_err(error_conversion_helper::<S::Error>)?;
-    Ok(S::validate_mac_txt(blob)?)
+    S::validate_mac_txt(blob)
 }
 
 /// Unseal a Sealed object and return a Sealed::Source
@@ -63,12 +62,15 @@ pub fn unseal<S: Sealed>(obj: &S) -> Result<S::Source, UnsealingError> {
 }
 
 /// Blob sealing and unsealing API
-/// This is a trait because reviewers desired that `seal_raw` and `unseal_raw` should
-/// be member functions of IntelSealed but they cannot be in the same crate.
+/// This is a trait because reviewers desired that `seal_raw` and `unseal_raw`
+/// should be member functions of IntelSealed but they cannot be in the same
+/// crate.
 pub trait SealAlgo: Sized {
-    /// Takes plaintext and optional additional text that is under the mac, produces sealed blob
+    /// Takes plaintext and optional additional text that is under the mac,
+    /// produces sealed blob
     fn seal_raw(plaintext: &[u8], additional_mac_txt: &[u8]) -> Result<Self, IntelSealingError>;
-    /// Takes a sealed blob, reproduces the plaintext and the additional mac text, in that order
+    /// Takes a sealed blob, reproduces the plaintext and the additional mac
+    /// text, in that order
     fn unseal_raw(&self) -> SgxResult<(Vec<u8>, Vec<u8>)>;
 }
 
@@ -90,38 +92,8 @@ impl SealAlgo for IntelSealed {
     }
 }
 
-/// Represents an error that can occur during sealing an IntelSealed blob
-/// This is the error type of seal_raw
-#[derive(Clone, Debug, Eq, Fail, PartialEq)]
-pub enum IntelSealingError {
-    /// Sgx failed
-    #[fail(display = "SGX error: {}", _0)]
-    Sgx(SgxError),
-    /// Could not interpret mac text
-    #[fail(display = "Bad sealed format: {:?}", _0)]
-    SealFormat(ParseSealedError),
-}
-
-impl From<SgxError> for IntelSealingError {
-    fn from(src: SgxError) -> Self {
-        Self::Sgx(src)
-    }
-}
-
-impl From<sgx_status_t> for IntelSealingError {
-    fn from(src: sgx_status_t) -> Self {
-        Self::Sgx(SgxError::from(src))
-    }
-}
-
-impl From<ParseSealedError> for IntelSealingError {
-    fn from(src: ParseSealedError) -> Self {
-        Self::SealFormat(src)
-    }
-}
-
-// allow conversion to a user defined type (Sealed::Error) that is general enough
-// to hold SgxError and ParseSealedError
+// allow conversion to a user defined type (Sealed::Error) that is general
+// enough to hold SgxError and ParseSealedError
 fn error_conversion_helper<T: From<SgxError> + From<ParseSealedError>>(
     src: IntelSealingError,
 ) -> T {
@@ -132,13 +104,11 @@ fn error_conversion_helper<T: From<SgxError> + From<ParseSealedError>>(
 }
 
 /// Represents an error that can occur during unsealing
-#[derive(Clone, Debug, Eq, Fail, PartialEq)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum UnsealingError {
-    /// Sgx failed
-    #[fail(display = "SGX error: {}", _0)]
+    /// SGX error: {0}
     SgxError(SgxError),
-    /// Prost failed to decode
-    #[fail(display = "Prost decode error: {}", _0)]
+    /// Prost decode error: {0}
     Decode(prost::DecodeError),
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Customizable implementation of the AdminApi service.
 
@@ -7,11 +7,10 @@ use crate::{
     admin_grpc::{create_admin_api, AdminApi},
     build_info_service::get_build_info,
     empty::Empty,
-    rpc_logger, send_result,
+    rpc_logger, send_result, SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
 use mc_common::logger::{log, Logger};
-use mc_util_metrics::SVC_COUNTERS;
 use prometheus::{self, Encoder};
 use std::{env, sync::Arc};
 
@@ -35,6 +34,14 @@ pub struct AdminService {
 }
 
 impl AdminService {
+    /// Create a new instance of the admin service
+    ///
+    /// Arguments:
+    /// * name: A name for the server
+    /// * id: An id for the server
+    /// * get_config_json: An optional callback that describes the current
+    ///   configuration of the server as a json object
+    /// * logger
     pub fn new(
         name: String,
         id: String,
@@ -49,6 +56,7 @@ impl AdminService {
         }
     }
 
+    /// Convert into a grpcio::Service
     pub fn into_service(self) -> Service {
         create_admin_api(self)
     }
@@ -67,10 +75,7 @@ impl AdminService {
 
         let mut response = GetPrometheusMetricsResponse::new();
         response.set_metrics(String::from_utf8(buffer).map_err(|err| {
-            RpcStatus::new(
-                RpcStatusCode::INTERNAL,
-                Some(format!("from_utf8 failed: {}", err)),
-            )
+            RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("from_utf8 failed: {err}"))
         })?);
         Ok(response)
     }
@@ -84,9 +89,9 @@ impl AdminService {
 
         let mut build_info_json = String::new();
         mc_util_build_info::write_report(&mut build_info_json).map_err(|err| {
-            RpcStatus::new(
+            RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some(format!("write_report failed: {}", err)),
+                format!("write_report failed: {err}"),
             )
         })?;
 
@@ -145,8 +150,8 @@ impl AdminApi for AdminService {
             send_result(
                 ctx,
                 sink,
-                self.get_prometheus_metrics_impl(request, &logger),
-                &logger,
+                self.get_prometheus_metrics_impl(request, logger),
+                logger,
             )
         });
     }
@@ -154,7 +159,7 @@ impl AdminApi for AdminService {
     fn get_info(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<GetInfoResponse>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.get_info_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.get_info_impl(request, logger), logger)
         });
     }
 
@@ -166,19 +171,14 @@ impl AdminApi for AdminService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.set_rust_log_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.set_rust_log_impl(request, logger), logger)
         });
     }
 
     fn test_log_error(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<Empty>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.test_log_error_impl(request, &logger),
-                &logger,
-            )
+            send_result(ctx, sink, self.test_log_error_impl(request, logger), logger)
         });
     }
 }

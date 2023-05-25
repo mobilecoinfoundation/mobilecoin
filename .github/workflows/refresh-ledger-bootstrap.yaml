@@ -1,0 +1,121 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+#
+# Daily job to refresh ledger db files
+
+name: Refresh ledger bootstrap
+
+on:
+  schedule:
+  - cron: '0 0 * * *'
+
+# Start mobilecoind
+# Monitor mobilecoind until ledger has finished syncing
+# Stop mobilecoind
+# Copy ledger/watcher to azure blob
+
+jobs:
+  refresh-ledger:
+    runs-on: [self-hosted, Linux, large-cd]
+    container:
+      image: mobilecoin/gha-azure-helper:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        network:
+        - chain_id: test
+          block_info_url: https://node1.test.mobilecoin.com:443/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
+          peers: mc://node1.test.mobilecoin.com:443/,mc://node2.test.mobilecoin.com:443/,mc://node3.test.mobilecoin.com/,mc://node4.test.mobilecoin.com:443/,mc://node5.test.mobilecoin.com:443/,mc://node6.test.mobilecoin.com:443/,mc://node7.test.mobilecoin.com:443/,mc://node8.test.mobilecoin.com:443/,mc://node1.consensus.mob.staging.namda.net:443/,mc://node2.consensus.mob.staging.namda.net:443/
+          quorum_set: |-
+            { "threshold": 7, "members": [{"args":"node1.test.mobilecoin.com:443","type":"Node"},{"args":"node2.test.mobilecoin.com:443","type":"Node"},{"args":"node3.test.mobilecoin.com:443","type":"Node"},{"args":"node4.test.mobilecoin.com:443","type":"Node"},{"args":"node5.test.mobilecoin.com:443","type":"Node"},{"args":"node6.test.mobilecoin.com:443","type":"Node"},{"args":"node7.test.mobilecoin.com:443","type":"Node"},{"args":"node8.test.mobilecoin.com:443","type":"Node"},{"args":"node1.consensus.mob.staging.namda.net:443","type":"Node"},{"args":"node2.consensus.mob.staging.namda.net:443","type":"Node"}] }
+          tx_source_urls: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node4.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node5.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node6.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node7.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node8.test.mobilecoin.com/,https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node1.consensus.mob.staging.namda.net/,https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node2.consensus.mob.staging.namda.net/
+        - chain_id: main
+          block_info_url: https://node1.prod.mobilecoinww.com:443/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
+          peers: mc://node1.prod.mobilecoinww.com:443/,mc://node2.prod.mobilecoinww.com:443/,mc://node3.prod.mobilecoinww.com/,mc://node1.consensus.mob.production.namda.net:443/,mc://node2.consensus.mob.production.namda.net:443/,mc://blockdaemon.mobilecoin.bdnodes.net:443/,mc://binance.mobilecoin.bdnodes.net:443/,mc://ideasbeyondborders.mobilecoin.bdnodes.net:443/,mc://thelongnowfoundation.mobilecoin.bdnodes.net:443/,mc://ams1-mc-node1.dreamhost.com:3223/
+          quorum_set: |
+            { "threshold": 7, "members": [{"args":"node1.prod.mobilecoinww.com:443","type":"Node"},{"args":"node2.prod.mobilecoinww.com:443","type":"Node"},{"args":"node3.prod.mobilecoinww.com:443","type":"Node"},{"args":"node1.consensus.mob.production.namda.net:443","type":"Node"},{"args":"node2.consensus.mob.production.namda.net:443","type":"Node"},{"args":"blockdaemon.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"binance.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"ideasbeyondborders.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"thelongnowfoundation.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"ams1-mc-node1.dreamhost.com:3223","type":"Node"}] }
+          tx_source_urls: https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com/,https://ledger.mobilecoinww.com/node2.prod.mobilecoinww.com/,https://ledger.mobilecoinww.com/node3.prod.mobilecoinww.com/,https://s3-eu-central-1.amazonaws.com/production-namda-payments-ledger/node1.consensus.mob.production.namda.net/,https://s3-eu-central-1.amazonaws.com/production-namda-payments-ledger/node2.consensus.mob.production.namda.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/blockdaemon.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/binance.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/ideasbeyondborders.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/thelongnowfoundation.mobilecoin.bdnodes.net/,https://s3-eu-west-1.amazonaws.com/dh-mobilecoin-eu/ams1-mc-node1.dreamhost.com/
+    env:
+      DOWNLOAD_DIR: ${{ github.workspace }}/.tmp
+      MC_LEDGER_DB: ${{ github.workspace }}/.tmp/ledger
+      MC_WATCHER_DB: ${{ github.workspace }}/.tmp/watcher
+      MC_MOBILECOIND_DB: ${{ github.workspace }}/.tmp/mobilecoind_db
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Download latest linux release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        mkdir -p "${DOWNLOAD_DIR}"
+        gh release download \
+            -p '${{ matrix.network.chain_id }}net-mobilecoind-linux-x86_64-*.tar.gz' \
+            -O "${DOWNLOAD_DIR}/linux.tar.gz"
+
+    - name: Unpack full-service
+      run: |
+        cd "${DOWNLOAD_DIR}"
+        tar --skip-old-files -xvzf linux.tar.gz
+
+    - name: Run full-service - wait for ledger sync
+      shell: bash
+      env:
+        MC_FOG_INGEST_ENCLAVE_CSS: ./ingest-enclave.css
+        MC_CHAIN_ID: ${{ matrix.network.chain_id }}
+        MC_PEER: ${{ matrix.network.peers }}
+        MC_TX_SOURCE_URL: ${{ matrix.network.tx_source_urls }}
+        MC_QUORUM_SET: ${{ matrix.network.quorum_set }}
+        MC_POLL_INTERVAL: "1"
+        MC_LISTEN_URI: insecure-mobilecoind://127.0.0.1:3229/
+        MC_IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
+        MC_MOBILECOIND_URI: insecure-mobilecoind://127.0.0.1:3229/
+        BLOCK_INFO_URL: ${{ matrix.network.block_info_url }}
+        RUST_LOG: error
+      run: |
+        set -e
+        pushd "${DOWNLOAD_DIR}/mobilecoind-linux/bin"
+
+        # Start mobilecoind
+        ./mobilecoind &
+        # Capture pid
+        mc_pid=${!}
+        echo "${mc_pid}"
+
+        # Start mobilecoind-json
+        ./mobilecoind-json --listen-host 127.0.0.1 --listen-port 9090 &
+        # Capture pid
+        mcj_pid=${!}
+        echo "${mcj_pid}"
+
+        echo "wait for mobilecoind to sync all the blocks"
+        "${GITHUB_WORKSPACE}/.internal-ci/util/wait-for-mobilecoind.sh"
+
+        echo "ledger is in sync, stop mobilecoind"
+        kill ${mcj_pid}
+        kill ${mc_pid}
+        echo "mobilecoind shutdown successfully"
+
+    - name: copy ledger/watcher data.mdb to Azure Blob Storage
+      shell: bash
+      run: |
+        # Sync to MC
+        pushd "${MC_LEDGER_DB}"
+
+        export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.MC_LEDGER_DB_AZURE_STORAGE_CONNECTION_STRING }}'
+        az storage blob upload -f ./data.mdb -c ${{ matrix.network.chain_id }} -n mcd/ledger/data.mdb --overwrite
+
+        pushd "${MC_WATCHER_DB}"
+
+        az storage blob upload -f ./data.mdb -c ${{ matrix.network.chain_id }} -n mcd/watcher/data.mdb --overwrite
+
+        # Switch and sync to partner
+        export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.S_LEDGER_DB_AZURE_STORAGE_CONNECTION_STRING }}'
+
+        pushd "${MC_LEDGER_DB}"
+
+        az storage blob upload -f ./data.mdb -c ${{ matrix.network.chain_id }} -n mcd/ledger/data.mdb --overwrite
+
+        pushd "${MC_WATCHER_DB}"
+
+        az storage blob upload -f ./data.mdb -c ${{ matrix.network.chain_id }} -n mcd/watcher/data.mdb --overwrite
+

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Helper functions intended to return canned certificate data
 
@@ -45,7 +45,7 @@ fn get_key(name: &str) -> String {
 fn get_leaf_key(name: &str) -> Ed25519Pair {
     let pem_string = get_key(name);
     let pem_data = pem::parse(pem_string).expect("Could not parse PEM string");
-    let privkey = Ed25519Private::try_from_der(&pem_data.contents)
+    let privkey = Ed25519Private::try_from_der(pem_data.contents())
         .expect("Could not construct private key from key DER bytes");
 
     Ed25519Pair::from(privkey)

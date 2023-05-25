@@ -1,9 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! SGX Config XML Builder
 
 use std::{
-    convert::TryInto,
     fmt::{Display, Formatter, Result as FmtResult},
     fs::File,
     io::Write,
@@ -12,24 +11,19 @@ use std::{
 
 /// An enumeration of TCS policy options.
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum TcsPolicy {
     /// Thread control structures are bound to untrusted threads
     Bound = 0,
     /// Thread control structures are not bound to untrusted threads
+    #[default]
     Unbound = 1,
-}
-
-impl Default for TcsPolicy {
-    fn default() -> Self {
-        TcsPolicy::Unbound
-    }
 }
 
 /// This builder creates the Enclave.config.xml config file used by sgx_sign.
 ///
-/// See "Intel SGX Developer Reference" section "Enclave Configuration File" for more information
-/// on what the methods are setting.
+/// See "Intel SGX Developer Reference" section "Enclave Configuration File" for
+/// more information on what the methods are setting.
 #[derive(Clone, Debug, Default)]
 pub struct ConfigBuilder {
     prod_id: Option<u16>,
@@ -82,8 +76,8 @@ impl ConfigBuilder {
         self
     }
 
-    /// The minimum number of available thread control structures at any time in the life cycle of
-    /// an enclave (default: 1).
+    /// The minimum number of available thread control structures at any time in
+    /// the life cycle of an enclave (default: 1).
     pub fn tcs_min_pool(&mut self, min_pool: usize) -> &mut Self {
         self.tcs_min_pool = Some(min_pool);
         self
@@ -101,49 +95,57 @@ impl ConfigBuilder {
         self
     }
 
-    /// The maximum stack size per thread, must be 4KiB-aligned (default: 256KiB).
+    /// The maximum stack size per thread, must be 4KiB-aligned (default:
+    /// 256KiB).
     pub fn stack_max_size(&mut self, max_size: usize) -> &mut Self {
         self.stack_max_size = Some(max_size);
         self
     }
 
-    /// The initial heap size for the process, must be 4KiB-aligned (default: 16MiB).
+    /// The initial heap size for the process, must be 4KiB-aligned (default:
+    /// 16MiB).
     pub fn heap_init_size(&mut self, init_size: usize) -> &mut Self {
         self.heap_init_size = Some(init_size);
         self
     }
 
-    /// The minimum heap size for the process, must be 4KiB-aligned (default: 4KiB).
+    /// The minimum heap size for the process, must be 4KiB-aligned (default:
+    /// 4KiB).
     pub fn heap_min_size(&mut self, min_size: usize) -> &mut Self {
         self.heap_min_size = Some(min_size);
         self
     }
 
-    /// The maximum heap size for the process, must be 4KiB-aligned (default: 16MiB).
+    /// The maximum heap size for the process, must be 4KiB-aligned (default:
+    /// 16MiB).
     pub fn heap_max_size(&mut self, max_size: usize) -> &mut Self {
         self.heap_max_size = Some(max_size);
         self
     }
 
-    /// The maximum reserved memory for the process, must be 4KiB-aligned (default: 0).
+    /// The maximum reserved memory for the process, must be 4KiB-aligned
+    /// (default: 0).
     pub fn reserved_mem_max_size(&mut self, max_size: usize) -> &mut Self {
         self.reserved_mem_max_size = Some(max_size);
         self
     }
 
-    /// The minimum reserved memory for the process, must be 4KiB-aligned (default: 0).
+    /// The minimum reserved memory for the process, must be 4KiB-aligned
+    /// (default: 0).
     pub fn reserved_mem_min_size(&mut self, min_size: usize) -> &mut Self {
         self.reserved_mem_min_size = Some(min_size);
         self
     }
 
-    /// The initial reserved memory size for the process, must be 4KiB-aligned (default: 0).
+    /// The initial reserved memory size for the process, must be 4KiB-aligned
+    /// (default: 0).
     pub fn reserved_mem_init_size(&mut self, init_size: usize) -> &mut Self {
         self.reserved_mem_init_size = Some(init_size);
         self
     }
 
-    /// The reserved memory is executable (only used for SGX 1 platform, default: false).
+    /// The reserved memory is executable (only used for SGX 1 platform,
+    /// default: false).
     pub fn reserved_memory_executable(&mut self, exec: bool) -> &mut Self {
         self.reserved_memory_executable = Some(exec);
         self
@@ -164,19 +166,12 @@ impl ConfigBuilder {
 
     /// Enable the Key Separation and Sharing feature,
     pub fn enable_kss(&mut self, isv_extended_product_id: u128, isv_family_id: u128) -> &mut Self {
+        const MASK: u128 = 0x0000_0000_0000_0000_ffff_ffff_ffff_ffff;
         // All these should be infallible.
         self.isv_ext_prod_id_high = Some((isv_extended_product_id >> 64).try_into().unwrap());
-        self.isv_ext_prod_id_low = Some(
-            (isv_extended_product_id & 0x0000_0000_0000_0000_ffff_ffff_ffff_ffff)
-                .try_into()
-                .unwrap(),
-        );
+        self.isv_ext_prod_id_low = Some((isv_extended_product_id & MASK).try_into().unwrap());
         self.isv_family_id_high = Some((isv_family_id >> 64).try_into().unwrap());
-        self.isv_family_id_low = Some(
-            (isv_family_id & 0x0000_0000_0000_0000_ffff_ffff_ffff_ffff)
-                .try_into()
-                .unwrap(),
-        );
+        self.isv_family_id_low = Some((isv_family_id & MASK).try_into().unwrap());
         self.enable_kss = Some(true);
         self
     }

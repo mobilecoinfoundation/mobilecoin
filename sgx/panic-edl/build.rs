@@ -1,9 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Build script, emits source DIR as a variable
 
 use cargo_emit::pair;
-use std::{convert::TryFrom, env::var, path::PathBuf};
+use std::{env::var, path::PathBuf};
 
 fn main() {
     let mut search_path =

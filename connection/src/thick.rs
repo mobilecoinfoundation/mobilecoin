@@ -1,24 +1,31 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Connection implementations required for the thick client.
 //! The attested client implementation.
 
+#![allow(clippy::result_large_err)]
 use crate::{
     credentials::{AuthenticationError, CredentialsProvider, CredentialsProviderError},
     error::{Error, Result},
     traits::{
-        AttestationError, AttestedConnection, BlockchainConnection, Connection, UserTxConnection,
+        AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
+        UserTxConnection,
     },
 };
 use aes_gcm::Aes256Gcm;
 use cookie::CookieJar;
 use displaydoc::Display;
-use grpcio::{CallOption, ChannelBuilder, Environment, Error as GrpcError, MetadataBuilder};
+use grpcio::{
+    CallOption, ChannelBuilder, ClientUnaryReceiver, Environment, Error as GrpcError,
+    MetadataBuilder,
+};
 use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::{VerificationReport, Verifier};
+use mc_attest_core::VerificationReport;
+use mc_attest_verifier::Verifier;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -31,16 +38,15 @@ use mc_consensus_api::{
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
-use mc_crypto_rand::McRng;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
-use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore};
+use mc_rand::McRng;
+use mc_transaction_core::tx::Tx;
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
 use secrecy::{ExposeSecret, SecretVec};
 use sha2::Sha512;
 use std::{
     cmp::Ordering,
-    convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     ops::Range,
@@ -85,9 +91,9 @@ impl From<CipherError> for ThickClientAttestationError {
 
 impl From<UriConversionError> for ThickClientAttestationError {
     fn from(src: UriConversionError) -> Self {
-        match src.clone() {
+        match &src {
             UriConversionError::ResponderId(uri, _err) => {
-                ThickClientAttestationError::InvalidResponderID(uri, src)
+                ThickClientAttestationError::InvalidResponderID(uri.clone(), src)
             }
             _ => ThickClientAttestationError::UriConversionError(src),
         }
@@ -109,17 +115,34 @@ impl AuthenticationError for ThickClientAttestationError {
     }
 }
 
-impl AttestationError for ThickClientAttestationError {}
+impl AttestationError for ThickClientAttestationError {
+    fn should_reattest(&self) -> bool {
+        matches!(self, Self::Grpc(_) | Self::Ake(_) | Self::Cipher(_))
+    }
+
+    fn should_retry(&self) -> bool {
+        match self {
+            Self::Grpc(_) | Self::Cipher(_) | Self::CredentialsProvider(_) => true,
+            Self::Ake(AkeError::ReportVerification(_)) => false,
+            Self::Ake(_) => true,
+            Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
+        }
+    }
+}
 
 /// A connection from a client to a consensus enclave.
 pub struct ThickClient<CP: CredentialsProvider> {
+    /// The chain id. This is used with the chain-id grpc header if
+    /// provided. Ignored if empty string.
+    chain_id: String,
     /// The destination's URI
     uri: ClientUri,
     /// The logging instance
     logger: Logger,
     /// The gRPC API client we will use for blockchain detail retrieval.
     blockchain_api_client: BlockchainApiClient,
-    /// The gRPC API client we will use for attestation and (eventually) transactions
+    /// The gRPC API client we will use for attestation and (eventually)
+    /// transactions
     attested_api_client: AttestedApiClient,
     /// The gRPC API client we will use for legacy transaction submission.
     consensus_client_api_client: ConsensusClientApiClient,
@@ -129,13 +152,15 @@ pub struct ThickClient<CP: CredentialsProvider> {
     enclave_connection: Option<Ready<Aes256Gcm>>,
     /// Generic interface for retreiving GRPC credentials.
     credentials_provider: CP,
-    /// A hash map of metadata to set on outbound requests, filled by inbound `Set-Cookie` metadata
+    /// A hash map of metadata to set on outbound requests, filled by inbound
+    /// `Set-Cookie` metadata
     cookies: CookieJar,
 }
 
 impl<CP: CredentialsProvider> ThickClient<CP> {
     /// Create a new attested connection to the given consensus node.
     pub fn new(
+        chain_id: String,
         uri: ClientUri,
         verifier: Verifier,
         env: Arc<Environment>,
@@ -151,6 +176,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         let consensus_client_api_client = ConsensusClientApiClient::new(ch);
 
         Ok(Self {
+            chain_id,
             uri,
             logger,
             blockchain_api_client,
@@ -163,42 +189,57 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         })
     }
 
-    /// A wrapper for performing an authenticated call. This also takes care to properly include
-    /// cookie information in the request.
-    fn authenticated_call<
-        T,
-        E: AuthenticationError + From<Box<dyn CredentialsProviderError + 'static>>,
-    >(
+    /// A wrapper for performing an authenticated call. This also takes care to
+    /// properly include cookie information in the request.
+    fn authenticated_call<T>(
         &mut self,
-        func: impl FnOnce(&mut Self, CallOption) -> StdResult<T, E>,
-    ) -> StdResult<T, E> {
+        func: impl FnOnce(
+            &mut Self,
+            CallOption,
+        ) -> StdResult<ClientUnaryReceiver<T>, ThickClientAttestationError>,
+    ) -> StdResult<T, ThickClientAttestationError> {
         // Make the actual RPC call.
-        let call_option = self.call_option()?;
-        let result = func(self, call_option);
-
-        // If the call failed due to authentication (credentials) error, reset creds so that it
-        // gets re-created on the next call.
-        if let Err(err) = result.as_ref() {
-            if err.is_unauthenticated() {
-                self.credentials_provider.clear();
-            }
+        let result = func(self, self.call_option()?);
+        if let Err(err) = &result {
+            self.handle_rpc_error(err);
         }
-        result
+
+        // Block on the call, and update cookies before passing on the response.
+        result?
+            .receive_sync()
+            .map(|(header, response, trailer)| {
+                // Update cookies from server-sent metadata
+                if let Err(e) = self
+                    .cookies
+                    .update_from_server_metadata(Some(&header), Some(&trailer))
+                {
+                    log::warn!(
+                        self.logger,
+                        "Could not update cookies from gRPC metadata: {}",
+                        e
+                    )
+                }
+
+                response
+            })
+            .map_err(|err| {
+                let err = ThickClientAttestationError::from(err);
+                self.handle_rpc_error(&err);
+                err
+            })
     }
 
     /// A convenience wrapper for performing authenticated+attested GRPC calls
     fn authenticated_attested_call<T>(
         &mut self,
-        func: impl FnOnce(&mut Self, CallOption) -> StdResult<T, GrpcError>,
+        func: impl FnOnce(&mut Self, CallOption) -> StdResult<ClientUnaryReceiver<T>, GrpcError>,
     ) -> StdResult<T, ThickClientAttestationError> {
         self.authenticated_call(|this, call_option| {
-            Ok(this.attested_call(|this| func(this, call_option))?)
+            this.attested_call(|this| func(this, call_option))
         })
     }
 
     fn call_option(&self) -> StdResult<CallOption, Box<dyn CredentialsProviderError + 'static>> {
-        let retval = CallOption::default();
-
         // Create metadata from cookies and credentials
         let mut metadata_builder = self
             .cookies
@@ -217,7 +258,28 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             }
         }
 
-        Ok(retval.headers(metadata_builder.build()))
+        // Add the chain id header if we have a chain id specified
+        if !self.chain_id.is_empty() {
+            metadata_builder
+                .add_str(CHAIN_ID_GRPC_HEADER, &self.chain_id)
+                .expect("Error setting chain-id header");
+        }
+
+        Ok(CallOption::default().headers(metadata_builder.build()))
+    }
+
+    fn handle_rpc_error(&mut self, err: &(impl AuthenticationError + AttestationError)) {
+        // If the call failed due to authentication (credentials) error, reset creds so
+        // that it gets re-created on the next call.
+        if err.is_unauthenticated() {
+            self.credentials_provider.clear();
+        }
+
+        // If the call failed due to attestation error, reset attestation so that we
+        // re-attest on the next call.
+        if err.should_reattest() {
+            self.deattest();
+        }
     }
 }
 
@@ -249,24 +311,12 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
         let (initiator, auth_request_output) = initiator.try_next(&mut csprng, init_input)?;
 
         // Do the gRPC Call
-        let (header, auth_response_msg, trailer) =
+        let auth_response_msg =
             self.authenticated_call(|this, call_option| -> StdResult<_, Self::Error> {
-                Ok(this
-                    .attested_api_client
-                    .auth_full(&auth_request_output.into(), call_option)?)
+                this.attested_api_client
+                    .auth_async_opt(&auth_request_output.into(), call_option)
+                    .map_err(ThickClientAttestationError::from)
             })?;
-
-        // Update cookies from server-sent metadata
-        if let Err(e) = self
-            .cookies
-            .update_from_server_metadata(header.as_ref(), trailer.as_ref())
-        {
-            log::warn!(
-                self.logger,
-                "Could not update cookies from gRPC metadata: {}",
-                e
-            )
-        }
 
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
@@ -300,23 +350,8 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
         request.set_limit(limit);
 
         self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
-                .blockchain_api_client
-                .get_blocks_full(&request, call_option)?;
-
-            // Update cookies from server-sent metadata
-            if let Err(e) = this
-                .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
-            {
-                log::warn!(
-                    this.logger,
-                    "Could not update cookies from gRPC metadata: {}",
-                    e
-                )
-            }
-
-            Ok(message)
+            this.blockchain_api_client
+                .get_blocks_async_opt(&request, call_option)
         })?
         .get_blocks()
         .iter()
@@ -333,23 +368,8 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
         request.set_limit(limit);
 
         self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
-                .blockchain_api_client
-                .get_blocks_full(&request, call_option)?;
-
-            // Update cookies from server-sent metadata
-            if let Err(e) = this
-                .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
-            {
-                log::warn!(
-                    this.logger,
-                    "Could not update cookies from gRPC metadata: {}",
-                    e
-                )
-            }
-
-            Ok(message)
+            this.blockchain_api_client
+                .get_blocks_async_opt(&request, call_option)
         })?
         .get_blocks()
         .iter()
@@ -362,30 +382,26 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
 
         Ok(self
             .authenticated_attested_call(|this, call_option| {
-                let (header, message, trailer) = this
-                    .blockchain_api_client
-                    .get_last_block_info_full(&Empty::new(), call_option)?;
-
-                // Update cookies from server-sent metadata
-                if let Err(e) = this
-                    .cookies
-                    .update_from_server_metadata(header.as_ref(), trailer.as_ref())
-                {
-                    log::warn!(
-                        this.logger,
-                        "Could not update cookies from gRPC metadata: {}",
-                        e
-                    )
-                }
-
-                Ok(message)
+                this.blockchain_api_client
+                    .get_last_block_info_async_opt(&Empty::new(), call_option)
             })?
             .index)
+    }
+
+    fn fetch_block_info(&mut self) -> Result<BlockInfo> {
+        trace_time!(self.logger, "ThickClient::fetch_block_info");
+
+        let block_info = self.authenticated_attested_call(|this, call_option| {
+            this.blockchain_api_client
+                .get_last_block_info_async_opt(&Empty::new(), call_option)
+        })?;
+
+        Ok(block_info.into())
     }
 }
 
 impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
-    fn propose_tx(&mut self, tx: &Tx) -> Result<BlockIndex> {
+    fn propose_tx(&mut self, tx: &Tx) -> Result<u64> {
         trace_time!(self.logger, "ThickClient::propose_tx");
 
         if !self.is_attested() {
@@ -407,29 +423,17 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
         msg.set_data(tx_ciphertext);
 
         let resp = self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
-                .consensus_client_api_client
-                .client_tx_propose_full(&msg, call_option)?;
-
-            // Update cookies from server-sent metadata
-            if let Err(e) = this
-                .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
-            {
-                log::warn!(
-                    this.logger,
-                    "Could not update cookies from gRPC metadata: {}",
-                    e
-                )
-            }
-
-            Ok(message)
+            this.consensus_client_api_client
+                .client_tx_propose_async_opt(&msg, call_option)
         })?;
 
         if resp.get_result() == ProposeTxResult::Ok {
             Ok(resp.get_block_count())
         } else {
-            Err(resp.get_result().into())
+            Err(Error::TransactionValidation(
+                resp.get_result(),
+                resp.get_err_msg().to_owned(),
+            ))
         }
     }
 }

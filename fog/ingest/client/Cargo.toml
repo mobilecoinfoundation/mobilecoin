@@ -1,0 +1,59 @@
+[package]
+name = "mc-fog-ingest-client"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[lib]
+name = "mc_fog_ingest_client"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fog_ingest_client"
+path = "src/main.rs"
+
+[dev-dependencies]
+mc-attest-net = { path = "../../../attest/net" }
+mc-fog-ingest-enclave = { path = "../enclave" }
+mc-fog-ingest-server = { path = "../server" }
+mc-fog-ingest-server-test-utils = { path = "../server/test-utils" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-fog-test-infra = { path = "../../test_infra" }
+mc-ledger-db = { path = "../../../ledger/db" }
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-watcher = { path = "../../../watcher" }
+
+# third party
+assert_cmd = "2.0.10"
+predicates = "3"
+rand = "0.8"
+
+[dependencies]
+# third party
+clap = { version = "4.1", features = ["derive", "env"] }
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.12.1"
+hex = "0.4"
+protobuf = "2.27.1"
+retry = "2.0"
+serde_json = "1.0"
+
+# root
+mc-account-keys = { path = "../../../account-keys" }
+mc-api = { path = "../../../api" }
+mc-common = { path = "../../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-cli = { path = "../../../util/cli" }
+mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-keyfile = { path = "../../../util/keyfile" }
+mc-util-parse = { path = "../../../util/parse" }
+mc-util-uri = { path = "../../../util/uri" }
+
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }

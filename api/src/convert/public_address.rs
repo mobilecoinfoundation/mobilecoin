@@ -1,8 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::PublicAddress
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_account_keys::PublicAddress;
-use std::convert::TryFrom;
 
 impl From<&PublicAddress> for external::PublicAddress {
     fn from(src: &PublicAddress) -> Self {
@@ -63,7 +64,8 @@ mod tests {
     use mc_account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
 
-    // Test converting between external::PublicAddress and account_keys::PublicAddress
+    // Test converting between external::PublicAddress and
+    // account_keys::PublicAddress
     #[test]
     fn test_public_address_conversion() {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);

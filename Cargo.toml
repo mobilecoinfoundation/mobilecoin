@@ -1,8 +1,9 @@
-cargo-features = ["resolver"]
+cargo-features = ["named-profiles"]
 
 [workspace]
-resolver = "2"
 members = [
+    "account-keys",
+    "account-keys/types",
     "admin-http-gateway",
     "api",
     "attest/ake",
@@ -11,6 +12,11 @@ members = [
     "attest/net",
     "attest/trusted",
     "attest/untrusted",
+    "attest/verifier",
+    "attest/verifier/config",
+    "attest/verifier/types",
+    "blockchain/types",
+    "blockchain/validators",
     "common",
     "connection",
     "connection/test-utils",
@@ -21,66 +27,125 @@ members = [
     "consensus/enclave/impl",
     "consensus/enclave/measurement",
     "consensus/enclave/mock",
+    "consensus/mint-client",
     "consensus/scp",
     "consensus/scp/play",
+    "consensus/scp/types",
     "consensus/service",
+    "consensus/service/config",
+    "consensus/tool",
+    "core",
+    "core/types",
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",
-    "crypto/digestible/test-utils",
     "crypto/digestible/signature",
+    "crypto/digestible/test-utils",
     "crypto/keys",
+    "crypto/memo-mac",
     "crypto/message-cipher",
+    "crypto/multisig",
     "crypto/noise",
-    "crypto/rand",
+    "crypto/ring-signature",
+    "crypto/ring-signature/signer",
+    "crypto/sig",
     "crypto/x509/test-vectors",
     "crypto/x509/utils",
     "enclave-boundary",
     "fog/api",
+    "fog/distribution",
+    "fog/enclave_connection",
+    "fog/ingest/client",
+    "fog/ingest/enclave",
+    "fog/ingest/enclave/api",
+    "fog/ingest/enclave/edl",
+    "fog/ingest/enclave/impl",
+    "fog/ingest/enclave/measurement",
+    "fog/ingest/report",
+    "fog/ingest/server",
+    "fog/kex_rng",
+    "fog/ledger/connection",
+    "fog/ledger/enclave",
+    "fog/ledger/enclave/api",
+    "fog/ledger/enclave/edl",
+    "fog/ledger/enclave/impl",
+    "fog/ledger/enclave/measurement",
+    "fog/ledger/server",
+    "fog/load_testing",
+    "fog/ocall_oram_storage/edl",
+    "fog/ocall_oram_storage/testing",
+    "fog/ocall_oram_storage/trusted",
+    "fog/ocall_oram_storage/untrusted",
+    "fog/overseer/server",
+    "fog/recovery_db_iface",
+    "fog/report/api",
+    "fog/report/cli",
     "fog/report/connection",
+    "fog/report/resolver",
+    "fog/report/server",
+    "fog/report/types",
     "fog/report/validation",
     "fog/report/validation/test-utils",
+    "fog/sample-paykit",
     "fog/sig",
     "fog/sig/authority",
     "fog/sig/report",
+    "fog/sql_recovery_db",
+    "fog/sql_recovery_db/cleanup",
+    "fog/test-client",
+    "fog/test_infra",
     "fog/types",
+    "fog/uri",
+    "fog/view/connection",
+    "fog/view/enclave",
+    "fog/view/enclave/api",
+    "fog/view/enclave/edl",
+    "fog/view/enclave/impl",
+    "fog/view/enclave/measurement",
+    "fog/view/load-test",
+    "fog/view/protocol",
+    "fog/view/server",
+    "fog/view/server/test-utils",
+    "go-grpc-gateway/testing",
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",
     "ledger/migration",
     "ledger/sync",
     "mobilecoind",
+    "mobilecoind-dev-faucet",
     "mobilecoind-json",
     "mobilecoind/api",
     "peers",
     "peers/test-utils",
     "sgx/compat-edl",
-    "sgx/core-types",
-    "sgx/core-types-sys",
     "sgx/css",
+    "sgx/css-dump",
     "sgx/debug-edl",
-    "sgx/epid",
-    "sgx/epid-sys",
-    "sgx/epid-types",
-    "sgx/epid-types-sys",
-    "sgx/ias-types",
     "sgx/panic-edl",
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
-    "sgx/urts-sys",
-    "slam",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
+    "test-vectors/memos",
+    "test-vectors/tx-out-records",
+    "transaction/builder",
     "transaction/core",
     "transaction/core/test-utils",
-    "transaction/std",
-    "util/build/bolt-signalapp",
+    "transaction/extra",
+    "transaction/signer",
+    "transaction/summary",
+    "transaction/types",
+    "util/b58-decoder",
     "util/build/enclave",
     "util/build/grpc",
     "util/build/script",
     "util/build/sgx",
+    "util/cli",
+    "util/dump-ledger",
     "util/encodings",
+    "util/ffi",
     "util/from-random",
     "util/generate-sample-ledger",
     "util/grpc",
@@ -92,21 +157,34 @@ members = [
     "util/logger-macros",
     "util/metered-channel",
     "util/metrics",
+    "util/parse",
     "util/repr-bytes",
+    "util/seeded-ed25519-key-gen",
     "util/serial",
+    "util/telemetry",
     "util/test-helper",
     "util/test-vector",
+    "util/u64-ratio",
     "util/uri",
+    "util/vec-map",
+    "util/zip-exact",
+    "wasm-test",
     "watcher",
     "watcher/api",
 ]
 exclude = [
-    # mc-util-serial should only be accessed via the `common` crate.
-    "util/serial",
     # N.B. for some reason, putting these crates under `exclude` helps with
     # making `cargo test --all` work, when `consensus-enclave-impl` is part of workspace
+    "fog/ingest/enclave/trusted",
+    "fog/ledger/enclave/trusted",
+    "fog/view/enclave/trusted",
     "sgx",
+    # mc-util-serial should only be accessed via the `common` crate.
+    "util/serial",
 ]
+
+[workspace.package]
+rust-version = "1.68.0"
 
 [profile.dev]
 opt-level = 0
@@ -119,36 +197,51 @@ lto = false
 debug-assertions = false
 overflow-checks = false
 
+[profile.mobile]
+inherits = "release"
+debug = false
+lto = true
+
+[profile.mobile-release]
+inherits = "mobile"
+codegen-units = 1
+lto = false
+
 # Skip the need for LD_LIBRARY_PATH in `cargo test`
 [profile.test]
 rpath = true
 
-[patch.crates-io]
-# grpcio patched with metadata
-grpcio = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
-# Code gen patched with metadata
-grpcio-compiler = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
+[profile.ci]
+# Build config.
+inherits = "test"
+# Enable some compiler optimizations.
+opt-level = 2
+# LLVM's Link-Time Optimization: Some, relatively quick to generate.
+lto = "thin"
 
-# prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
-# current revision is from jun 13 2020, waiting for a new prost release
-# https://github.com/danburkert/prost/issues/329
-prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
-prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
+[patch.crates-io]
+# Fork and rename to use "OG" dalek-cryptography with latest dependencies.
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
+
+curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
+
+# Fix issues with recent nightlies, bump curve25519-dalek version
+ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
+
+# mbedtls patched to allow certificate verification with a profile
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
+
+# Fork and rename to use "OG" dalek-cryptography.
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
 #   See: https://github.com/pyfisch/cbor/pull/198
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
-# Not-yet-released version that depends on newer crates.
-bulletproofs = { git = "https://github.com/dalek-cryptography/bulletproofs", rev = "464acb72432ccc6c5131397fd811a5f01ec2454b" }
-
-# Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8e04e9d18d93fc6d05c72756c236dc88daa19" }
-
-# We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
-aes-gcm = { git = "https://github.com/mobilecoinofficial/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
-
+# Fix issues with recent nightlies, bump curve25519-dalek version
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }

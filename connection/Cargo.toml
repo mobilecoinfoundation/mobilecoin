@@ -1,32 +1,38 @@
 [package]
 name = "mc-connection"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
+
 mc-attest-ake = { path = "../attest/ake" }
 mc-attest-api = { path = "../attest/api" }
 mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier = { path = "../attest/verifier" }
+mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common" }
 mc-consensus-api = { path = "../consensus/api" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-noise = { path = "../crypto/noise" }
-mc-crypto-rand = { path = "../crypto/rand" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
-aes-gcm = "0.6"
-cookie = "0.14"
-displaydoc = { version = "0.1.7", default-features = false }
-grpcio = "0.6.0"
-retry = "1.2"
-secrecy = "0.4"
-sha2 = "0.9"
+aes-gcm = "0.10.1"
+cookie = "0.17"
+displaydoc = "0.2"
+grpcio = "0.12.1"
+mc-rand = "1"
+retry = "2.0"
+secrecy = "0.8"
+serde = "1.0"
+sha2 = "0.10"
 
 [dev-dependencies]
-rand = "0.7"
-rand_hc = "0.2"
-tempdir = "0.3"
+rand = "0.8"
+rand_hc = "0.3"

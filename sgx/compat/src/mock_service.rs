@@ -1,7 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// mock_service is a series of stub implementations for functions from sgx_tservice,
-/// used in unit tests that are not sgx enabled
+/// mock_service is a series of stub implementations for functions from
+/// sgx_tservice, used in unit tests that are not sgx enabled
 use mc_sgx_types::{
     sgx_report_data_t, sgx_report_t, sgx_sealed_data_t, sgx_status_t, sgx_target_info_t,
 };
@@ -22,7 +22,8 @@ pub fn verify_report(_report: &sgx_report_t) -> Result<(), sgx_status_t> {
 const PREFIX_LEN: u32 = core::mem::size_of::<sgx_sealed_data_t>() as u32;
 
 /// Calculate sealed data size
-/// We are still using sgx_sealed_data_t layout, for compat with mc_attest_core::IntelSealed
+/// We are still using sgx_sealed_data_t layout, for compat with
+/// mc_attest_core::IntelSealed
 pub fn calc_sealed_data_size(
     plaintext_len: usize,
     additional_mac_txt_len: usize,

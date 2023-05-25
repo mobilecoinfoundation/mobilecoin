@@ -1,13 +1,13 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// Sets chan_size for stdout, gelf, and UDP loggers
-const STDOUT_CHANNEL_SIZE: usize = 100_000;
-const STDERR_CHANNEL_SIZE: usize = 100_000;
-const GELF_CHANNEL_SIZE: usize = 100_000;
-const UDP_CHANNEL_SIZE: usize = 100_000;
+/// Sets chan_size (maximal messages that can get queued up) for all channels
+const CHANNEL_SIZE: usize = 100_000;
+
+/// Marker to insert at the end of a message that has been truncated.
+const TRIM_MARKER: &str = "... <trimmed>";
 
 /// Macros to ease with tests/benches that require a Logger instance.
-pub use mc_util_logger_macros::{bench_with_logger, test_with_logger};
+pub use mc_util_logger_macros::{async_test_with_logger, bench_with_logger, test_with_logger};
 
 use super::*;
 
@@ -19,8 +19,8 @@ use chrono::{Local, Utc};
 use lazy_static::lazy_static;
 use sentry_logger::SentryLogger;
 use slog::Drain;
-use slog_gelf::Gelf;
 use slog_json::Json;
+use slog_term::TermDecorator;
 use std::{env, io, sync::Mutex};
 
 /// Custom timestamp function for use with slog-term
@@ -28,9 +28,8 @@ fn custom_timestamp(io: &mut dyn io::Write) -> io::Result<()> {
     write!(io, "{}", Utc::now())
 }
 
-/// Create a basic stdout logger.
-fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
-    let decorator = slog_term::TermDecorator::new().stdout().build();
+/// Create a basic stdout/stderr logger.
+fn create_std_logger(decorator: TermDecorator) -> slog::Fuse<slog_async::Async> {
     let drain = slog_envlogger::new(
         slog_term::FullFormat::new(decorator)
             .use_custom_timestamp(custom_timestamp)
@@ -38,52 +37,39 @@ fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
             .fuse(),
     );
     slog_async::Async::new(drain)
-        .thread_name("slog-stdout".into())
-        .chan_size(STDOUT_CHANNEL_SIZE)
+        .thread_name("slog-std".into())
+        .chan_size(CHANNEL_SIZE)
         .build()
         .fuse()
+}
+
+/// Create a basic stdout logger.
+fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
+    create_std_logger(slog_term::TermDecorator::new().stdout().build())
 }
 
 /// Create a basic stderr logger.
 fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
-    let decorator = slog_term::TermDecorator::new().stderr().build();
+    create_std_logger(slog_term::TermDecorator::new().stderr().build())
+}
+
+/// Create a json logger.
+///
+/// # Arguments:
+/// * `writer` - The writer to use for the logger.
+/// * `new_lines` - Whether to add a new line to the end of each log message.
+/// * `max_message_len` - The maximum length of a log message. If exceeded,
+///   message text will be trimmed.
+fn create_json_logger<W: io::Write + Send + 'static>(
+    writer: W,
+    new_lines: bool,
+    cap_message_length: Option<usize>,
+) -> slog::Fuse<slog_async::Async> {
+    let cap_message_length = cap_message_length.unwrap_or(usize::max_value());
+
     let drain = slog_envlogger::new(
-        slog_term::FullFormat::new(decorator)
-            .use_custom_timestamp(custom_timestamp)
-            .build()
-            .fuse(),
-    );
-    slog_async::Async::new(drain)
-        .thread_name("slog-stderr".into())
-        .chan_size(STDERR_CHANNEL_SIZE)
-        .build()
-        .fuse()
-}
-
-/// Create a GELF (https://docs.graylog.org/en/3.0/pages/gelf.html) logger.
-fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
-    env::var("MC_LOG_GELF").ok().map(|remote_host_port| {
-        let local_hostname = hostname::get_hostname().unwrap();
-
-        let drain = slog_envlogger::new(
-            Gelf::new(&local_hostname, &remote_host_port[..])
-                .expect("failed creating Gelf logger for")
-                .fuse(),
-        );
-
-        slog_async::Async::new(drain)
-            .thread_name("slog-gelf".into())
-            .chan_size(GELF_CHANNEL_SIZE)
-            .build()
-            .fuse()
-    })
-}
-
-/// Create a UDP JSON logger.
-fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
-    env::var("MC_LOG_UDP_JSON").ok().map(|remote_host_port| {
-        let drain = Json::new(udp_writer::UdpWriter::new(remote_host_port))
-            .set_newlines(false)
+        Json::new(writer)
+            .set_newlines(new_lines)
             .set_flush(true)
             .add_key_value(o!(
                     "ts" => PushFnValue(move |_, ser| {
@@ -96,56 +82,60 @@ fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
                         record.level().as_usize()
                     }),
                     "message" => PushFnValue(move |record, ser| {
-                        // Cap message at 65000 bytes to increase chances of it fitting in a UDP
-                        // packet.
-                        let mut msg = format!("{}", record.msg());
-                        if msg.len() > 65000 {
-                            msg = format!("{}... <trimmed>", &msg[0..65000]);
+                        let mut msg = record.msg().to_string();
+                        if msg.len() > cap_message_length{
+                            msg = format!("{}{}", &msg[0..cap_message_length - TRIM_MARKER.len()], TRIM_MARKER);
                         }
                         ser.emit(msg)
                     }),
             ))
             .build()
-            .fuse();
+            .fuse(),
+    );
+    slog_async::Async::new(drain)
+        .thread_name("slog-json".into())
+        .chan_size(CHANNEL_SIZE)
+        .build()
+        .fuse()
+}
 
-        let drain = slog_envlogger::new(drain);
-
-        slog_async::Async::new(drain)
-            .thread_name("slog-udp".into())
-            .chan_size(UDP_CHANNEL_SIZE)
-            .build()
-            .fuse()
+/// Create a UDP JSON logger.
+fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
+    env::var("MC_LOG_UDP_JSON").ok().map(|remote_host_port| {
+        let writer = udp_writer::UdpWriter::new(remote_host_port);
+        // Cap message at 65000 bytes to increase chances of it fitting in a UDP
+        // packet.
+        create_json_logger(writer, false, Some(65000))
     })
 }
 
-/// Create the root logger, which logs to stdout and optionally a GELF endpoint
-/// (if the `MC_LOG_GELF` environment variable is set) or a UDP JSON endpoint (if the
+/// Create the root logger, which logs to a UDP JSON endpoint (if the
 /// `MC_LOG_UDP_JSON` environment variable is set).
 pub fn create_root_logger() -> Logger {
-    // Support MC_LOG in addition to RUST_LOG. This makes allows us to not affect cargo's logs when
-    // doing stuff like MC_LOG=trace cargo test -p ...
+    // Support MC_LOG in addition to RUST_LOG. This makes allows us to not affect
+    // cargo's logs when doing stuff like MC_LOG=trace cargo test -p ...
     if env::var("RUST_LOG").is_err() && env::var("MC_LOG").is_ok() {
         env::set_var("RUST_LOG", env::var("MC_LOG").unwrap());
     }
 
-    // Default to INFO log level for everything if we do not have an explicit setting.
+    // Default to INFO log level for everything if we do not have an explicit
+    // setting.
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "info");
     }
 
     // Create our loggers.
-    let network_logger = match (create_gelf_logger(), create_udp_json_logger()) {
-        (None, None) => None,
-        (Some(gelf), None) => Some(gelf),
-        (None, Some(udp_json)) => Some(udp_json),
-        (Some(_), Some(_)) => panic!("MC_LOG_GELF and MC_LOG_UDP_JSON are mutually exclusive!"),
-    };
+    let network_logger = create_udp_json_logger();
 
     // Create stdout / stderr sink
-    let std_logger = if env::var("MC_LOG_STDERR") == Ok("1".to_string()) {
-        create_stderr_logger()
-    } else {
-        create_stdout_logger()
+    let std_logger = match (
+        env::var("MC_LOG_JSON").unwrap_or_default().as_ref(),
+        env::var("MC_LOG_STDERR").unwrap_or_default().as_ref(),
+    ) {
+        ("1", "1") => create_json_logger(io::stderr(), true, None),
+        ("1", _) => create_json_logger(io::stdout(), true, None),
+        (_, "1") => create_stderr_logger(),
+        (_, _) => create_stdout_logger(),
     };
 
     // Extra context that always gets added to each log message.
@@ -168,7 +158,7 @@ pub fn create_root_logger() -> Logger {
             if !key_val_str.is_empty() {
                 let key_val = key_val_str.split('=').collect::<Vec<&str>>();
                 if key_val.len() != 2 {
-                    panic!("invalid MC_LOG_EXTRA key/val: {}", key_val_str)
+                    panic!("invalid MC_LOG_EXTRA key/val: {key_val_str}")
                 }
 
                 let k = key_val[0].to_string();
@@ -218,7 +208,8 @@ pub fn create_app_logger<T: slog::SendSyncRefUnwindSafeKV + 'static>(
     // Get the root logger
     let root_logger = Logger::root(SWITCHABLE_APP_LOGGER.drain().fuse(), o!());
 
-    // Wrap root logger in a SentryLogger so that error and critical messages get forwarded to Sentry.
+    // Wrap root logger in a SentryLogger so that error and critical messages get
+    // forwarded to Sentry.
     let root_logger = SentryLogger::wrap(root_logger);
 
     // App-specific logging context and slog-scope initialization.
@@ -255,10 +246,11 @@ pub fn recreate_app_logger() {
     );
 }
 
-// `MaybeMcSrcValue` allows us to selectively include "mc.src" in our logging context.
-// We want to only include it for log messages that did not originate from inside an enclave,
-// since enclave logging context already includes this information (see mc_sgx_urts::enclave_log).
-// Doing it this way is necessary due due to how `slog` works.
+// `MaybeMcSrcValue` allows us to selectively include "mc.src" in our logging
+// context. We want to only include it for log messages that did not originate
+// from inside an enclave, since enclave logging context already includes this
+// information (see mc_sgx_urts::enclave_log). Doing it this way is necessary
+// due due to how `slog` works.
 struct MaybeMcSrcValue;
 impl slog::Value for MaybeMcSrcValue {
     fn serialize(

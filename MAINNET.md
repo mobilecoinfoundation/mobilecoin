@@ -8,8 +8,6 @@ You must read and accept these terms to use MobileCoin Software.
 
 To send and receive MobileCoin, you can use any of our open source wallet solutions.
 
-Please note that currently, the MobileCoin Wallet is not available for download or use by U.S. persons or entities, persons or entities located in the U.S., or persons or entities in other prohibited jurisdictions.
-
 #### MobileCoin Wallet CLI
 
 * Run [`mobilecoind`](./mobilecoind/README.md) for the wallet backend. Note that the mobilecoind-db is considered sensitive; you should follow best practices for isolation and security.
@@ -30,10 +28,10 @@ An example MainNet build and launch command for mobilecoind is:
     SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
     ```
 
-1. Run mobilecoind, connecting to one or mulltiple Consensus Validator Nodes:
+1. Run mobilecoind, connecting to one or multiple Consensus Validator Nodes:
 
     ```
-    ./target/release/mobilecoind \
+    ${CARGO_TARGET_DIR:-./target}/release/mobilecoind \
         --ledger-db /path/to/ledger-db \
         --mobilecoind-db /path/to/mobilecoind-db \
         --poll-interval 10 \
@@ -47,7 +45,7 @@ An example MainNet build and launch command for mobilecoind is:
 1. Run mobilecoind-json
 
     ```
-    ./target/release/mobilecoind-json
+    ${CARGO_TARGET_DIR:-./target}/release/mobilecoind-json
     ```
 
 1. Issue curl commands to mobilecoind-json, listening on 9090, or send protobuf requests to mobilecoind, listening on localhost:4444.
@@ -72,7 +70,7 @@ If you have a Linux-compatible home computer, or choose to operate a Linux-compa
 
 If you have an SGX-capable machine, or choose to operate an SGX-capable server in the cloud, you can run a *validator node* in the MobileCoin MainNet.
 
-1. Send an email to [support@mobilecoin.foundation](mailto://support@mobilecoin.foundation) and let the MobilCoin Foundation know how you'd like to get involved!
+1. Send an email to [support@mobilecoin.foundation](mailto://support@mobilecoin.foundation) and let the MobileCoin Foundation know how you'd like to get involved!
 
 ## Getting Help
 

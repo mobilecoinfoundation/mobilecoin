@@ -1,19 +1,20 @@
 [package]
 name = "mc-attest-api"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-license = "MIT/Apache-2.0"
-edition = "2018"
 description = "gRPC APIs for encrypted communications with an enclave"
+edition = "2021"
 keywords = ["SIGMA", "Cryptography", "Key Exchange", "Diffie-Hellman", "SGX", "Attestation"]
-readme = "README.md"
+license = "Apache-2.0"
 links = "mc-attest-api"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
 mc-util-build-script = { path = "../../util/build/script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 
 [dependencies]
 mc-attest-ake = { path = "../ake" }
@@ -21,8 +22,8 @@ mc-attest-enclave-api = { path = "../enclave-api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-noise = { path = "../../crypto/noise" }
 
-aead = "0.3"
-digest = "0.9"
+aead = "0.5"
+digest = "0.10"
 futures = "0.3"
-grpcio = "0.6.0"
-protobuf = "2.12"
+grpcio = "0.12.1"
+protobuf = "2.27.1"

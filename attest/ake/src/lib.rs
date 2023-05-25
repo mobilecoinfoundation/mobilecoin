@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin SGX-Attested Transport
 //!
@@ -7,6 +7,7 @@
 //! (client) and responders (server).
 
 #![allow(clippy::type_complexity)]
+#![allow(clippy::result_large_err)]
 #![no_std]
 extern crate alloc;
 
@@ -18,7 +19,7 @@ mod responder;
 mod shared;
 mod state;
 
-pub use self::{
+pub use crate::{
     error::Error,
     event::{
         AuthRequestOutput, AuthResponseInput, AuthResponseOutput, Ciphertext,
@@ -32,13 +33,11 @@ pub use self::{
 #[cfg(feature = "sgx-sim")]
 mod test {
     //! Unit tests for Attested Key Exchange
-    extern crate std;
-
     use super::*;
     use aes_gcm::Aes256Gcm;
-    use core::convert::TryFrom;
-    use mc_attest_core::{MrSignerVerifier, Quote, Verifier, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_core::Quote;
     use mc_attest_net::{Client, RaClient};
+    use mc_attest_verifier::{MrSignerVerifier, Verifier, IAS_SIM_ROOT_ANCHORS};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
     use mc_util_encodings::{FromBase64, ToX64};
     use mc_util_from_random::FromRandom;
@@ -63,7 +62,7 @@ mod test {
         let mut quote_data = quote.to_x64_vec();
 
         // Overwrite the cached quote's report_data contents with our pubkey
-        (&mut quote_data[368..400]).copy_from_slice(pubkey.as_ref());
+        quote_data[368..400].copy_from_slice(pubkey.as_ref());
 
         // Re-assemble a quote from the munged version
         let quote = Quote::try_from(quote_data.as_ref())

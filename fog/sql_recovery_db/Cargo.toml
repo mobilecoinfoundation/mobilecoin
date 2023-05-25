@@ -1,0 +1,58 @@
+[package]
+name = "mc-fog-sql-recovery-db"
+version = "4.1.0-pre0"
+authors = ["Mobilecoin"]
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[lib]
+name = "mc_fog_sql_recovery_db"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fog-sql-recovery-db-migrations"
+path = "src/bin/fog_sql_recovery_db_migrations.rs"
+
+[[bin]]
+name = "fog-sql-recovery-db-write-bench"
+path = "src/bin/fog_sql_recovery_db_write_bench.rs"
+
+[dependencies]
+mc-attest-core = { path = "../../attest/core" }
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-parse = { path = "../../util/parse" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes" }
+
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-types = { path = "../types" }
+
+chrono = "0.4"
+clap = { version = "4.1", features = ["derive", "env"] }
+diesel = { version = "2.0.3", features = ["chrono", "postgres", "r2d2"] }
+diesel-derive-enum = { version = "2.0.1", features = ["postgres"] }
+diesel_migrations = { version = "2.0.0", features = ["postgres"] }
+displaydoc = { version = "0.2", default-features = false }
+prost = "0.11"
+r2d2 = "0.8.10"
+rand = "0.8"
+rand_core = "0.6"
+retry = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+
+# needed for fog-sql-recovery-db-write-bench
+mc-fog-test-infra = { path = "../test_infra" }
+
+[dev-dependencies]
+mc-fog-test-infra = { path = "../test_infra" }
+
+mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
+mc-util-test-helper = { path = "../../util/test-helper" }
+
+pem = "2.0"
+rand = "0.8"

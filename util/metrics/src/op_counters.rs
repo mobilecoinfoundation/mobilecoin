@@ -1,8 +1,9 @@
 // Copyright (c) The Libra Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! `OpCounters` is a collection of convenience methods to add arbitrary counters to modules.
-//! For now, it supports Int-Counters, Int-Gauges, and Histogram.
+//! `OpCounters` is a collection of convenience methods to add arbitrary
+//! counters to modules. For now, it supports Int-Counters, Int-Gauges, and
+//! Histogram.
 
 use prometheus::{
     core::{Collector, Desc},
@@ -13,8 +14,8 @@ use prometheus::{
 
 #[derive(Clone)]
 pub struct OpMetrics {
-    module: String,
     counters: IntCounterVec,
+    peer_counters: IntCounterVec,
     gauges: IntGaugeVec,
     peer_gauges: IntGaugeVec,
     histograms: HistogramVec,
@@ -24,32 +25,39 @@ impl OpMetrics {
     pub fn new<S: Into<String>>(name: S) -> OpMetrics {
         let name_str = name.into();
         OpMetrics {
-            module: name_str.clone(),
             counters: IntCounterVec::new(
-                Opts::new(name_str.clone(), format!("Counters for {}", name_str)),
+                Opts::new(name_str.clone(), format!("Counters for {name_str}")),
                 &["op"],
+            )
+            .unwrap(),
+            peer_counters: IntCounterVec::new(
+                Opts::new(
+                    format!("{name_str}_peer_counter"),
+                    format!("Counters for each remote peer of {name_str}"),
+                ),
+                &["op", "remote_responder_id"],
             )
             .unwrap(),
             gauges: IntGaugeVec::new(
                 Opts::new(
-                    format!("{}_gauge", name_str),
-                    format!("Gauges for {}", name_str),
+                    format!("{name_str}_gauge"),
+                    format!("Gauges for {name_str}"),
                 ),
                 &["op"],
             )
             .unwrap(),
             peer_gauges: IntGaugeVec::new(
                 Opts::new(
-                    format!("{}_peer_gauge", name_str),
-                    format!("Gauges of each remote peer for {}", name_str),
+                    format!("{name_str}_peer_gauge"),
+                    format!("Gauges for each remote peer of {name_str}"),
                 ),
                 &["op", "remote_responder_id"],
             )
             .unwrap(),
             histograms: HistogramVec::new(
                 HistogramOpts::new(
-                    format!("{}_duration", name_str),
-                    format!("Histogram values for {}", name_str),
+                    format!("{name_str}_duration"),
+                    format!("Histogram values for {name_str}"),
                 ),
                 &["op"],
             )
@@ -81,6 +89,12 @@ impl OpMetrics {
     }
 
     #[inline]
+    pub fn peer_counter(&self, name: &str, remote_responder_id: &str) -> IntCounter {
+        self.peer_counters
+            .with_label_values(&[name, remote_responder_id])
+    }
+
+    #[inline]
     pub fn histogram(&self, name: &str) -> Histogram {
         self.histograms.with_label_values(&[name])
     }
@@ -92,9 +106,19 @@ impl OpMetrics {
 
     #[inline]
     pub fn inc_by(&self, op: &str, v: usize) {
-        // The underlying method is expecting i64, but most of the types
-        // we're going to log are `u64` or `usize`.
-        self.counters.with_label_values(&[op]).inc_by(v as i64);
+        self.counters.with_label_values(&[op]).inc_by(v as u64);
+    }
+
+    #[inline]
+    pub fn inc_peer(&self, op: &str, peer: &str) {
+        self.peer_counters.with_label_values(&[op, peer]).inc();
+    }
+
+    #[inline]
+    pub fn inc_peer_by(&self, op: &str, v: usize, peer: &str) {
+        self.peer_counters
+            .with_label_values(&[op, peer])
+            .inc_by(v as u64);
     }
 
     #[inline]
@@ -128,6 +152,7 @@ impl Collector for OpMetrics {
     fn desc(&self) -> Vec<&Desc> {
         let mut ms = Vec::with_capacity(4);
         ms.extend(self.counters.desc());
+        ms.extend(self.peer_counters.desc());
         ms.extend(self.gauges.desc());
         ms.extend(self.peer_gauges.desc());
         ms.extend(self.histograms.desc());
@@ -137,6 +162,7 @@ impl Collector for OpMetrics {
     fn collect(&self) -> Vec<MetricFamily> {
         let mut ms = Vec::with_capacity(4);
         ms.extend(self.counters.collect());
+        ms.extend(self.peer_counters.collect());
         ms.extend(self.gauges.collect());
         ms.extend(self.peer_gauges.collect());
         ms.extend(self.histograms.collect());

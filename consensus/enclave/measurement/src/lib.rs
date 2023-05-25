@@ -1,11 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
 #![no_std]
+#![doc = include_str!("../README.md")]
 
-use core::convert::TryFrom;
-use mc_attest_core::{MrEnclaveVerifier, MrSignerVerifier, SecurityVersion};
+use mc_attest_core::SecurityVersion;
+use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier};
 use mc_sgx_css::Signature;
 
 pub fn sigstruct() -> Signature {
@@ -14,7 +13,7 @@ pub fn sigstruct() -> Signature {
 }
 
 pub const CONFIG_ADVISORIES: &[&str] = &[];
-pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334"];
+pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"];
 
 pub fn get_mr_signer_verifier(override_minimum_svn: Option<SecurityVersion>) -> MrSignerVerifier {
     let signature = sigstruct();

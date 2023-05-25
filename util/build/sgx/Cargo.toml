@@ -1,15 +1,17 @@
 [package]
 name = "mc-util-build-sgx"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "SGX utilities assistance, from MobileCoin."
+license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-util-build-script = { path = "../script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 cc = "1.0"
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 pkg-config = "0.3"

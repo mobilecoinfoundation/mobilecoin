@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Error data types
 
@@ -23,6 +23,9 @@ pub enum WatcherError {
 
     /// Connection: {0}
     Connection(ConnectionError),
+
+    /// Unknown tx source url: {0}
+    UnknownTxSourceUrl(String),
 }
 
 impl From<url::ParseError> for WatcherError {
@@ -91,7 +94,11 @@ pub enum WatcherDBError {
 
 impl From<lmdb::Error> for WatcherDBError {
     fn from(src: lmdb::Error) -> Self {
-        Self::LmdbError(src)
+        match src {
+            lmdb::Error::KeyExist => Self::AlreadyExists,
+            lmdb::Error::NotFound => Self::NotFound,
+            _ => Self::LmdbError(src),
+        }
     }
 }
 
@@ -121,6 +128,12 @@ impl From<MetadataStoreError> for WatcherDBError {
 
 impl From<FromUtf8Error> for WatcherDBError {
     fn from(_src: FromUtf8Error) -> Self {
+        Self::Utf8
+    }
+}
+
+impl From<std::str::Utf8Error> for WatcherDBError {
+    fn from(_: std::str::Utf8Error) -> Self {
         Self::Utf8
     }
 }

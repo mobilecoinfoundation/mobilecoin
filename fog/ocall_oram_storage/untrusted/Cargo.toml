@@ -1,0 +1,13 @@
+[package]
+name = "mc-fog-ocall-oram-storage-untrusted"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[dependencies]
+mc-common = { path = "../../../common", features = ["log"] }
+
+lazy_static = "1.4"

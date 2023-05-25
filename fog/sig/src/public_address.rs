@@ -1,19 +1,17 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module provides the implementation of the all-in-one verifier for
 //! public addresses.
 
 use crate::{Error, Verifier};
-use core::convert::TryInto;
 use mc_account_keys::PublicAddress;
-use mc_crypto_keys::Ed25519Signature;
+use mc_crypto_keys::{Ed25519Signature, RistrettoSignature, SignatureError};
 use mc_crypto_x509_utils::{
     PublicKeyType, X509CertificateChain, X509CertificateIter, X509KeyExtrator,
 };
+use mc_fog_report_types::ReportResponse;
 use mc_fog_sig_authority::Verifier as AuthorityVerifier;
 use mc_fog_sig_report::Verifier as ReportVerifier;
-use mc_fog_types::ReportResponse;
-use signature::{Error as SignatureError, Signature};
 use x509_signature::X509Certificate;
 
 impl Verifier for PublicAddress {
@@ -35,14 +33,12 @@ impl Verifier for PublicAddress {
         .collect::<Vec<X509Certificate>>();
 
         // Get the authority signature
-        let authority_sig = self
-            .fog_authority_sig()
-            .ok_or(Error::NoSignature)?
-            .try_into()?;
+        let authority_sig =
+            RistrettoSignature::try_from(self.fog_authority_sig().ok_or(Error::NoSignature)?)?;
 
         // Verify the chain and signature over the resulting authority
         self.verify_authority(
-            &certs.verified_root()?.subject_public_key_info().spki(),
+            certs.verified_root()?.subject_public_key_info().spki(),
             &authority_sig,
         )
         .map_err(Error::Authority)?;
@@ -50,7 +46,7 @@ impl Verifier for PublicAddress {
         // Verify the signature over the reports matches the leaf cert in the chain
         match certs.leaf()?.mc_public_key().map_err(Error::Pubkey)? {
             PublicKeyType::Ed25519(pubkey) => {
-                let sig = Ed25519Signature::from_bytes(&report_response.signature)
+                let sig = Ed25519Signature::try_from(report_response.signature.as_slice())
                     .map_err(Error::SignatureParse)?;
                 pubkey
                     .verify_reports(report_response.reports.as_slice(), &sig)
@@ -67,8 +63,9 @@ mod tests {
     use mc_attest_core::VerificationReport;
     use mc_crypto_keys::Ed25519Pair;
     use mc_crypto_x509_utils::X509CertificateIterable;
+    use mc_fog_report_types::Report;
     use mc_fog_sig_report::Signer;
-    use mc_fog_types::Report;
+    use pem::Pem;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -81,7 +78,7 @@ mod tests {
     fn setup() -> (PublicAddress, Vec<Vec<u8>>, Ed25519Pair) {
         // load, parse, and verify the x509 test vector
         let (pem_chain, keypair) = mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf();
-        let der_chain = pem::parse_many(pem_chain);
+        let der_chain = pem::parse_many(pem_chain).expect("Could not parse PEM chain");
         let x509_chain = der_chain.iter_x509().collect::<Vec<X509Certificate>>();
 
         let mut csprng = Hc128Rng::seed_from_u64(0);
@@ -102,7 +99,7 @@ mod tests {
             public_address,
             der_chain
                 .into_iter()
-                .map(|p| p.contents)
+                .map(Pem::into_contents)
                 .collect::<Vec<Vec<u8>>>(),
             keypair,
         )

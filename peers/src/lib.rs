@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Peer-to-Peer Networking.
 
+#![allow(clippy::result_large_err)]
 extern crate alloc;
 
 mod broadcast;
@@ -16,7 +17,9 @@ mod traits;
 pub use crate::{
     broadcast::{Broadcast, MockBroadcast},
     connection::PeerConnection,
-    consensus_msg::{ConsensusMsg, ConsensusMsgError, TxProposeAAD, VerifiedConsensusMsg},
+    consensus_msg::{
+        ConsensusMsg, ConsensusMsgError, ConsensusValue, TxProposeAAD, VerifiedConsensusMsg,
+    },
     error::{Error, Result},
     threaded_broadcaster::ThreadedBroadcaster,
     threaded_broadcaster_retry::{

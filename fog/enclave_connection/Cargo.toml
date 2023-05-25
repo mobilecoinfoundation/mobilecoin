@@ -1,0 +1,29 @@
+[package]
+name = "mc-fog-enclave-connection"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[dependencies]
+mc-attest-ake = { path = "../../attest/ake" }
+mc-attest-api = { path = "../../attest/api" }
+mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-connection = { path = "../../connection" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-noise = { path = "../../crypto/noise" }
+mc-rand = "1.0"
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-serial = { path = "../../util/serial" }
+mc-util-uri = { path = "../../util/uri" }
+
+aes-gcm = "0.10.1"
+cookie = "0.17"
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.12.1"
+retry = "2.0"
+sha2 = { version = "0.10", default-features = false }

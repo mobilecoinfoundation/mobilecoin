@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! This is the FFI wrapper type for sgx_keyid_t
 
@@ -25,7 +26,7 @@ impl_hexstr_for_bytestruct! {
 /// Convert from a string to a provider ID.
 ///
 /// This forces the canonical string representation of a Service Provider ID to
-/// hex, and is required for this type to be used in structopt configurations.
+/// hex, and is required for this type to be used in Clap configurations.
 impl FromStr for ProviderId {
     type Err = <ProviderId as FromHex>::Error;
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 #
 # Test for mrenclave stability
 # Meant to be run as a git bisect run script, inside the prompt

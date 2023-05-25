@@ -1,0 +1,15 @@
+[package]
+name = "mc-util-test-with-data"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = { version = "1.0", features = ["nightly"] }
+quote = "1.0"
+syn = { version = "1.0", features = ["full", "extra-traits"] }

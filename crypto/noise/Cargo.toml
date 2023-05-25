@@ -1,25 +1,27 @@
 [package]
 name = "mc-crypto-noise"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 
-aes-gcm = "0.6"
-aead = "0.3"
-digest = { version = "0.9", default-features = false }
-failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+aead = "0.5"
+aes-gcm = "0.10.1"
+digest = "0.10"
+displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde"] }
-hkdf = "0.9.0"
-rand_core = "0.5"
-secrecy = "0.4"
+hkdf = "0.12.3"
+rand_core = "0.6"
+secrecy = "0.8"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = { version = "0.9", default-features = false }
-subtle = { version = "2.2", default-features = false, features = ["i128"] }
-zeroize = "1.1.0"
+sha2 = { version = "0.10", default-features = false }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = "1.5"
 
 [dev-dependencies]
-rand_hc = "0.2"
+rand_hc = "0.3"

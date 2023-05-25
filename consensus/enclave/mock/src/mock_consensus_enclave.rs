@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mocks the ConsensusEnclave for testing.
 
@@ -6,35 +6,46 @@
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::*;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature};
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, FeePublicKey, LocallyEncryptedTx, Result as ConsensusEnclaveResult,
-    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, ConsensusEnclave, FeePublicKey, FormBlockInputs, LocallyEncryptedTx,
+    Result as ConsensusEnclaveResult, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
-use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
+use mc_transaction_core::{
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
+    TokenId,
+};
 
 use mockall::*;
 
-// ConsensusEnclave inherits from ReportableEnclave, so the traits have o be re-typed here.
-// Splitting the traits apart might help because TxManager only uses a few of these functions.
+// ConsensusEnclave inherits from ReportableEnclave, so the traits have o be
+// re-typed here. Splitting the traits apart might help because TxManager only
+// uses a few of these functions.
 
 mock! {
     pub ConsensusEnclave {} // This is used to generate a MockConsensusEnclave struct.
-    trait ConsensusEnclave {
+    impl ConsensusEnclave for ConsensusEnclave {
         fn enclave_init(
             &self,
             self_peer_id: &ResponderId,
             self_client_id: &ResponderId,
             sealed_key: &Option<SealedBlockSigningKey>,
+            blockchain_config: BlockchainConfig,
         ) -> ConsensusEnclaveResult<(SealedBlockSigningKey, Vec<String>)>;
+
+        fn get_minimum_fee(&self, token_id: &TokenId) -> ConsensusEnclaveResult<Option<u64>>;
 
         fn get_identity(&self) -> ConsensusEnclaveResult<X25519Public>;
 
         fn get_signer(&self) -> ConsensusEnclaveResult<Ed25519Public>;
 
         fn get_fee_recipient(&self) -> ConsensusEnclaveResult<FeePublicKey>;
+
+        fn get_minting_trust_root(&self) -> ConsensusEnclaveResult<Ed25519Public>;
 
         fn client_accept(&self, req: ClientAuthRequest) -> ConsensusEnclaveResult<(ClientAuthResponse, ClientSession)>;
 
@@ -71,11 +82,12 @@ mock! {
         fn form_block(
             &self,
             parent_block: &Block,
-            txs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+            inputs: FormBlockInputs,
+            root_element: &TxOutMembershipElement,
         ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
     }
 
-    trait ReportableEnclave {
+    impl ReportableEnclave for ConsensusEnclave {
         fn new_ereport(&self, qe_info: TargetInfo) -> SgxReportResult<(Report, QuoteNonce)>;
 
         fn verify_quote(&self, quote: Quote, qe_report: Report) -> SgxReportResult<IasNonce>;
@@ -91,7 +103,6 @@ mod mock_consensus_enclave_tests {
     use super::MockConsensusEnclave;
     use mc_consensus_enclave_api::ConsensusEnclave;
     use mc_crypto_keys::X25519Public;
-    use std::convert::TryFrom;
 
     #[test]
     // Calling methods on the mock should return the specified values.

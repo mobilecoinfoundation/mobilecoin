@@ -1,21 +1,22 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The untrusted side of enclave report caching.
 
+#![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
     PibError, ProviderId, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
-    VerificationReportData, VerifierError, VerifyError,
+    VerificationReportData, VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_attest_net::{Error as RaError, RaClient};
 use mc_attest_untrusted::QuotingEnclave;
+use mc_attest_verifier::Error as VerifierError;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
 use mc_util_metrics::IntGauge;
-use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
+use retry::{delay::Fibonacci, retry, OperationResult};
 use std::{
-    convert::TryFrom,
     io::Error as IOError,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -26,7 +27,7 @@ use std::{
 };
 
 /// How long to wait between report refreshes.
-pub const REPORT_REFRESH_INTERNAL: Duration = Duration::from_secs(18 * 60 * 60); // 18 hours.
+pub const REPORT_REFRESH_INTERVAL: Duration = Duration::from_secs(18 * 60 * 60); // 18 hours.
 
 /// Possible errors.
 #[derive(Debug, Display)]
@@ -140,19 +141,12 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                     },
                 },
             )
-            .map_err(|e| match e {
-                RetryError::Operation {
-                    error,
-                    total_delay,
-                    tries,
-                } => match error {
-                    TargetInfoError::QeBusy => TargetInfoError::Retry(format!(
-                        "Attempted to retrieve TargetInfo {} times over {:?}, giving up...",
-                        tries, total_delay
-                    )),
-                    other_ti_err => other_ti_err,
-                },
-                RetryError::Internal(s) => TargetInfoError::Retry(s),
+            .map_err(|e| match e.error {
+                TargetInfoError::QeBusy => TargetInfoError::Retry(format!(
+                    "Attempted to retrieve TargetInfo {} times over {:?}, giving up...",
+                    e.tries, e.total_delay
+                )),
+                other_ti_err => other_ti_err,
             })?;
         log::debug!(self.logger, "Getting EREPORT from node enclave...");
         let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;
@@ -175,7 +169,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         let retval = self.ra_client.verify_quote(&quote, Some(ias_nonce))?;
         log::debug!(
             self.logger,
-            "Quote verified by remote attestation service {:?}...",
+            "Quote verified by remote attestation service: {}",
             retval,
         );
         let report_body = VerificationReportData::try_from(&retval)
@@ -216,7 +210,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                         self.logger,
                         "IAS requested TCB update, attempting to update..."
                     );
-                    QuotingEnclave::update_tcb(&platform_info_blob)?;
+                    QuotingEnclave::update_tcb(platform_info_blob)?;
                     log::debug!(
                         self.logger,
                         "TCB update complete, restarting reporting process"
@@ -323,7 +317,7 @@ impl ReportCacheThread {
             }
 
             let now = Instant::now();
-            if now - last_refreshed_at > REPORT_REFRESH_INTERNAL {
+            if now - last_refreshed_at > REPORT_REFRESH_INTERVAL {
                 log::info!(logger, "Report refresh internal exceeded, refreshing...");
                 match report_cache.update_enclave_report_cache() {
                     Ok(()) => {

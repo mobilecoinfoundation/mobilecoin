@@ -1,0 +1,153 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+import "external.proto";
+import "fog_common.proto";
+import "ingest_common.proto";
+
+package account_ingest;
+
+service AccountIngestAPI {
+    /// Get a summary of the state of this ingest server
+    rpc GetStatus (google.protobuf.Empty) returns (ingest_common.IngestSummary) {}
+
+    /// Wipe out all keys and oram state in the enclave, replacing them with new random keys.
+    /// This places the enclave in a similar state to if it was just initialized.
+    /// This also decommissions any existing ingest invocation id.
+    /// It is an error to do this if the server is not idle.
+    rpc NewKeys (google.protobuf.Empty) returns (ingest_common.IngestSummary) {}
+
+    /// Set the pubkey_expiry_window of this ingest server.
+    /// It is an error to reduce this value if the server is not idle.
+    rpc SetPubkeyExpiryWindow (SetPubkeyExpiryWindowRequest) returns (ingest_common.IngestSummary) {}
+
+    /// Set the list of peers of this ingest server
+    /// Returns the status after the operation, or, an error
+    /// Duplicates in this list are removed, and if a Uri has the same responder id as
+    /// the target server, that Uri is removed and it is not an error.
+    rpc SetPeers (ingest_common.SetPeersRequest) returns (ingest_common.IngestSummary) {}
+
+    /// Attempt to put an idle server in the active mode.
+    /// This is a no-op if the server is already active, and cancels retiry if the server is retiring.
+    ///
+    /// This will:
+    /// - Check state of every peer. If any is active or retiring, fail this operation.
+    ///   Also, set their peer list to match ours, including this node.
+    /// - Send our ingress private key to every peer, and confirm success.
+    /// - Create a new ingest invocation id with the database and start consuming blocks and publishing fog reports.
+    rpc Activate (google.protobuf.Empty) returns (ingest_common.IngestSummary) {}
+
+    /// Attempt to put an active server in the retiring mode, after which it will eventually become idle.
+    /// This is a no-op if the server is already idling or retiring.
+    ///
+    /// This will:
+    /// - Compute a block at which retiry is finished, which will be the last pubkey_expiry value plus one.
+    /// - Cause the server to stop publishing fog reports with every block.
+    /// - After the final block is processed, enter the idle state. (TODO: Also overwrite private keys? and decommission ingest invocation?)
+    rpc Retire (google.protobuf.Empty) returns (ingest_common.IngestSummary) {}
+
+    /// Attempt to take the cluster (identified by the current ingress key on this ingest server) out of retirement.
+    /// The use case for this is:
+    /// 1. We are trying to do ingest enclave upgrade
+    /// 2. We retire the old cluster and activate the new cluster
+    /// 3. Something goes wrong and the new cluster goes up in flames
+    /// 4. We want to unretire the old cluster key so that the old cluster starts publishing fog reports
+    ///    again and continues life as usual, and then continue debugging the new cluster and try again later.
+    rpc Unretire (google.protobuf.Empty) returns (ingest_common.IngestSummary) {}
+
+    /// Report a lost ingress key
+    rpc ReportLostIngressKey(ReportLostIngressKeyRequest) returns (google.protobuf.Empty) {}
+
+    /// Get list of missed block ranges.
+    rpc GetMissedBlockRanges(google.protobuf.Empty) returns (GetMissedBlockRangesResponse) {}
+
+    /// Establishes a peer connection to another ingest enclave, requests the
+    /// peer's private key, and then sets it as the current enclave's private
+    /// key.
+    rpc SyncKeysFromRemote(SyncKeysFromRemoteRequest) returns (ingest_common.IngestSummary) {}
+
+    /// Retrieves the entire system's ingress public keys. This means that the
+    /// keys that aren't associated with the particular ingest server instance
+    /// fulfilling this request will be returned. The returned ingress public
+    /// keys are filtered according to the GetIngressKeyRecordsRequest parameters.
+    rpc GetIngressKeyRecords(GetIngressKeyRecordsRequest) returns (GetIngressKeyRecordsResponse) {}
+}
+
+message ReportLostIngressKeyRequest {
+    external.CompressedRistretto key = 1;
+}
+
+message ReportMissedBlockRangeRequest {
+    uint64 start_index = 1;
+    uint64 end_index = 2;
+}
+
+message GetMissedBlockRangesResponse {
+    repeated fog_common.BlockRange missed_block_ranges = 1;
+}
+
+message SetPubkeyExpiryWindowRequest {
+    /// This value is a number of blocks that is added to the current block index to compute the "pubkey_expiry" value of fog reports.
+    ///
+    /// Setting it larger means that the fog reports live longer before expiring, but it also means that if missed blocks occur, because
+    /// all fog ingest servers crash without retiring completely, and the ingress private key is lost,
+    /// more data must be downloaded by the clients and scanned to recover their balances.
+    uint64 pubkey_expiry_window = 1;
+}
+
+message SyncKeysFromRemoteRequest {
+    /// The uri for the server that will report the private key that will  be
+    /// synced.
+    string peer_uri = 1;
+}
+
+message GetIngressKeyRecordsRequest {
+    /// Ingress keys are "started" at certain blocks. Only ingress keys that
+    /// are "started" at this block index will be included in the response.
+    uint64 start_block_at_least = 1;
+
+    /// If true the response will include ingress keys that have been lost.
+    bool should_include_lost_keys = 2;
+
+    /// If true the response will include ingress keys that have been retired.
+    bool should_include_retired_keys = 3;
+
+    /// If true the response will only include ingress keys that are
+    /// unexpired, which are keys with public expiry values are greater than
+    /// their last scanned block values.
+    bool should_only_include_unexpired_keys = 4;
+}
+
+message GetIngressKeyRecordsResponse {
+    /// The records that filtered according to the GetIngressKeyRecordsRequest.
+    repeated IngressPublicKeyRecord records = 1;
+}
+
+/// Corresponds to the IngressPublicKeyRecord struct found in
+/// mc-fog-recovery-db-iface.
+message IngressPublicKeyRecord {
+    /// The ingress public key this data refers to
+    external.CompressedRistretto ingress_public_key = 1;
+    /// The first block that fog promises to scan with this key after publishing
+    /// it. This should be the latest block that existed before we published
+    /// it (or, a block close to but before that)
+    uint64 start_block = 2;
+    /// The largest pubkey expiry value that we have ever published for this
+    /// key. If less than start_block, it means we have never published this
+    /// key.
+    uint64 pubkey_expiry = 3;
+    /// Whether this key is retiring / retired.
+    /// When a key is retired, we stop publishing reports about it.
+    bool retired = 4;
+    /// Whether this key is lost.
+    /// When a key is lost, we no longer have it and no blocks can be scanned
+    /// with it anymore. To enable the view server to make progress, the
+    /// remaining blocks we promised to scan are "missed" and the users
+    /// learn about them as missed blocks, which they have to download.
+    bool lost = 5;
+    /// The last block scanned by this key.
+    /// This is inherently racy since other partcipants may be writing
+    /// concurrently with us, but this number is a lower bound.
+    uint64 last_scanned_block = 6;
+}

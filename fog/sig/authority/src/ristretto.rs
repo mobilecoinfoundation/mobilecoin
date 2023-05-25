@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the implementation of the fog authority signing and
 //! verification services for ristretto keys.
@@ -25,7 +25,7 @@ impl Verifier for RistrettoPublic {
 
     fn verify_authority(&self, spki_bytes: &[u8], sig: &Self::Sig) -> Result<(), String> {
         self.verify_schnorrkel(super::context(), spki_bytes, sig)
-            .map_err(|e| format!("{:#}", e))
+            .map_err(|e| format!("{e:#}"))
     }
 }
 

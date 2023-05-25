@@ -1,16 +1,20 @@
 [package]
 name = "mc-attest-untrusted"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 sgx-sim = [
-    "mc-attest-core/sgx-sim"
+    "mc-attest-verifier/sgx-sim"
 ]
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-attest-core = { path = "../core", default-features = false }
+mc-attest-verifier = { path = "../verifier", default-features = false }
 mc-sgx-types = { path = "../../sgx/types" }
 
 [build-dependencies]

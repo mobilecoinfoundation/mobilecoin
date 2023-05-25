@@ -1,18 +1,18 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Ledger Sync test app
 
-use mc_account_keys::AccountKey;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_blockchain_test_utils::get_blocks;
+use mc_blockchain_types::BlockVersion;
 use mc_common::{logger::log, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSync, LedgerSyncService, PollingNetworkState};
-use mc_transaction_core::{Block, BlockContents};
 use mc_util_uri::ConsensusClientUri as ClientUri;
 use std::{path::PathBuf, str::FromStr, sync::Arc};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 const NETWORK: &str = "test";
 
@@ -23,26 +23,25 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
     let last_block = ledger.get_block(num_blocks - 1).unwrap();
     assert_eq!(last_block.cumulative_txo_count, ledger.num_txos().unwrap());
 
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng = StdRng::from_seed([1u8; 32]);
 
-    let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-    let recipient_pub_keys = accounts
-        .iter()
-        .map(|account| account.default_subaddress())
-        .collect::<Vec<_>>();
-
-    let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-        &recipient_pub_keys[..],
+    let results = get_blocks(
+        BlockVersion::ZERO,
+        20,
         1,
+        2,
         1000,
         1000,
-        &last_block,
+        last_block,
         &mut rng,
     );
 
-    for (block, block_contents) in &results {
-        println!("block {} containing {:?}", block.index, block_contents);
-        ledger.append_block(block, block_contents, None).unwrap();
+    for block_data in results {
+        let block = block_data.block();
+        println!("block with index {} and ID {}", block.index, block.id);
+        ledger
+            .append_block_data(&block_data)
+            .expect("failed to append block");
         assert_eq!(block.cumulative_txo_count, ledger.num_txos().unwrap());
     }
 }
@@ -53,8 +52,7 @@ fn main() {
     log::info!(logger, "starting, network = {}", NETWORK);
 
     // Get a ledger database to work on.
-    let ledger_dir =
-        TempDir::new("ledger_sync_test_app").expect("Could not get test_ledger tempdir");
+    let ledger_dir = TempDir::new().expect("Could not get test_ledger tempdir");
     let ledger_path = ledger_dir.path().to_path_buf();
     let ledger_path_str = ledger_dir
         .path()
@@ -65,20 +63,21 @@ fn main() {
 
     // Hack to make the ledger longer
     if false {
-        // let mut ledger = LedgerDB::open(format!("../../target/sample_data/{}/ledger", NETWORK)).expect("Failed opening local LedgerDB");
-        let mut ledger = LedgerDB::open(PathBuf::from("../../target/sample_data/ledger"))
+        // let mut ledger = LedgerDB::open(format!("../../target/sample_data/{}/ledger",
+        // NETWORK)).expect("Failed opening local LedgerDB");
+        let mut ledger = LedgerDB::open(&PathBuf::from("../../target/sample_data/ledger"))
             .expect("Failed opening local LedgerDB");
         _make_ledger_long(&mut ledger);
         return;
     }
 
     std::fs::copy(
-        "../../target/sample_data/ledger/data.mdb".to_string(),
-        format!("{}/data.mdb", ledger_path_str),
+        "../../target/sample_data/ledger/data.mdb",
+        format!("{ledger_path_str}/data.mdb"),
     )
     .expect("failed copying ledger");
 
-    let ledger = LedgerDB::open(ledger_path).expect("Failed opening local LedgerDB");
+    let ledger = LedgerDB::open(&ledger_path).expect("Failed opening local LedgerDB");
     log::info!(
         logger,
         "num_blocks = {}, num_txos = {}",
@@ -95,7 +94,8 @@ fn main() {
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-    mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+    mr_signer_verifier
+        .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
 
     let mut verifier = Verifier::default();
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -106,10 +106,12 @@ fn main() {
         .into_iter()
         .map(|node_id| {
             let node_uri =
-                ClientUri::from_str(&format!("mc://node{}.{}.mobilecoin.com/", node_id, NETWORK))
+                ClientUri::from_str(&format!("mc://node{node_id}.{NETWORK}.mobilecoin.com/"))
                     .expect("failed parsing URI");
 
             ThickClient::new(
+                // TODO: Supply a chain-id here?
+                String::default(),
                 node_uri.clone(),
                 verifier.clone(),
                 grpc_env.clone(),

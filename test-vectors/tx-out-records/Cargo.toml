@@ -1,0 +1,30 @@
+[package]
+name = "mc-test-vectors-tx-out-records"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[dependencies]
+hex = "0.4"
+mc-test-vectors-definitions = { path = "../definitions" }
+rand = { version = "0.8", default_features = false }
+
+[build-dependencies]
+hex = "0.4"
+mc-account-keys = { path = "../../account-keys" }
+mc-common = { path = "../../common" }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-fog-ingest-enclave-api = { path = "../../fog/ingest/enclave/api" }
+mc-fog-ingest-enclave-impl = { path = "../../fog/ingest/enclave/impl" }
+mc-fog-types = { path = "../../fog/types" }
+mc-fog-view-protocol = { path = "../../fog/view/protocol" }
+mc-oblivious-traits = "2.3"
+mc-test-vectors-definitions = { path = "../definitions" }
+mc-transaction-builder = { path = "../../transaction/builder" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-serial = { path = "../../util/serial", default-features = false }
+mc-util-test-vector = { path = "../../util/test-vector" }
+rand = { version = "0.8", default_features = false }

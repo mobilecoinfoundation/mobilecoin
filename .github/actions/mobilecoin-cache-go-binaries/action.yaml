@@ -1,0 +1,29 @@
+name: Mobilecoin Go Binaries Cache
+description: Standardized go binary cache setup
+
+inputs:
+  cache_buster:
+    description: "string to make cache unique"
+    required: false
+  path:
+    description: "path to mount cache"
+    required: false
+    default: |
+      go_build_artifacts
+
+outputs:
+  cache-hit:
+    description: "did we get a cache hit?"
+    value: ${{ steps.rust_artifact_cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+  - name: Cache rust build binaries
+    id: rust_artifact_cache
+    uses: actions/cache@v3
+    with:
+      path: ${{ inputs.path }}
+      # Key is a hash of all the .go, .proto and go. files.
+      # if code changes, invalidate cache and rebuild
+      key: ${{ inputs.cache_buster }}-${{ runner.os }}-${{ hashFiles('go-grpc-gateway/**/*.go', 'go-grpc-gateway/go.*', '**/*.proto') }}-go-build-artifacts

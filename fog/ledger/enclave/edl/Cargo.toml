@@ -1,0 +1,13 @@
+[package]
+name = "mc-fog-ledger-enclave-edl"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+links = "ledger_enclave_edl"
+license = "GPL-3.0"
+rust-version = { workspace = true }
+
+[build-dependencies]
+mc-util-build-script = { path = "../../../../util/build/script" }
+
+cargo-emit = "0.2"

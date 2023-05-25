@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! This crate provides a logging framework for recording and replaying SCP messages.
-use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
+//! This crate provides a logging framework for recording and replaying SCP
+//! messages.
+use crate::{msg::Msg, slot::SlotMetrics, QuorumSet, ScpNode, SlotIndex, Value};
 use mc_common::{
     logger::{log, Logger},
     NodeID,
@@ -12,7 +13,7 @@ use std::{
     fs::{create_dir_all, read, read_dir, remove_dir_all, remove_file, rename, File},
     io::Write,
     marker::PhantomData,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Instant, SystemTime},
 };
 
@@ -30,7 +31,8 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
     /// Highest slot number we've encountered so far.
     highest_slot_index: SlotIndex,
 
-    /// Message counter counting how many messages we logged since we cleaned the directory.
+    /// Message counter counting how many messages we logged since we cleaned
+    /// the directory.
     msg_count: usize,
 
     /// Time when we started logging for current slot.
@@ -39,7 +41,8 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
     /// Underlying node implementation.
     node: N,
 
-    /// List of slot state filenames that make it easy to maintain `MAX_SLOT_STATE_FILES` on disk.
+    /// List of slot state filenames that make it easy to maintain
+    /// `MAX_SLOT_STATE_FILES` on disk.
     slot_state_filenames: Vec<PathBuf>,
 
     /// Logger
@@ -87,11 +90,11 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             let last_path_element = out_path
                 .file_name()
                 .and_then(|s| s.to_str())
-                .ok_or_else(|| format!("{:?} has no file name element", out_path))?;
+                .ok_or_else(|| format!("{out_path:?} has no file name element"))?;
 
             let unix_timestamp = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .map_err(|e| format!("Failed getting unix timestamp: {:?}", e))?;
+                .map_err(|e| format!("Failed getting unix timestamp: {e:?}"))?;
 
             let mut renamed_out_path = out_path.clone();
             renamed_out_path.set_file_name(format!(
@@ -108,26 +111,19 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             );
 
             rename(&out_path, &renamed_out_path).map_err(|e| {
-                format!(
-                    "Failed renaming {:?} to {:?}: {:?}",
-                    out_path, renamed_out_path, e
-                )
+                format!("Failed renaming {out_path:?} to {renamed_out_path:?}: {e:?}")
             })?;
         }
 
         let mut cur_slot_out_path = out_path.clone();
         cur_slot_out_path.push("cur-slot");
         create_dir_all(cur_slot_out_path.clone())
-            .map_err(|e| format!("Failed creating directory {:?}: {:?}", cur_slot_out_path, e))?;
+            .map_err(|e| format!("Failed creating directory {cur_slot_out_path:?}: {e:?}"))?;
 
         let mut slot_states_out_path = out_path;
         slot_states_out_path.push("slot-states");
-        create_dir_all(slot_states_out_path.clone()).map_err(|e| {
-            format!(
-                "Failed creating directory {:?}: {:?}",
-                slot_states_out_path, e
-            )
-        })?;
+        create_dir_all(slot_states_out_path.clone())
+            .map_err(|e| format!("Failed creating directory {slot_states_out_path:?}: {e:?}"))?;
 
         Ok(Self {
             node,
@@ -182,29 +178,29 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             msg,
         };
         let bytes =
-            mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {:?}", e))?;
+            mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {e:?}"))?;
 
         let mut file_path = self.cur_slot_out_path.clone();
         file_path.push(format!("{:08}", self.msg_count));
         self.msg_count += 1;
 
         let mut file = File::create(&file_path)
-            .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
+            .map_err(|e| format!("failed creating {file_path:?}: {e:?}"))?;
         file.write_all(&bytes)
-            .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+            .map_err(|e| format!("failed writing {file_path:?}: {e:?}"))?;
 
         // Write slot state into a file.
         if let Some(slot_state) = self.get_slot_debug_snapshot(msg_slot_index) {
             let slot_as_json = serde_json::to_vec(&slot_state)
-                .map_err(|e| format!("failed serializing slot state: {:?}", e))?;
+                .map_err(|e| format!("failed serializing slot state: {e:?}"))?;
 
             let mut file_path = self.slot_states_out_path.clone();
-            file_path.push(format!("{:08}.json", msg_slot_index));
+            file_path.push(format!("{msg_slot_index:08}.json"));
 
             let mut file = File::create(&file_path)
-                .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
+                .map_err(|e| format!("failed creating {file_path:?}: {e:?}"))?;
             file.write_all(&slot_as_json)
-                .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+                .map_err(|e| format!("failed writing {file_path:?}: {e:?}"))?;
 
             if !self.slot_state_filenames.contains(&file_path) {
                 self.slot_state_filenames.push(file_path);
@@ -322,9 +318,9 @@ pub struct ScpLogReader<V: Value> {
 
 impl<V: Value> ScpLogReader<V> {
     /// Create a new ScpLogReader.
-    pub fn new(path: &PathBuf) -> Result<Self, String> {
+    pub fn new(path: &Path) -> Result<Self, String> {
         let mut files: Vec<_> = read_dir(path)
-            .map_err(|e| format!("failed reading dir {:?}: {:?}", path, e))?
+            .map_err(|e| format!("failed reading dir {path:?}: {e:?}"))?
             .filter_map(|entry| {
                 let entry = entry.unwrap().path();
                 if entry.is_file() {
@@ -348,9 +344,9 @@ impl<V: serde::de::DeserializeOwned + Value> Iterator for ScpLogReader<V> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.pop_front()?;
-        let bytes = read(&path).unwrap_or_else(|_| panic!("failed reading {:?}", path));
+        let bytes = read(&path).unwrap_or_else(|_| panic!("failed reading {path:?}"));
         let data: Self::Item = mc_util_serial::deserialize(&bytes)
-            .unwrap_or_else(|_| panic!("failed deserializing {:?}", path));
+            .unwrap_or_else(|_| panic!("failed deserializing {path:?}"));
         Some(data)
     }
 }
@@ -360,12 +356,12 @@ mod tests {
     use crate::{node::MockScpNode, scp_log::LoggingScpNode};
     use mc_common::logger::{test_with_logger, Logger};
     use std::fs::create_dir_all;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test_with_logger]
     fn test_new(logger: Logger) {
         // Should write output under test/debug_output.
-        let dir = TempDir::new("test").unwrap();
+        let dir = TempDir::new().unwrap();
         let out_path = dir.path().join("debug_output");
 
         let node = MockScpNode::<&'static str>::new();
@@ -384,18 +380,18 @@ mod tests {
     // Should not panic if `out_path` exists. This allows a node to restart.
     fn test_new_outpath_exists(logger: Logger) {
         // Should write output under test/debug_output.
-        let dir = TempDir::new("test").unwrap();
+        let dir = TempDir::new().unwrap();
         let out_path = dir.path().join("debug_output");
 
-        let cur_slot = out_path.clone().join("cur-slot");
+        let cur_slot = out_path.join("cur-slot");
         create_dir_all(cur_slot.as_path()).unwrap();
 
-        let slot_states = out_path.clone().join("slot-states");
+        let slot_states = out_path.join("slot-states");
         create_dir_all(slot_states.as_path()).unwrap();
 
         assert!(out_path.exists());
 
         let node = MockScpNode::<&'static str>::new();
-        let _logging_scp_node = LoggingScpNode::new(node, out_path.clone(), logger).unwrap();
+        let _logging_scp_node = LoggingScpNode::new(node, out_path, logger).unwrap();
     }
 }

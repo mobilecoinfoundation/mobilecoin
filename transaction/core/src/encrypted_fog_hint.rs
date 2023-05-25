@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Define DiscoveryHint buffer size, and serialization defs for it
 //! Also define `fake_onetime_hint` which samples the distribution that
@@ -24,17 +24,31 @@ use prost::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
-// The length of the encrypted fog hint field in the ledger.
-// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
-// Footersize = 50, + 32 for one curve point, + 2 bytes of magic / padding space for future needs
+/// The length of the encrypted fog hint field in the ledger.
+/// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
+/// Footersize = 50, + 32 for one curve point, + 2 bytes of magic / padding
+/// space for future needs
 pub type EncryptedFogHintSize = U84;
+/// Length of encrypted fog hint as a usize
 pub const ENCRYPTED_FOG_HINT_LEN: usize = EncryptedFogHintSize::USIZE;
 
 type Bytes = GenericArray<u8, EncryptedFogHintSize>;
 
+/// An encrypted fog hint payload in the ledger
 #[derive(
-    Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Digestible,
+    Clone,
+    Default,
+    Deserialize,
+    Digestible,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 #[digestible(transparent)]
 pub struct EncryptedFogHint {
@@ -84,12 +98,15 @@ impl<'bytes> TryFrom<&'bytes [u8]> for EncryptedFogHint {
 }
 
 impl EncryptedFogHint {
+    /// Create a new encrypted fog hint from byte array
     #[inline]
     pub fn new(a: &[u8; ENCRYPTED_FOG_HINT_LEN]) -> Self {
         Self {
             bytes: GenericArray::clone_from_slice(&a[..]),
         }
     }
+
+    /// Convert to byte array
     #[inline]
     pub fn to_bytes(&self) -> [u8; ENCRYPTED_FOG_HINT_LEN] {
         let mut result = [0u8; ENCRYPTED_FOG_HINT_LEN];
@@ -100,9 +117,9 @@ impl EncryptedFogHint {
     /// fake_onetime_hint
     /// To be used in prod when sending to a recipient with no known fog server
     /// This means it should be indistinguishable from an ecies encryption of a
-    /// random plaintext. There are several ways we could sample that distribution
-    /// but the simplest is to do exactly that. This is also future-proof if we later
-    /// tweak the cryptobox implementation.
+    /// random plaintext. There are several ways we could sample that
+    /// distribution but the simplest is to do exactly that. This is also
+    /// future-proof if we later tweak the cryptobox implementation.
     pub fn fake_onetime_hint<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         // Make plaintext of the right size
         let plaintext = GenericArray::<

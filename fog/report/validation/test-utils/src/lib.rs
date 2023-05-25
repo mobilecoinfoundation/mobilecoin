@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 /// It maps Fog-urls (Strings) to FullyValidatedFogPubkey
 ///
 /// DO NOT use this except in test code!
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct MockFogResolver(pub BTreeMap<String, FullyValidatedFogPubkey>);
 
 impl FogPubkeyResolver for MockFogResolver {

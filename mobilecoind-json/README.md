@@ -52,8 +52,8 @@ $ curl localhost:9090/entropy/706db549844bc7b5c8328368d4b8276e9aa03a26ac02474d54
 #### Add a monitor for a key over a range of subaddress indices
 ```
 $ curl localhost:9090/monitors \
-  -d '{"account_key": {"view_private_key":"e0d42caf6edd0dc8a762c665ad5682a87e0a7159e60653827be3911af49d2b01", 
-       "spend_private_key":"e90849e9dcbbb7aa425cfb34ae3978c14e3dfffd18652e7a6a4821cb1557b703"}, 
+  -d '{"account_key": {"view_private_key":"e0d42caf6edd0dc8a762c665ad5682a87e0a7159e60653827be3911af49d2b01",
+       "spend_private_key":"e90849e9dcbbb7aa425cfb34ae3978c14e3dfffd18652e7a6a4821cb1557b703"},
        "first_subaddress": 0, "num_subaddresses": 10}' \
   -X POST -H 'Content-Type: application/json'
 
@@ -83,15 +83,15 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/balance
 ```
 $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/public-address
 
-{"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324", 
+{"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324",
  "spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28",
- "fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":"", 
+ "fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":"",
  "b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT"}
 ```
 
 ### Simple payment flow
 There are two possible ways to make a payment. The simplest option is to use the intended recipient's `b58_address_code`, which they can get
-using the call above. 
+using the call above.
 
 #### Initiate a transaction to a b58 public address
 This call initiates a transfer to a public address encoded as a b58 string. If the call returns successfully, the transaction has been
@@ -260,7 +260,7 @@ On the airgapped machine, generate a tx proposal.
 
 ```
 $ curl localhost:9090/monitors/<monitor-id>/subaddresses/<subaddress>/generate-tx \
-  -d ‘{“input_list”: [<paste output of utxos response>], “transfer”: ‘$(cat request_code.json)’}’ \ 
+  -d ‘{“input_list”: [<paste output of utxos response>], “transfer”: ‘$(cat request_code.json)’}’ \
   -X POST -H ‘Content-Type: application/json’ > tx_proposal.json
 ```
 

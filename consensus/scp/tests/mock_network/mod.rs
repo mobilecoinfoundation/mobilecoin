@@ -1,17 +1,19 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// Thread-based simulation for consensus networks.
+//! Thread-based simulation for consensus networks.
+
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
 
 use mc_common::{
     logger::{log, Logger},
     NodeID,
 };
 use mc_consensus_scp::{
-    core_types::{CombineFn, SlotIndex, ValidityFn},
     msg::Msg,
-    node::{Node, ScpNode},
-    quorum_set::QuorumSet,
-    test_utils,
+    slot::{CombineFn, ValidityFn},
+    test_utils, Node, QuorumSet, ScpNode, SlotIndex,
 };
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
@@ -31,16 +33,19 @@ const CHARACTERS_PER_VALUE: usize = 10;
 // Controls test parameters
 #[derive(Clone)]
 pub struct TestOptions {
-    /// Values can be submitted to all nodes in parallel (true) or to nodes in sequential order (false)
+    /// Values can be submitted to all nodes in parallel (true) or to nodes in
+    /// sequential order (false)
     pub submit_in_parallel: bool,
 
-    /// Total number of values to submit. Tests run until all values are externalized by all nodes.
-    /// N.B. if the validity fn doesn't enforce unique values, it's possible a value will appear in
-    /// multiple places in the ledger, and that the ledger will contain more than values_to_submit
+    /// Total number of values to submit. Tests run until all values are
+    /// externalized by all nodes. N.B. if the validity fn doesn't enforce
+    /// unique values, it's possible a value will appear in multiple places
+    /// in the ledger, and that the ledger will contain more than
+    /// values_to_submit
     pub values_to_submit: usize,
 
-    /// Approximate rate that values are submitted to nodes. Unless we are testing slow submission
-    /// is it better to set this quite high.
+    /// Approximate rate that values are submitted to nodes. Unless we are
+    /// testing slow submission is it better to set this quite high.
     pub submissions_per_sec: u64,
 
     /// We propose up to this many values from our pending set per slot.
@@ -70,7 +75,7 @@ impl TestOptions {
             values_to_submit: 5000,
             submissions_per_sec: 20000,
             max_slot_proposed_values: 100,
-            allowed_test_time: Duration::from_secs(300),
+            allowed_test_time: Duration::from_secs(500),
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
@@ -244,7 +249,7 @@ impl SCPNetwork {
 
         for peer_id in peers {
             nodes_map
-                .get_mut(&peer_id)
+                .get_mut(peer_id)
                 .expect("failed to get peer from nodes_map")
                 .send_msg(amsg.clone());
         }
@@ -444,7 +449,7 @@ impl SCPNode {
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
                 _ => {
-                    panic!("send_value failed: {:?}", err);
+                    panic!("send_value failed: {err:?}");
                 }
             },
         }
@@ -457,7 +462,7 @@ impl SCPNode {
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
                 _ => {
-                    panic!("send_msg failed: {:?}", err);
+                    panic!("send_msg failed: {err:?}");
                 }
             },
         }
@@ -469,7 +474,7 @@ impl SCPNode {
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
                 _ => {
-                    panic!("send_stop failed: {:?}", err);
+                    panic!("send_stop failed: {err:?}");
                 }
             },
         }
@@ -510,7 +515,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     let mut rng = mc_util_test_helper::get_seeded_rng();
     let mut values = Vec::<String>::with_capacity(test_options.values_to_submit);
     for _i in 0..test_options.values_to_submit {
-        let value = mc_util_test_helper::random_str(&mut rng, CHARACTERS_PER_VALUE);
+        let value = mc_util_test_helper::random_str(CHARACTERS_PER_VALUE, &mut rng);
         values.push(value);
     }
 
@@ -524,24 +529,28 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     let node_ids: Vec<NodeID> = network_config.nodes.iter().map(|n| n.id.clone()).collect();
 
     // check that all ledgers start empty
-    for n in 0..network_config.nodes.len() {
-        assert!(simulation.get_ledger_size(&node_ids[n]) == 0);
+    for node_id in node_ids.iter().take(network_config.nodes.len()) {
+        assert!(simulation.get_ledger_size(node_id) == 0);
     }
 
     // push values
     let mut last_log = Instant::now();
-    for i in 0..test_options.values_to_submit {
+    for (i, value) in values
+        .iter()
+        .take(test_options.values_to_submit)
+        .enumerate()
+    {
         let start = Instant::now();
 
         if test_options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
-            for n in 0..network_config.nodes.len() {
-                simulation.push_value(&node_ids[n], &values[i]);
+            for node_id in node_ids.iter().take(network_config.nodes.len()) {
+                simulation.push_value(node_id, value);
             }
         } else {
             // submit values to nodes in sequence
             let n = i % network_config.nodes.len();
-            simulation.push_value(&node_ids[n], &values[i]);
+            simulation.push_value(&node_ids[n], value);
         }
 
         if last_log.elapsed().as_millis() > 999 {
@@ -589,7 +598,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                 panic!("test failed due to timeout");
             }
 
-            let num_externalized_values = simulation.get_ledger_size(&node_id);
+            let num_externalized_values = simulation.get_ledger_size(node_id);
             if num_externalized_values >= test_options.values_to_submit {
                 // if the validity_fn does not enforce unique values, we can end up
                 // with values that appear in multiple slots. This is not a problem
@@ -637,7 +646,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         // check that all submitted values are externalized at least once
         // duplicate values are possible depending on validity_fn
         let externalized_values_hashset = simulation
-            .get_ledger(&node_id)
+            .get_ledger(node_id)
             .iter()
             .flatten()
             .cloned()
@@ -674,7 +683,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     // Check that all of the externalized ledgers match block-by-block
     let first_node_ledger = simulation.get_ledger(&node_ids[0]);
     for node_id in node_ids.iter().skip(1) {
-        let other_node_ledger = simulation.get_ledger(&node_id);
+        let other_node_ledger = simulation.get_ledger(node_id);
 
         if first_node_ledger.len() != other_node_ledger.len() {
             log::error!(
@@ -698,7 +707,8 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         }
     }
 
-    // drop the simulation here so that MESSAGES log statements appear before results
+    // drop the simulation here so that MESSAGES log statements appear before
+    // results
     drop(simulation);
 
     // csv for scripting use

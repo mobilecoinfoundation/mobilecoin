@@ -1,48 +1,62 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! LedgerSyncService provides a mechanism for synchronizing a local ledger with the network.
-//! It uses consensus nodes as the source of truth for blocks, and then a pluggable
-//! [`TransactionsFetcher`] object for fetching actual transaction data.
+//! LedgerSyncService provides a mechanism for synchronizing a local ledger with
+//! the network. It uses consensus nodes as the source of truth for blocks, and
+//! then a pluggable [`TransactionsFetcher`] object for fetching actual
+//! transaction data.
 
 use crate::{
-    ledger_sync::LedgerSync, transactions_fetcher_trait::TransactionsFetcher, LedgerSyncError,
-    NetworkState,
+    BlockMetadataProvider, LedgerSync, LedgerSyncError, NetworkState, PassThroughMetadataProvider,
+    TransactionsFetcher,
 };
+use mc_blockchain_types::{compute_block_id, Block, BlockData, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
-    ResponderId,
+    trace_time, ResponderId,
 };
 use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
 };
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{
-    compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
+use mc_transaction_core::ring_signature::KeyImage;
+use mc_util_telemetry::{
+    block_span_builder, telemetry_static_key, tracer, Context, Key, Span, TraceContextExt, Tracer,
 };
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
+    cmp::min,
     collections::{BTreeMap, HashMap, HashSet},
-    iter::FromIterator,
     sync::{Arc, Condvar, Mutex},
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 /// Maximal amount to allow for getting block and transaction data.
 const DEFAULT_GET_BLOCKS_TIMEOUT: Duration = Duration::from_secs(30);
-const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_GET_BLOCK_CONTENTS_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Maximal amount of concurrent get_block_contents calls to allow.
 const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 
-pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
+/// Telemetry metadata: number of blocks appended to the local ledger.
+const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num-blocks-appended");
+
+const MAX_SLEEP_INTERVAL: Duration = Duration::from_secs(60);
+
+pub struct LedgerSyncService<
+    L: Ledger,
+    BC: BlockchainConnection + 'static,
+    TF: TransactionsFetcher + 'static,
+    BMP: BlockMetadataProvider = PassThroughMetadataProvider,
+> {
     ledger: L,
     manager: ConnectionManager<BC>,
     transactions_fetcher: Arc<TF>,
     /// Timeout for network requests.
     get_blocks_timeout: Duration,
-    get_transactions_timeout: Duration,
+    get_block_contents_timeout: Duration,
+    metadata_provider: BMP,
     logger: Logger,
 }
 
@@ -51,6 +65,30 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 {
     /// Creates a new LdegerSyncService.
     pub fn new(
+        ledger: L,
+        manager: ConnectionManager<BC>,
+        transactions_fetcher: TF,
+        logger: Logger,
+    ) -> Self {
+        Self::with_metadata_provider(
+            PassThroughMetadataProvider {},
+            ledger,
+            manager,
+            transactions_fetcher,
+            logger,
+        )
+    }
+}
+
+impl<
+        L: Ledger,
+        BC: BlockchainConnection + 'static,
+        TF: TransactionsFetcher + 'static,
+        BMP: BlockMetadataProvider,
+    > LedgerSyncService<L, BC, TF, BMP>
+{
+    pub fn with_metadata_provider(
+        metadata_provider: BMP,
         ledger: L,
         manager: ConnectionManager<BC>,
         transactions_fetcher: TF,
@@ -67,40 +105,47 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             ledger,
             manager,
             transactions_fetcher: Arc::new(transactions_fetcher),
+            metadata_provider,
             get_blocks_timeout: DEFAULT_GET_BLOCKS_TIMEOUT,
-            get_transactions_timeout: DEFAULT_GET_TRANSACTIONS_TIMEOUT,
+            get_block_contents_timeout: DEFAULT_GET_BLOCK_CONTENTS_TIMEOUT,
             logger,
         }
     }
 
-    /// Identifies Blocks that are potentially safe to append to the local ledger.
+    /// Identifies Blocks that are potentially safe to append to the local
+    /// ledger.
     ///
-    /// A block is "potentially safe" if it is part of a chain of blocks rooted on the highest block
-    /// in the local ledger, and if a sufficient set of peers agree on the block. In order to
-    /// be fully "safe", we must verify the block hashes from the full set of transactions
+    /// A block is "potentially safe" if it is part of a chain of blocks rooted
+    /// on the highest block in the local ledger, and if a sufficient set of
+    /// peers agree on the block. In order to be fully "safe", we must
+    /// verify the block hashes from the full set of transactions
     /// corresponding to that block.
     ///
-    /// This method is potentially costly: it queries blocks from all peers. It should not be
-    /// performed unless it has been determined that the local ledger is out of sync.
+    /// This method is potentially costly: it queries blocks from all peers. It
+    /// should not be performed unless it has been determined that the local
+    /// ledger is out of sync.
     ///
     /// # Arguments
-    /// * `network_state` - Current state of the network, used to determine if we're behind.
+    /// * `network_state` - Current state of the network, used to determine if
+    ///   we're behind.
     /// * `limit` - number of blocks that will be queried and evaluated.
     ///
-    /// Returns a "sufficient" set of peers to sync from, the BlockIndex of the last block to sync,
-    /// and consecutive "potentially safe" Blocks.
+    /// Returns a "sufficient" set of peers to sync from, the BlockIndex of the
+    /// last block to sync, and consecutive "potentially safe" Blocks.
     fn get_potentially_safe_blocks(
         &mut self,
         network_state: &impl NetworkState,
         limit: u32,
     ) -> Option<(Vec<ResponderId>, BlockIndex, Vec<Block>)> {
+        trace_time!(self.logger, "get_potentially_safe_blocks");
+
         let next_block_index: BlockIndex = self.ledger.num_blocks().unwrap();
         let last_block = self.ledger.get_block(next_block_index - 1).unwrap();
         log::debug!(
             self.logger,
             "Getting blocks [{}, {}) from peers",
             next_block_index,
-            next_block_index + BlockIndex::from(limit)
+            next_block_index + limit as BlockIndex
         );
 
         let node_to_blocks: HashMap<ResponderId, Vec<Block>> = get_blocks(
@@ -123,21 +168,24 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         let grouping: BTreeMap<BlockIndex, HashMap<BlockID, HashSet<ResponderId>>> =
             group_by_block(&node_to_blocks);
 
-        // If sync_target is Some, it indicates that the local ledger should attempt to be synced
-        // from the given nodes, up to and including the Block with the given BlockID in BlockIndex.
+        // If sync_target is Some, it indicates that the local ledger should attempt to
+        // be synced from the given nodes, up to and including the Block with
+        // the given BlockID in BlockIndex.
         let mut sync_target: Option<(BlockIndex, BlockID, Vec<ResponderId>)> = None;
 
         // Iterate over groupings, starting with the highest block index.
-        // Starting with the highest block index is a greedy strategy, and should be more efficient
-        // in the normal case where all nodes agree, or when a new ledger must download a large
-        // number of blocks.
+        // Starting with the highest block index is a greedy strategy, and should be
+        // more efficient in the normal case where all nodes agree, or when a
+        // new ledger must download a large number of blocks.
         'outer: for (block_index, block_id_to_nodes) in grouping.iter().rev() {
             for (block_id, responder_ids) in block_id_to_nodes.iter() {
-                if network_state.is_blocking_and_quorum(&responder_ids) {
-                    // It should be possible to sync with these nodes up to `block_id` at `block_index`.
+                if network_state.is_blocking_and_quorum(responder_ids) {
+                    // It should be possible to sync with these nodes up to `block_id` at
+                    // `block_index`.
                     //
                     // Note: in the event of a network fork, there may be multiple distinct sets of
-                    // nodes that could be chosen here. Arbitrarily, we take the first such set of nodes.
+                    // nodes that could be chosen here. Arbitrarily, we take the first such set of
+                    // nodes.
                     let node_vec: Vec<ResponderId> = responder_ids.iter().cloned().collect();
                     sync_target = Some((*block_index, block_id.clone(), node_vec));
                     break 'outer;
@@ -146,13 +194,12 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         }
 
         // Return None if no blocks are available.
-        sync_target.as_ref()?;
+        let (sync_to_block_index, _block_id, responder_ids) = sync_target?;
 
-        // All nodes in `responder_ids` should have the same blocks up to `sync_to_block_index`.
-        // Copy those blocks from one of the nodes.
-        let (sync_to_block_index, _block_id, responder_ids) = sync_target.unwrap();
+        // All nodes in `responder_ids` should have the same blocks up to
+        // `sync_to_block_index`. Copy those blocks from one of the nodes.
         if let Some(responder_id) = responder_ids.get(0) {
-            if let Some(ref blocks) = node_to_blocks.get(responder_id) {
+            if let Some(blocks) = node_to_blocks.get(responder_id) {
                 let blocks_to_sync: Vec<Block> = blocks
                     .iter()
                     .filter(|block| block.index <= sync_to_block_index)
@@ -174,26 +221,50 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
     }
 
     /// Append safe blocks to the local ledger.
-    fn append_safe_blocks(
-        &mut self,
-        blocks_and_contents: &[(Block, BlockContents)],
-    ) -> Result<(), LedgerSyncError> {
+    fn append_safe_blocks(&mut self, blocks: &[BlockData]) -> Result<(), LedgerSyncError> {
         log::info!(
             self.logger,
             "Appending {} blocks to ledger, which currently has {} blocks",
-            blocks_and_contents.len(),
+            blocks.len(),
             self.ledger
                 .num_blocks()
                 .expect("failed getting number of blocks"),
         );
-        mc_common::trace_time!(
-            self.logger,
-            "Appended {} blocks to ledger",
-            blocks_and_contents.len()
-        );
+        mc_common::trace_time!(self.logger, "Appended {} blocks to ledger", blocks.len());
 
-        for (block, contents) in blocks_and_contents {
-            self.ledger.append_block(block, contents, None)?;
+        for block_data in blocks {
+            let append_block_start = SystemTime::now();
+            let metadata = self.metadata_provider.get_metadata(block_data);
+            // TODO: Propagate downloaded block signature if the metadata/AVR can verify it.
+            self.ledger.append_block(
+                block_data.block(),
+                block_data.contents(),
+                None,
+                metadata.as_ref(),
+            )?;
+            let append_block_end = SystemTime::now();
+
+            // HACK: `append_block` reports a span but does not tie it to a specific
+            // block-derived trace ID. This is useful, since this allows the
+            // repeated append_block calls to be grouped under the parent
+            // span of append_safe_blocks.
+            // However, we also want to know when various services have appended a specific
+            // block as part of the block-level trace, so to work around that we
+            // are recording another span that is purposefully not tied
+            // to the current tracing context, but instead uses a fresh context so that it
+            // could be tied to the block trace.
+            {
+                // This is what detaches us from the parent context created by the caller of
+                // `append_safe_blocks`.
+                let _ctx = Context::new().attach();
+                let tracer = tracer!();
+                let block_index = block_data.block().index;
+                let mut span = block_span_builder(&tracer, "append_block", block_index)
+                    .with_start_time(append_block_start)
+                    .with_end_time(append_block_end)
+                    .start(&tracer);
+                span.end_with_timestamp(append_block_end);
+            }
         }
 
         Ok(())
@@ -205,9 +276,11 @@ impl<
         L: Ledger,
         BC: BlockchainConnection + 'static,
         TF: TransactionsFetcher + 'static,
-    > LedgerSync<NS> for LedgerSyncService<L, BC, TF>
+        BMP: BlockMetadataProvider,
+    > LedgerSync<NS> for LedgerSyncService<L, BC, TF, BMP>
 {
-    /// Returns true if the local ledger is behind the network's consensus view of the ledger.
+    /// Returns true if the local ledger is behind the network's consensus view
+    /// of the ledger.
     fn is_behind(&self, network_state: &NS) -> bool {
         let num_blocks: u64 = self
             .ledger
@@ -221,103 +294,122 @@ impl<
         }
     }
 
-    /// Attempts to synchronize the local ledger with the consensus view of the network.
+    /// Attempts to synchronize the local ledger with the consensus view of the
+    /// network.
     ///
     /// 1. Get blocks from peers.
-    /// 2. Identify blocks that are “potentially safe”, and the peers who have them.
-    /// 3. Download transactions for “potentially safe” blocks.
-    /// 4. Identify “safe” blocks (and their transactions). Each block satisfies:
+    /// 2. Identify blocks that are “potentially safe”, and the peers who have
+    /// them. 3. Download transactions for “potentially safe” blocks.
+    /// 4. Identify “safe” blocks (and their transactions). Each block
+    /// satisfies:
     ///     * A sufficient set of peers have externalized the block,
-    ///     * The block is part of a blockchain of safe blocks, rooted at the highest block in the local node’s ledger,
+    ///     * The block is part of a blockchain of safe blocks, rooted at the
+    ///       highest block in the local node’s ledger,
     ///     * The block’s ID agrees with the merkle hash of its transactions,
     ///     * None of the key images in the block have appeared before.
     /// 5. Append safe blocks to the ledger.
     ///
     /// # Arguments
-    /// * `network_state` - Current state of the network, used to determine if we're behind.
+    /// * `network_state` - Current state of the network, used to determine if
+    ///   we're behind.
     /// * `limit` - Maximum number of blocks to add to the ledger.
     fn attempt_ledger_sync(
         &mut self,
         network_state: &NS,
         limit: u32,
     ) -> Result<(), LedgerSyncError> {
-        let (responder_ids, _, potentially_safe_blocks) = self
-            .get_potentially_safe_blocks(network_state, limit)
-            .ok_or(LedgerSyncError::NoSafeBlocks)?;
+        trace_time!(self.logger, "attempt_ledger_sync");
+        tracer!().in_span("attempt_ledger_sync", |_cx| {
+            let (responder_ids, _, potentially_safe_blocks) = self
+                .get_potentially_safe_blocks(network_state, limit)
+                .ok_or(LedgerSyncError::NoSafeBlocks)?;
 
-        if potentially_safe_blocks.is_empty() {
-            return Err(LedgerSyncError::EmptyBlockVec);
-        }
+            if potentially_safe_blocks.is_empty() {
+                return Err(LedgerSyncError::EmptyBlockVec);
+            }
 
-        let num_potentially_safe_blocks = potentially_safe_blocks.len();
+            let num_potentially_safe_blocks = potentially_safe_blocks.len();
 
-        // Get transactions.
-        let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
-            get_block_contents(
+            // Get transactions.
+            let block_index_to_opt_data = get_block_contents(
                 self.transactions_fetcher.clone(),
                 &responder_ids,
                 &potentially_safe_blocks,
-                self.get_transactions_timeout,
+                self.get_block_contents_timeout,
                 &self.logger,
             );
 
-        let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
-
-        {
-            // Populate `blocks_with_transactions`. This just returns all (block, transactions) until
-            // it reaches a None.
-            let mut block_index_to_transactions: BTreeMap<BlockIndex, BlockContents> =
-                block_index_to_opt_transactions
+            let mut blocks: Vec<BlockData> = Vec::new();
+            {
+                // Populate `blocks_with_transactions`. This just returns all (block,
+                // transactions) until it reaches a None.
+                let mut blocks_by_index = block_index_to_opt_data
                     .into_iter()
-                    .take_while(|(_block_index, transactions_opt)| transactions_opt.is_some())
-                    .map(|(block_index, transactions_opt)| (block_index, transactions_opt.unwrap()))
+                    .filter_map(|(block_index, opt_block_data)| {
+                        // Use Option::map() to extract the data, while propagating None's.
+                        opt_block_data.map(|block_data| (block_index, block_data))
+                    })
+                    .collect::<BTreeMap<_, _>>();
+
+                // Sort and deduplicate safe blocks by index.
+                let safe_blocks_by_index: BTreeMap<BlockIndex, Block> = potentially_safe_blocks
+                    .into_iter()
+                    .map(|block| (block.index, block))
                     .collect();
 
-            let block_index_to_block: BTreeMap<BlockIndex, Block> = potentially_safe_blocks
-                .into_iter()
-                .map(|block| (block.index, block))
-                .collect();
-
-            // Join blocks and transactions, allowing for the possibility that transactions
-            // may not be available for some blocks due to failed network requests for transactions.
-            for (block_index, block) in block_index_to_block {
-                if let Some(block_contents) = block_index_to_transactions.remove(&block_index) {
-                    blocks_and_contents.push((block, block_contents));
-                } else {
-                    log::error!(self.logger, "No transactions for block {:?}", block);
-                    break;
+                // Join blocks and transactions, allowing for the possibility that transactions
+                // may not be available for some blocks due to failed network requests for
+                // transactions.
+                blocks.reserve(safe_blocks_by_index.len());
+                for (block_index, block) in safe_blocks_by_index {
+                    if let Some(block_data) = blocks_by_index.remove(&block_index) {
+                        blocks.push(block_data);
+                    } else {
+                        log::error!(self.logger, "No transactions for block {:?}", block);
+                        break;
+                    }
                 }
             }
-        }
 
-        if blocks_and_contents.is_empty() {
-            log::error!(
-                self.logger,
-                "Identified {} safe blocks but was unable to get block contents.",
-                num_potentially_safe_blocks,
+            if blocks.is_empty() {
+                log::error!(
+                    self.logger,
+                    "Identified {} safe blocks but was unable to get block contents.",
+                    num_potentially_safe_blocks,
+                );
+                return Err(LedgerSyncError::NoTransactionData);
+            }
+
+            // Process safe blocks.
+            log::trace!(
+                &self.logger,
+                "Identifying safe blocks out of {} blocks",
+                blocks.len()
             );
-            return Err(LedgerSyncError::NoTransactionData);
-        }
+            let safe_blocks = identify_safe_blocks(&self.ledger, &blocks, &self.logger);
 
-        // Process safe blocks.
-        log::trace!(
-            &self.logger,
-            "Identifying safe blocks out of {} blocks",
-            blocks_and_contents.len()
-        );
-        if let Ok(safe_blocks) =
-            identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
-        {
-            self.append_safe_blocks(&safe_blocks)?;
-        } else {
-            log::info!(self.logger, "No safe blocks.");
-        }
+            log::trace!(
+                &self.logger,
+                "Identified {} safe blocks out of {} blocks",
+                safe_blocks.len(),
+                blocks.len()
+            );
 
-        Ok(())
+            {
+                tracer!().in_span("append_safe_blocks", |cx| {
+                    cx.span()
+                        .set_attribute(TELEMETRY_NUM_BLOCKS_APPENDED.i64(safe_blocks.len() as i64));
+                    self.append_safe_blocks(&safe_blocks)
+                })?;
+            }
+
+            Ok(())
+        })
     }
 }
 
-/// Gets a list of Blocks that could potentially be appended after `block` from each peer.
+/// Gets a list of Blocks that could potentially be appended after `block` from
+/// each peer.
 ///
 /// # Arguments
 /// * `manager` - Manager instance.
@@ -325,7 +417,8 @@ impl<
 /// * `limit` - Maximal number of blocks to fetch.
 /// * `timeout` - Overall request timeout.
 ///
-/// Peers are queried concurrently, and any successful responses collected before a timeout occurs are returned.
+/// Peers are queried concurrently, and any successful responses collected
+/// before a timeout occurs are returned.
 fn get_blocks<BC: BlockchainConnection + 'static>(
     manager: &ConnectionManager<BC>,
     append_after_block: Block,
@@ -333,8 +426,10 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     timeout: Duration,
     logger: &Logger,
 ) -> HashMap<ResponderId, Vec<Block>> {
-    // Query each peer in a separate worker thread. A separate thread performs a timeout.
-    // Any responses obtained before the timeout are returned.
+    trace_time!(logger, "get_blocks");
+
+    // Query each peer in a separate worker thread. A separate thread performs a
+    // timeout. Any responses obtained before the timeout are returned.
     type ResultsMap = HashMap<ResponderId, Vec<Block>>;
     let results_and_condvar = Arc::new((Mutex::new(ResultsMap::default()), Condvar::new()));
 
@@ -345,9 +440,9 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
         let thread_append_after_block = append_after_block.clone();
         let logger = logger.clone();
         thread::Builder::new()
-            .name(format!("GetBlocks:{}", conn))
+            .name(format!("GetBlocks:{conn}"))
             .spawn(move || {
-                let &(ref lock, ref condvar) = &*thread_results_and_condvar;
+                let (lock, condvar) = &*thread_results_and_condvar;
 
                 // Perform call to get the blocks from the peer. Blocks are later verified by `identify_safe_blocks`.
                 let start = thread_append_after_block.index + 1;
@@ -393,7 +488,7 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     }
 
     // Wait until either we get all results, or a timeout happens.
-    let &(ref lock, ref condvar) = &*results_and_condvar;
+    let (lock, condvar) = &*results_and_condvar;
     let (worker_results, _wait_timeout_result) = condvar
         .wait_timeout_while(lock.lock().unwrap(), timeout, |ref mut results| {
             results.len() != manager.len()
@@ -401,12 +496,11 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
         .expect("waiting on condvar failed");
 
     // Filter out results with no blocks
-    HashMap::from_iter(
-        worker_results
-            .clone()
-            .into_iter()
-            .filter(|(_responder_id, blocks)| !blocks.is_empty()),
-    )
+    worker_results
+        .clone()
+        .into_iter()
+        .filter(|(_responder_id, blocks)| !blocks.is_empty())
+        .collect()
 }
 
 fn verify_block_ids(
@@ -430,19 +524,22 @@ fn verify_block_ids(
     Ok(blocks)
 }
 
-/// For each block index, group nodes according to the block they externalized (if any).
+/// For each block index, group nodes according to the block they externalized
+/// (if any).
 ///
 /// # Arguments
-/// * `node_to_blocks` - mapping from ResponderId to a consecutive list of Blocks externalized by that node.
+/// * `node_to_blocks` - mapping from ResponderId to a consecutive list of
+///   Blocks externalized by that node.
 fn group_by_block(
     node_to_blocks: &HashMap<ResponderId, Vec<Block>>,
 ) -> BTreeMap<BlockIndex, HashMap<BlockID, HashSet<ResponderId>>> {
-    // For each block index, this partitions nodes according to the contents of the block they externalized.
-    // A BTreeMap allows efficient iteration of entries sorted by block index, in addition to the
-    // usual HashMap functionality.
+    // For each block index, this partitions nodes according to the contents of the
+    // block they externalized. A BTreeMap allows efficient iteration of entries
+    // sorted by block index, in addition to the usual HashMap functionality.
     //
-    // The BlockID is the hash of the entire block contents, which is why we can group by it.
-    // Block IDs are verified before they are handed to this function.
+    // The BlockID is the hash of the entire block contents, which is why we can
+    // group by it. Block IDs are verified before they are handed to this
+    // function.
     let mut block_index_to_grouping: BTreeMap<BlockIndex, HashMap<BlockID, HashSet<ResponderId>>> =
         BTreeMap::new();
 
@@ -465,28 +562,29 @@ fn group_by_block(
 
 /// Gets all transactions for each block in a list of Blocks.
 ///
-/// It is assumed that all peers have identical Block IDs for the given blocks, so it is
-/// sufficient to obtain each transaction from a single peer. Specifically, this is expected to
-/// be used in conjunction with `group_by_block` which identifies peers who have identical blocks.
+/// It is assumed that all peers have identical Block IDs for the given blocks,
+/// so it is sufficient to obtain each transaction from a single peer.
+/// Specifically, this is expected to be used in conjunction with
+/// `group_by_block` which identifies peers who have identical blocks.
 ///
 /// # Arguments
-/// * `transactions_fetcher` - The mechanism used for fetching transaction contents for a given
-/// block.
-/// * `safe_responder_ids` - ResponderIds that have been identified as agreeing with eachother on the
-///                     `blocks` we want to fetch.
+/// * `transactions_fetcher` - The mechanism used for fetching transaction
+///   contents for a given block.
+/// * `safe_responder_ids` - ResponderIds that have been identified as agreeing
+///   with eachother on the `blocks` we want to fetch.
 /// * `blocks` - List of blocks to fetch transactions for.
 /// * `timeout` - Overall request timeout.
 ///
-/// Peers are queried concurrently. Currently, this method will run indefinitely until all
-/// transactions have been retrieved.
+/// Peers are queried concurrently. Currently, this method will run indefinitely
+/// until all transactions have been retrieved.
 fn get_block_contents<TF: TransactionsFetcher + 'static>(
     transactions_fetcher: Arc<TF>,
     safe_responder_ids: &[ResponderId],
     blocks: &[Block],
     timeout: Duration,
     logger: &Logger,
-) -> BTreeMap<BlockIndex, Option<BlockContents>> {
-    type ResultsMap = BTreeMap<BlockIndex, Option<BlockContents>>;
+) -> BTreeMap<BlockIndex, Option<BlockData>> {
+    trace_time!(logger, "get_block_contents");
 
     enum Msg {
         ProcessBlock {
@@ -499,8 +597,8 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
         Stop,
     }
 
-    // The channel is going to hold the list of pending blocks we still need to get transactions
-    // for.
+    // The channel is going to hold the list of pending blocks we still need to get
+    // transactions for.
     let (sender, receiver) = crossbeam_channel::bounded(blocks.len());
     for block in blocks.iter().cloned() {
         sender
@@ -511,7 +609,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
             .expect("failed sending to channel");
     }
 
-    let results_and_condvar = Arc::new((Mutex::new(ResultsMap::new()), Condvar::new()));
+    let results_and_condvar = Arc::new((Mutex::new(BTreeMap::new()), Condvar::new()));
     let deadline = Instant::now() + timeout;
 
     // Spawn worker threads.
@@ -527,9 +625,9 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
         let thread_safe_responder_ids = safe_responder_ids.to_owned();
 
         let thread_handle = thread::Builder::new()
-            .name(format!("GetTxs:{}", worker_num))
+            .name(format!("LedgerSync::GetTxs:{worker_num}"))
             .spawn(move || {
-                let &(ref lock, ref condvar) = &*thread_results_and_condvar;
+                let (lock, condvar) = &*thread_results_and_condvar;
 
                 for msg in thread_receiver.iter() {
                     match msg {
@@ -598,11 +696,14 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
 
                                     // passing the actual block and not just a block index.
                                     let mut results = lock.lock().expect("mutex poisoned");
-                                    let old_result = results
-                                        .insert(block.index, Some(block_data.contents().clone()));
+                                    let old_result = results.insert(block.index, Some(block_data));
 
                                     // We should encounter each block index only once.
-                                    assert!(old_result.is_none());
+                                    assert!(
+                                        old_result.is_none(),
+                                        "Duplicate block data for index {}",
+                                        block.index
+                                    );
 
                                     // Signal condition variable to check if maybe we're done.
                                     condvar.notify_one();
@@ -618,9 +719,11 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                                         err
                                     );
 
-                                    // Sleep, with a linearly increasing delay. This prevents endless retries
+                                    // Sleep, with a linearly increasing delay. This prevents
+                                    // endless retries
                                     // as long as the deadline is not exceeded.
-                                    thread::sleep(Duration::from_secs(num_attempts + 1));
+                                    let attempts = Duration::from_secs(num_attempts + 1);
+                                    thread::sleep(min(attempts, MAX_SLEEP_INTERVAL));
 
                                     // Put back to queue for a retry
                                     thread_sender
@@ -643,18 +746,18 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
         thread_handles.push(thread_handle);
     }
 
-    // Wait until we get all results, or we timeout. Note that timeout checking is handled inside
-    // the worker threads.
+    // Wait until we get all results, or we timeout. Note that timeout checking is
+    // handled inside the worker threads.
     log::trace!(logger, "Waiting on {} results", blocks.len());
-    let &(ref lock, ref condvar) = &*results_and_condvar;
+    let (lock, condvar) = &*results_and_condvar;
     let results = condvar
         .wait_while(lock.lock().unwrap(), |ref mut results| {
             results.len() != blocks.len()
         })
         .expect("waiting on condvar failed");
 
-    // Sanity - we will only get here when results.len() == blocks.len(), which only happens when
-    // everything in the queue was proceesed.
+    // Sanity - we will only get here when results.len() == blocks.len(), which only
+    // happens when everything in the queue was proceesed.
     assert!(receiver.is_empty());
 
     // Tell all threads to stop.
@@ -668,7 +771,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
         if let Err(err) = thread_handle.join() {
             log::error!(
                 logger,
-                "Failed joining get_transactions worker thread: {:?}",
+                "Failed joining get_block_contents worker thread: {:?}",
                 err
             );
         }
@@ -678,51 +781,52 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
     results.clone()
 }
 
-/// Identify a sequence of blocks that are safe to append to the local node's ledger.
+/// Identify a sequence of blocks that are safe to append to the local node's
+/// ledger.
 ///
 /// A "safe" block satisfies:
-///     1. A sufficient set of peers have externalized the block (aka "potentially safe"),
-///     2. The block is part of a chain of safe blocks, rooted at the highest block in the local node’s ledger,
-///     3. The block’s ID agrees with the merkle hash of its transactions,
-///     4. None of the key images in the block have appeared before.
+///     1. A sufficient set of peers have externalized the block (aka
+/// "potentially safe"),     2. The block is part of a chain of safe blocks,
+/// rooted at the highest block in the local node’s ledger,     3. The block’s
+/// ID agrees with the merkle hash of its transactions,     4. None of the key
+/// images in the block have appeared before.
 ///
 /// # Arguments
 /// * `ledger` - The local node's ledger.
-/// * `blocks_and_contents` - A sequence of Blocks with their associated transactions, in increasing order of block number.
-fn identify_safe_blocks<L: Ledger>(
+/// * `blocks` - A sequence of Blocks with their associated transactions, in
+///   increasing order of block number.
+pub fn identify_safe_blocks<L: Ledger>(
     ledger: &L,
-    blocks_and_contents: &[(Block, BlockContents)],
+    blocks: &[BlockData],
     logger: &Logger,
-) -> Result<Vec<(Block, BlockContents)>, ()> {
+) -> Vec<BlockData> {
     // The highest block externalized by the local node.
     let highest_local_block = ledger
-        .num_blocks()
-        .and_then(|num_blocks| ledger.get_block(num_blocks - 1))
+        .get_latest_block()
         .expect("Failed getting highest local block");
 
-    let mut safe_blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
+    let mut safe_blocks: Vec<BlockData> = Vec::with_capacity(blocks.len());
     let mut last_safe_block: Block = highest_local_block;
 
     // KeyImages used by new, safe blocks.
     // They are not yet in the ledger, but may not be used again.
     let mut additional_key_images: HashSet<KeyImage> = HashSet::default();
 
-    'block_loop: for (block, block_contents) in blocks_and_contents {
+    'block_loop: for block_data in blocks {
+        let block = block_data.block();
         // The block must be part of a chain of safe blocks.
         if block.parent_id != last_safe_block.id {
             log::error!(
                 logger,
-                "The block's parent_id must be the last safe block in the chain."
-            );
-            log::error!(
-                logger,
-                "block: {:?}, expected parent_id: {:?}",
+                "The block's parent_id must be the last safe block in the chain.\nblock: {:?}, expected parent_id: {:?}",
                 block,
                 last_safe_block.id
             );
             break;
         }
 
+        // The block's ID must agree with the merkle hash of its transactions.
+        let block_contents = block_data.contents();
         let derived_block_id = compute_block_id(
             block.version,
             &block.parent_id,
@@ -731,8 +835,6 @@ fn identify_safe_blocks<L: Ledger>(
             &block.root_element,
             &block_contents.hash(),
         );
-
-        // The block's ID must agree with the merkle hash of its transactions.
         if block.id != derived_block_id {
             log::error!(
                 logger,
@@ -784,21 +886,23 @@ fn identify_safe_blocks<L: Ledger>(
 
         // This block is safe.
         last_safe_block = block.clone();
-        safe_blocks_and_contents.push((block.clone(), block_contents.clone()));
+        safe_blocks.push(block_data.clone());
     }
 
-    Ok(safe_blocks_and_contents)
+    safe_blocks
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{test_utils::MockTransactionsFetcher, SCPNetworkState};
+    use mc_blockchain_test_utils::make_block_metadata;
+    use mc_blockchain_types::BlockMetadata;
     use mc_common::{logger::test_with_logger, NodeID};
-    use mc_consensus_scp::{core_types::Ballot, msg::*, *};
+    use mc_consensus_scp::{ballot::Ballot, msg::*, *};
     use mc_ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
     use mc_peers_test_utils::{test_node_id, test_peer_uri, MockPeerConnection};
-    use std::convert::TryFrom;
+    use mc_util_test_helper::get_seeded_rng;
 
     #[test_with_logger]
     // A node with the trivial quorum set should never be "behind".
@@ -806,24 +910,22 @@ mod tests {
         // Local node with trivial quorum set.
         let local_node_id = test_node_id(11);
         let quorum_set = QuorumSet::empty();
-
         let network_state = SCPNetworkState::new(local_node_id, quorum_set);
         let ledger = get_mock_ledger(25);
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
-        assert_eq!(sync_service.is_behind(&network_state), false);
+        assert!(!sync_service.is_behind(&network_state));
     }
 
-    // A blocking set of peers on a higher slot isn't enough to consider this node "behind".
+    // A blocking set of peers on a higher slot isn't enough to consider this node
+    // "behind".
     #[test_with_logger]
     fn test_is_behind(logger: Logger) {
-        let trivial_quorum_set = QuorumSet::empty();
-
-        let node_a = (test_node_id(22), trivial_quorum_set.clone());
-        let node_b = (test_node_id(33), trivial_quorum_set);
+        let node_a = (test_node_id(22), QuorumSet::empty());
+        let node_b = (test_node_id(33), QuorumSet::empty());
 
         let local_node_id = test_node_id(11);
         let local_quorum_set: QuorumSet<ResponderId> = QuorumSet::new_with_node_ids(
@@ -837,10 +939,11 @@ mod tests {
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         // Node A has externalized a higher slot.
-        // The set {Node A} is blocking, but {Node A} \union {local node} is not a quorum.
+        // The set {Node A} is blocking, but {Node A} \union {local node} is not a
+        // quorum.
         {
             let slot_index: SlotIndex = 8;
             network_state.push(Msg::new(
@@ -854,10 +957,11 @@ mod tests {
             ));
         }
 
-        assert_eq!(sync_service.is_behind(&network_state), false);
+        assert!(!sync_service.is_behind(&network_state));
 
         // Now Node B also externalizes a higher slot.
-        // The set {Node A, Node B} is blocking, and {Node A, Node B} \union {local node} is a quorum.
+        // The set {Node A, Node B} is blocking, and {Node A, Node B} \union {local
+        // node} is a quorum.
         {
             let slot_index: SlotIndex = 9;
             network_state.push(Msg::new(
@@ -871,11 +975,12 @@ mod tests {
             ));
         }
 
-        assert_eq!(sync_service.is_behind(&network_state), true);
+        assert!(sync_service.is_behind(&network_state));
     }
 
     #[test_with_logger]
-    // `get_blocks` should gracefully handle peers who don't respond before the timeout.
+    // `get_blocks` should gracefully handle peers who don't respond before the
+    // timeout.
     fn test_get_blocks_with_timeout(logger: Logger) {
         let local_node_id = test_node_id(123);
 
@@ -912,8 +1017,9 @@ mod tests {
     }
 
     #[test_with_logger]
-    // `get_transactions` should get correct transactions for the indicated blocks.
-    fn test_get_transactions(logger: Logger) {
+    // `get_block_contents` should get correct transactions for the indicated
+    // blocks.
+    fn test_get_block_contents(logger: Logger) {
         let local_node_id = test_node_id(123);
 
         let num_blocks = 25;
@@ -946,9 +1052,9 @@ mod tests {
             .map(|idx| mock_ledger.get_block(idx).unwrap())
             .collect();
 
-        let transactions_by_block = get_block_contents(
+        let block_index_to_opt_data = get_block_contents(
             transactions_fetcher,
-            &responder_ids.as_slice(),
+            responder_ids.as_slice(),
             &blocks,
             Duration::from_secs(1),
             &logger,
@@ -956,35 +1062,27 @@ mod tests {
 
         log::trace!(
             logger,
-            "get_transactions returned: {:?}",
-            transactions_by_block
+            "get_block_contents returned: {:?}",
+            block_index_to_opt_data
         );
 
         // The correct number of results should be returned.
-        assert_eq!(transactions_by_block.len(), 10);
+        assert_eq!(block_index_to_opt_data.len(), 10);
 
-        for (block_index, contents_opt) in transactions_by_block {
-            match contents_opt {
-                Some(block_contents) => {
-                    let expected_contents = mock_ledger
-                        .lock()
-                        .block_contents_by_block_number
-                        .get(&block_index)
-                        .unwrap()
-                        .clone();
-                    // The transactions should be correct for each block.
-                    assert_eq!(block_contents, expected_contents);
-                }
-                None => {
-                    panic!("All results should be Some");
-                }
-            }
+        for (block_index, data_opt) in block_index_to_opt_data {
+            let block_data = data_opt.expect("all blocks should be populated");
+            let expected = mock_ledger
+                .get_block_data(block_index)
+                .expect("block data should be in ledger");
+            // The transactions should be correct for each block.
+            assert_eq!(block_data, expected);
         }
     }
 
     #[test_with_logger]
-    // `get_transactions` should verify the transactions returned matched the block requested.
-    fn test_get_transactions_validates_block(logger: Logger) {
+    // `get_block_contents` should verify the transactions returned matched the
+    // block requested.
+    fn test_get_block_contents_validates_block(logger: Logger) {
         let local_node_id = test_node_id(123);
 
         let num_blocks = 25;
@@ -1018,15 +1116,15 @@ mod tests {
             .collect();
 
         // Alter the contents hash of one of the blocks. This should cause
-        // `get_transactions` to error. Block index 3 is chosen arbitrarily.
+        // `get_block_contents` to error. Block index 3 is chosen arbitrarily.
         const BAD_BLOCK_INDEX: u64 = 3;
 
         blocks[BAD_BLOCK_INDEX as usize].contents_hash.0[0] =
             !blocks[BAD_BLOCK_INDEX as usize].contents_hash.0[0];
 
-        let transactions_by_block = get_block_contents(
+        let block_index_to_opt_data = get_block_contents(
             transactions_fetcher,
-            &responder_ids.as_slice(),
+            responder_ids.as_slice(),
             &blocks,
             Duration::from_secs(1),
             &logger,
@@ -1034,26 +1132,23 @@ mod tests {
 
         log::trace!(
             logger,
-            "get_transactions returned: {:?}",
-            transactions_by_block
+            "get_block_contents returned: {:?}",
+            block_index_to_opt_data
         );
 
         // The correct number of results should be returned.
-        assert_eq!(transactions_by_block.len(), 10);
+        assert_eq!(block_index_to_opt_data.len(), 10);
 
-        for (block_index, contents_opt) in transactions_by_block {
-            match contents_opt {
-                Some(block_contents) => {
+        for (block_index, data_opt) in block_index_to_opt_data {
+            match data_opt {
+                Some(block_data) => {
                     assert_ne!(block_index, BAD_BLOCK_INDEX);
 
-                    let expected_contents = mock_ledger
-                        .lock()
-                        .block_contents_by_block_number
-                        .get(&block_index)
-                        .unwrap()
-                        .clone();
-                    // The transactions should be correct for each block.
-                    assert_eq!(block_contents, expected_contents);
+                    let expected = mock_ledger
+                        .get_block_data(block_index)
+                        .expect("block data should be in ledger");
+                    // The block data should be correct for each block.
+                    assert_eq!(block_data, expected);
                 }
                 None => {
                     assert_eq!(block_index, BAD_BLOCK_INDEX);
@@ -1064,7 +1159,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_get_transactions_for_nonexistent_blocks() {
+    fn test_get_block_contents_for_nonexistent_blocks() {
         unimplemented!();
     }
 
@@ -1078,7 +1173,8 @@ mod tests {
         //    node_b: {node_b}
         //
         // ## Blocks
-        // The local_node has the origin block; node_a and node_b both have the same set of blocks.
+        // The local_node has the origin block; node_a and node_b both have the same set
+        // of blocks.
 
         let trivial_quorum_set = QuorumSet::empty();
 
@@ -1138,7 +1234,7 @@ mod tests {
         let conn_manager = ConnectionManager::new(peer_conns, logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         let (responder_ids, block_index, potentially_safe_blocks) = sync_service
             .get_potentially_safe_blocks(&network_state, 100)
@@ -1153,7 +1249,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // Only "potentially safe" blocks should be returned, even if some peers have additional blocks.
+    // Only "potentially safe" blocks should be returned, even if some peers have
+    // additional blocks.
     fn test_get_potentially_safe_blocks_differing_amounts(logger: Logger) {
         let trivial_quorum_set = QuorumSet::empty();
 
@@ -1175,8 +1272,9 @@ mod tests {
         );
         let mut peer_conns = Vec::<MockPeerConnection>::new();
 
-        // Peer A and Peer B agree on the first 25 blocks, but Peer A has externalized many
-        // additional blocks. The first 25 are "potentially safe", but the rest are not.
+        // Peer A and Peer B agree on the first 25 blocks, but Peer A has externalized
+        // many additional blocks. The first 25 are "potentially safe", but the
+        // rest are not.
         {
             let ledger = get_mock_ledger(145);
 
@@ -1215,15 +1313,15 @@ mod tests {
         let conn_manager = ConnectionManager::new(peer_conns, logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         let (responder_ids, slot_index, blocks) = sync_service
             .get_potentially_safe_blocks(&network_state, 100)
             .unwrap();
         assert_eq!(responder_ids.len(), 2);
 
-        // Both peers have 24 blocks other than the origin block. We had  9 other blocks to
-        // start with, so we synced 15 (9 + 15 = 24)
+        // Both peers have 24 blocks other than the origin block. We had  9 other blocks
+        // to start with, so we synced 15 (9 + 15 = 24)
         assert_eq!(blocks.len(), 15);
 
         // The index of the highest block fetched (zero-based index).
@@ -1231,7 +1329,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // If an insufficient set of peers have externalized blocks in the requested range, return None.
+    // If an insufficient set of peers have externalized blocks in the requested
+    // range, return None.
     fn test_get_potentially_safe_blocks_none(logger: Logger) {
         let trivial_quorum_set = QuorumSet::<NodeID>::empty();
 
@@ -1268,24 +1367,22 @@ mod tests {
         let conn_manager = ConnectionManager::new(peer_conns, logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
         let mut sync_service =
-            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
 
         if let Some((responder_ids, block_index, blocks)) =
             sync_service.get_potentially_safe_blocks(&network_state, 100)
         {
-            panic!(
-                "Node IDs: {:?}, block index: {:?}, blocks: {:?}",
-                responder_ids, block_index, blocks
-            );
+            panic!("Node IDs: {responder_ids:?}, block index: {block_index:?}, blocks: {blocks:?}");
         }
     }
 
     #[test]
     #[ignore]
     fn test_get_potentially_safe_blocks_network_fork() {
-        // TODO: `get_potentially_safe_blocks` should do the right thing if the network is forked.
-        // This may mean returning None, returning the highest block before the fork, returning
-        // blocks along one fork if it is the only fork with quorum.
+        // TODO: `get_potentially_safe_blocks` should do the right thing if the
+        // network is forked. This may mean returning None, returning
+        // the highest block before the fork, returning blocks along one
+        // fork if it is the only fork with quorum.
     }
 
     #[test_with_logger]
@@ -1293,24 +1390,16 @@ mod tests {
     fn test_identify_safe_blocks(logger: Logger) {
         // The local node's ledger must contain the origin block.
         let local_ledger = get_mock_ledger(1);
+        // These blocks ought to be a valid blockchain.
+        let blocks = get_test_ledger_blocks(5);
+        // Blocks other than the origin block should be safe to append to the local
+        // node's ledger.
+        let potentially_safe_blocks = &blocks[1..];
 
-        // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_transactions = get_test_ledger_blocks(5);
+        let safe_blocks: Vec<BlockData> =
+            identify_safe_blocks(&local_ledger, potentially_safe_blocks, &logger);
 
-        // Blocks other than the origin block should be safe to append to the local node's ledger.
-        let potentially_safe_blocks_and_transactions = &blocks_and_transactions[1..];
-
-        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
-            &local_ledger,
-            potentially_safe_blocks_and_transactions,
-            &logger,
-        )
-        .expect("All inputs blocks should be safe.");
-
-        assert_eq!(
-            safe_blocks.len(),
-            potentially_safe_blocks_and_transactions.len()
-        );
+        assert_eq!(safe_blocks.len(), potentially_safe_blocks.len());
     }
 
     #[test_with_logger]
@@ -1320,21 +1409,16 @@ mod tests {
         let local_ledger = get_mock_ledger(1);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_contents = get_test_ledger_blocks(2);
+        let blocks = get_test_ledger_blocks(2);
 
         // Set an incorrect parent_id
-        let (mut block, block_contents) = blocks_and_contents.get(1).unwrap().clone();
-        block.parent_id = BlockID::try_from(&[200u8; 32][..]).unwrap();
+        let block_data = blocks[1].clone().mutate(|block, _, _, _| {
+            block.parent_id = BlockID([200u8; 32]);
+        });
 
-        let potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> =
-            vec![(block, block_contents)];
+        let potentially_safe_blocks = vec![block_data];
 
-        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
-            &local_ledger,
-            &potentially_safe_blocks_and_contents,
-            &logger,
-        )
-        .unwrap();
+        let safe_blocks = identify_safe_blocks(&local_ledger, &potentially_safe_blocks, &logger);
 
         assert_eq!(safe_blocks.len(), 0);
     }
@@ -1342,71 +1426,59 @@ mod tests {
     #[test_with_logger]
     // A block with a reused key image is not safe.
     fn test_identify_safe_blocks_reused_key_image_in_potentially_safe_blocks(logger: Logger) {
-        // Evaluating a batch of potentially safe blocks means checking that each key image is not
-        // already in the local nodes ledger, and not in any of the prior potentially safe blocks.
-        // This test initializes the local node's ledger to only contain the origin block,
-        // which has no key images, so does not test if the local ledger's key images are checked.
+        // Evaluating a batch of potentially safe blocks means checking that each key
+        // image is not already in the local nodes ledger, and not in any of the
+        // prior potentially safe blocks. This test initializes the local node's
+        // ledger to only contain the origin block, which has no key images, so
+        // does not test if the local ledger's key images are checked.
 
         // The local node's ledger must contain the origin block.
         let local_ledger = get_mock_ledger(1);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_contents = get_test_ledger_blocks(3);
-
-        let mut potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
-        let (block_one, contents_one) = blocks_and_contents.get(1).unwrap();
-        potentially_safe_blocks_and_contents.push((block_one.clone(), contents_one.clone()));
+        let blocks = get_test_ledger_blocks(3);
 
         // Modify a block to reuse a key image from block 1.
-        let (block_two, mut contents_two) = blocks_and_contents.get(2).unwrap().clone();
-        contents_two
-            .key_images
-            .push(contents_one.key_images.get(0).unwrap().clone());
-        potentially_safe_blocks_and_contents.push((block_two, contents_two));
+        let block_one = blocks[1].clone();
+        let block_two = blocks[2].clone().mutate(|_, contents, _, _| {
+            contents.key_images.push(block_one.contents().key_images[0]);
+        });
 
-        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
-            &local_ledger,
-            &potentially_safe_blocks_and_contents,
-            &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        let potentially_safe_blocks = vec![block_one, block_two];
+
+        let safe_blocks: Vec<BlockData> =
+            identify_safe_blocks(&local_ledger, &potentially_safe_blocks, &logger);
 
         // Block one should be safe, but block two is not.
         assert_eq!(safe_blocks.len(), 1);
-        let (safe_block, _contents) = safe_blocks.get(0).unwrap();
-        assert_eq!(safe_block.index, 1);
+        assert_eq!(safe_blocks[0].block().index, 1);
     }
 
     #[test_with_logger]
     // A block with a reused key image is not safe.
     fn test_identify_safe_blocks_reused_key_image_in_ledger(logger: Logger) {
-        // Evaluating a batch of potentially safe blocks means checking that each key image is not
-        // already in the local nodes ledger, and not in any of the prior potentially safe blocks.
-        // This test initializes the local node's ledger with some key images, and tests that a
-        // potentially safe block that reuses a key in the ledger is considered unsafe.
+        // Evaluating a batch of potentially safe blocks means checking that each key
+        // image is not already in the local nodes ledger, and not in any of the
+        // prior potentially safe blocks. This test initializes the local node's
+        // ledger with some key images, and tests that a potentially safe block
+        // that reuses a key in the ledger is considered unsafe.
 
         // The local node's ledger contains the origin block and block one.
         let local_ledger = get_mock_ledger(2);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_contents = get_test_ledger_blocks(3);
-
-        let mut potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
+        let blocks = get_test_ledger_blocks(3);
 
         // Modify a block to reuse a key image from block 1.
-        let (_block_one, contents_one) = blocks_and_contents.get(1).unwrap().clone();
-        let (block_two, mut contents_two) = blocks_and_contents.get(2).unwrap().clone();
-        contents_two
-            .key_images
-            .push(contents_one.key_images.get(0).unwrap().clone());
-        potentially_safe_blocks_and_contents.push((block_two, contents_two));
+        let block_one = blocks[1].clone();
+        let block_two = blocks[2].clone().mutate(|_, contents, _, _| {
+            contents.key_images.push(block_one.contents().key_images[0]);
+        });
 
-        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
-            &local_ledger,
-            &potentially_safe_blocks_and_contents,
-            &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        let potentially_safe_blocks = vec![block_two];
+
+        let safe_blocks: Vec<BlockData> =
+            identify_safe_blocks(&local_ledger, &potentially_safe_blocks, &logger);
 
         // Block two is not safe.
         assert_eq!(safe_blocks.len(), 0);
@@ -1419,34 +1491,31 @@ mod tests {
         let local_ledger = get_mock_ledger(1);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_contents = get_test_ledger_blocks(2);
+        let blocks = get_test_ledger_blocks(2);
 
         // Set an incorrect parent_id
-        let (mut block_one, contents) = blocks_and_contents.get(1).unwrap().clone();
-        block_one.id = BlockID::try_from(&[99u8; 32][..]).unwrap();
+        let block_one = blocks[1].clone().mutate(|block, _, _, _| {
+            block.id = BlockID([99u8; 32]);
+        });
 
-        let potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> =
-            vec![(block_one, contents)];
+        let potentially_safe_blocks: Vec<BlockData> = vec![block_one];
 
-        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
-            &local_ledger,
-            &potentially_safe_blocks_and_contents,
-            &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        let safe_blocks: Vec<BlockData> =
+            identify_safe_blocks(&local_ledger, &potentially_safe_blocks, &logger);
 
         // Block one is not safe.
         assert_eq!(safe_blocks.len(), 0);
     }
 
     #[test]
-    // Without a fork, nodes contain subsets of the longest blockchain. For each slot (aka, block index),
-    // `group_by_block` should return a single group of nodes who have externalized a block for that slot.
+    // Without a fork, nodes contain subsets of the longest blockchain. For each
+    // slot (aka, block index), `group_by_block` should return a single group of
+    // nodes who have externalized a block for that slot.
     fn test_group_by_block() {
-        let blocks_and_transactions = get_test_ledger_blocks(17);
-        let blocks: Vec<Block> = blocks_and_transactions
+        let blocks_data = get_test_ledger_blocks(17);
+        let blocks: Vec<Block> = blocks_data
             .iter()
-            .map(|(block, _transactions)| block.clone())
+            .map(|block_data| block_data.block().clone())
             .collect();
 
         let mut node_to_blocks: HashMap<ResponderId, Vec<Block>> = HashMap::default();
@@ -1469,18 +1538,19 @@ mod tests {
 
         for (_block_index, block_id_to_nodes) in grouping.iter().rev() {
             for (block_id, nodes) in block_id_to_nodes.iter() {
-                println!("BlockID: {:?} to nodes {:?}", block_id, nodes);
+                println!("BlockID: {block_id:?} to nodes {nodes:?}");
             }
         }
 
-        // `grouping` should contain one element for each slot where one or more peers has a block.
+        // `grouping` should contain one element for each slot where one or more peers
+        // has a block.
         assert_eq!(grouping.len(), 17);
 
         {
             // for slots 0,1,2, there should be a single group of nodes {1,2,3}.
             let groups = grouping.get(&1).unwrap();
             assert_eq!(groups.len(), 1);
-            let block_id: BlockID = blocks.get(1).unwrap().id.clone();
+            let block_id: BlockID = blocks[1].id.clone();
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 3);
             assert!(nodes.contains(&test_peer_uri(1).responder_id().unwrap()));
@@ -1492,7 +1562,7 @@ mod tests {
             // for slots 3-6, there should be a single group of nodes {1,2}.
             let groups = grouping.get(&5).unwrap();
             assert_eq!(groups.len(), 1);
-            let block_id: BlockID = blocks.get(5).unwrap().id.clone();
+            let block_id: BlockID = blocks[5].id.clone();
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 2);
             assert!(nodes.contains(&test_peer_uri(1).responder_id().unwrap()));
@@ -1503,10 +1573,86 @@ mod tests {
             // for slots 7-16, there should be a single group of nodes {2}.
             let groups = grouping.get(&9).unwrap();
             assert_eq!(groups.len(), 1);
-            let block_id: BlockID = blocks.get(9).unwrap().id.clone();
+            let block_id: BlockID = blocks[9].id.clone();
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 1);
             assert!(nodes.contains(&test_peer_uri(2).responder_id().unwrap()));
+        }
+    }
+
+    #[test_with_logger]
+    fn test_append_safe_blocks_default_metadata_provider(logger: Logger) {
+        let ledger = get_mock_ledger(10);
+        let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
+        let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
+        let mut sync_service =
+            LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger);
+
+        let mut blocks = get_test_ledger_blocks(15);
+        blocks.drain(0..10);
+
+        sync_service
+            .append_safe_blocks(&blocks)
+            .expect("failed to append blocks");
+
+        for expected_block in blocks {
+            let block_data = sync_service
+                .ledger
+                .get_block_data(expected_block.block().index)
+                .unwrap();
+            assert_eq!(block_data.block(), expected_block.block());
+            assert_eq!(block_data.contents(), expected_block.contents());
+            assert_eq!(block_data.signature(), None);
+            assert_eq!(block_data.metadata(), expected_block.metadata());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_append_safe_blocks_custom_metadata_provider(logger: Logger) {
+        #[derive(Copy, Clone)]
+        struct RandomMetadata {}
+        impl BlockMetadataProvider for RandomMetadata {
+            fn get_metadata(&self, block_data: &BlockData) -> Option<BlockMetadata> {
+                Some(make_block_metadata(
+                    block_data.block().id.clone(),
+                    &mut get_seeded_rng(),
+                ))
+            }
+        }
+
+        let metadata_provider = RandomMetadata {};
+        let ledger = get_mock_ledger(10);
+        let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
+        let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
+        let mut sync_service = LedgerSyncService::with_metadata_provider(
+            metadata_provider,
+            ledger,
+            conn_manager,
+            transactions_fetcher,
+            logger,
+        );
+
+        let mut blocks = get_test_ledger_blocks(15);
+        blocks.drain(0..10);
+
+        sync_service
+            .append_safe_blocks(&blocks)
+            .expect("failed to append blocks");
+
+        for expected_block in blocks {
+            let block_data = sync_service
+                .ledger
+                .get_block_data(expected_block.block().index)
+                .unwrap();
+            assert_eq!(block_data.block(), expected_block.block());
+            assert_eq!(block_data.contents(), expected_block.contents());
+            assert_eq!(block_data.signature(), None);
+            assert_eq!(
+                block_data.metadata(),
+                metadata_provider.get_metadata(&expected_block).as_ref()
+            );
+            // Sanity check.
+            assert_ne!(block_data.metadata(), expected_block.metadata());
         }
     }
 }

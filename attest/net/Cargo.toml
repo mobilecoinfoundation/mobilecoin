@@ -1,37 +1,40 @@
 [package]
 name = "mc-attest-net"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
 description = '''
 This crate contains necessary functions and utilities to communicate with
 remote attestation services. As such this only works in untrusted code.
 '''
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [features]
 default = ["network-tests"]
 network-tests = []
 sgx-sim = [
-    "mc-attest-core/sgx-sim",
+    "mc-attest-verifier/sgx-sim",
 ]
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core" }
+mc-attest-core = { path = "../core" }
+mc-attest-verifier = { path = "../verifier", default-features = false }
 mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3" }
-
-cfg-if = "0.1"
-failure = { version = "0.1.8", features = ["derive"] }
-pem = "0.8"
-percent-encoding = "2.1.0"
-reqwest = { version = "0.10" , default-features = false, features = ["rustls-tls", "gzip"] }
+cfg-if = "1.0"
+displaydoc = "0.2"
+mbedtls = "0.8.1"
+pem = "2.0"
+percent-encoding = "2.2.0"
+reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 serde_json = "1.0"
-sha2 = "0.9"
+sha2 = { version = "0.10", default-features = false }
 
 [dev-dependencies]
-rand = "0.7"
+rand = "0.8"
 
 [build-dependencies]
 mc-sgx-build =  { path = "../../sgx/build" }

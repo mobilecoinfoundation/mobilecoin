@@ -1,9 +1,12 @@
 [package]
 name = "mc-util-build-info"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [lib]
 path = "src/lib.rs"
@@ -14,3 +17,6 @@ path = "src/bin/main.rs"
 
 [dev-dependencies]
 json = "0.12"
+
+[build-dependencies]
+cargo-emit = "0.2"

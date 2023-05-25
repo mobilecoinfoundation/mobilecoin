@@ -1,8 +1,6 @@
 #![no_std]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
-#![feature(custom_test_frameworks)]
-#![test_runner(datatest::runner)]
 
 //! This crate defines account key structures, including private account keys,
 //! public addresses, view keys, and subaddresses.
@@ -11,12 +9,17 @@
 extern crate alloc;
 
 mod account_keys;
+mod burn_address;
 mod domain_separators;
+mod error;
 mod identity;
-mod view_key;
 
 pub use crate::{
-    account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
+    account_keys::{
+        AccountKey, PublicAddress, ShortAddressHash, ViewAccountKey, CHANGE_SUBADDRESS_INDEX,
+        DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX, INVALID_SUBADDRESS_INDEX,
+    },
+    burn_address::{burn_address, burn_address_view_private, BURN_ADDRESS_VIEW_PRIVATE},
+    error::{Error, Result},
     identity::{RootEntropy, RootIdentity},
-    view_key::ViewKey,
 };

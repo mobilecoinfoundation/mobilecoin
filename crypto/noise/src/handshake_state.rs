@@ -1,18 +1,15 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The HandshakeState object as described in the noise framework.
 
 use crate::{
-    cipher_state::NoiseCipher,
+    cipher_state::{NoiseCipher, NoiseDigest},
     patterns::{HandshakePattern, MessagePattern, PreMessageToken, Token},
     protocol_name::ProtocolName,
     symmetric_state::{SymmetricError, SymmetricOutput, SymmetricState},
 };
-use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
-use core::convert::{TryFrom, TryInto};
-use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use failure::Fail;
+use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};
 use mc_util_from_random::FromRandom;
@@ -20,35 +17,37 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 /// The public error messages which can be included in this construction
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum HandshakeError {
-    #[fail(display = "The initiator identity pubkey was not provided")]
+    /// The initiator identity pubkey was not provided
     MissingInitiatorIdentity,
-    #[fail(display = "The initiator ephemeral pubkey was not provided")]
+    /// The initiator ephemeral pubkey was not provided
     MissingInitiatorEphemeral,
-    #[fail(display = "The responder identity pubkey was not provided")]
+    /// The responder identity pubkey was not provided
     MissingResponderIdentity,
-    #[fail(display = "The responder ephemeral pubkey was not provided")]
+    /// The responder ephemeral pubkey was not provided
     MissingResponderEphemeral,
-    #[fail(display = "The initiator identity pubkey was already provided")]
+    /// The initiator identity pubkey was already provided
     ExistingInitiatorIdentity,
-    #[fail(display = "The initiator ephemeral pubkey was already provided")]
+    /// The initiator ephemeral pubkey was already provided
     ExistingInitiatorEphemeral,
-    #[fail(display = "The responder identity pubkey was already provided")]
+    /// The responder identity pubkey was already provided
     ExistingResponderIdentity,
-    #[fail(display = "The responder ephemeral pubkey was already provided")]
+    /// The responder ephemeral pubkey was already provided
     ExistingResponderEphemeral,
-    #[fail(display = "Attempted to write a message when a read was expected)")]
+    /// Attempted to write a message when a read was expected)
     WriteOutOfOrder,
-    #[fail(display = "Attempted to read a message when a write was expected)")]
+    /// Attempted to read a message when a write was expected)
     ReadOutOfOrder,
-    #[fail(display = "An error occurred during symmetric encryption/decryption")]
+    /// An error occurred during symmetric encryption/decryption: {0}
     Symmetric(SymmetricError),
-    #[fail(display = "An error occurred while attempting to parse a public key")]
+    /// An error occurred while attempting to parse a public key
     KeyParse,
-    #[fail(display = "Message is too short")]
+    /// Message is too short
     MessageTooShort,
-    #[fail(display = "Unknown error")]
+    /// Unknown error
     Unknown,
 }
 
@@ -98,44 +97,44 @@ const HANDSHAKE_ERROR: [[HandshakeError; ErrorIdx::Last as usize]; 2usize] = [
 ///
 /// This is pretty strange, but mostly because the two API methods have
 /// strange variable return types.
-pub struct HandshakeOutput<KexAlgo, Cipher, DigestType>
+pub struct HandshakeOutput<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// The payload is the read plaintext or written ciphertext
     pub payload: Vec<u8>,
     /// The status indicates whether the handshake has been completed or not
-    pub status: HandshakeStatus<KexAlgo, Cipher, DigestType>,
+    pub status: HandshakeStatus<KexAlgo, Cipher, DigestAlgo>,
 }
 
 /// An enumeration of resulting states for a `ReadMessage()` and
 /// `WriteMessage()`.
-pub enum HandshakeStatus<KexAlgo, Cipher, DigestType>
+pub enum HandshakeStatus<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
-    InProgress(HandshakeState<KexAlgo, Cipher, DigestType>),
+    InProgress(HandshakeState<KexAlgo, Cipher, DigestAlgo>),
     Complete(SymmetricOutput<Cipher, KexAlgo::Public>),
 }
 
 /// A generic implementation of the HandshakeState object from
 /// [section 5.3](http://noiseprotocol.org/noise.html#the-handshakestate-object)
 /// of the Noise framework.
-pub struct HandshakeState<KexAlgo, Cipher, DigestType>
+pub struct HandshakeState<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// Whether this state machine is an initiator (true) or a responder (false)
     is_initiator: bool,
 
     /// The symmetric/cipher state for the handshake.
-    symmetric_state: SymmetricState<KexAlgo, Cipher, DigestType>,
+    symmetric_state: SymmetricState<KexAlgo, Cipher, DigestAlgo>,
 
     /// An message pattern vector, reversed (last message first).
     ///
@@ -157,16 +156,16 @@ where
     remote_identity: Option<KexAlgo::Public>,
 }
 
-impl<KexAlgo, Cipher, DigestType> HandshakeState<KexAlgo, Cipher, DigestType>
+impl<KexAlgo, Cipher, DigestAlgo> HandshakeState<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// Static method, dispatched from new(), used to perform step 4 of
     /// `HandshakeState::Initialize()`.
     fn mix_premsg_keys<Handshake: HandshakePattern>(
-        symmetric_state: &mut SymmetricState<KexAlgo, Cipher, DigestType>,
+        symmetric_state: &mut SymmetricState<KexAlgo, Cipher, DigestAlgo>,
         initiator_identity: Option<&KexAlgo::Public>,
         initiator_ephemeral: Option<&KexAlgo::Public>,
         responder_identity: Option<&KexAlgo::Public>,
@@ -227,7 +226,7 @@ where
     /// given.
     pub fn new<Handshake: HandshakePattern>(
         is_initiator: bool,
-        protocol_name: ProtocolName<Handshake, KexAlgo, Cipher, DigestType>,
+        protocol_name: ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>,
         prologue: &[u8],
         local_identity: Option<KexAlgo::Private>,
         local_ephemeral: Option<KexAlgo::Private>,
@@ -235,7 +234,7 @@ where
         remote_ephemeral: Option<KexAlgo::Public>,
     ) -> Result<Self, HandshakeError>
     where
-        ProtocolName<Handshake, KexAlgo, Cipher, DigestType>: AsRef<str>,
+        ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>: AsRef<str>,
     {
         // Initialize step 1
         let mut symmetric_state = SymmetricState::from(protocol_name);
@@ -273,7 +272,7 @@ where
         })
     }
 
-    /// Do an identity-binding DH (that is, an "ee" or "es" operation).
+    /// Do an identity-binding DH (that is, an "se" or "es" operation).
     fn mix_es_se_key(&mut self, identity_is_local: bool) -> Result<(), HandshakeError> {
         let (local, remote, local_err, remote_err) = if identity_is_local {
             (
@@ -325,7 +324,8 @@ where
         csprng: &mut (impl CryptoRng + RngCore),
         payload: &[u8],
     ) -> Result<Vec<u8>, HandshakeError> {
-        // Create an output buffer large enough to encrypt our payload and any tokens into
+        // Create an output buffer large enough to encrypt our payload and any tokens
+        // into
         let mut retval = Vec::with_capacity(
             tokens.len() * 32 + payload.len() + Cipher::CiphertextOverhead::to_usize(),
         );
@@ -393,7 +393,7 @@ where
     fn make_handshake_output(
         self,
         output: Vec<u8>,
-    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestType>, HandshakeError> {
+    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         let status = if self.message_patterns.is_empty() {
             let mut output: SymmetricOutput<Cipher, KexAlgo::Public> =
                 self.symmetric_state.try_into()?;
@@ -419,7 +419,7 @@ where
         mut self,
         csprng: &mut (impl CryptoRng + RngCore),
         payload: &[u8],
-    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestType>, HandshakeError> {
+    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         // This method should not be capable of being called when there are no
         // message patterns, hence expect().
         let msg = self
@@ -489,9 +489,8 @@ where
                     let encrypted_key_bytes = &msg[offset..(offset + text_size)];
                     offset += text_size;
 
-                    let decrypted_key_bytes = self
-                        .symmetric_state
-                        .decrypt_and_hash(&encrypted_key_bytes)?;
+                    let decrypted_key_bytes =
+                        self.symmetric_state.decrypt_and_hash(encrypted_key_bytes)?;
                     let pubkey = KexAlgo::Public::try_from(&decrypted_key_bytes[..])
                         .map_err(|_e| HandshakeError::KeyParse)?;
                     self.remote_identity = Some(pubkey);
@@ -537,7 +536,7 @@ where
     pub fn read_message(
         mut self,
         payload: &[u8],
-    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestType>, HandshakeError> {
+    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         // This method should not be capable of being called when there are no
         // message patterns, hence expect().
         let msg = self
@@ -575,7 +574,8 @@ where
         self.local_identity.as_ref().map(KexAlgo::Public::from)
     }
 
-    /// Retrieve a reference to the remote ephemeral pubkey, if it has been read yet.
+    /// Retrieve a reference to the remote ephemeral pubkey, if it has been read
+    /// yet.
     pub fn remote_ephemeral(&self) -> Option<&KexAlgo::Public> {
         self.remote_ephemeral.as_ref()
     }
@@ -597,6 +597,7 @@ mod test {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use sha2::Sha512;
+    use std::eprintln;
 
     #[test]
     fn walkthrough_ix_25519_aesgcm_sha512() {
@@ -633,7 +634,7 @@ mod test {
         .expect("Could not create responder");
 
         // Create a message for transmission to the responder
-        std::eprintln!("Initiator is writing first message...");
+        eprintln!("Initiator is writing first message...");
         let output1 = initiator
             .write_message(&mut csprng, challenge.as_bytes())
             .expect("Initiator could not write initial message");
@@ -654,7 +655,7 @@ mod test {
         );
 
         // Give the message to the responder to examine/parse/decrypt
-        std::eprintln!("Responder is reading first message...");
+        eprintln!("Responder is reading first message...");
         let output2 = responder
             .read_message(&output1.payload)
             .expect("Responder could not read first message");
@@ -667,7 +668,7 @@ mod test {
         // the payload should be in plaintext here, since we're IX, so check that it is
         assert_eq!(challenge.as_bytes(), output2.payload.as_slice());
 
-        std::eprintln!("Responder has done Kex, writing response message");
+        eprintln!("Responder has done Kex, writing response message");
         let output3 = responder
             .write_message(&mut csprng, response.as_bytes())
             .expect("Responder could not write reply");
@@ -680,7 +681,7 @@ mod test {
 
         let payload_len = output3.payload.len();
         let response_len = response.as_bytes().len();
-        std::eprintln!(
+        eprintln!(
             "response = {:02x?}\noutput3.payload = {:02x?}",
             response.as_bytes(),
             &output3.payload
@@ -690,7 +691,7 @@ mod test {
             &output3.payload[(payload_len - response_len)..]
         );
 
-        std::eprintln!("Initiator is trying to read response");
+        eprintln!("Initiator is trying to read response");
         let output4 = initiator
             .read_message(&output3.payload)
             .expect("Initiator could not read response");
@@ -718,7 +719,7 @@ mod test {
             .expect("Responder could not decrypt message 1");
         assert_eq!(message1.as_bytes(), decrypted1.as_slice());
 
-        let message2 = "It look's like you're trying to pay a friend without being it generating an advertisement. Would you like some help with that?";
+        let message2 = "It look's like you're trying to pay a friend without it generating an advertisement. Would you like some help with that?";
         let encrypted2 = responder_output
             .responder_cipher
             .encrypt_with_ad(prologue.as_bytes(), message2.as_bytes())
@@ -840,7 +841,7 @@ mod test {
             .expect("Responder could not decrypt message 1");
         assert_eq!(message1.as_bytes(), decrypted1.as_slice());
 
-        let message2 = "It look's like you're trying to pay a friend without being it generating an advertisement. Would you like some help with that?";
+        let message2 = "It look's like you're trying to pay a friend without it generating an advertisement. Would you like some help with that?";
         let encrypted2 = responder_output
             .responder_cipher
             .encrypt_with_ad(prologue.as_bytes(), message2.as_bytes())

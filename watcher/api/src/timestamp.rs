@@ -1,8 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Types for processing timestamps in the watcher API.
 
-use core::convert::TryFrom;
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +13,10 @@ pub enum TimestampResultCode {
     TimestampFound = 1,
     /// The timestamp was not found and the watcher is behind.
     WatcherBehind,
-    /// The timestamp cannot be known unless restarted with a different set of watched nodes.
+    /**
+     * The timestamp cannot be known unless restarted with a different set
+     * of watched nodes.
+     */
     Unavailable,
     /// WatcherDBError when getting signatures and timestamps.
     WatcherDatabaseError,

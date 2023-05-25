@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
 
@@ -16,6 +16,9 @@ pub mod _exports {
 
     #[cfg(feature = "serde")]
     pub use serde;
+
+    #[cfg(feature = "hex_fmt")]
+    pub use hex_fmt;
 }
 
 use core::fmt::Display;
@@ -24,29 +27,33 @@ use typenum::Unsigned;
 // These can be used by who implements ReprBytes
 pub use generic_array::{typenum, ArrayLength, GenericArray};
 
-/// ReprBytes represents a type that has a canonical representation as a fixed
+/// `ReprBytes` represents a type that has a canonical representation as a fixed
 /// number of bytes. This interface is meant to support generic programming.
 ///
-/// ReprBytes is meant to be general enough to support many forms of cryptographic
-/// primitives. Most cryptographic primitives implement AsRef<[u8]> and TryFrom<&[u8]>,
-/// but not all of them can -- RistrettoPoint requires an (expensive) compression
-/// step before the bytes of the canonical representation can be accessed.
+/// `ReprBytes` is meant to be general enough to support many forms of
+/// cryptographic primitives. Most cryptographic primitives implement
+/// [AsRef<[u8]>] and [TryFrom<&[u8]>], but not all of them can --
+/// `RistrettoPoint` requires an (expensive) compression step before the bytes
+/// of the canonical representation can be accessed.
 ///
-/// ReprBytes provides an API very close to AsRef<[u8]> and TryFrom<&[u8]> which
-/// can be used in generic code that handles cryptographic primitives, and in
-/// glue code so that these primitives can be used easily with serialization
-/// libraries and frameworks.
+/// `ReprBytes` provides an API very close to [AsRef<[u8]>] and
+/// [TryFrom<&[u8]>], which can be used in generic code that handles
+/// cryptographic primitives, and in glue code so that these primitives can be
+/// used easily with serialization libraries and frameworks.
 ///
-/// The error types are constrained with Display so that both Prost and Serde can make effective use of them
+/// The error types are constrained with [Display] so that both Prost and Serde
+/// can make effective use of them
 ///
-/// To be useful, ReprBytes wants to provide many "blanket implementations" that
-/// connect it with core traits and traits from Prost and Serde.
-/// However, blanket implementations don't work very well in rust outside of stdlib.
-/// Instead, we provide macros so that these blanket implementations can be obtained
-/// on a per-type basis, and these macros are exported from this crate. We believe
-/// that this is consistent with current best practices around blanket implementations.
+/// To be useful, `ReprBytes` wants to provide many "blanket implementations"
+/// that connect it with core traits and traits from Prost and Serde.
+/// However, blanket implementations don't work very well in Rust outside of
+/// stdlib. Instead, we provide macros so that these blanket implementations can
+/// be obtained on a per-type basis, and these macros are exported from this
+/// crate. We believe that this is consistent with current best practices around
+/// blanket implementations.
 pub trait ReprBytes: Sized {
-    /// A typenum representing the size, in bytes, of the canonical representation
+    /// A typenum representing the size, in bytes, of the canonical
+    /// representation
     type Size: ArrayLength<u8>;
 
     /// The error type which may be returned by from_bytes.
@@ -58,14 +65,16 @@ pub trait ReprBytes: Sized {
     /// Convert to canonical representation bytes.
     fn to_bytes(&self) -> GenericArray<u8, Self::Size>;
 
-    /// In-place visitation of the canonical bytes representation, using a closure
+    /// In-place visitation of the canonical bytes representation, using a
+    /// closure
     ///
-    /// Implementation note: The default implementation is not the best when your
-    /// type implements AsRef<[u8]>, it will make a needless copy in that case.
-    /// If your type implements AsRef<[u8]>, then you are strongly recommended to use
-    /// the macro `derive_repr_bytes_from_as_ref_try_from`.
+    /// Implementation note: The default implementation is not the best when
+    /// your type implements [AsRef<[u8]>], it will make a needless copy in
+    /// that case. If your type implements [AsRef<[u8]>], then you are
+    /// strongly recommended to use
+    /// the macro [derive_repr_bytes_from_as_ref_and_try_from].
     /// Otherwise the default implementation is probably the best.
-    /// See also the suggested impl `derive_into_vec_from_repr_bytes`.
+    /// See also the suggested impl [derive_into_vec_from_repr_bytes].
     fn map_bytes<T, F: FnOnce(&[u8]) -> T>(&self, f: F) -> T {
         f(self.to_bytes().as_slice())
     }
@@ -95,41 +104,42 @@ impl Display for LengthMismatch {
 
 ////
 // Suggested Implementations:
-// These macros provide instances of what can be thought of as "blanket implementations"
-// on a per-type basis.
-// These are macros because rust's coherence rules mean that blanket implementations
-// won't work out well for this use-case.
+// These macros provide instances of what can be thought of as "blanket
+// implementations" on a per-type basis.
+// These are macros because rust's coherence rules mean that blanket
+// implementations won't work out well for this use-case.
 //
 // There are two types of suggested impls:
 // - Impls of other traits in terms of ReprBytes
 // - Impls of ReprBytes in terms of other traits
 ////
 
-/// Derive ReprBytes from AsRef<[u8]>, TryFrom<&[u8]>, and Size as a typenum.
-/// This is expected to be the right implementation for almost all cryptographic
-/// primitives, e.g. X25519, CompressedRistretto, etc.
-/// It can't work for e.g. RistrettoPoint, which doesn't have AsRef<[u8]>.
+/// Derive [ReprBytes] from [AsRef<[u8]>], [TryFrom<&[u8]>], and Size as a
+/// typenum. This is expected to be the right implementation for almost all
+/// cryptographic primitives, e.g. X25519, CompressedRistretto, etc.
+/// It can't work for e.g. `RistrettoPoint`, which doesn't have AsRef<[u8]>.
 ///
 /// Arguments:
-///   - $mytype is the type you want to impl ReprBytes
-///   - $mysize is a typenum, representing the size of the canonical representation
+///   - `$mytype` is the type you want to impl [ReprBytes]
+///   - `$mysize` is a typenum, representing the size of the canonical
+///     representation
 ///
 /// Requirements:
-///   - <AsRef<[u8]> for $mytype>::as_ref().len() always equals $mysize::USIZE
-///   - <TryFrom<&[u8]> for $mytype>::Error implements core::fmt::Display
-///   - <TryFrom<&'a[u8]> for $mytype>::Error is the same for all values of 'a,
-///     OR they are all convertible to the value when 'a = 'static, via core::convert::From.
+///   - `<AsRef<[u8]> for $mytype>::as_ref().len()` always equals
+///     `$mysize::USIZE`
+///   - `<TryFrom<&[u8]> for $mytype>::Error` implements [Display]
+///   - `<TryFrom<&'a[u8]> for $mytype>::Error` is the same for all values of
+///     `'a`, OR they are all convertible to the value when `'a == 'static`, via
+///     [core::convert::From].
 #[macro_export]
 macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     ($mytype:ty, $mysize:ty) => {
         impl $crate::ReprBytes for $mytype {
             type Size = $mysize;
-            type Error = <$mytype as ::core::convert::TryFrom<&'static [u8]>>::Error;
+            type Error = <$mytype as TryFrom<&'static [u8]>>::Error;
 
             fn from_bytes(src: &$crate::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
-                Ok(<Self as ::core::convert::TryFrom<&[u8]>>::try_from(
-                    src.as_slice(),
-                )?)
+                <Self as TryFrom<&[u8]>>::try_from(src.as_slice())
             }
 
             fn to_bytes(&self) -> $crate::GenericArray<u8, Self::Size> {
@@ -150,25 +160,25 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     };
 }
 
-/// Derive Into<Vec<u8>> from a ReprBytes implementation
+/// Derive `From<...> for Vec<u8>` from a [ReprBytes] implementation
 #[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! derive_into_vec_from_repr_bytes {
     ($mytype:ty) => {
-        impl Into<$crate::_exports::alloc::vec::Vec<u8>> for $mytype {
-            fn into(self) -> $crate::_exports::alloc::vec::Vec<u8> {
-                <$mytype as $crate::ReprBytes>::map_bytes(&self, |slice| slice.to_vec())
+        impl From<$mytype> for $crate::_exports::alloc::vec::Vec<u8> {
+            fn from(src: $mytype) -> $crate::_exports::alloc::vec::Vec<u8> {
+                <$mytype as $crate::ReprBytes>::map_bytes(&src, |slice| slice.to_vec())
             }
         }
     };
 }
 
-/// Derive TryFrom<&[u8]> from a ReprBytes implementation
-/// Preconditions: ReprBytes::Error implements From<LengthMismatch>
+/// Derive [TryFrom<&[u8]>] from a [ReprBytes] implementation
+/// Preconditions: [ReprBytes::Error] implements [From<LengthMismatch>]
 #[macro_export]
 macro_rules! derive_try_from_slice_from_repr_bytes {
     ($mytype:ty) => {
-        impl<'a> ::core::convert::TryFrom<&'a [u8]> for $mytype {
+        impl<'a> TryFrom<&'a [u8]> for $mytype {
             type Error = <Self as $crate::ReprBytes>::Error;
             fn try_from(src: &'a [u8]) -> Result<Self, Self::Error> {
                 if src.len() != <Self as $crate::ReprBytes>::size() {
@@ -186,7 +196,7 @@ macro_rules! derive_try_from_slice_from_repr_bytes {
     };
 }
 
-/// Derive prost::Message from a ReprBytes implementation
+/// Derive [prost::Message] from a [ReprBytes] implementation
 /// The corresponding protobuf has exactly one member, of type `bytes`.
 #[cfg(feature = "prost")]
 #[macro_export]
@@ -214,7 +224,6 @@ macro_rules! derive_prost_message_from_repr_bytes {
             where
                 B: $crate::_exports::prost::bytes::Buf,
             {
-                use ::core::convert::TryInto;
                 use $crate::_exports::{alloc::string::ToString, prost::encoding::*};
                 if tag == 1 {
                     let expected_size = <Self as $crate::ReprBytes>::size();
@@ -236,11 +245,10 @@ macro_rules! derive_prost_message_from_repr_bytes {
                         ));
                     }
                     let result = <Self as $crate::ReprBytes>::from_bytes(
-                        (&buf.bytes()[0..expected_size])
+                        buf.copy_to_bytes(expected_size).as_ref()[..]
                             .try_into()
-                            .expect("buffer size arithmetic"),
+                            .expect("Buffer sizing issue"),
                     );
-                    buf.advance(expected_size);
                     *self = result
                         .map_err(|e| $crate::_exports::prost::DecodeError::new(e.to_string()))?;
                     Ok(())
@@ -262,9 +270,10 @@ macro_rules! derive_prost_message_from_repr_bytes {
     };
 }
 
-/// Derive serde::{Deserialize, Serialize} from a ReprBytes implementation
-/// This is represented within serde as a bytes primitive. During deserialization,
-/// a sequence of individual bytes also works, which helps serde_json.
+/// Derive [serde::Serialize] and [serde::Deserialize] from a [ReprBytes]
+/// implementation This is represented within serde as a bytes primitive. During
+/// deserialization, a sequence of individual bytes also works, which helps
+/// `serde_json`.
 #[cfg(feature = "serde")]
 #[macro_export]
 macro_rules! derive_serde_from_repr_bytes {
@@ -314,9 +323,8 @@ macro_rules! derive_serde_from_repr_bytes {
                         }
                         let value =
                             &<GenericArray<u8, <$mytype as ReprBytes>::Size>>::from_slice(value);
-                        Ok(<$mytype as ReprBytes>::from_bytes(value).map_err(|err| {
-                            <E as $crate::_exports::serde::de::Error>::custom(err)
-                        })?)
+                        <$mytype as ReprBytes>::from_bytes(value)
+                            .map_err(|err| <E as $crate::_exports::serde::de::Error>::custom(err))
                     }
 
                     fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
@@ -359,18 +367,24 @@ macro_rules! derive_serde_from_repr_bytes {
     };
 }
 
-/// Derive PartialOrd, Ord, PartialEq, Hash from AsRef<T>.
-/// This means we will compare or hash ourselves by first converting to T via AsRef.
+/// Derive [Eq], [Hash], [Ord], [PartialEq], [PartialOrd]  from [AsRef<T>].
+/// This means we will compare or hash ourselves by first converting to T via
+/// AsRef.
 ///
-/// These impls are generally needed to put the type in an associative container.
-/// NOTE: DO NOT DO THIS FOR PRIVATE keys! This is a hazard that can be a source of leaks.
+/// These impls are generally needed to put the type in an associative
+/// container. NOTE: DO NOT DO THIS FOR PRIVATE keys! This is a hazard that can
+/// be a source of leaks.
 ///
-/// This is not connected to ReprBytes but it is a macro like the above macros
+/// This is not connected to [ReprBytes] but it is a macro like the above macros
 /// that is often needed for public key type wrappers.
-/// You probably don't want to try to implement this for types that don't have AsRef,
-/// because it will be slow. For Ristretto, maybe use CompressedRistretto.
+/// You probably don't want to try to implement this for types that don't have
+/// [AsRef], because it will be slow. For Ristretto, maybe use
+/// `CompressedRistretto`.
 #[macro_export]
 macro_rules! derive_core_cmp_from_as_ref {
+    ($mytype:ty) => {
+        derive_core_cmp_from_as_ref!($mytype, [u8]);
+    };
     ($mytype:ty, $asref:ty) => {
         impl PartialOrd for $mytype {
             fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
@@ -390,6 +404,7 @@ macro_rules! derive_core_cmp_from_as_ref {
                 <Self as AsRef<$asref>>::as_ref(self).eq(<Self as AsRef<$asref>>::as_ref(other))
             }
         }
+        impl Eq for $mytype {}
 
         impl ::core::hash::Hash for $mytype {
             fn hash<H: ::core::hash::Hasher>(&self, hasher: &mut H) {
@@ -400,24 +415,64 @@ macro_rules! derive_core_cmp_from_as_ref {
     };
 }
 
+/// Derive [Debug] and [Display] from [AsRef<T>] to render as a hexadecimal
+/// string.
+///
+/// This is not connected to [ReprBytes] but it is a macro like the above macros
+/// that is often needed for structs holding bytes.
+#[macro_export]
+macro_rules! derive_debug_and_display_hex_from_as_ref {
+    ($mytype:ty) => {
+        derive_debug_and_display_hex_from_as_ref!($mytype, [u8]);
+    };
+    ($mytype:ty, $asref:ty) => {
+        impl core::fmt::Debug for $mytype {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, "{}({})", stringify!($mytype), self)
+            }
+        }
+
+        impl core::fmt::Display for $mytype {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, "{:x}", self)
+            }
+        }
+
+        impl core::fmt::LowerHex for $mytype {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let data: &$asref = self.as_ref();
+                for d in data {
+                    write!(f, "{:02x}", d)?;
+                }
+                Ok(())
+            }
+        }
+
+        impl core::fmt::UpperHex for $mytype {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let data: &$asref = self.as_ref();
+                for d in data {
+                    write!(f, "{:02X}", d)?;
+                }
+                Ok(())
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use generic_array::sequence::{Concat, Split};
-    use typenum::{U12, U20, U4};
-
-    use core::convert::{TryFrom, TryInto};
-
     extern crate alloc;
-    use alloc::vec::Vec;
-
     extern crate serde_cbor;
 
+    use super::*;
+    use alloc::{format, vec::Vec};
+    use generic_array::sequence::{Concat, Split};
     use prost::Message;
+    use typenum::{U12, U20, U4};
 
     // A test type which can implement AsRef<[u8]>
-    #[derive(Default, Debug, Eq, PartialEq)]
+    #[derive(Default, Eq, PartialEq)]
     struct TwentyBytes {
         bytes: [u8; 20],
     }
@@ -442,6 +497,7 @@ mod tests {
     derive_into_vec_from_repr_bytes!(TwentyBytes);
     derive_prost_message_from_repr_bytes!(TwentyBytes);
     derive_serde_from_repr_bytes!(TwentyBytes);
+    derive_debug_and_display_hex_from_as_ref!(TwentyBytes);
 
     // A test type which cannot implement AsRef<[u8]> due to padding rules
     #[derive(Default, Debug, Eq, PartialEq)]
@@ -514,5 +570,23 @@ mod tests {
         let value2 = Numbers::try_from(&buf[..]).unwrap();
         let value = Numbers { a: 3, b: 4 };
         assert_eq!(value, value2);
+    }
+
+    #[test]
+    fn twenty_bytes_debug_hex() {
+        let value = TwentyBytes { bytes: [0xBA; 20] };
+        assert_eq!(
+            format!("{value:?}"),
+            "TwentyBytes(babababababababababababababababababababa)"
+        );
+    }
+
+    #[test]
+    fn twenty_bytes_display_hex() {
+        let value = TwentyBytes { bytes: [0xBA; 20] };
+        assert_eq!(
+            format!("{value}"),
+            "babababababababababababababababababababa"
+        );
     }
 }

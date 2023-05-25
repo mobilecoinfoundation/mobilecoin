@@ -1,0 +1,36 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Delete development namespaces when branch is removed.
+
+name: Mobilecoin Dev Clean Up
+
+on:
+  delete: {}
+
+jobs:
+  metadata:
+    if: startsWith(github.event.ref, 'feature/')
+    runs-on: [self-hosted, Linux, small]
+    outputs:
+      namespace: ${{ steps.meta.outputs.namespace }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Generate version metadata
+      id: meta
+      env:
+        # Use the ref name from the payload. The GITHUB_REF_NAME will always be "master"
+        DELETE_REF_NAME: ${{ github.event.ref }}
+      run: |
+        .internal-ci/util/metadata.sh
+
+  delete:
+    needs:
+    - metadata
+    uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
+    with:
+      namespace: ${{ needs.metadata.outputs.namespace }}
+      delete_namespace: true
+    secrets: inherit

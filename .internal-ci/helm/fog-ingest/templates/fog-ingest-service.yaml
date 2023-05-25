@@ -1,0 +1,25 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fogIngest.fullname" . }}
+  labels:
+    app: fog-ingest
+    {{- include "fogIngest.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "fogIngest.selectorLabels" . | nindent 4 }}
+    app: fog-ingest
+  ports:
+    - name: ingest
+      port: 3226
+      targetPort: ingest
+    - name: peer
+      port: 8090
+      targetPort: peer
+    - name: mgmt
+      port: 8000
+      targetPort: mgmt

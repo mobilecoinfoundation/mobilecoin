@@ -1,5 +1,9 @@
-use crate::aead;
-use aead::{Buffer, Error};
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Fixed-length buffer, useful for operating on a portion of an underlying
+//! buffer.
+
+use crate::aead::{Buffer, Error};
 
 /// The rust aead crate is organized around a Buffer trait which abstracts
 /// commonalities of alloc::vec::Vec and heapless::Vec which are useful for
@@ -81,8 +85,8 @@ impl<'a> FixedBuffer<'a> {
 
 impl<'a> From<&'a mut [u8]> for FixedBuffer<'a> {
     /// Initialize a fixed buffer from a mutable slice, which is initially
-    /// "exhausted", so all of the initial values of those bytes are in the buffer.
-    /// This buffer can then be modified or truncated etc.
+    /// "exhausted", so all of the initial values of those bytes are in the
+    /// buffer. This buffer can then be modified or truncated etc.
     fn from(buf: &'a mut [u8]) -> Self {
         let length = buf.len();
         Self { buf, length }

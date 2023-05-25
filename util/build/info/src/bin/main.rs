@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Output the build_info that we compiled with
 //! This is in order to validate the build / any caching mechanisms
@@ -28,7 +28,7 @@ fn main() {
         } else if args[1] == "--all" {
             let mut result = String::new();
             mc_util_build_info::write_report(&mut result).unwrap();
-            print!("{}", result);
+            print!("{result}");
             return;
         }
     }

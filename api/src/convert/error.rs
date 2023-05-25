@@ -1,34 +1,44 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use mc_blockchain_types::{BlockVersionError, ConvertError};
+use mc_crypto_keys::{KeyError, SignatureError};
 use mc_transaction_core::ring_signature::Error as RingSigError;
+use mc_util_uri::{UriConversionError, UriParseError};
 use std::{
+    array::TryFromSliceError,
+    convert::Infallible,
     error::Error,
     fmt::{self, Formatter},
 };
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ConversionError {
-    NarrowingCastError,
     ArrayCastError,
-    KeyCastError,
-    Key(mc_crypto_keys::KeyError),
+    BlockVersion(BlockVersionError),
     FeeMismatch,
     IndexOutOfBounds,
-    ObjectMissing,
-    InvalidSignature,
     InvalidContents,
+    InvalidSignature,
+    Key(KeyError),
+    KeyCastError,
+    MissingField(String),
+    NarrowingCastError,
+    UriParse(UriParseError),
+    UriConversion(UriConversionError),
+    ObjectMissing,
     Other,
 }
 
-// This is needed for some code to compile, due to TryFrom being derived from From
-impl From<core::convert::Infallible> for ConversionError {
-    fn from(_src: core::convert::Infallible) -> Self {
+// This is needed for some code to compile, due to TryFrom being derived from
+// From
+impl From<Infallible> for ConversionError {
+    fn from(_src: Infallible) -> Self {
         unreachable!();
     }
 }
 
-impl From<core::array::TryFromSliceError> for ConversionError {
-    fn from(_: core::array::TryFromSliceError) -> Self {
+impl From<TryFromSliceError> for ConversionError {
+    fn from(_: TryFromSliceError) -> Self {
         Self::ArrayCastError
     }
 }
@@ -42,15 +52,27 @@ impl From<RingSigError> for ConversionError {
     }
 }
 
-impl From<mc_transaction_core::ConvertError> for ConversionError {
-    fn from(_src: mc_transaction_core::ConvertError) -> Self {
+impl From<ConvertError> for ConversionError {
+    fn from(_src: ConvertError) -> Self {
         Self::ArrayCastError
     }
 }
 
-impl From<mc_crypto_keys::KeyError> for ConversionError {
-    fn from(src: mc_crypto_keys::KeyError) -> Self {
+impl From<KeyError> for ConversionError {
+    fn from(src: KeyError) -> Self {
         Self::Key(src)
+    }
+}
+
+impl From<SignatureError> for ConversionError {
+    fn from(_: SignatureError) -> Self {
+        Self::InvalidSignature
+    }
+}
+
+impl From<BlockVersionError> for ConversionError {
+    fn from(src: BlockVersionError) -> Self {
+        Self::BlockVersion(src)
     }
 }
 
@@ -59,5 +81,17 @@ impl Error for ConversionError {}
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "ConversionError")
+    }
+}
+
+impl From<UriParseError> for ConversionError {
+    fn from(error: UriParseError) -> Self {
+        Self::UriParse(error)
+    }
+}
+
+impl From<UriConversionError> for ConversionError {
+    fn from(error: UriConversionError) -> Self {
+        Self::UriConversion(error)
     }
 }

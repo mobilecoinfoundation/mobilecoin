@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Builder wrapper around SgxSign.
 
@@ -14,7 +14,8 @@ use std::{
 pub struct SgxSign {
     /// The path to the sgx_sign executable.
     sgx_sign_path: PathBuf,
-    /// Whether to ignore the presence of relocations in the enclave shared object.
+    /// Whether to ignore the presence of relocations in the enclave shared
+    /// object.
     ignore_rel_error: bool,
     /// Whether to ignore .init sections in the enclave.
     ignore_init_sec_error: bool,
@@ -28,28 +29,31 @@ impl SgxSign {
         get_binary(target_arch, "sgx_sign").map(Self::from)
     }
 
-    /// Relocations are generally forbidden in the enclave shared object, this tells the `sgx_sign`
-    /// utility to ignore those errors.
+    /// Relocations are generally forbidden in the enclave shared object, this
+    /// tells the `sgx_sign` utility to ignore those errors.
+    #[must_use]
     pub fn allow_relocations(mut self, allow: bool) -> Self {
         self.ignore_rel_error = allow;
         self
     }
 
     /// Whether or not to allow .init sections in the enclave.
+    #[must_use]
     pub fn allow_init_sections(mut self, allow: bool) -> Self {
         self.ignore_init_sec_error = allow;
         self
     }
 
     /// Whether to re-sign a previously signed enclave (default: false)
+    #[must_use]
     pub fn allow_resign(mut self, allow: bool) -> Self {
         self.resign = allow;
         self
     }
 
-    /// Generate the command to sign the given enclave object with the given private key and write
-    /// the resulting enclave to the given path. Note that online signatures are inherently
-    /// insecure.
+    /// Generate the command to sign the given enclave object with the given
+    /// private key and write the resulting enclave to the given path. Note
+    /// that online signatures are inherently insecure.
     pub fn sign(
         &mut self,
         unsigned_enclave: &Path,
@@ -62,7 +66,7 @@ impl SgxSign {
             .arg("-enclave")
             .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-key")
             .arg(private_key)
             .arg("-out")
@@ -83,8 +87,8 @@ impl SgxSign {
         cmd
     }
 
-    /// Generate the command to create the data required for offline signing, and write it to the
-    /// given output data path.
+    /// Generate the command to create the data required for offline signing,
+    /// and write it to the given output data path.
     pub fn gendata(
         &mut self,
         unsigned_enclave: &Path,
@@ -96,7 +100,7 @@ impl SgxSign {
             .arg("-enclave")
             .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-out")
             .arg(output_datfile);
 
@@ -115,8 +119,8 @@ impl SgxSign {
         cmd
     }
 
-    /// Combine an unsigned enclave and signature into the output enclave, after checking the
-    /// signature.
+    /// Combine an unsigned enclave and signature into the output enclave, after
+    /// checking the signature.
     pub fn catsig(
         &mut self,
         unsigned_enclave: &Path,
@@ -129,17 +133,17 @@ impl SgxSign {
         let mut cmd = Command::new(self.sgx_sign_path.clone());
         cmd.arg("catsig")
             .arg("-enclave")
-            .arg(&unsigned_enclave)
+            .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-key")
-            .arg(&public_key_pem)
+            .arg(public_key_pem)
             .arg("-unsigned")
-            .arg(&gendata_output)
+            .arg(gendata_output)
             .arg("-sig")
-            .arg(&signature)
+            .arg(signature)
             .arg("-out")
-            .arg(&output_enclave);
+            .arg(output_enclave);
 
         if self.ignore_rel_error {
             cmd.arg("-ignore-rel-error");

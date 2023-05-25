@@ -2,7 +2,6 @@ use mc_account_keys::{AccountKey, RootIdentity};
 use mc_api::printable::PrintableWrapper;
 use mc_test_vectors_definitions::b58_encodings::*;
 use mc_util_test_vector::write_jsonl;
-use std::convert::TryInto;
 
 fn main() {
     write_jsonl("../vectors", || {

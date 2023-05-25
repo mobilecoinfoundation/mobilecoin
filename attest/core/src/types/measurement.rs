@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the wrapper types for an sgx_measurement_t
 //!
@@ -96,8 +96,8 @@ impl PartialEq<MrSigner> for Measurement {
 impl Display for Measurement {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            Measurement::MrEnclave(e) => write!(f, "MRENCLAVE: {}", e),
-            Measurement::MrSigner(s) => write!(f, "MRSIGNER: {}", s),
+            Measurement::MrEnclave(e) => write!(f, "MRENCLAVE: {e}"),
+            Measurement::MrSigner(s) => write!(f, "MRSIGNER: {s}"),
         }
     }
 }

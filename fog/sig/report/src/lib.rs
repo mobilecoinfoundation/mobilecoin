@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module provide an implementation of the verifier for the x509 utils
 //! "PublicKeyType" enum.
@@ -12,8 +12,8 @@
 mod ed25519;
 
 use core::fmt::{Debug, Display};
-use mc_fog_types::Report;
-use signature::Signature;
+use mc_crypto_keys::SignatureEncoding;
+use mc_fog_report_types::Report;
 
 /// Retrieve the domain separator used to sign a report server response
 pub fn context() -> &'static [u8] {
@@ -24,7 +24,7 @@ pub fn context() -> &'static [u8] {
 /// list of IAS verification reports with appropriate domain separators.
 pub trait Signer {
     /// The signature output type
-    type Sig: Signature + Clone;
+    type Sig: SignatureEncoding + Clone;
     /// A printable error type
     type Error: Debug + Display;
 
@@ -36,7 +36,7 @@ pub trait Signer {
 /// over a list of IAS verification reports with appropriate domain separators.
 pub trait Verifier {
     /// The signature output type
-    type Sig: Signature + Clone;
+    type Sig: SignatureEncoding + Clone;
     /// The printable error type
     type Error: Debug + Display;
 

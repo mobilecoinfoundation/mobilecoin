@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 """ used to allocation TestNet mobilecoins to users who sign up for our mailing list """
 
@@ -50,7 +50,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
         sys.exit()
 
     # create and fund a new MobileCoin TestNet account
-    recipient_entropy = mobilecoind.generate_entropy().entropy
+    recipient_entropy = mobilecoind.generate_entropy()
     recipient_account_key = mobilecoind.get_account_key(recipient_entropy).account_key
     print("# generated entropy {} for email {}".format(recipient_entropy.hex(), new_user_email))
 
@@ -68,13 +68,13 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     tx_proposal = mobilecoind.generate_tx(sender_monitor_id, mobilecoin.DEFAULT_SUBADDRESS_INDEX, tx_list, outlays).tx_proposal
 
-    sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
+    submit_response = mobilecoind.submit_tx(tx_proposal)
 
     # Wait for the transaction to clear
     tx_status = mobilecoin.TxStatus.Unknown
     while tx_status == mobilecoin.TxStatus.Unknown:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
-        tx_status = mobilecoind.get_tx_status_as_sender(sender_tx_receipt).status
+        tx_status = mobilecoind.get_tx_status_as_sender(submit_response).status
         print("# transaction status is {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     if tx_status != mobilecoin.TxStatus.Verified:

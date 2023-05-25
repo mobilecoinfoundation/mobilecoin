@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Serves node-to-node gRPC requests.
 
@@ -8,6 +8,7 @@ use crate::{
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
     tx_manager::{TxManager, TxManagerError},
+    SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
@@ -25,23 +26,18 @@ use mc_consensus_api::{
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
 };
-use mc_consensus_enclave::ConsensusEnclave;
+use mc_consensus_enclave::{ConsensusEnclave, Error};
 use mc_ledger_db::Ledger;
-use mc_peers::TxProposeAAD;
+use mc_peers::{ConsensusValue, TxProposeAAD};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
-    rpc_enclave_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
 };
-use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
-use std::{
-    convert::{TryFrom, TryInto},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{str::FromStr, sync::Arc};
 
-// Callback method for returning the latest SCP message issued by the local node, used to
-// implement the `fetch_latest_msg` RPC call.
+// Callback method for returning the latest SCP message issued by the local
+// node, used to implement the `fetch_latest_msg` RPC call.
 type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
 
 #[derive(Clone)]
@@ -61,13 +57,15 @@ pub struct PeerApiService {
     /// Ledger database.
     ledger: Arc<dyn Ledger + Send + Sync>,
 
-    /// Callback function for getting the latest SCP statement the local node has issued.
+    /// Callback function for getting the latest SCP statement the local node
+    /// has issued.
     fetch_latest_msg_fn: FetchLatestMsgFn,
 
     /// List of recognized responder IDs to accept messages from.
-    /// We only want to accept messages from peers we can initiate outgoing requests to. That is
-    /// necessary for resolving TxHashes into Txs. If we received a consensus message from a peer
-    /// not on this list, we won't be able to reach out to it to ask for the transaction contents.
+    /// We only want to accept messages from peers we can initiate outgoing
+    /// requests to. That is necessary for resolving TxHashes into Txs. If
+    /// we received a consensus message from a peer not on this list, we
+    /// won't be able to reach out to it to ask for the transaction contents.
     known_responder_ids: Vec<ResponderId>,
 
     /// Logger.
@@ -81,10 +79,12 @@ impl PeerApiService {
     /// * `consensus_enclave` - The local node's consensus enclave.
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - The local node's TxManager.
-    /// * `incoming_consensus_msgs_sender` - Callback for a new consensus message from a peer.
+    /// * `incoming_consensus_msgs_sender` - Callback for a new consensus
+    ///   message from a peer.
     /// * `scp_client_value_sender` - Callback for proposed transactions.
     /// * `fetch_latest_msg_fn` - Returns highest message emitted by this node.
-    /// * `known_responder_ids` - Messages from peers not on this "whitelist" are ignored.
+    /// * `known_responder_ids` - Messages from peers not on this "whitelist"
+    ///   are ignored.
     /// * `logger` - Logger.
     pub fn new(
         consensus_enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
@@ -98,10 +98,10 @@ impl PeerApiService {
     ) -> Self {
         Self {
             consensus_enclave,
-            ledger,
             tx_manager,
             incoming_consensus_msgs_sender,
             scp_client_value_sender,
+            ledger,
             fetch_latest_msg_fn,
             known_responder_ids,
             logger,
@@ -115,7 +115,8 @@ impl PeerApiService {
     /// * `logger` -
     ///
     /// # Returns
-    /// The number of blocks in the local ledger when the tx_propose request was handled.
+    /// The number of blocks in the local ledger when the tx_propose request was
+    /// handled.
     fn handle_tx_propose(
         &mut self,
         enclave_msg: EnclaveMessage<PeerSession>,
@@ -135,7 +136,8 @@ impl PeerApiService {
                 .unwrap_or((None, None))
         };
 
-        // The number of blocks in the local ledger when the tx_propose request was handled.
+        // The number of blocks in the local ledger when the tx_propose request was
+        // handled.
         let num_blocks = self.ledger.num_blocks().map_err(|e| {
             log::warn!(logger, "{}", e);
             PeerServiceError::InternalError
@@ -149,7 +151,7 @@ impl PeerApiService {
                 Ok(tx_hash) => {
                     // Submit for consideration in next SCP slot.
                     (*self.scp_client_value_sender)(
-                        tx_hash,
+                        ConsensusValue::TxHash(tx_hash),
                         origin_node.as_ref(),
                         relayed_by.as_ref(),
                     );
@@ -160,9 +162,9 @@ impl PeerApiService {
                         logger,
                         "Error validating transaction {tx_hash}: {err}",
                         tx_hash = tx_hash.to_string(),
-                        err = format!("{:?}", err)
+                        err = format!("{err:?}")
                     );
-                    counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", err));
+                    counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{err:?}"));
                 }
 
                 Err(err) => {
@@ -170,7 +172,7 @@ impl PeerApiService {
                         logger,
                         "tx_propose failed for {tx_hash}: {err}",
                         tx_hash = tx_hash.to_string(),
-                        err = format!("{:?}", err)
+                        err = format!("{err:?}")
                     );
                 }
             };
@@ -202,7 +204,8 @@ impl PeerApiService {
         .map_err(|_| PeerServiceError::InternalError)
     }
 
-    /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
+    /// Returns the full, encrypted transactions corresponding to a list of
+    /// transaction hashes.
     fn handle_get_txs(
         &mut self,
         tx_hashes: Vec<TxHash>,
@@ -244,13 +247,13 @@ impl ConsensusPeerApi for PeerApiService {
                         Ok(response)
                     }
 
-                    Err(peer_service_error) => match peer_service_error {
-                        PeerServiceError::Enclave(err) => Err(rpc_enclave_err(err, &logger)),
-                        err => Err(rpc_internal_error("peer_tx_propose", err, &logger)),
-                    },
+                    Err(err @ PeerServiceError::Enclave(Error::Attest(_))) => {
+                        Err(rpc_permissions_error("peer_tx_propose", err, logger))
+                    }
+                    Err(err) => Err(rpc_internal_error("peer_tx_propose", err, logger)),
                 };
 
-            send_result(ctx, sink, result, &logger)
+            send_result(ctx, sink, result, logger)
         });
     }
 
@@ -270,9 +273,9 @@ impl ConsensusPeerApi for PeerApiService {
                     let result = Err(rpc_invalid_arg_error(
                         "send_consensus_msg",
                         "from_responder_id",
-                        &logger,
+                        logger,
                     ));
-                    send_result(ctx, sink, result, &logger);
+                    send_result(ctx, sink, result, logger);
                     return;
                 }
             };
@@ -283,9 +286,9 @@ impl ConsensusPeerApi for PeerApiService {
                     let result = Err(rpc_invalid_arg_error(
                         "send_consensus_msg",
                         "consensus_msg",
-                        &logger,
+                        logger,
                     ));
-                    send_result(ctx, sink, result, &logger);
+                    send_result(ctx, sink, result, logger);
                     return;
                 }
             };
@@ -306,16 +309,16 @@ impl ConsensusPeerApi for PeerApiService {
                 Err(PeerServiceError::ConsensusMsgInvalidSignature) => Err(rpc_invalid_arg_error(
                     "send_consensus_msg",
                     "InvalidConsensusMsgSignature",
-                    &logger,
+                    logger,
                 )),
                 Err(_) => Err(rpc_internal_error(
                     "send_consensus_msg",
                     "InternalError",
-                    &logger,
+                    logger,
                 )),
             };
 
-            send_result(ctx, sink, result, &logger);
+            send_result(ctx, sink, result, logger);
         });
     }
 
@@ -334,11 +337,12 @@ impl ConsensusPeerApi for PeerApiService {
                     .expect("Failed serializing consensus msg");
                 response.set_payload(serialized_msg);
             }
-            send_result(ctx, sink, Ok(response), &logger);
+            send_result(ctx, sink, Ok(response), logger);
         });
     }
 
-    /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
+    /// Returns the full, encrypted transactions corresponding to a list of
+    /// transaction hashes.
     fn get_txs(
         &mut self,
         ctx: RpcContext,
@@ -352,8 +356,8 @@ impl ConsensusPeerApi for PeerApiService {
                 match TxHash::try_from(&tx_hash_bytes[..]) {
                     Ok(tx_hash) => tx_hashes.push(tx_hash),
                     Err(_) => {
-                        let result = Err(rpc_invalid_arg_error("tx_hash", "", &logger));
-                        send_result(ctx, sink, result, &logger);
+                        let result = Err(rpc_invalid_arg_error("tx_hash", "", logger));
+                        send_result(ctx, sink, result, logger);
                         return;
                     }
                 }
@@ -362,7 +366,7 @@ impl ConsensusPeerApi for PeerApiService {
             let peer_session = PeerSession::from(request.get_channel_id());
 
             let result: Result<GetTxsResponse, RpcStatus> =
-                match self.handle_get_txs(tx_hashes, peer_session, &logger) {
+                match self.handle_get_txs(tx_hashes, peer_session, logger) {
                     Ok(enclave_message) => {
                         let mut response = GetTxsResponse::new();
                         response.set_success(enclave_message.into());
@@ -379,29 +383,26 @@ impl ConsensusPeerApi for PeerApiService {
                         Ok(response)
                     }
                     // Unexpected errors:
-                    Err(err) => Err(rpc_internal_error("get_txs", err, &logger)),
+                    Err(err) => Err(rpc_internal_error("get_txs", err, logger)),
                 };
 
-            send_result(ctx, sink, result, &logger)
+            send_result(ctx, sink, result, logger)
         });
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        api::peer_api_service::PeerApiService, background_work_queue::BackgroundWorkQueueError,
-        consensus_service::IncomingConsensusMsg, tx_manager::MockTxManager,
+    use super::*;
+    use crate::{background_work_queue::BackgroundWorkQueueError, tx_manager::MockTxManager};
+    use grpcio::{
+        ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder, ServerCredentials,
     };
-    use grpcio::{ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder};
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        NodeID, ResponderId,
-    };
+    use mc_blockchain_types::Block;
+    use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_api::{
         consensus_peer::{ConsensusMsg, ConsensusMsgResult},
-        consensus_peer_grpc,
-        consensus_peer_grpc::ConsensusPeerApiClient,
+        consensus_peer_grpc::{create_consensus_peer_api, ConsensusPeerApiClient},
     };
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_consensus_scp::{
@@ -410,11 +411,9 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_ledger_db::MockLedger;
-    use mc_peers;
-    use mc_transaction_core::{tx::TxHash, Block};
+    use mc_peers::ConsensusValue;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::sync::Arc;
 
     // Get sensibly-initialized mocks.
     fn get_mocks() -> (MockConsensusEnclave, MockLedger, MockTxManager) {
@@ -437,9 +436,11 @@ mod tests {
 
     // Does nothing.
     fn get_scp_client_value_sender(
-    ) -> Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send> {
+    ) -> Arc<dyn Fn(ConsensusValue, Option<&NodeID>, Option<&ResponderId>) + Sync + Send> {
         Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
                 // Do nothing.
             },
         )
@@ -451,16 +452,17 @@ mod tests {
     }
 
     fn get_client_server(instance: PeerApiService) -> (ConsensusPeerApiClient, Server) {
-        let service = consensus_peer_grpc::create_consensus_peer_api(instance);
+        let service = create_consensus_peer_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
             .build()
-            .unwrap();
+            .expect("Could not create GRPC server");
+        let port = server
+            .add_listening_port("127.0.0.1:0", ServerCredentials::insecure())
+            .expect("Could not create anonymous bind");
         server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{port}"));
         let client = ConsensusPeerApiClient::new(ch);
         (client, server)
     }
@@ -484,7 +486,7 @@ mod tests {
             get_incoming_consensus_msgs_sender_ok(),
             get_scp_client_value_sender(),
             get_fetch_latest_msg_fn(),
-            known_responder_ids.clone(),
+            known_responder_ids,
             logger,
         );
 
@@ -514,7 +516,7 @@ mod tests {
             let mut ledger = MockLedger::new();
             ledger
                 .expect_get_block()
-                .return_const(Ok(Block::new_origin_block(&vec![])));
+                .return_const(Ok(Block::new_origin_block(&[])));
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_x_signer_key).unwrap()
         };
 
@@ -529,7 +531,7 @@ mod tests {
                     ConsensusMsgResult::UnknownPeer
                 );
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -588,7 +590,7 @@ mod tests {
             let mut ledger = MockLedger::new();
             ledger
                 .expect_get_block()
-                .return_const(Ok(Block::new_origin_block(&vec![])));
+                .return_const(Ok(Block::new_origin_block(&[])));
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_a_signer_key).unwrap()
         };
 
@@ -600,7 +602,7 @@ mod tests {
             Ok(consensus_msg_response) => {
                 assert_eq!(consensus_msg_response.get_result(), ConsensusMsgResult::Ok);
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
 
         // TODO: Should pass the message to incoming_consensus_msgs_sender
@@ -630,19 +632,20 @@ mod tests {
 
         let (client, _server) = get_client_server(instance);
 
-        // A message from a known peer. The payload does not deserialize to a ConsensusMsg.
+        // A message from a known peer. The payload does not deserialize to a
+        // ConsensusMsg.
         let mut message = ConsensusMsg::new();
         let from = known_responder_ids[0].clone();
         message.set_from_responder_id(from.to_string());
         message.set_payload(vec![240, 159, 146, 150]); // UTF-8 "sparkle heart".
 
         match client.send_consensus_msg(&message) {
-            Ok(response) => panic!("Unexpected response: {:?}", response),
+            Ok(response) => panic!("Unexpected response: {response:?}"),
             Err(RpcFailure(_rpc_status)) => {
                 // This is expected.
                 // TODO: check status code.
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 
@@ -705,7 +708,7 @@ mod tests {
             let mut ledger = MockLedger::new();
             ledger
                 .expect_get_block()
-                .return_const(Ok(Block::new_origin_block(&vec![])));
+                .return_const(Ok(Block::new_origin_block(&[])));
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &wrong_signer_key).unwrap()
         };
 
@@ -714,12 +717,12 @@ mod tests {
         message.set_payload(mc_util_serial::serialize(&payload).unwrap());
 
         match client.send_consensus_msg(&message) {
-            Ok(response) => panic!("Unexpected response: {:?}", response),
+            Ok(response) => panic!("Unexpected response: {response:?}"),
             Err(RpcFailure(_rpc_status)) => {
                 // This is expected.
                 // TODO: check status code.
             }
-            Err(e) => panic!("Unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {e:?}"),
         }
     }
 

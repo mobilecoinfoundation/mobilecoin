@@ -1,38 +1,43 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A collection of generic traits for remote attestation providers
 
-use failure::Fail;
+use displaydoc::Display;
 use mc_attest_core::{EpidGroupId, IasNonce, Quote, QuoteError, SigRL, VerificationReport};
 use mc_util_encodings::Error as EncodingError;
+use pem::PemError;
 use reqwest::{header::ToStrError, Error as ReqwestError};
-use std::result::Result as StdResult;
+use std::{result::Result as StdResult, str::Utf8Error};
 
 /// An enumeration of potential client errors when communicating with a
 /// remote attestation service.
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
+#[non_exhaustive]
 pub enum Error {
-    #[fail(display = "There was an error while handling a quote object")]
+    /// There was an error while handling a quote object
     Quote(QuoteError),
-    #[fail(display = "There was an error making a request to the IAS API: {}", _0)]
+    /// There was an error making a request to the IAS API: {0}
     Reqwest(ReqwestError),
-    #[fail(
-        display = "There was an converting a response received from the IAS API: {}",
-        _0
-    )]
+    /// There was an converting a response received from the IAS API: {0}
     Encoding(EncodingError),
-    #[fail(display = "There is no signature header in the verification report response")]
+    /// There is no signature header in the verification report response
     MissingSignatureError,
-    #[fail(display = "A header header string could not be parsed: {}", _0)]
+    /// A header string could not be parsed: {0}
     ToStrError(ToStrError),
-    #[fail(display = "The verification report response did not include any signing certificates")]
+    /**
+     * The verification report response did not include any signing
+     * certificates
+     */
     MissingSigningCertsError,
-    #[fail(
-        display = "The verification report response did not contain valid PEM for it's signing certificates"
-    )]
-    BadSigningCertsError,
-    #[fail(display = "The given API key is not a valid header value")]
+    /**
+     * The verification report response did not contain valid PEM for it's
+     * signing certificates: {0:?}
+     */
+    BadSigningCertsError(PemError),
+    /// The given API key is not a valid header value
     BadApiKey,
+    /// The signing certs contained invalid UTF-8
+    InvalidSigningCertsString(Utf8Error),
 }
 
 /// Automatically wrap mc_util_encodings::EncodingError into an RaClientError.
@@ -60,6 +65,18 @@ impl From<ReqwestError> for Error {
 impl From<ToStrError> for Error {
     fn from(src: ToStrError) -> Error {
         Error::ToStrError(src)
+    }
+}
+
+impl From<PemError> for Error {
+    fn from(src: PemError) -> Self {
+        Error::BadSigningCertsError(src)
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(src: Utf8Error) -> Self {
+        Error::InvalidSigningCertsString(src)
     }
 }
 

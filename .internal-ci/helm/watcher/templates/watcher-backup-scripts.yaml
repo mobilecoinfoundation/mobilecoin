@@ -1,0 +1,94 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- if eq .Values.watcher.backupEnabled true }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart.fullname" . }}-watcher-backup-scripts
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+data:
+  backup.sh: |
+    #!/bin/bash
+    set -e
+
+    YEAR=$(date '+%Y')
+    MONTH=$(date '+%m')
+    DAY=$(date '+%d')
+    HOUR=$(date '+%H')
+    MINUTE=$(date '+%M')
+    SECOND=$(date '+%S')
+
+    BACKUP_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/${YEAR}/${MONTH}/${DAY}/backup-${YEAR}${MONTH}${DAY}${HOUR}${MINUTE}${SECOND}-data.mdb"
+    LATEST_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/latest-backup-data.mdb"
+
+    AWS="aws"
+    if [ -n "${AWS_ENDPOINT_URL}" ]; then
+      AWS="aws --endpoint-url ${AWS_ENDPOINT_URL}"
+    fi
+
+    # Don't compete with an alredy-running backup
+    PIDFILE="/var/run/watcherdb-backup.pid"
+    if [ -f ${PIDFILE} ]; then
+      echo "Current backup already running. Exiting."
+      exit 0
+    fi
+
+    # Check that the db file exists
+    if [ ! -f /watcher/data.mdb ]; then
+      echo "Database file does not exist"
+      exit 0
+    fi
+
+    trap "rm -f ${PIDFILE}" EXIT
+
+    # Create pidfile for lock
+    echo $$ > ${PIDFILE}    
+    echo "$(date) S3 backup storage path: s3://${AWS_BUCKET}/${BACKUP_FILEPATH}"
+    echo "$(date) S3 latest storage path: s3://${AWS_BUCKET}/${LATEST_FILEPATH}"
+
+    # Set sha256 signing
+    ${AWS} configure set default payload_signing_enabled=true
+
+    # Copy the db file for stable upload
+    cp /watcher/data.mdb /tmp/data.mdb
+
+    # Copy to S3
+    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
+    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${LATEST_FILEPATH}
+
+  restore.sh: |
+    #!/bin/bash
+    set -e
+
+    LATEST_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/latest-backup-data.mdb"
+
+    AWS="aws"
+    if [ -n "${AWS_ENDPOINT_URL}" ]; then
+      AWS="aws --endpoint-url ${AWS_ENDPOINT_URL}"
+    fi
+
+    # Don't compete with an alredy-running backup
+    PIDFILE="/var/run/watcherdb-restore.pid"
+    if [ -f ${PIDFILE} ]; then
+      echo "Current restore already running. Exiting."
+      exit 0
+    fi
+
+    # Don't restore if the database already exists
+    if [ -f /watcher/data.mdb ]; then
+      echo "Database file does already exists"
+      exit 0
+    fi
+
+    trap "rm -f ${PIDFILE}" EXIT
+
+    # Create pidfile for lock
+    echo $$ > ${PIDFILE}
+    echo "$(date) S3 latest storage path: s3://${AWS_BUCKET}/${LATEST_FILEPATH}"
+
+    # Set sha256 signing
+    ${AWS} configure set default payload_signing_enabled=true
+
+    # Copy from S3
+    ${AWS} s3 cp s3://${AWS_BUCKET}/${LATEST_FILEPATH} /watcher/data.mdb
+{{- end }}

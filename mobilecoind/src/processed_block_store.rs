@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Database storage for data obtained by processing blocks.
 //! * Stores a map of (monitor id, block number) -> list of transactions that
@@ -10,7 +10,7 @@ use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::ring_signature::KeyImage;
 use prost::{Enumeration, Message};
-use std::{convert::TryFrom, sync::Arc};
+use std::sync::Arc;
 
 // LMDB Database Names
 pub const PROCESSED_BLOCK_KEY_TO_PROCESSED_TX_OUTS_DB_NAME: &str =
@@ -78,9 +78,10 @@ pub enum ProcessedTxOutDirection {
     Spent = 2,
 }
 
-/// Type used as the stored data in the processed_block_id_to_processed_tx_outs database.
-/// Note that this is different than `mobilecoind_api::ProcessedTxOut`, as that one contains some
-/// extra data that can be derived upon construction.
+/// Type used as the stored data in the processed_block_id_to_processed_tx_outs
+/// database. Note that this is different than
+/// `mobilecoind_api::ProcessedTxOut`, as that one contains some extra data that
+/// can be derived upon construction.
 #[derive(Clone, Eq, Hash, PartialEq, Message)]
 pub struct ProcessedTxOut {
     /// The subaddress index the tx out belongs to/
@@ -102,6 +103,10 @@ pub struct ProcessedTxOut {
     /// Direction.
     #[prost(enumeration = "ProcessedTxOutDirection", tag = "5")]
     pub direction: i32,
+
+    /// Token id.
+    #[prost(uint64, tag = "8")]
+    pub token_id: u64,
 }
 
 impl ProcessedTxOut {
@@ -112,6 +117,7 @@ impl ProcessedTxOut {
             key_image: src.key_image,
             value: src.value,
             direction: ProcessedTxOutDirection::Received as i32,
+            token_id: src.token_id,
         }
     }
 
@@ -122,6 +128,7 @@ impl ProcessedTxOut {
             key_image: src.key_image,
             value: src.value,
             direction: ProcessedTxOutDirection::Spent as i32,
+            token_id: src.token_id,
         }
     }
 }
@@ -129,27 +136,23 @@ impl ProcessedTxOut {
 /// the processed blocks database.
 #[derive(Clone)]
 pub struct ProcessedBlockStore {
-    /// LMDB Environment.
-    env: Arc<Environment>,
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
 
     /// Mapping of ProcessedBlockKey -> [ProcessedTxOut].
     processed_block_key_to_processed_tx_outs: Database,
-
-    /// Logger.
-    logger: Logger,
 }
 
 impl ProcessedBlockStore {
-    pub fn new(env: Arc<Environment>, logger: Logger) -> Result<Self, Error> {
+    pub fn new(env: Arc<Environment>, _logger: Logger) -> Result<Self, Error> {
         let processed_block_key_to_processed_tx_outs = env.create_db(
             Some(PROCESSED_BLOCK_KEY_TO_PROCESSED_TX_OUTS_DB_NAME),
             DatabaseFlags::DUP_SORT,
         )?;
 
         Ok(Self {
-            env,
+            _env: env,
             processed_block_key_to_processed_tx_outs,
-            logger,
         })
     }
 
@@ -165,7 +168,7 @@ impl ProcessedBlockStore {
         let key = ProcessedBlockKey::new(monitor_id, block_index);
         let key_bytes = key.to_vec();
 
-        Ok(cursor
+        cursor
             .iter_dup_of(&key_bytes)
             .map(|result| {
                 result.map_err(Error::from).and_then(|(db_key, db_value)| {
@@ -175,13 +178,13 @@ impl ProcessedBlockStore {
                     Ok(mc_util_serial::decode(db_value)?)
                 })
             })
-            .collect::<Result<Vec<_>, Error>>()?)
+            .collect::<Result<Vec<_>, Error>>()
     }
 
     /// Remove the data associated with a given monitor id.
-    pub fn remove<'env>(
+    pub fn remove(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
     ) -> Result<(), Error> {
         let start_key = ProcessedBlockKey::new(monitor_id, 0);
@@ -202,9 +205,9 @@ impl ProcessedBlockStore {
     }
 
     /// Feed data processed from a given block.
-    pub fn block_processed<'env>(
+    pub fn block_processed(
         &self,
-        db_txn: &mut RwTransaction<'env>,
+        db_txn: &mut RwTransaction<'_>,
         monitor_id: &MonitorId,
         block_index: u64,
         discovered_utxos: &[UnspentTxOut],
@@ -244,7 +247,7 @@ mod test {
     use super::*;
     use crate::{
         monitor_store::MonitorData,
-        test_utils::{get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT},
+        test_utils::{get_test_databases, BlockVersion, DEFAULT_PER_RECIPIENT_AMOUNT},
     };
     use mc_account_keys::AccountKey;
     use mc_common::{
@@ -252,23 +255,31 @@ mod test {
         HashSet,
     };
     use mc_crypto_keys::RistrettoPublic;
-    use mc_crypto_rand::{CryptoRng, RngCore};
     use mc_ledger_db::{Ledger, LedgerDB};
-    use mc_transaction_core::{onetime_keys::recover_onetime_private_key, tx::TxOut};
+    use mc_rand::{CryptoRng, RngCore};
+    use mc_transaction_core::{
+        onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Token,
+    };
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     const TEST_SUBADDRESS: u64 = 10;
 
     fn setup_test_processed_block_store(
         mut rng: &mut (impl CryptoRng + RngCore),
         logger: &Logger,
-    ) -> (LedgerDB, ProcessedBlockStore, AccountKey, Vec<UnspentTxOut>) {
+    ) -> (
+        Arc<Environment>,
+        LedgerDB,
+        ProcessedBlockStore,
+        AccountKey,
+        Vec<UnspentTxOut>,
+    ) {
         let account_key = AccountKey::random(&mut rng);
 
         // Set up a db with a known recipient, 3 random recipients and 10 blocks.
         let (ledger_db, _mobilecoind_db) = get_test_databases(
+            BlockVersion::MAX,
             3,
             &vec![account_key.subaddress(TEST_SUBADDRESS)],
             10,
@@ -276,12 +287,12 @@ mod test {
             &mut rng,
         );
 
-        // Get all utxos belonging to the test account. This assumes knowledge about how the test
-        // ledger is constructed by the test utils.
+        // Get all utxos belonging to the test account. This assumes knowledge about how
+        // the test ledger is constructed by the test utils.
         let num_blocks = ledger_db.num_blocks().expect("failed getting num blocks");
         let account_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
-                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                let block_contents = ledger_db.get_block_contents(idx).unwrap();
                 // We grab the 4th tx out in each block since the test ledger had 3 random
                 // recipients, followed by our known recipient.
                 // See the call to `get_testing_environment` at the beginning of the test.
@@ -309,13 +320,13 @@ mod test {
                     value: DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    token_id: *Mob::ID,
                 }
             })
             .collect();
 
         // The instance to test.
-        let db_tmp =
-            TempDir::new("utxo_store_db").expect("Could not make tempdir for utxo store db");
+        let db_tmp = TempDir::new().expect("Could not make tempdir for utxo store db");
         let db_path = db_tmp
             .path()
             .to_str()
@@ -329,17 +340,23 @@ mod test {
                 .unwrap(),
         );
 
-        let processed_block_store = ProcessedBlockStore::new(env, logger.clone()).unwrap();
+        let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone()).unwrap();
 
         // Return
-        (ledger_db, processed_block_store, account_key, account_utxos)
+        (
+            env,
+            ledger_db,
+            processed_block_store,
+            account_key,
+            account_utxos,
+        )
     }
 
     // ProcessedBlockStore basic functionality tests
     #[test_with_logger]
     fn test_processed_block_store(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (ledger_db, store, account, utxos) =
+        let (env, ledger_db, store, account, utxos) =
             setup_test_processed_block_store(&mut rng, &logger);
 
         let num_blocks = ledger_db
@@ -361,7 +378,7 @@ mod test {
 
         // Initially, we should have no data for any of our blocks.
         {
-            let db_txn = store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
             for block_index in 0..num_blocks + 10 {
                 let tx_outs = store
                     .get_processed_block(&db_txn, &monitor_id, block_index)
@@ -370,9 +387,10 @@ mod test {
             }
         }
 
-        // Associate the first 3 utxos with the first block and the rest into the second block.
+        // Associate the first 3 utxos with the first block and the rest into the second
+        // block.
         {
-            let mut db_txn = store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             // Add in two chunks
             store
@@ -391,7 +409,7 @@ mod test {
 
         // Query the data to ensure it got properly stored.
         {
-            let db_txn = store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             // First block
             let processed_tx_outs = store
@@ -439,7 +457,7 @@ mod test {
 
             let monitor_id = MonitorId::from(&monitor_data);
 
-            let mut db_txn = store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let processed_tx_outs = store
                 .get_processed_block(&db_txn, &monitor_id, 0)
@@ -454,7 +472,7 @@ mod test {
 
         // Remove the monitor id and ensure data has been removed
         {
-            let mut db_txn = store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let processed_tx_outs = store
                 .get_processed_block(&db_txn, &monitor_id, 0)
@@ -485,9 +503,10 @@ mod test {
 
         // Re-add utxos and verify correct behavior.
         {
-            let mut db_txn = store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
-            // Add in two chunks for the original monitor id and one chunk for a new monitor id.
+            // Add in two chunks for the original monitor id and one chunk for a new monitor
+            // id.
             store
                 .block_processed(&mut db_txn, &monitor_id, 0, &utxos[1..5], &[])
                 .expect("block_processed failed");
@@ -497,8 +516,7 @@ mod test {
                 .expect("block_processed failed");
 
             let monitor_data2 = MonitorData::new(
-                account.clone(),
-                30, // first_subaddress
+                account, 30, // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name

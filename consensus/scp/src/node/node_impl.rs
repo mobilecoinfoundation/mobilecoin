@@ -1,22 +1,17 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A node determines whether transactions are valid, and participates in voting with the members of its quorum set.
+//! A node determines whether transactions are valid, and participates in voting
+//! with the members of its quorum set.
 use crate::{
-    core_types::{CombineFn, SlotIndex, ValidityFn, Value},
     msg::{ExternalizePayload, Msg, Topic},
-    quorum_set::QuorumSet,
-    slot::{ScpSlot, Slot, SlotMetrics},
-    ScpNode,
+    slot::{CombineFn, ScpSlot, Slot, SlotMetrics, ValidityFn},
+    QuorumSet, ScpNode, SlotIndex, Value,
 };
 use mc_common::{
     logger::{log, Logger},
-    NodeID,
+    HashMap, NodeID,
 };
-use std::{
-    collections::{BTreeSet, HashMap},
-    fmt::Display,
-    time::Duration,
-};
+use std::{collections::BTreeSet, fmt::Display, mem, time::Duration};
 
 /// Default limit on number of externalized slots to store.
 const MAX_EXTERNALIZED_SLOTS: usize = 1;
@@ -41,14 +36,16 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
     /// Application-specific validation of value.
     validity_fn: ValidityFn<V, ValidationError>,
 
-    /// Application-specific function for combining multiple values. Must be deterministic.
+    /// Application-specific function for combining multiple values. Must be
+    /// deterministic.
     combine_fn: CombineFn<V, ValidationError>,
 
     /// Logger.
     logger: Logger,
 
-    /// Sets the 'base round timeout' and the 'base ballot timeout' when creating a slot.
-    /// (Defaults to 1 second to match the SCP whitepaper specification.)
+    /// Sets the 'base round timeout' and the 'base ballot timeout' when
+    /// creating a slot. (Defaults to 1 second to match the SCP whitepaper
+    /// specification.)
     pub scp_timebase: Duration,
 }
 
@@ -59,8 +56,10 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
     /// * `node_id` - This node's ID.
     /// * `quorum_set` - This node's quorum set.
     /// * `validity_fn` - Validates a value.
-    /// * `combine_fn` - Combines a set of values into a composite value (i.e. block).
-    /// * `current_slot_index` - Index of the slot to begin performing consensus on.
+    /// * `combine_fn` - Combines a set of values into a composite value (i.e.
+    ///   block).
+    /// * `current_slot_index` - Index of the slot to begin performing consensus
+    ///   on.
     /// * `logger`
     pub fn new(
         node_id: NodeID,
@@ -92,7 +91,8 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
         }
     }
 
-    // Record the values externalized by the current slot and advance the current slot.
+    // Record the values externalized by the current slot and advance the current
+    // slot.
     fn externalize(&mut self, payload: &ExternalizePayload<V>) -> Result<(), String> {
         let slot_index = self.current_slot.get_index();
 
@@ -120,7 +120,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
         ));
 
         // Advance to the next slot.
-        let externalized_slot = std::mem::replace(&mut self.current_slot, next_slot);
+        let externalized_slot = mem::replace(&mut self.current_slot, next_slot);
 
         self.push_externalized_slot(externalized_slot);
 
@@ -217,7 +217,8 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         // Messages emitted by this node that should be sent to the network.
         let mut outbound_msgs: Vec<_> = Vec::new();
 
-        // Handle messages for recent externalized slots. Messages for older slots are ignored.
+        // Handle messages for recent externalized slots. Messages for older slots are
+        // ignored.
         for slot in self.externalized_slots.iter_mut() {
             if let Some(msgs) = slot_index_to_msgs.get(&slot.get_index()) {
                 if let Some(response) = slot.handle_messages(msgs)? {
@@ -230,7 +231,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         if let Some(msgs) = slot_index_to_msgs.get(&self.current_slot.get_index()) {
             if let Some(response) = self.current_slot.handle_messages(msgs)? {
                 if let Topic::Externalize(ext_payload) = &response.topic {
-                    self.externalize(&ext_payload)?;
+                    self.externalize(ext_payload)?;
                 }
                 outbound_msgs.push(response);
             }
@@ -290,7 +291,8 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         }
     }
 
-    /// Set the node's current slot index, abandoning any current and externalized slots.
+    /// Set the node's current slot index, abandoning any current and
+    /// externalized slots.
     fn reset_slot_index(&mut self, slot_index: SlotIndex) {
         // The slot index should only increase.
         debug_assert!(slot_index > self.current_slot_index());
@@ -311,10 +313,10 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
+    use crate::{ballot::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
     use maplit::btreeset;
     use mc_common::logger::test_with_logger;
-    use std::{iter::FromIterator, sync::Arc};
+    use std::sync::Arc;
 
     fn get_node(
         slot_index: SlotIndex,
@@ -323,8 +325,8 @@ mod tests {
         let node_id = test_node_id(1);
         let quorum_set = QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
         Node::<&'static str, TransactionValidationError>::new(
-            node_id.clone(),
-            quorum_set.clone(),
+            node_id,
+            quorum_set,
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
             slot_index,
@@ -401,7 +403,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // Should pass values to the appropriate slot, externalize the slot,  and return the outgoing msg.
+    // Should pass values to the appropriate slot, externalize the slot,  and return
+    // the outgoing msg.
     fn test_propose_values_with_externalize(logger: Logger) {
         let slot_index = 4;
         let mut node = get_node(slot_index, logger);
@@ -427,7 +430,8 @@ mod tests {
         let values = btreeset!["a", "b", "c"];
         assert_eq!(node.propose_values(values), Ok(Some(msg)));
 
-        // The `slot_index` slot should now be extnalized, and current_slot should be at `slot_index + 1`.
+        // The `slot_index` slot should now be extnalized, and current_slot should be at
+        // `slot_index + 1`.
         assert_eq!(node.current_slot.get_index(), slot_index + 1);
         assert_eq!(node.externalized_slots.len(), 1);
         assert_eq!(node.externalized_slots[0].get_index(), slot_index)
@@ -463,7 +467,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_from_self.clone(), msg_from_self.clone()]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -498,7 +502,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_future_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -533,7 +537,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_old_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -583,7 +587,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_current_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 1), // Should return a message.
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -634,7 +638,7 @@ mod tests {
 
         match node.handle_messages(vec![msg_for_recent_slot]) {
             Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 1), // Should return a message.
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Err(e) => panic!("Unexpected error {e:?}"),
         }
     }
 
@@ -690,7 +694,8 @@ mod tests {
             .return_const(messages.clone());
         node.current_slot = Box::new(slot);
 
-        // Should not call anything on an externalized slot, which no longer have timeouts.
+        // Should not call anything on an externalized slot, which no longer have
+        // timeouts.
         let externalized_slot = MockScpSlot::new();
         node.push_externalized_slot(Box::new(externalized_slot));
 
@@ -722,7 +727,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    /// Steps through a sequence of messages that allow a two-node network to reach consensus.
+    /// Steps through a sequence of messages that allow a two-node network to
+    /// reach consensus.
     fn basic_two_node_consensus(logger: Logger) {
         let slot_index = 1;
 
@@ -741,7 +747,7 @@ mod tests {
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
             slot_index,
-            logger.clone(),
+            logger,
         );
 
         // Client(s) submits some values to node 2.

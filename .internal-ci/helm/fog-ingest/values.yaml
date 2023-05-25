@@ -1,0 +1,128 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+### Chart wide values.
+nameOverride: ''
+fullnameOverride: ''
+
+imagePullSecrets:
+- name: docker-credentials
+
+# mc-core-common-config child chart configuration.
+# See ../mc-core-common-config for details.
+mcCoreCommonConfig:
+  enabled: false
+
+# fog-ingest-config child chart configuration.
+# See ../fog-ingest-config for details.
+fogIngestConfig:
+  enabled: false
+
+# Pods share the image tag.
+image:
+  org: mobilecoin
+  tag: '' # Overrides the image tag whose default is the chart appVersion.
+
+
+### Fog Ingest Service Configuration
+fogIngest:
+  replicaCount: 2
+  image:
+    org: ''
+    name: fogingest
+    pullPolicy: Always
+
+  ### Persistent storage for LMDB
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+        - 'ReadWriteOnce'
+      resources:
+        requests:
+          storage: 512Gi
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+  ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
+  resources:
+    limits:
+      intel.com/sgx: 5000
+    requests:
+      intel.com/sgx: 5000
+
+  nodeSelector:
+    sgx-enabled-node: 'true'
+
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - fog-ingest
+          topologyKey: 'kubernetes.io/hostname'
+
+  initContainers:
+  - name: sysctl
+    image: ubuntu:20.04
+    imagePullPolicy: Always
+    command:
+    - sysctl
+    - -w
+    - net.ipv4.tcp_retries2=5
+    securityContext:
+      privileged: true
+      runAsUser: 0
+      runAsNonRoot: False
+  - name: migrate-ledger
+    image: "{{ .Values.fogIngest.image.org | default .Values.image.org }}/{{ .Values.fogIngest.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+    imagePullPolicy: Always
+    command: [ '/bin/bash' ]
+    args:
+    - -c
+    - |
+      set -e
+      if [[ -f "/fog-data/ledger/data.mdb" ]]
+      then
+        cp /fog-data/ledger/data.mdb /fog-data/ledger/data.mdb.bak
+        /usr/bin/mc-ledger-migration --ledger-db /fog-data/ledger
+      fi
+    volumeMounts:
+    - name: fog-data
+      mountPath: /fog-data
+
+### Toolbox deployment. Used for activating and retiring.
+toolbox:
+  image:
+    org: ''
+    name: bootstrap-tools
+    pullPolicy: Always
+    tag: '' # Overrides the image tag whose default is the chart appVersion.
+
+  nodeSelector:
+    builder-node: 'false'
+    sgx-enabled-node: 'false'
+
+  tolerations: []
+
+  affinity: {}
+
+jaegerTracing:
+  enabled: true
+  collector: 'dns:///jaeger-collector:14250'

@@ -1,9 +1,12 @@
 [package]
 name = "mc-sgx-panic-edl"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
 links = "sgx_panic_edl"
+# TODO: Consider making sgx a self-contained workspace and get the value from there.
+rust-version = "1.68.0"
 
 [build-dependencies]
-cargo-emit = "0.1"
+cargo-emit = "0.2"

@@ -1,14 +1,16 @@
 [package]
 name = "mc-util-build-script"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
 description = "Cargo build-script assistance, from MobileCoin."
+edition = "2021"
+license = "Apache-2.0"
 readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
-cargo-emit = "0.1.1"
-failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+cargo-emit = "0.2.1"
+displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
-url = "2.1"
+url = "2.3"
 walkdir = "2.3"

@@ -1,28 +1,31 @@
 [package]
 name = "mc-mobilecoind-api"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 links = "mc-mobilecoind-api"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-api = { path = "../../api" }
 mc-util-uri = { path = "../../util/uri" }
 
 futures = "0.3"
-grpcio = "0.6.0"
-protobuf = "2.12"
+grpcio = "0.12.1"
+protobuf = "2.27.1"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
-mc-transaction-std = { path = "../../transaction/std" }
+mc-transaction-builder = { path = "../../transaction/builder" }
 
-rand = "0.7"
 hex_fmt = "0.3"
+rand = "0.8"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
 mc-util-build-script = { path = "../../util/build/script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"

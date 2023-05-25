@@ -1,0 +1,423 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Reusable Workflow - Run integration tests in a development namespace.
+#
+# All current tests run with tools, scripts and binaries built and embedded within the toolbox
+# (bootstrap-tools) image. The toolbox image is built and versioned with the app code, so it will only
+# have the tools available at its build time.  This allows tests to be internally consistent with the
+# release you added the test in.
+#
+# To add tests:
+#   - Make sure binaries/scripts are included as part of the toolbox.
+#       Dockerfile: .internal-ci/docker/Dockerfile.bootstrap-tools
+#       All files saved under .internal-ci/util and .internal-ci/test are already included in the
+#       toolbox image
+#
+#   - Simple commands or standalone binaries can use the mobilecoinofficial/gha-k8s-toolbox
+#      toolbox-exec GitHub Action.
+#
+#   - Python tests and multipart scripts should include a wrapper script that installs/refreshes
+#      any requirements and build protos as required. See .internal-ci/test
+#
+#   - Secrets should be generated at Deploy time (mobilecoin-workflow-dev-deploy) and placed in a
+#      k8s secret or configmap object that is then configured as a env or volume on the toolbox deployment.
+#       .internal-ci/helm/fog-ingest/templates/toolbox-deployment.yaml
+#     CBB: move testing tool box into its own chart.
+#
+#   - Make tests optional by adding a variable in the inputs and add variable to
+#       mobilecoin-dispatch-dev-test so dispatch workflows can use it.
+#
+# When adding tests remember:
+#   - Tests are baked into the version they were added in. This is so they will be internally consistent
+#      with the binaries and configurations they were intended to test.
+#
+#   - Any tests/tools/configs/secrets you add now will not be available to the "Previous Release"
+#      toolbox container.
+#
+#   - All tests run with in the kubernetes namespace context so we can reach internally hosted endpoints,
+#      like mobilecoind. (CBB: add full-service?)
+#
+
+name: mobilecoin-workflow-dev-test
+
+on:
+  workflow_call:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: string
+        required: true
+      fog_distribution:
+        description: "Run fog-distribution test"
+        type: boolean
+        required: false
+        default: true
+      testing_block_v0:
+        description: "Run block v0 tests"
+        type: boolean
+        required: false
+        default: true
+      testing_block_v2:
+        description: "Run block v2 tests"
+        type: boolean
+        required: false
+        default: true
+      testing_block_v3:
+        description: "Run block v3 tests"
+        type: boolean
+        required: false
+        default: true
+      generate_and_submit_mint_config_tx_uses_json:
+        description: "Whether the generate-and-submit-mint-config-tx command uses a JSON file (true) or command line arguments (false)"
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      DEV_RANCHER_CLUSTER:
+        description: "Rancher cluster name"
+        required: true
+      DEV_RANCHER_URL:
+        description: "Rancher server URL"
+        required: true
+      DEV_RANCHER_TOKEN:
+        description: "Rancher access token"
+        required: true
+
+jobs:
+  cd-integration-tests:
+    runs-on: [self-hosted, Linux, small]
+    env:
+      SRC_KEYS_DIR: /tmp/sample_data/keys
+      SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
+      V2_DST_KEYS_DIR: /tmp/2-testing/keys
+      V2_DST_FOG_KEYS_DIR: /tmp/2-testing/fog_keys
+      V3_DST_KEYS_DIR: /tmp/3-testing/keys
+      V3_DST_FOG_KEYS_DIR: /tmp/3-testing/fog_keys
+      START_KEYS: '494'
+      END_KEYS: '499'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Delete existing keys
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          rm -rf /tmp/sample_data
+
+    # Populates ledger and keys in toolbox at /tmp/sample_data
+    - name: Recreate Keys for Testing
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          INITIALIZE_LEDGER="true" \
+          FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
+          /util/generate_origin_data.sh
+
+    - name: Test - fog-distribution
+      if: inputs.fog_distribution
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/fog-distribution-test.sh
+
+    - name: Test - block-v0 - fog-test-client
+      if: inputs.testing_block_v0
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          test_client \
+            --key-dir /tmp/sample_data/fog_keys \
+            --consensus mc://node1.${{ inputs.namespace }}.development.mobilecoin.com/ \
+            --consensus mc://node2.${{ inputs.namespace }}.development.mobilecoin.com/ \
+            --consensus mc://node3.${{ inputs.namespace }}.development.mobilecoin.com/ \
+            --num-clients 6 \
+            --num-transactions 32 \
+            --consensus-wait 300 \
+            --transfer-amount 20 \
+            --fog-view fog-view://fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
+            --fog-ledger fog-ledger://fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+
+    - name: Test - block-v0 - mobilecoind-grpc (previously Wallet Integration)
+      if: inputs.testing_block_v0
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/mobilecoind-integration-test.sh
+
+    - name: Setup - block-v2 - Copy subset of non-fog keys
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_KEYS_DIR }} \
+            --dst ${{ env.V2_DST_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Setup - block-v2 - Copy subset of fog keys
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_FOG_KEYS_DIR }} \
+            --dst ${{ env.V2_DST_FOG_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Test - block-v2 - Minting config tx
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          JSON_FLAG=""
+          if [ "${{ inputs.generate_and_submit_mint_config_tx_uses_json }}" == "true" ]; then
+            JSON_FLAG="--json"
+          fi
+          /test/minting-config-tx-test.sh \
+            $JSON_FLAG \
+            --token-id 8192
+
+    - name: Test - block-v2 - Minting tx
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/minting-tx-test.sh \
+            --key-dir ${{ env.V2_DST_KEYS_DIR }} \
+            --token-id 8192
+
+    - name: Test - block-v2 - mobilecoind-json integration
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/mobilecoind-json-integration-test.sh \
+            --key-dir ${{ env.V2_DST_KEYS_DIR }}
+
+    - name: Test - block-v2 - use drain_accounts to transfer id 1 balances to fog keys
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/drain_accounts.sh \
+            --src ${{ env.V2_DST_KEYS_DIR }} \
+            --dst ${{ env.V2_DST_FOG_KEYS_DIR }} \
+            --fee 1024 \
+            --token-id 8192
+
+    - name: Test - block-v2 - fog-test-client token id 0
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/fog-test-client.sh \
+            --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
+            --token-id 0
+
+    - name: Test - block-v2 - fog-test-client token id 1
+      if: inputs.testing_block_v2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/fog-test-client.sh \
+            --key-dir ${{ env.V2_DST_FOG_KEYS_DIR }} \
+            --token-id 8192
+
+    - name: Setup - block-v3 - Copy subset of non-fog keys
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Setup - block-v3 - Copy subset of fog keys
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_FOG_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_FOG_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Test - block-v3 - Minting config tx
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          JSON_FLAG=""
+          if [ "${{ inputs.generate_and_submit_mint_config_tx_uses_json }}" == "true" ]; then
+            JSON_FLAG="--json"
+          fi
+          /test/minting-config-tx-test.sh \
+            $JSON_FLAG \
+            --token-id 8192
+
+    - name: Test - block-v3 - Minting tx
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/minting-tx-test.sh \
+            --key-dir ${{ env.V3_DST_KEYS_DIR }} \
+            --token-id 8192
+
+    - name: Test - block-v3 - mobilecoind-json integration
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/mobilecoind-json-integration-test.sh \
+            --key-dir ${{ env.V3_DST_KEYS_DIR }}
+
+    - name: Test - block-v3 - use drain_accounts to transfer id 8192 balances to fog keys
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/drain_accounts.sh \
+            --src ${{ env.V3_DST_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_FOG_KEYS_DIR }} \
+            --fee 1024 \
+            --token-id 8192
+
+    - name: Test - block-v3 - fog-test-client token ids 0,8192
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/fog-test-client.sh \
+            --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
+            --token-ids 0,8192

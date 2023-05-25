@@ -1,21 +1,24 @@
 [package]
 name = "mc-fog-sig-report"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
 description = "Create and verify fog report signatures"
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-crypto-digestible-signature = { path = "../../../crypto/digestible/signature", default-features = false }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-fog-types = { path = "../../types", default-features = false }
+mc-fog-report-types = { path = "../../report/types", default-features = false }
 
-displaydoc = { version = "0.1.7", default-features = false }
-signature = { version = "1.2.2" }
+displaydoc = { version = "0.2", default-features = false }
+signature = { version = "2.0.0" }
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../../util/from-random" }
 
-rand_core = "0.5"
-rand_hc = "0.2"
+rand_core = "0.6"
+rand_hc = "0.3"

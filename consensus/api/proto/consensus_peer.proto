@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Consensus service peer-facing data types and service descriptors.
 
@@ -9,6 +9,8 @@ import "blockchain.proto";
 import "consensus_common.proto";
 
 package consensus_peer;
+
+option go_package = "mobilecoin/api";
 
 service ConsensusPeerAPI {
     /// This API call is made with an encrypted payload for the enclave,

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fogServices.fullname" . }}-supervisord-fog-router
+  labels:
+    {{- include "fogServices.labels" . | nindent 4 }}
+data:
+  acct_view.conf: |
+    [program:fogviewrouter]
+    priority=100
+    command=fog_view_router
+      --admin-listen-uri=insecure-mca://127.0.0.1:8001/
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

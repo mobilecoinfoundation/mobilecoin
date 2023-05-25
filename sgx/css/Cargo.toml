@@ -1,9 +1,13 @@
 [package]
 name = "mc-sgx-css"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+# TODO: Consider making sgx a self-contained workspace and get the value from there.
+rust-version = "1.68.0"
 
 [dependencies]
-displaydoc = {version = "0.1.7", default-features = false }
-sha2 = { version = "0.9", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
+sha2 = { version = "0.10", default-features = false }

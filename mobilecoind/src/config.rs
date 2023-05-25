@@ -1,107 +1,117 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for mobilecoind
 
+use clap::Parser;
 use displaydoc::Display;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
 use mc_fog_report_connection::GrpcFogReportConnection;
-use mc_fog_report_validation::FogResolver;
+use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
+use mc_util_parse::{load_css_file, parse_duration_in_seconds};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
-#[cfg(feature = "ip-check")]
+#[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
 use reqwest::{
     blocking::Client,
-    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
+    header::{HeaderMap, HeaderValue, InvalidHeaderValue, AUTHORIZATION, CONTENT_TYPE},
 };
-use std::{convert::TryFrom, fs, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
-use structopt::StructOpt;
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "mobilecoind", about = "The MobileCoin client daemon.")]
+/// Configuration parameters for mobilecoind
+#[derive(Debug, Parser)]
+#[clap(name = "mobilecoind", about = "The MobileCoin client daemon.")]
 pub struct Config {
     /// Path to ledger db (lmdb).
-    #[structopt(long, default_value = "/tmp/ledgerdb", parse(from_os_str))]
+    #[clap(long, default_value = "/tmp/ledgerdb", env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
-    /// Path to existing ledger db that contains the origin block, used when initializing new ledger dbs.
-    #[structopt(long)]
+    /// Path to existing ledger db that contains the origin block, used when
+    /// initializing new ledger dbs.
+    #[clap(long, env = "MC_LEDGER_DB_BOOTSTRAP")]
     pub ledger_db_bootstrap: Option<String>,
 
     /// Path to watcher db (lmdb).
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, env = "MC_WATCHER_DB")]
     pub watcher_db: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    /// Peers config.
+    #[clap(flatten)]
     pub peers_config: PeersConfig,
 
-    /// Quorum set for ledger syncing. By default, the quorum set would include all peers.
+    /// Quorum set for ledger syncing. By default, the quorum set would include
+    /// all peers.
     ///
     /// The quorum set is represented in JSON. For example:
-    /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
-    #[structopt(long, parse(try_from_str=parse_quorum_set_from_json))]
+    /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
+    /// com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
+    #[clap(long, value_parser = parse_quorum_set_from_json, env = "MC_QUORUM_SET")]
     quorum_set: Option<QuorumSet<ResponderId>>,
 
     /// URLs to use for transaction data.
     ///
     /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
-    #[structopt(long = "tx-source-url", required_unless = "offline")]
+    #[clap(
+        long = "tx-source-url",
+        required_unless_present = "offline",
+        use_value_delimiter = true,
+        env = "MC_TX_SOURCE_URL"
+    )]
     pub tx_source_urls: Option<Vec<String>>,
 
     /// How many seconds to wait between polling.
-    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_POLL_INTERVAL")]
     pub poll_interval: Duration,
 
     // Mobilecoind specific arguments
     /// Path to mobilecoind database used to store transactions and accounts.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, env = "MC_MOBILECOIND_DB")]
     pub mobilecoind_db: Option<PathBuf>,
 
     /// URI to listen on and serve requests from.
-    #[structopt(long)]
+    #[clap(long, env = "MC_LISTEN_URI")]
     pub listen_uri: Option<MobilecoindUri>,
 
     /// Number of worker threads to use for view key scanning.
     /// Defaults to number of logical CPU cores.
-    #[structopt(long)]
+    #[clap(long, env = "MC_NUM_WORKERS")]
     pub num_workers: Option<usize>,
 
     /// Offline mode.
-    #[structopt(long)]
+    #[clap(long, env = "MC_OFFLINE")]
     pub offline: bool,
 
-    /// Fog ingest enclave CSS file (needed in order to enable sending transactions to fog
-    /// recipients).
-    #[structopt(long, parse(try_from_str=load_css_file))]
+    /// Fog ingest enclave CSS file (needed in order to enable sending
+    /// transactions to fog recipients).
+    #[clap(long, value_parser = load_css_file, env = "MC_FOG_INGEST_ENCLAVE_CSS")]
     pub fog_ingest_enclave_css: Option<Signature>,
-}
 
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
+    /// Automatically migrate the ledger db (if it exists) into the most recent
+    /// version.
+    #[clap(long, env = "MC_LEDGER_DB_MIGRATE")]
+    pub ledger_db_migrate: bool,
+
+    /// An authorization token for the ipinfo.io service, if available
+    #[clap(long, env = "MC_IP_INFO_TOKEN", default_value = "")]
+    pub ip_info_token: String,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
     let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
-        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
+        .map_err(|err| format!("Error parsing quorum set {src}: {err:?}"))?;
 
     if !quorum_set.is_valid() {
-        return Err(format!("Invalid quorum set: {:?}", quorum_set));
+        return Err(format!("Invalid quorum set: {quorum_set:?}"));
     }
 
     Ok(quorum_set)
 }
 
-fn load_css_file(filename: &str) -> Result<Signature, String> {
-    let bytes =
-        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
-    let signature = Signature::try_from(&bytes[..])
-        .map_err(|err| format!("Failed parsing CSS file '{}': {}", filename, err))?;
-    Ok(signature)
-}
-
+/// Error type.
 #[derive(Display, Debug)]
 pub enum ConfigError {
     /// Error parsing json {0}
@@ -115,6 +125,10 @@ pub enum ConfigError {
 
     /// Data missing in the response {0}
     DataMissing(String),
+
+    /// Invalid header: {0}
+    #[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
+    InvalidHeader(InvalidHeaderValue),
 }
 
 impl From<serde_json::Error> for ConfigError {
@@ -129,7 +143,16 @@ impl From<reqwest::Error> for ConfigError {
     }
 }
 
+#[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
+impl From<InvalidHeaderValue> for ConfigError {
+    fn from(e: InvalidHeaderValue) -> Self {
+        Self::InvalidHeader(e)
+    }
+}
+
 impl Config {
+    /// Parse the quorom set.
+    /// Panics on error.
     pub fn quorum_set(&self) -> QuorumSet<ResponderId> {
         // If we have an explicit quorum set, use that.
         if let Some(quorum_set) = &self.quorum_set {
@@ -137,26 +160,12 @@ impl Config {
         }
 
         // Otherwise create a quorum set that includes all of the peers we know about.
-        let node_ids = self
-            .peers_config
-            .peers
-            .clone()
-            .unwrap_or_default()
-            .iter()
-            .map(|p| {
-                p.responder_id().unwrap_or_else(|e| {
-                    panic!(
-                        "Could not get responder_id from uri {}: {:?}",
-                        p.to_string(),
-                        e
-                    )
-                })
-            })
-            .collect::<Vec<ResponderId>>();
+        let node_ids = self.peers_config.responder_ids();
         QuorumSet::new_with_node_ids(node_ids.len() as u32, node_ids)
     }
 
-    /// Get the attestation verifier used to verify fog reports when sending to fog recipients
+    /// Get the attestation verifier used to verify fog reports when sending to
+    /// fog recipients
     pub fn get_fog_ingest_verifier(&self) -> Option<Verifier> {
         self.fog_ingest_enclave_css.as_ref().map(|signature| {
             let mr_signer_verifier = {
@@ -165,7 +174,11 @@ impl Config {
                     signature.product_id(),
                     signature.version(),
                 );
-                mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+                mr_signer_verifier.allow_hardening_advisories(&[
+                    "INTEL-SA-00334",
+                    "INTEL-SA-00615",
+                    "INTEL-SA-00657",
+                ]);
                 mr_signer_verifier
             };
 
@@ -175,8 +188,9 @@ impl Config {
         })
     }
 
-    /// Get the function which creates FogResolver given a list of recipient addresses
-    /// The string error should be mapped by invoker of this factory to Error::FogError
+    /// Get the function which creates FogResolver given a list of recipient
+    /// addresses The string error should be mapped by invoker of this
+    /// factory to Error::FogError
     pub fn get_fog_resolver_factory(
         &self,
         logger: Logger,
@@ -187,7 +201,7 @@ impl Config {
                 .build(),
         );
 
-        let conn = GrpcFogReportConnection::new(env, logger);
+        let conn = GrpcFogReportConnection::new(self.peers_config.chain_id.to_owned(), env, logger);
 
         let verifier = self.get_fog_ingest_verifier();
 
@@ -197,9 +211,9 @@ impl Config {
             } else if let Some(verifier) = verifier.as_ref() {
                 let report_responses = conn
                     .fetch_fog_reports(fog_uris.iter().cloned())
-                    .map_err(|err| format!("Failed fetching fog reports: {}", err))?;
+                    .map_err(|err| format!("Failed fetching fog reports: {err}"))?;
                 Ok(FogResolver::new(report_responses, verifier)
-                    .map_err(|err| format!("Invalid fog url: {}", err))?)
+                    .map_err(|err| format!("Invalid fog url: {err}"))?)
             } else {
                 Err(
                     "Some recipients have fog, but no fog ingest report verifier was configured"
@@ -211,69 +225,98 @@ impl Config {
 
     /// Ensure local IP address is valid.
     ///
-    /// Uses icanhazip.com for getting local IP.
     /// Uses ipinfo.io for getting details about IP address.
     ///
-    /// Note, both of these services are free tier and rate-limited. A longer term solution
-    /// would be to filter on the consensus server.
-    #[cfg(feature = "ip-check")]
+    /// Note, both of these services are free tier and rate-limited. A longer
+    /// term solution would be to filter on the consensus server.
+    #[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         let client = Client::builder().gzip(true).use_rustls_tls().build()?;
         let mut json_headers = HeaderMap::new();
         json_headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+
+        if !self.ip_info_token.is_empty() {
+            json_headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", self.ip_info_token))?,
+            );
+        }
+
         let response = client
-            .get("https://icanhazip.com")
-            .send()?
-            .error_for_status()?;
-        let local_ip_addr = response.text()?;
-        let response = client
-            .get(format!("https://ipinfo.io/{}/json/", local_ip_addr).as_str())
+            .get("https://ipinfo.io/json/")
             .headers(json_headers)
             .send()?
             .error_for_status()?;
         let data = response.text()?;
         let data_json: serde_json::Value = serde_json::from_str(&data)?;
-        if let Some(v) = data_json.get("country") {
-            if let Some(country) = v.as_str() {
-                match country {
-                    "US" => Err(ConfigError::InvalidCountry),
-                    _ => Ok(()),
-                }
-            } else {
-                Err(ConfigError::DataMissing(data_json.to_string()))
-            }
-        } else {
-            Err(ConfigError::DataMissing(data_json.to_string()))
+
+        let data_missing_err = Err(ConfigError::DataMissing(data_json.to_string()));
+        let country: &str = match data_json["country"].as_str() {
+            Some(c) => c,
+            None => return data_missing_err,
+        };
+        let region: &str = match data_json["region"].as_str() {
+            Some(r) => r,
+            None => return data_missing_err,
+        };
+
+        let err = Err(ConfigError::InvalidCountry);
+        match country {
+            "IR" | "SY" | "CU" | "KP" => err,
+            "UA" => match region {
+                "Crimea" => err,
+                _ => Ok(()),
+            },
+            _ => Ok(()),
         }
     }
 
-    #[cfg(not(feature = "ip-check"))]
+    /// Ensure local IP address is valid
+    ///
+    /// This does nothing when ip-check is disabled.
+    #[cfg(not(all(feature = "ip-check", not(feature = "bypass-ip-check"))))]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         Ok(())
     }
 }
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt()]
+/// Wrapper for configuring and parsing peer URIs.
+#[derive(Clone, Debug, Parser)]
 pub struct PeersConfig {
-    /// validator nodes to connect to.
-    #[structopt(long = "peer", required_unless = "offline")]
+    /// The chain id of the network we expect to interact with
+    #[clap(long, env = "MC_CHAIN_ID")]
+    pub chain_id: String,
+
+    /// Validator nodes to connect to.
+    /// Sample usages:
+    ///     --peer mc://foo:123 --peer mc://bar:456
+    ///     --peer mc://foo:123,mc://bar:456
+    ///     env MC_PEER=mc://foo:123,mc://bar:456
+    #[clap(
+        long = "peer",
+        required_unless_present = "offline",
+        env = "MC_PEER",
+        use_value_delimiter = true
+    )]
     pub peers: Option<Vec<ConsensusClientUri>>,
 }
 
 impl PeersConfig {
+    /// Parse the peer URIs as ResponderIds.
     pub fn responder_ids(&self) -> Vec<ResponderId> {
         self.peers
-            .clone()
-            .unwrap_or_default()
+            .as_ref()
+            .unwrap()
             .iter()
             .map(|peer| {
-                peer.responder_id()
-                    .expect("Could not get responder_id from peer")
+                peer.responder_id().unwrap_or_else(|err| {
+                    panic!("Could not get responder_id from peer URI {peer}: {err}")
+                })
             })
             .collect()
     }
 
+    /// Instantiate a client for each of the peer URIs.
     pub fn create_peers(
         &self,
         verifier: Verifier,
@@ -281,11 +324,12 @@ impl PeersConfig {
         logger: Logger,
     ) -> Vec<ThickClient<HardcodedCredentialsProvider>> {
         self.peers
-            .clone()
-            .unwrap_or_default()
+            .as_ref()
+            .unwrap()
             .iter()
             .map(|client_uri| {
                 ThickClient::new(
+                    self.chain_id.to_owned(),
                     client_uri.clone(),
                     verifier.clone(),
                     grpc_env.clone(),
@@ -297,6 +341,7 @@ impl PeersConfig {
             .collect()
     }
 
+    /// Instantiate a ConnectionManager for all the peers.
     pub fn create_peer_manager(
         &self,
         verifier: Verifier,

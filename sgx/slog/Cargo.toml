@@ -1,16 +1,20 @@
 [package]
 name = "mc-sgx-slog"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+# TODO: Consider making sgx a self-contained workspace and get the value from there.
+rust-version = "1.68.0"
 
 [features]
 default = []
 sgx = []
 
 [dependencies]
-cfg-if = "0.1"
-prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+cfg-if = "1.0"
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 
 mc-common = { path = "../../common", default-features = false }
 

@@ -1,24 +1,50 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Messages used in Consensus by Peers
 
-use ed25519::signature::Error as SignatureError;
-use failure::Fail;
+use displaydoc::Display;
+use mc_blockchain_types::BlockID;
 use mc_common::{NodeID, ResponderId};
-use mc_consensus_scp::Msg;
+use mc_consensus_scp::msg::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, SignatureError, Signer, Verifier};
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::TxHash, BlockID};
+use mc_transaction_core::{
+    mint::{MintConfigTx, MintTx},
+    tx::TxHash,
+};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, result::Result as StdResult};
+use std::{hash::Hash, result::Result as StdResult};
 
-/// A consensus message holds the data that is exchanged by consensus service nodes as part of the
-/// process of reaching agreement on the contents of the next block.
+/// A single value in a consensus round.
+#[derive(
+    Clone, Debug, Deserialize, Digestible, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub enum ConsensusValue {
+    /// TxHash({0})
+    TxHash(TxHash),
+
+    /// MintConfigTx({0})
+    MintConfigTx(MintConfigTx),
+
+    /// MintTx({0})
+    MintTx(MintTx),
+}
+
+impl From<TxHash> for ConsensusValue {
+    fn from(tx_hash: TxHash) -> Self {
+        Self::TxHash(tx_hash)
+    }
+}
+
+/// A consensus message holds the data that is exchanged by consensus service
+/// nodes as part of the process of reaching agreement on the contents of the
+/// next block.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Digestible)]
 pub struct ConsensusMsg {
-    /// An SCP message, used to reach agreement on the set of values the next block will contain.
-    pub scp_msg: Msg<TxHash>,
+    /// An SCP message, used to reach agreement on the set of values the next
+    /// block will contain.
+    pub scp_msg: Msg<ConsensusValue>,
 
     /// The block ID of the block the message is trying to append values to.
     pub prev_block_id: BlockID,
@@ -34,7 +60,7 @@ pub struct VerifiedConsensusMsg {
 }
 
 impl VerifiedConsensusMsg {
-    pub fn scp_msg(&self) -> &Msg<TxHash> {
+    pub fn scp_msg(&self) -> &Msg<ConsensusValue> {
         &self.inner.scp_msg
     }
 
@@ -72,21 +98,21 @@ pub struct TxProposeAAD {
     pub relayed_by: ResponderId,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum ConsensusMsgError {
-    #[fail(display = "ZeroSlot")]
+    /// ZeroSlot
     ZeroSlot,
 
-    #[fail(display = "Ledger db error: {}", _0)]
+    /// Ledger db error: {0}
     LedgerDbError(mc_ledger_db::Error),
 
-    #[fail(display = "Serialization")]
+    /// Serialization
     Serialization,
 
-    #[fail(display = "Key error: {}", _0)]
+    /// Key error: {0}
     KeyError(KeyError),
 
-    #[fail(display = "Signature error: {}", _0)]
+    /// Signature error: {0}
     SignatureError(SignatureError),
 }
 
@@ -117,22 +143,20 @@ impl From<SignatureError> for ConsensusMsgError {
 impl ConsensusMsg {
     pub fn from_scp_msg(
         ledger: &impl Ledger,
-        scp_msg: Msg<TxHash>,
+        scp_msg: Msg<ConsensusValue>,
         signer_key: &Ed25519Pair,
     ) -> StdResult<Self, ConsensusMsgError> {
         if scp_msg.slot_index == 0 {
             return Err(ConsensusMsgError::ZeroSlot);
         }
 
-        let prev_block = ledger.get_block(scp_msg.slot_index - 1)?;
+        let prev_block_id = ledger.get_block(scp_msg.slot_index - 1)?.id;
 
         let mut contents_hash = [0u8; 32];
         {
             let mut transcript = MerlinTranscript::new(b"peer-message");
             scp_msg.append_to_transcript(b"scp_msg", &mut transcript);
-            prev_block
-                .id
-                .append_to_transcript(b"prev_block_id", &mut transcript);
+            prev_block_id.append_to_transcript(b"prev_block_id", &mut transcript);
             transcript.extract_digest(&mut contents_hash);
         }
 
@@ -140,7 +164,7 @@ impl ConsensusMsg {
 
         Ok(Self {
             scp_msg,
-            prev_block_id: prev_block.id,
+            prev_block_id,
             signature,
         })
     }
@@ -177,10 +201,9 @@ impl ConsensusMsg {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_scp::{core_types::Ballot, msg::*, QuorumSet, SlotIndex};
+    use mc_consensus_scp::{ballot::Ballot, msg::*, QuorumSet, SlotIndex};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers_test_utils::test_node_id_and_signer;
-    use std::convert::TryFrom;
 
     // Create a minimal ConsensusMsg for testing
     fn create_msg_node_a() -> ConsensusMsg {
@@ -192,14 +215,14 @@ mod tests {
         let num_blocks = 10;
         let ledger = get_mock_ledger(num_blocks);
 
-        let msg = ConsensusMsg::from_scp_msg(
+        ConsensusMsg::from_scp_msg(
             &ledger,
             Msg::new(
                 local_node_id,
                 local_quorum_set,
                 num_blocks as u64,
                 Topic::Commit(CommitPayload {
-                    B: Ballot::new(100, &[hash_tx]),
+                    B: Ballot::new(100, &[ConsensusValue::TxHash(hash_tx)]),
                     PN: 77,
                     CN: 55,
                     HN: 66,
@@ -207,8 +230,7 @@ mod tests {
             ),
             &local_signer_key,
         )
-        .unwrap();
-        msg
+        .unwrap()
     }
 
     // Correctly-constructed signature should verify.
@@ -226,7 +248,7 @@ mod tests {
         match msg.verify_signature() {
             Ok(_) => panic!("Signature verification should fail"),
             Err(ConsensusMsgError::SignatureError(_)) => {}
-            Err(e) => panic!("Sigature failed with unexpected error {:?}", e),
+            Err(e) => panic!("Sigature failed with unexpected error {e:?}"),
         }
     }
 
@@ -248,11 +270,11 @@ mod tests {
         assert_eq!(msg.scp_msg.quorum_set, m);
 
         let ser = mc_util_serial::serialize(&msg.scp_msg.topic).unwrap();
-        let m: Topic<TxHash> = mc_util_serial::deserialize(&ser).unwrap();
+        let m: Topic<ConsensusValue> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.topic, m);
 
         let ser = mc_util_serial::serialize(&msg.scp_msg).unwrap();
-        let m: Msg<TxHash> = mc_util_serial::deserialize(&ser).unwrap();
+        let m: Msg<ConsensusValue> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg, m);
 
         let ser = mc_util_serial::serialize(&msg.prev_block_id).unwrap();
@@ -276,7 +298,7 @@ mod tests {
         match VerifiedConsensusMsg::try_from(msg) {
             Ok(_) => panic!("Signature verification should fail"),
             Err(ConsensusMsgError::SignatureError(_)) => {}
-            Err(e) => panic!("Sigature failed with unexpected error {:?}", e),
+            Err(e) => panic!("Sigature failed with unexpected error {e:?}"),
         }
     }
 }

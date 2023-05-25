@@ -1,17 +1,20 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The MobileCoin consensus service.
 
 use crate::{
-    api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService},
+    api::{
+        AttestedApiService, BlockchainApiService, ClientApiService, ClientSessionTracking,
+        PeerApiService,
+    },
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
-    config::Config,
     counters,
+    mint_tx_manager::MintTxManager,
     peer_keepalive::PeerKeepalive,
     tx_manager::TxManager,
 };
-use base64::{encode_config, URL_SAFE};
+use base64::{engine::general_purpose::URL_SAFE as URL_SAFE_BASE64_ENGINE, Engine};
 use displaydoc::Display;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
@@ -21,16 +24,16 @@ use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
-    NodeID, ResponderId,
+    LruCache, NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
-use mc_consensus_enclave::ConsensusEnclave;
+use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
+use mc_consensus_service_config::{Config, Error as ConfigError};
 use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_peers::{ConsensusValue, PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
-use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
     ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,
@@ -60,16 +63,31 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStop(String),
     /// Report cache error: `{0}`
     ReportCache(ReportCacheError),
+    /// Configuration: `{0}`
+    Config(ConfigError),
+    /// Consensus enclave error: `{0}`
+    ConsensusEnclave(ConsensusEnclaveError),
 }
 impl From<ReportCacheError> for ConsensusServiceError {
     fn from(src: ReportCacheError) -> Self {
         ConsensusServiceError::ReportCache(src)
     }
 }
+impl From<ConfigError> for ConsensusServiceError {
+    fn from(src: ConfigError) -> Self {
+        ConsensusServiceError::Config(src)
+    }
+}
+impl From<ConsensusEnclaveError> for ConsensusServiceError {
+    fn from(src: ConsensusEnclaveError) -> Self {
+        ConsensusServiceError::ConsensusEnclave(src)
+    }
+}
 
-/// A consensus message relayed by the broadcast layer. In addition to the consensus message
-/// itself, it includes the node ID the message was received from. Note that this could be
-/// different from the node ID that initiated the message due to relaying.
+/// A consensus message relayed by the broadcast layer. In addition to the
+/// consensus message itself, it includes the node ID the message was received
+/// from. Note that this could be different from the node ID that initiated the
+/// message due to relaying.
 pub struct IncomingConsensusMsg {
     /// The broadcast-layer sender.
     pub from_responder_id: ResponderId,
@@ -78,20 +96,21 @@ pub struct IncomingConsensusMsg {
     pub consensus_msg: VerifiedConsensusMsg,
 }
 
-/// A callback for broadcasting a new transaction to peers and feeding it into ByztantineLedger.
-/// It receives 3 arguments:
+/// A callback for broadcasting a new transaction to peers and feeding it into
+/// ByztantineLedger. It receives 3 arguments:
 /// - TxHash of the the TX that was received
-/// - The NodeID the transaction was originally submitted to
-///   (will be None for values submitted by clients and not relayed by other nodes)
-/// - The NodeID that notified us about this transaction.
-///   (will be None for values submitted by clients and not relayed by other nodes)
+/// - The NodeID the transaction was originally submitted to (will be None for
+///   values submitted by clients and not relayed by other nodes)
+/// - The NodeID that notified us about this transaction. (will be None for
+///   values submitted by clients and not relayed by other nodes)
 pub type ProposeTxCallback =
-    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
+    Arc<dyn Fn(ConsensusValue, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
 pub struct ConsensusService<
     E: ConsensusEnclave + Clone + Send + Sync + 'static,
     R: RaClient + Send + Sync + 'static,
     TXM: TxManager + Clone + Send + Sync + 'static,
+    MTXM: MintTxManager + Clone + Send + Sync + 'static,
 > {
     config: Config,
     local_node_id: NodeID,
@@ -112,6 +131,7 @@ pub struct ConsensusService<
     // and the client and peer api services, via the ProposeTxCallback
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     tx_manager: Arc<TXM>,
+    mint_tx_manager: Arc<MTXM>,
     // Option is only here because we need a way to drop the PeerKeepalive without mutex,
     // if we want to implement Stop as currently concieved
     peer_keepalive: Option<Arc<PeerKeepalive>>,
@@ -124,13 +144,18 @@ pub struct ConsensusService<
     // Option is only here because we need a way to drop the ByzantineLedger without mutex,
     // if we want to implement Stop as currently concieved
     byzantine_ledger: Option<Arc<OnceCell<ByzantineLedger>>>,
+
+    /// Information kept regarding sessions between clients and consensus
+    /// so that we can drop bad sessions.
+    tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,
 }
 
 impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
         R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
-    > ConsensusService<E, R, TXM>
+        MTXM: MintTxManager + Clone + Send + Sync + 'static,
+    > ConsensusService<E, R, TXM, MTXM>
 {
     pub fn new<TP: TimeProvider + 'static>(
         config: Config,
@@ -138,6 +163,7 @@ impl<
         ledger_db: LedgerDB,
         ra_client: R,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         time_provider: Arc<TP>,
         logger: Logger,
     ) -> Self {
@@ -197,7 +223,7 @@ impl<
             } else {
                 Arc::new(AnonymousAuthenticator::default())
             };
-
+        let tracked_sessions = Arc::new(Mutex::new(LruCache::new(config.client_tracking_capacity)));
         // Return
         Self {
             config,
@@ -215,6 +241,7 @@ impl<
             peer_manager,
             broadcaster,
             tx_manager,
+            mint_tx_manager,
             peer_keepalive,
             client_authenticator,
 
@@ -222,6 +249,7 @@ impl<
             consensus_rpc_server: None,
             user_rpc_server: None,
             byzantine_ledger: Some(Arc::new(Default::default())),
+            tracked_sessions,
         }
     }
 
@@ -255,7 +283,8 @@ impl<
     pub fn stop(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(self.logger, "Attempting to stop node...");
 
-        // This will join the peer_keepalive in drop if we are the last thread holding it
+        // This will join the peer_keepalive in drop if we are the last thread holding
+        // it
         self.peer_keepalive = None;
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
@@ -276,12 +305,12 @@ impl<
 
         self.consensus_msgs_from_network.stop().map_err(|e| {
             ConsensusServiceError::BackgroundWorkQueueStop(format!(
-                "consensus_msgs_from_network: {:?}",
-                e
+                "consensus_msgs_from_network: {e:?}"
             ))
         })?;
 
-        // This will join the byzantine ledger in drop if we are the last thread holding it
+        // This will join the byzantine ledger in drop if we are the last thread holding
+        // it
         self.byzantine_ledger = None;
 
         if let Some(ref mut report_cache_thread) = self.report_cache_thread.take() {
@@ -291,7 +320,6 @@ impl<
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn wait_for_all_threads(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(
             self.logger,
@@ -315,16 +343,20 @@ impl<
 
         let client_service =
             consensus_client_grpc::create_consensus_client_api(ClientApiService::new(
+                self.config.clone(),
                 enclave.clone(),
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
+                self.mint_tx_manager.clone(),
                 self.create_is_serving_user_requests_fn(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),
+                self.tracked_sessions.clone(),
             ));
 
         let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(
+            self.config.chain_id.clone(),
             enclave,
             self.client_authenticator.clone(),
             self.logger.clone(),
@@ -334,6 +366,8 @@ impl<
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
+                self.config.tokens().fee_map()?,
+                self.config.block_version,
                 self.logger.clone(),
             ));
 
@@ -353,25 +387,28 @@ impl<
         // Start GRPC server.
         let env = Arc::new(
             EnvBuilder::new()
-                .cq_count(1)
                 .name_prefix("User-RPC".to_string())
                 .build(),
         );
 
-        let server_builder = ServerBuilder::new(env)
+        let server_builder = ServerBuilder::new(env.clone())
             .register_service(client_service)
             .register_service(blockchain_service)
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
-            .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
+            .set_default_channel_args(env);
 
-        let mut server = server_builder.build().unwrap();
+        let mut server = server_builder
+            .build_using_uri(&self.config.client_listen_uri, self.logger.clone())
+            .expect("Could not bind to client listen URI");
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(self.logger, "Peer GRPC API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "Peer GRPC API listening on {}",
+            self.config.client_listen_uri.addr()
+        );
 
         self.user_rpc_server = Some(server);
 
@@ -388,6 +425,7 @@ impl<
                     "Consensus Service".to_owned(),
                     self.config.peer_responder_id.to_string(),
                     Some(self.create_get_config_json_fn()),
+                    vec![],
                     self.logger.clone(),
                 )
                 .expect("Failed starting admin grpc server"),
@@ -427,6 +465,8 @@ impl<
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
+                self.config.tokens().fee_map()?,
+                self.config.block_version,
                 self.logger.clone(),
             ));
 
@@ -442,6 +482,7 @@ impl<
         ));
 
         let attested_service = create_attested_api(AttestedApiService::<PeerSession>::new(
+            self.config.chain_id.clone(),
             enclave,
             peer_authenticator,
             self.logger.clone(),
@@ -456,15 +497,18 @@ impl<
             .register_service(peer_service)
             .register_service(health_service)
             .register_service(attested_service)
-            .register_service(build_info_service)
-            .bind_using_uri(&self.config.peer_listen_uri, self.logger.clone());
+            .register_service(build_info_service);
 
-        let mut server = server_builder.build().unwrap();
+        let mut server = server_builder
+            .build_using_uri(&self.config.peer_listen_uri, self.logger.clone())
+            .expect("Could not bind to peer listen URI");
         server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(self.logger, "Peer GRPC API listening on {}:{}", host, port);
-        }
+        log::info!(
+            self.logger,
+            "Peer GRPC API listening on {}",
+            self.config.peer_listen_uri.addr()
+        );
 
         self.consensus_rpc_server = Some(server);
 
@@ -482,9 +526,11 @@ impl<
             .set(ByzantineLedger::new(
                 self.local_node_id.clone(),
                 self.config.network().quorum_set(),
+                self.enclave.clone(),
                 self.peer_manager.clone(),
                 self.ledger_db.clone(),
                 self.tx_manager.clone(),
+                self.mint_tx_manager.clone(),
                 self.broadcaster.clone(),
                 self.config.msg_signer_key.clone(),
                 self.config.network().tx_source_urls,
@@ -533,7 +579,8 @@ impl<
         Ok(())
     }
 
-    /// Creates a function that returns true if the node is currently serving user requests.
+    /// Creates a function that returns true if the node is currently serving
+    /// user requests.
     fn create_is_serving_user_requests_fn(&self) -> Arc<dyn Fn() -> bool + Sync + Send> {
         let byzantine_ledger = self
             .byzantine_ledger
@@ -549,8 +596,8 @@ impl<
         })
     }
 
-    /// Creates a function that feeds client values into ByzantineLedger and broadcasts it to our
-    /// peers.
+    /// Creates a function that feeds client values into ByzantineLedger and
+    /// broadcasts it to our peers.
     fn create_scp_client_value_sender_fn(&self) -> ProposeTxCallback {
         let byzantine_ledger = self
             .byzantine_ledger
@@ -561,8 +608,8 @@ impl<
         let local_node_id = self.local_node_id.clone();
         let broadcaster = self.broadcaster.clone();
 
-        // Figure out which node IDs we are going to be relaying received transactions from.
-        // See comment below ("Broadcast to peers") for more details.
+        // Figure out which node IDs we are going to be relaying received transactions
+        // from. See comment below ("Broadcast to peers") for more details.
         let relay_from_nodes: Vec<ResponderId> = self
             .peer_manager
             .conns()
@@ -587,37 +634,48 @@ impl<
             })
             .collect();
 
-        Arc::new(move |tx_hash, origin_node, relayed_from| {
+        Arc::new(move |scp_value, origin_node, relayed_from| {
             let origin_node = origin_node.unwrap_or(&local_node_id);
-
-            // Broadcast to peers.
-            //
-            // Nodes always relay transactions sent to them by clients to all their peers. As such, in
-            // mesh network configurations there is no need to relay transactions received from other
-            // peers since the originating node will already take care of sending the transaction to all
-            // of it's peers.
-            // However, in non-mesh configurations, network operators might want to selectively have
-            // incoming transactions from certain peers be relayed to other peers in order to improve
-            // consensus time.
-            if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
-            {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
-                    broadcaster
-                        .lock()
-                        .expect("lock poisoned")
-                        .broadcast_propose_tx_msg(
-                            &tx_hash,
-                            encrypted_tx,
-                            origin_node,
-                            relayed_from.unwrap_or(&local_node_id.responder_id),
-                        );
-                } else {
-                    // If a value was submitted to `scp_client_value_sender` that means it
-                    // should've found it's way into the cache. Suddenly not having it there
-                    // indicates something is broken, so for the time being we will panic.
-                    panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+            match scp_value {
+                ConsensusValue::TxHash(tx_hash) => {
+                    // Broadcast to peers.
+                    //
+                    // Nodes always relay transactions sent to them by clients to all their peers.
+                    // As such, in mesh network configurations there is no need to relay
+                    // transactions received from other peers since the originating node
+                    // will already take care of sending the transaction to all
+                    // of it's peers.
+                    // However, in non-mesh configurations, network operators might want to
+                    // selectively have incoming transactions from certain peers be
+                    // relayed to other peers in order to improve consensus time.
+                    if origin_node == &local_node_id
+                        || relay_from_nodes.contains(&origin_node.responder_id)
+                    {
+                        if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
+                            broadcaster
+                                .lock()
+                                .expect("lock poisoned")
+                                .broadcast_propose_tx_msg(
+                                    &tx_hash,
+                                    encrypted_tx,
+                                    origin_node,
+                                    relayed_from.unwrap_or(&local_node_id.responder_id),
+                                );
+                        } else {
+                            // If a value was submitted to `scp_client_value_sender` that means it
+                            // should've found it's way into the cache. Suddenly not having it there
+                            // indicates something is broken, so for the time being we will panic.
+                            panic!("tx hash {tx_hash} expected to be in cache but wasn't");
+                        }
+                    }
                 }
-            }
+
+                ConsensusValue::MintTx(_) | ConsensusValue::MintConfigTx(_) => {
+                    // MintTxs and MintConfigTxs do not need to be broadcasted
+                    // to peers, they will learn about them
+                    // directly via SCP messages.
+                }
+            };
 
             // Feed into ByzantineLedger.
             let timestamp = if origin_node == &local_node_id {
@@ -628,12 +686,13 @@ impl<
             byzantine_ledger.upgrade().and_then(|ledger| {
                 ledger
                     .get()
-                    .map(|ledger| ledger.push_values(vec![tx_hash], timestamp))
+                    .map(|ledger| ledger.push_values(vec![scp_value], timestamp))
             });
         })
     }
 
-    /// Helper method for creating the get config json function needed by the GRPC admin service.
+    /// Helper method for creating the get config json function needed by the
+    /// GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
         let ledger_db = self.ledger_db.clone();
         let byzantine_ledger = self
@@ -670,9 +729,10 @@ impl<
 
                     latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
                         Ok(x) => Some(x.signed_at()),
-                        // Note, a block signature will be missing if the corresponding block was not
-                        // processed by an enclave participating in consensus. For example, unsigned
-                        // blocks can be created by a validator node that falls behind its peers and
+                        // Note, a block signature will be missing if the corresponding block was
+                        // not processed by an enclave participating in
+                        // consensus. For example, unsigned blocks can be
+                        // created by a validator node that falls behind its peers and
                         // enters into catchup.
                         Err(LedgerDbError::NotFound) => {
                             log::trace!(logger, "Block signature not found for block {}", b - 1);
@@ -704,7 +764,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": encode_config(&config.msg_signer_key.public_key().to_der(), URL_SAFE),
+                    "message_pubkey": URL_SAFE_BASE64_ENGINE.encode(config.msg_signer_key.public_key().to_der()),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
@@ -735,7 +795,8 @@ impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
         R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
-    > Drop for ConsensusService<E, R, TXM>
+        MTXM: MintTxManager + Clone + Send + Sync + 'static,
+    > Drop for ConsensusService<E, R, TXM, MTXM>
 {
     fn drop(&mut self) {
         let _ = self.stop();

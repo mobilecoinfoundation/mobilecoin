@@ -1,13 +1,16 @@
 [package]
 name = "mc-enclave-boundary"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
 
 [dependencies]
-rand_core = { version = "0.5", default-features = false }
+rand_core = { version = "0.6", default-features = false }
 
 mc-common = { path = "../common", default-features = false }
-mc-crypto-rand = { path = "../crypto/rand" }
+mc-rand = "1.0"
 mc-sgx-compat = { path = "../sgx/compat" }
 mc-sgx-types = { path = "../sgx/types" }

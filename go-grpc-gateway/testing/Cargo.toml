@@ -1,0 +1,37 @@
+[package]
+name = "go-grpc-gateway-testing"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+default-run = "stub"
+rust-version = { workspace = true }
+
+[lib]
+name = "fog_stub_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "stub"
+path = "src/bin/main.rs"
+
+[dependencies]
+# mobilecoin
+mc-attest-core = { path = "../../attest/core" }
+mc-common = { path = "../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-metrics = { path = "../../util/metrics" }
+mc-util-uri = { path = "../../util/uri" }
+
+# fog
+mc-fog-report-api = { path = "../../fog/report/api" }
+mc-fog-report-server = { path = "../../fog/report/server" }
+mc-fog-report-types = { path = "../../fog/report/types" }
+
+# third-party
+clap = { version = "4.1", features = ["derive", "env"] }
+displaydoc = "0.2"
+futures = "0.3"
+grpcio = "0.12.1"
+serde = { version = "1.0", features = ["derive"] }

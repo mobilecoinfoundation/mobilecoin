@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! BackgroundWorkQueue: A data structure that wraps crossbeam_channel queues for background message processing
-//! by a worker thread. It allows multiple threads to send messages to the queue.
+//! BackgroundWorkQueue: A data structure that wraps crossbeam_channel queues
+//! for background message processing by a worker thread. It allows multiple
+//! threads to send messages to the queue.
 
 use mc_util_metered_channel::{self, Receiver, Sender};
 use mc_util_metrics::IntGauge;
@@ -82,7 +83,8 @@ impl<T: Send + 'static> BackgroundWorkQueue<T> {
     }
 
     pub fn stop(&mut self) -> Result<(), BackgroundWorkQueueError> {
-        // Send a stop request. We ignore return value since we might already be stopped.
+        // Send a stop request. We ignore return value since we might already be
+        // stopped.
         let _ = self.send_msg(QueueMsg::StopRequested);
 
         self.join()
@@ -92,18 +94,12 @@ impl<T: Send + 'static> BackgroundWorkQueue<T> {
         if let Some(join_handle) = self.join_handle.take() {
             return join_handle
                 .join()
-                .map_err(|e| BackgroundWorkQueueError::JoinFailed(format!("{:?}", e)))?;
+                .map_err(|e| BackgroundWorkQueueError::JoinFailed(format!("{e:?}")))?;
         }
 
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn send(&self, msg: T) -> Result<(), BackgroundWorkQueueError> {
-        self.send_msg(QueueMsg::Handle(msg))
-    }
-
-    #[allow(dead_code)]
     pub fn get_sender_fn(&self) -> BackgroundWorkQueueSenderFn<T> {
         let sender = self.sender.clone();
         Arc::new(move |msg| {

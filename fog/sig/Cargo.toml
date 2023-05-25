@@ -1,21 +1,23 @@
 [package]
 name = "mc-fog-sig"
-version = "1.0.1-pre1"
+version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "Verify Fog Signatures"
+license = "Apache-2.0"
+rust-version = { workspace = true }
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys"}
+mc-account-keys = { path = "../../account-keys" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-x509-utils = { path = "../../crypto/x509/utils" }
-mc-fog-sig-report = { path = "./report" }
+mc-fog-report-types = { path = "../report/types" }
 mc-fog-sig-authority = { path = "./authority" }
-mc-fog-types = { path = "../types" }
+mc-fog-sig-report = { path = "./report" }
 
-displaydoc = { version = "0.1.7" }
-pem = "0.8"
-signature = { version = "1.2.2" }
+displaydoc = "0.2"
+pem = "2.0"
+signature = { version = "2.0.0" }
 x509-signature = "0.5"
 
 [dev-dependencies]
@@ -23,5 +25,5 @@ mc-attest-core = { path = "../../attest/core" }
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-from-random = { path = "../../util/from-random" }
 
-rand_core = "0.5"
-rand_hc = "0.2"
+rand_core = "0.6"
+rand_hc = "0.3"

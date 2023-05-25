@@ -2,24 +2,28 @@ use digest::{generic_array, Digest};
 use generic_array::typenum::{IsGreaterOrEqual, B1, U32};
 use mc_crypto_digestible::DigestTranscript;
 
-/// An object which implements the DigestTranscript API over a cryptographic digest function.
+/// An object which implements the DigestTranscript API over a cryptographic
+/// digest function.
 ///
-/// `append_bytes(context, data)` is implemented by providing framing for context, then appending it,
-/// then providing framing for data, then appending it.
+/// `append_bytes(context, data)` is implemented by providing framing for
+/// context, then appending it, then providing framing for data, then appending
+/// it.
 ///
 /// As long as the chosen digest function used is actually collision-resistant,
-/// then this can be used as a drop-in for MerlinTranscript, for purposes of Digestible
-/// crate.
+/// then this can be used as a drop-in for MerlinTranscript, for purposes of
+/// Digestible crate.
 ///
 /// This is not and cannot be a fully-general drop-in for Merlin transcripts,
-/// especially when multiple rounds of challenge-bytes extraction are taking place.
+/// especially when multiple rounds of challenge-bytes extraction are taking
+/// place.
 ///
-/// The best use-case for something like this is when e.g. you MUST create an ed25519ph signature,
-/// and MUST have a SHA512 hasher into which your structure has been correctly marshalled.
+/// The best use-case for something like this is when e.g. you MUST create an
+/// ed25519ph signature, and MUST have a SHA512 hasher into which your structure
+/// has been correctly marshalled.
 pub struct PseudoMerlin<D>
 where
     D: Digest,
-    <D as Digest>::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
+    D::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
 {
     pub inner: D,
 }
@@ -29,7 +33,7 @@ where
 pub fn PseudoMerlin<D>(digest: D) -> PseudoMerlin<D>
 where
     D: Digest,
-    <D as Digest>::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
+    D::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
 {
     PseudoMerlin { inner: digest }
 }
@@ -37,13 +41,11 @@ where
 impl<D> DigestTranscript for PseudoMerlin<D>
 where
     D: Digest,
-    <D as Digest>::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
+    D::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
 {
     #[inline]
     fn new() -> Self {
-        Self {
-            inner: <D as Digest>::new(),
-        }
+        Self { inner: D::new() }
     }
 
     #[inline]

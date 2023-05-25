@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 import argparse, datetime
 from flask import Flask, render_template

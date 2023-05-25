@@ -1,13 +1,17 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::tx_manager::TxManagerError;
+use crate::{mint_tx_manager::MintTxManagerError, tx_manager::TxManagerError};
 use displaydoc::Display;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::logger::global_log;
-use mc_consensus_api::consensus_common::{ProposeTxResponse, ProposeTxResult};
+use mc_consensus_api::{
+    consensus_client::{MintValidationResult, ProposeMintConfigTxResponse, ProposeMintTxResponse},
+    consensus_common::{ProposeTxResponse, ProposeTxResult},
+};
 use mc_consensus_enclave::Error as EnclaveError;
+use mc_consensus_service_config::Error as ConfigError;
 use mc_ledger_db::Error as LedgerError;
-use mc_transaction_core::validation::TransactionValidationError;
+use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
 
 #[derive(Debug, Display)]
 pub enum ConsensusGrpcError {
@@ -29,8 +33,14 @@ pub enum ConsensusGrpcError {
     /// Transaction validation error `{0}`
     TransactionValidation(TransactionValidationError),
 
+    /// Mint transaction validation error `{0}`
+    MintValidation(MintValidationError),
+
     /// Invalid argument `{0}`
     InvalidArgument(String),
+
+    /// Configuration error `{0}`
+    Config(ConfigError),
 
     /// Other error `{0}`
     Other(String),
@@ -63,14 +73,35 @@ impl From<TransactionValidationError> for ConsensusGrpcError {
     }
 }
 
+impl From<MintValidationError> for ConsensusGrpcError {
+    fn from(src: MintValidationError) -> Self {
+        Self::MintValidation(src)
+    }
+}
+
 impl From<TxManagerError> for ConsensusGrpcError {
     fn from(src: TxManagerError) -> Self {
         match src {
             TxManagerError::Enclave(err) => Self::from(err),
             TxManagerError::TransactionValidation(err) => Self::from(err),
             TxManagerError::LedgerDb(err) => Self::from(err),
-            _ => Self::Other(format!("tx manager error: {}", src)),
+            _ => Self::Other(format!("tx manager error: {src}")),
         }
+    }
+}
+
+impl From<MintTxManagerError> for ConsensusGrpcError {
+    fn from(src: MintTxManagerError) -> Self {
+        match src {
+            MintTxManagerError::MintValidation(err) => Self::from(err),
+            MintTxManagerError::LedgerDb(err) => Self::from(err),
+        }
+    }
+}
+
+impl From<ConfigError> for ConsensusGrpcError {
+    fn from(src: ConfigError) -> Self {
+        Self::Config(src)
     }
 }
 
@@ -78,52 +109,84 @@ impl From<ConsensusGrpcError> for RpcStatus {
     fn from(src: ConsensusGrpcError) -> Self {
         match src {
             ConsensusGrpcError::RpcStatus(rpc_status) => rpc_status,
-            ConsensusGrpcError::Ledger(err) => RpcStatus::new(
-                RpcStatusCode::INTERNAL,
-                Some(format!("Ledger error: {}", err)),
-            ),
-            ConsensusGrpcError::OverCapacity => RpcStatus::new(
+            ConsensusGrpcError::Ledger(err) => {
+                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Ledger error: {err}"))
+            }
+            ConsensusGrpcError::OverCapacity => RpcStatus::with_message(
                 RpcStatusCode::UNAVAILABLE,
-                Some("Temporarily over capacity".into()),
+                "Temporarily over capacity".into(),
             ),
-            ConsensusGrpcError::NotServing => RpcStatus::new(
+            ConsensusGrpcError::NotServing => RpcStatus::with_message(
                 RpcStatusCode::UNAVAILABLE,
-                Some("Temporarily not serving requests".into()),
+                "Temporarily not serving requests".into(),
             ),
             ConsensusGrpcError::Enclave(EnclaveError::Attest(err)) => {
-                global_log::error!("Permission denied: {}", err);
-                RpcStatus::new(
+                global_log::info!("Permission denied: {}", err);
+                RpcStatus::with_message(
                     RpcStatusCode::PERMISSION_DENIED,
-                    Some("Permission Denied (attestation)".into()),
+                    "Permission Denied (attestation)".into(),
                 )
             }
-            ConsensusGrpcError::Other(err) => RpcStatus::new(RpcStatusCode::INTERNAL, Some(err)),
+            ConsensusGrpcError::Other(err) => RpcStatus::with_message(RpcStatusCode::INTERNAL, err),
             ConsensusGrpcError::TransactionValidation(err) => {
                 global_log::error!("Attempting to convert a ConsensusGrpcError::TransactionValidation into RpcStatus, this should not happen! Error is: {}", err);
-                RpcStatus::new(
+                RpcStatus::with_message(
                     RpcStatusCode::INTERNAL,
-                    Some(format!("Unexpected transaction validation error: {}", err)),
+                    format!("Unexpected transaction validation error: {err}"),
                 )
             }
-            _ => RpcStatus::new(
-                RpcStatusCode::INTERNAL,
-                Some(format!("Internal error: {}", src)),
-            ),
+            _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Internal error: {src}")),
         }
     }
 }
 
-/// Convert a `ConsensusGrpcError` into either `ProposeTxResponse` or `RpcStatus`, depending on which error
-/// it holds.
-impl Into<Result<ProposeTxResponse, RpcStatus>> for ConsensusGrpcError {
-    fn into(self) -> Result<ProposeTxResponse, RpcStatus> {
-        match self {
-            Self::TransactionValidation(err) => {
+/// Convert a `ConsensusGrpcError` into either `ProposeTxResponse` or
+/// `RpcStatus`, depending on which error it holds.
+impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
+    fn from(src: ConsensusGrpcError) -> Result<ProposeTxResponse, RpcStatus> {
+        match src {
+            ConsensusGrpcError::TransactionValidation(err) => {
                 let mut resp = ProposeTxResponse::new();
+                resp.set_err_msg(err.to_string());
                 resp.set_result(ProposeTxResult::from(err));
                 Ok(resp)
             }
-            _ => Err(RpcStatus::from(self)),
+            ConsensusGrpcError::Enclave(EnclaveError::FeeMapDigestMismatch) => {
+                let mut resp = ProposeTxResponse::new();
+                resp.set_err_msg(EnclaveError::FeeMapDigestMismatch.to_string());
+                resp.set_result(ProposeTxResult::FeeMapDigestMismatch);
+                Ok(resp)
+            }
+
+            _ => Err(RpcStatus::from(src)),
+        }
+    }
+}
+
+/// Convert a `ConsensusGrpcError` into either `ProposeMintConfigTxResponse`
+/// or `RpcStatus`, depending on which error it holds.
+impl From<ConsensusGrpcError> for Result<ProposeMintConfigTxResponse, RpcStatus> {
+    fn from(src: ConsensusGrpcError) -> Result<ProposeMintConfigTxResponse, RpcStatus> {
+        match src {
+            ConsensusGrpcError::MintValidation(err) => Ok(ProposeMintConfigTxResponse {
+                result: Some(MintValidationResult::from(err)).into(),
+                ..Default::default()
+            }),
+            _ => Err(RpcStatus::from(src)),
+        }
+    }
+}
+
+/// Convert a `ConsensusGrpcError` into either `ProposeMintTxResponse`
+/// or `RpcStatus`, depending on which error it holds.
+impl From<ConsensusGrpcError> for Result<ProposeMintTxResponse, RpcStatus> {
+    fn from(src: ConsensusGrpcError) -> Result<ProposeMintTxResponse, RpcStatus> {
+        match src {
+            ConsensusGrpcError::MintValidation(err) => Ok(ProposeMintTxResponse {
+                result: Some(MintValidationResult::from(err)).into(),
+                ..Default::default()
+            }),
+            _ => Err(RpcStatus::from(src)),
         }
     }
 }

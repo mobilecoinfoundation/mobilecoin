@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use prost::Message;
 
@@ -11,7 +11,8 @@ extern "C" {
 use mc_common::logger::slog;
 use slog::{o, Logger};
 
-/// slog Drain for use inside enclaves, that uses an OCALL to output log messages.
+/// slog Drain for use inside enclaves, that uses an OCALL to output log
+/// messages.
 pub struct EnclaveOCallDrain;
 impl slog::Drain for EnclaveOCallDrain {
     type Ok = ();

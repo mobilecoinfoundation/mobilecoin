@@ -1,11 +1,12 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Extension traits that make it easier to start GRPC servers and connect to them using URIs.
+//! Extension traits that make it easier to start GRPC servers and connect to
+//! them using URIs.
 
 use crate::ServerCertReloader;
 use grpcio::{
     CertificateRequestType, Channel, ChannelBuilder, ChannelCredentialsBuilder, Environment,
-    ServerBuilder,
+    Result, Server, ServerBuilder, ServerCredentials,
 };
 use mc_common::logger::{log, Logger};
 use mc_util_uri::ConnectionUri;
@@ -17,7 +18,7 @@ pub trait ConnectionUriGrpcioChannel {
     fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
         ChannelBuilder::new(env)
             .keepalive_permit_without_calls(true)
-            .keepalive_time(Duration::from_secs(1))
+            .keepalive_time(Duration::from_secs(10))
             .keepalive_timeout(Duration::from_secs(20))
             .max_reconnect_backoff(Duration::from_millis(2000))
             .initial_reconnect_backoff(Duration::from_millis(1000))
@@ -39,9 +40,10 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
                 None => ChannelCredentialsBuilder::new().build(),
             };
 
-            log::debug!(logger, "Creating secure gRPC connection to {}", uri.addr(),);
+            log::debug!(logger, "Creating secure gRPC connection to {}", uri.addr());
 
-            self.secure_connect(&uri.addr(), creds)
+            self = self.set_credentials(creds);
+            self.connect(&uri.addr())
         } else {
             log::warn!(
                 logger,
@@ -56,13 +58,25 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 
 /// A trait to ease grpio server construction from URIs.
 pub trait ConnectionUriGrpcioServer {
-    /// Bind a ServerBuilder using information from a URI and enable support for hot-reloading
-    /// certificates when TLS is used.
-    fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
-}
+    /// Build a Server from a ServerBuilder using information from a URI and
+    /// enable support for hot-reloading certificates when TLS is used.
+    fn build_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Result<Server>;
 
-impl ConnectionUriGrpcioServer for ServerBuilder {
-    fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self {
+    /// Create the default channel settings for server
+    fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
+        ChannelBuilder::new(env)
+            .keepalive_permit_without_calls(true)
+            .keepalive_time(Duration::from_secs(10))
+            .keepalive_timeout(Duration::from_secs(20))
+            .http2_min_recv_ping_interval_without_data(Duration::from_secs(5))
+    }
+
+    /// Set the channel args to our defaults.
+    #[must_use]
+    fn set_default_channel_args(self, env: Arc<Environment>) -> Self;
+
+    /// Get ServerCredentials from a URI
+    fn server_credentials_from_uri(uri: &impl ConnectionUri, logger: &Logger) -> ServerCredentials {
         if uri.use_tls() {
             let tls_chain_path = uri
                 .tls_chain_path()
@@ -71,17 +85,46 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 .tls_key_path()
                 .expect("Uri must have tls-key in when using TLS");
 
-            let reloader = ServerCertReloader::new(&tls_chain_path, &tls_key_path, logger)
+            let reloader = ServerCertReloader::new(&tls_chain_path, &tls_key_path, logger.clone())
                 .expect("Failed creating ServerCertReloader");
 
-            self.bind_with_fetcher(
-                uri.host(),
-                uri.port(),
+            ServerCredentials::with_fetcher(
                 Box::new(reloader),
                 CertificateRequestType::DontRequestClientCertificate,
             )
         } else {
-            self.bind(uri.host(), uri.port())
+            ServerCredentials::insecure()
         }
+    }
+}
+
+impl ConnectionUriGrpcioServer for ServerBuilder {
+    fn build_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Result<Server> {
+        let server_creds = Self::server_credentials_from_uri(uri, &logger);
+
+        if uri.use_tls() {
+            log::debug!(
+                logger,
+                "Binding secure gRPC server to {}:{}",
+                uri.host(),
+                uri.port(),
+            );
+        } else {
+            log::warn!(
+                logger,
+                "Binding insecure gRPC server to {}:{}",
+                uri.host(),
+                uri.port(),
+            );
+        }
+
+        let mut server = self.build()?;
+        server.add_listening_port(uri.addr(), server_creds)?;
+        Ok(server)
+    }
+
+    /// Set the channel args to our defaults.
+    fn set_default_channel_args(self, env: Arc<Environment>) -> Self {
+        self.channel_args(Self::default_channel_builder(env).build_args())
     }
 }
