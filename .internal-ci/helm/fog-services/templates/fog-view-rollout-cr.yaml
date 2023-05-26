@@ -60,14 +60,14 @@ spec:
                   app: fog-view-router
                   helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 18 }}
-            affinity:
-              podAntiAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                - topologyKey: kubernetes.io/hostname
-                  labelSelector:
-                    app: fog-view-router
-                    helm.sh/chart: {{ include "fogServices.chart" . }}
-                    {{- include "fogServices.selectorLabels" . | nindent 20 }}
+            - topologyKey: topology.kubernetes.io/hostname
+              maxSkew: 1
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app: fog-view-router
+                  helm.sh/chart: {{ include "fogServices.chart" . }}
+                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
             imagePullSecrets:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
             containers:
@@ -213,14 +213,18 @@ spec:
                 app: fog-view-store
                 helm.sh/chart: {{ include "fogServices.chart" . }}
                 {{- include "fogServices.selectorLabels" . | nindent 16 }}
-          affinity:
-            podAntiAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-              - topologyKey: kubernetes.io/hostname
-                labelSelector:
-                  app: fog-view-store
-                  helm.sh/chart: {{ include "fogServices.chart" . }}
-                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
+            matchLabelKeys:
+            - statefulset
+          - topologyKey: topology.kubernetes.io/hostname
+            maxSkew: 1
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app: fog-view-store
+                helm.sh/chart: {{ include "fogServices.chart" . }}
+                {{- include "fogServices.selectorLabels" . | nindent 16 }}
+            matchLabelKeys:
+            - statefulset
           imagePullSecrets:
           {{- toYaml .Values.imagePullSecrets | nindent 10 }}
           initContainers:

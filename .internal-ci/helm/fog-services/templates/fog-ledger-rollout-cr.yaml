@@ -44,14 +44,14 @@ spec:
                   app: fog-ledger-router
                   helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 16 }}
-            affinity:
-              podAntiAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                - topologyKey: kubernetes.io/hostname
-                  labelSelector:
-                    app: fog-ledger-router
-                    helm.sh/chart: {{ include "fogServices.chart" . }}
-                    {{- include "fogServices.selectorLabels" . | nindent 18 }}
+            - topologyKey: topology.kubernetes.io/hostname
+              maxSkew: 1
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app: fog-ledger-router
+                  helm.sh/chart: {{ include "fogServices.chart" . }}
+                  {{- include "fogServices.selectorLabels" . | nindent 16 }}
             imagePullSecrets:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
             terminationGracePeriodSeconds: 30
@@ -212,7 +212,7 @@ spec:
         - metadata:
             name: fog-data
           spec:
-            {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
+            {{- toYaml .Values.fogLedger.persistence.spec | nindent 12 }}
         {{- end }}
 
   store:
@@ -244,6 +244,18 @@ spec:
                 app: fog-ledger-store
                 helm.sh/chart: {{ include "fogServices.chart" . }}
                 {{- include "fogServices.selectorLabels" . | nindent 14 }}
+            matchLabelKeys:
+            - statefulset
+          - topologyKey: topology.kubernetes.io/hostname
+            maxSkew: 1
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app: fog-ledger-store
+                helm.sh/chart: {{ include "fogServices.chart" . }}
+                {{- include "fogServices.selectorLabels" . | nindent 14 }}
+            matchLabelKeys:
+            - statefulset
           affinity:
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
