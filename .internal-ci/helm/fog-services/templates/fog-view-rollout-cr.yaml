@@ -58,15 +58,13 @@ spec:
               labelSelector:
                 matchLabels:
                   app: fog-view-router
-                  helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 18 }}
-            - topologyKey: topology.kubernetes.io/hostname
+            - topologyKey: kubernetes.io/hostname
               maxSkew: 1
               whenUnsatisfiable: DoNotSchedule
               labelSelector:
                 matchLabels:
                   app: fog-view-router
-                  helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 18 }}
             imagePullSecrets:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
@@ -211,17 +209,15 @@ spec:
             labelSelector:
               matchLabels:
                 app: fog-view-store
-                helm.sh/chart: {{ include "fogServices.chart" . }}
                 {{- include "fogServices.selectorLabels" . | nindent 16 }}
             matchLabelKeys:
             - statefulset
-          - topologyKey: topology.kubernetes.io/hostname
+          - topologyKey: kubernetes.io/hostname
             maxSkew: 1
             whenUnsatisfiable: DoNotSchedule
             labelSelector:
               matchLabels:
                 app: fog-view-store
-                helm.sh/chart: {{ include "fogServices.chart" . }}
                 {{- include "fogServices.selectorLabels" . | nindent 16 }}
             matchLabelKeys:
             - statefulset
