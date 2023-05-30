@@ -310,12 +310,6 @@ spec:
                 port: 3225
               failureThreshold: 480
               periodSeconds: 30
-            # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
-            livenessProbe:
-              grpc:
-                port: 3225
-              failureThreshold: 5
-              periodSeconds: 30
             # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:
               grpc:

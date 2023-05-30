@@ -57,6 +57,8 @@ spec:
               options:
               - name: ndots
                 value: "1"
+            initContainers:
+            {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 12 }}
             containers:
             - name: fog-ledger-router
               image: "{{ .Values.fogLedgerRouter.image.org | default .Values.image.org }}/{{ .Values.fogLedgerRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -105,13 +107,6 @@ spec:
                     optional: true
               - name: CLIENT_RESPONDER_ID
                 value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
-              livenessProbe:
-                grpc:
-                  port: 3228
-                failureThreshold: 4
-                periodSeconds: 30
-                successThreshold: 1
-                timeoutSeconds: 1
               readinessProbe:
                 grpc:
                   port: 3228
@@ -320,12 +315,6 @@ spec:
                 port: 3228
               # Wait up to 2 hours for startup
               failureThreshold: 240
-              periodSeconds: 30
-            # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
-            livenessProbe:
-              grpc:
-                port: 3228
-              failureThreshold: 5
               periodSeconds: 30
             # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:
