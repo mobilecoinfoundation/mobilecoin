@@ -174,8 +174,10 @@ fogView:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
+      memory: 3Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -290,8 +292,10 @@ fogLedger:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 1Gi
     requests:
       intel.com/sgx: 5000
+      memory: 1Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'

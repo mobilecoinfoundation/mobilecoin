@@ -58,14 +58,12 @@ spec:
               labelSelector:
                 matchLabels:
                   app: fog-view-router
-                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
             - topologyKey: kubernetes.io/hostname
               maxSkew: 1
               whenUnsatisfiable: DoNotSchedule
               labelSelector:
                 matchLabels:
                   app: fog-view-router
-                  {{- include "fogServices.selectorLabels" . | nindent 18 }}
             imagePullSecrets:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
             containers:
@@ -187,6 +185,7 @@ spec:
     servicePort: 80
     targetPort: view-grpc
     spec:
+      podManagementPolicy: {{ .Values.fogViewRouter.podManagementPolicy }}
       replicas: {{ .Values.fogView.replicaCount }}
       selector:
         matchLabels:
@@ -209,7 +208,6 @@ spec:
             labelSelector:
               matchLabels:
                 app: fog-view-store
-                {{- include "fogServices.selectorLabels" . | nindent 16 }}
             matchLabelKeys:
             - statefulset
           - topologyKey: kubernetes.io/hostname
@@ -218,7 +216,6 @@ spec:
             labelSelector:
               matchLabels:
                 app: fog-view-store
-                {{- include "fogServices.selectorLabels" . | nindent 16 }}
             matchLabelKeys:
             - statefulset
           imagePullSecrets:
