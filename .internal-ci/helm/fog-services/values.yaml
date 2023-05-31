@@ -20,8 +20,10 @@ fogViewRouter:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 1Gi
     requests:
       intel.com/sgx: 5000
+      memory: 1Gi
   nodeSelector:
     sgx-enabled-node: 'true'
   tolerations:
@@ -51,15 +53,12 @@ blockHeighRetrieval:
   requestBody: '{"method": "get_network_status", "jsonrpc": "2.0", "id": 1}'
   responseJQ: .result.network_status.network_block_height
 
-fogViewStores:
-  shardSize: 400_000
+fogViewStores: &shards
+  shardSize: 800_000
   exceedBlockHeightBy: 200_000
-  shardOverlap: 200_000
+  shardOverlap: 400_000
 
-fogLedgerStores:
-  shardSize: 400_000
-  exceedBlockHeightBy: 200_000
-  shardOverlap: 200_000
+fogLedgerStores: *shards
 
 imagePullSecrets:
 - name: docker-credentials
@@ -208,8 +207,10 @@ fogLedgerRouter:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 1Gi
     requests:
       intel.com/sgx: 5000
+      memory: 1Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -292,10 +293,10 @@ fogLedger:
   resources:
     limits:
       intel.com/sgx: 5000
-      memory: 1Gi
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
-      memory: 1Gi
+      memory: 3Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'

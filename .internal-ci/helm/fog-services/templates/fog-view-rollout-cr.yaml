@@ -32,6 +32,9 @@ spec:
               app: fog-view-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
+            # Prevent endpoint creation until all shards for this router are ready
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
             volumes:
             - emptyDir: {}
               name: aesm-socket-dir

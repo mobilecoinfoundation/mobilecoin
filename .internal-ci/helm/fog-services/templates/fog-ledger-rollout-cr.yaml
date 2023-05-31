@@ -34,6 +34,9 @@ spec:
               app: fog-ledger-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
+            # Prevent endpoint creation until all shards for this router are ready
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
             # Try to balance pods across zones
             topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
