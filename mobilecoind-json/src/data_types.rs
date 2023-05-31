@@ -1291,6 +1291,27 @@ impl From<&api::GetLedgerInfoResponse> for JsonLedgerInfoResponse {
 }
 
 #[derive(Serialize, Default, Debug)]
+pub struct JsonBlockSignature {
+    pub src_url: String,
+    pub filename: String,
+    pub signature: String,
+    pub signer: String,
+    pub signed_at: u64,
+}
+
+impl From<&api::ArchiveBlockSignatureData> for JsonBlockSignature {
+    fn from(src: &api::ArchiveBlockSignatureData) -> Self {
+        Self {
+            src_url: src.src_url.clone(),
+            filename: src.filename.clone(),
+            signature: hex::encode(src.get_signature().get_signature().get_data()),
+            signer: hex::encode(src.get_signature().get_signer().get_data()),
+            signed_at: src.get_signature().signed_at,
+        }
+    }
+}
+
+#[derive(Serialize, Default, Debug)]
 pub struct JsonBlockInfoResponse {
     pub key_image_count: JsonU64,
     pub txo_count: JsonU64,
@@ -1315,6 +1336,7 @@ pub struct JsonBlockDetailsResponse {
     pub contents_hash: String,
     pub key_images: Vec<String>,
     pub txos: Vec<JsonTxOut>,
+    pub signatures: Vec<JsonBlockSignature>,
 }
 
 impl From<&api::GetBlockResponse> for JsonBlockDetailsResponse {
@@ -1334,6 +1356,11 @@ impl From<&api::GetBlockResponse> for JsonBlockDetailsResponse {
                 .map(|k| hex::encode(k.get_data()))
                 .collect(),
             txos: src.get_txos().iter().map(JsonTxOut::from).collect(),
+            signatures: src
+                .get_signatures()
+                .iter()
+                .map(JsonBlockSignature::from)
+                .collect(),
         }
     }
 }
