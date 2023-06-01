@@ -56,21 +56,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "fogServices.fogLedgerStores" -}}
-{{- if .Values.fogLedgerStores.override }}
-{{ .Values.fogLedgerStores.override }}
-{{- else }}
 {{- $networkName := include "fogServices.mobileCoinNetwork.network" . }}
-{{ get .Values.fogLedgerStores $networkName }}
-{{- end }}
+{{- get .Values.fogLedgerStores "override" | default (get .Values.fogLedgertores $networkName) | toYaml }}
 {{- end }}
 
-{{- define "fogServices.fogViewStores" -}}
-{{- if .Values.fogViewStores.override }}
-{{ .Values.fogViewStores.override }}
-{{- else }}
+{{- define "fogServices.fogViewStores" }}
 {{- $networkName := include "fogServices.mobileCoinNetwork.network" . }}
-{{ get .Values.fogViewStores $networkName }}
-{{- end }}
+{{- get .Values.fogViewStores "override" | default (get .Values.fogViewStores $networkName) | toYaml }}
 {{- end }}
 
 {{/* Fog Public FQDN */}}

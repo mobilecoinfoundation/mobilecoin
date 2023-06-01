@@ -5,10 +5,8 @@ metadata:
   name: {{ include "fogServices.fullname" . }}-fog-view
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
-  annotations:
-    ledger-stores: |
-{{- include "fogServices.fogLedgerStores" . | toYaml | nindent 6 }}
 spec:
+  {{- include "fogServices.fogViewStores" . | nindent 2 }}
   blockCountURL: {{ include "fogServices.blockHeightURL" . | quote }}
   {{- with .Values.blockHeighRetrieval }}
   blockCountQueryInterval: {{ .queryInterval | quote }}

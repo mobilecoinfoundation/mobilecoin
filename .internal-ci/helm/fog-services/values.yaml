@@ -54,18 +54,24 @@ blockHeighRetrieval:
   responseJQ: .result.network_status.network_block_height
 
 fogViewStores:
-  main: &mainnet
+  main:
     shardSize: 400_000
     exceedBlockHeightBy: 200_000
     shardOverlap: 200_000
-  test: &testnet
+  test:
     shardSize: 800_000
     exceedBlockHeightBy: 200_000
     shardOverlap: 400_000
 
 fogLedgerStores:
-  main: *mainnet
-  test: *testnet
+  main:
+    shardSize: 400_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 200_000
+  test:
+    shardSize: 800_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 400_000
 
 imagePullSecrets:
 - name: docker-credentials
