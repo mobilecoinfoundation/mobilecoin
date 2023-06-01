@@ -303,7 +303,12 @@ spec:
                   name: fog-recovery-reader-0-postgresql
                   key: postgresql-ssl-options
             - name: DATABASE_URL
-              value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
+             # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
+            livenessProbe:
+              grpc:
+                port: 3225
+              failureThreshold: 5
+              periodSeconds: 30             value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               grpc:
