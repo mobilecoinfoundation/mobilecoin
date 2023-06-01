@@ -57,7 +57,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "fogServices.fogLedgerStores" -}}
 {{- $networkName := include "fogServices.mobileCoinNetwork.network" . }}
-{{- get .Values.fogLedgerStores "override" | default (get .Values.fogLedgertores $networkName) | toYaml }}
+{{- get .Values.fogLedgerStores "override" | default (get .Values.fogLedgerStores $networkName) | toYaml }}
 {{- end }}
 
 {{- define "fogServices.fogViewStores" }}
