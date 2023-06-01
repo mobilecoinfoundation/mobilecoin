@@ -244,26 +244,6 @@ fogLedger:
         requests:
           storage: 512Gi
 
-  initContainers:
-  - name: migrate-ledger
-    image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-    imagePullPolicy: Always
-    command: [ '/bin/bash' ]
-    args:
-    - -c
-    - |
-      set -e
-      mkdir -p /fog-data/ledger
-      mkdir -p /fog-data/watcher
-      if [[ -f "/fog-data/ledger/data.mdb" ]]
-      then
-        cp /fog-data/ledger/data.mdb /fog-data/ledger/data.mdb.bak
-        /usr/bin/mc-ledger-migration --ledger-db /fog-data/ledger
-      fi
-    volumeMounts:
-    - name: fog-data
-      mountPath: /fog-data
-
   ingress:
     common:
       annotations: |-
