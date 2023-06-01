@@ -10,7 +10,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Added
 
-- Add block signatures to mobilecoind-json block respons ([#3366])
+- Add block signatures to mobilecoind-json block response ([#3366])
 
 [#3366]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3366
 
