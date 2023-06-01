@@ -57,30 +57,6 @@ impl TrustedMrEnclaveMeasurement {
     }
 }
 
-impl TrustedMrSignerMeasurement {
-    /// Create a new instance.
-    pub fn new<'a, E, I>(
-        mr_signer: &[u8; 32],
-        product_id: u16,
-        minimum_svn: u16,
-        advisories: I,
-    ) -> Self
-    where
-        I: IntoIterator<Item = &'a E>,
-        E: ToString + 'a + ?Sized,
-    {
-        Self {
-            mr_signer: *mr_signer,
-            product_id,
-            minimum_svn,
-            mitigated_hardening_advisories: advisories
-                .into_iter()
-                .map(ToString::to_string)
-                .collect(),
-        }
-    }
-}
-
 /// Trusted measurement for MRSIGNER values.
 ///
 /// The MRSIGNER is the hash of the public portion of the key used to sign the
@@ -112,6 +88,30 @@ pub struct TrustedMrSignerMeasurement {
     /// software at this enclave revision.
     #[serde(default)]
     mitigated_hardening_advisories: Vec<String>,
+}
+
+impl TrustedMrSignerMeasurement {
+    /// Create a new instance.
+    pub fn new<'a, E, I>(
+        mr_signer: &[u8; 32],
+        product_id: u16,
+        minimum_svn: u16,
+        advisories: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = &'a E>,
+        E: ToString + 'a + ?Sized,
+    {
+        Self {
+            mr_signer: *mr_signer,
+            product_id,
+            minimum_svn,
+            mitigated_hardening_advisories: advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+        }
+    }
 }
 
 /// Trusted measurement for an enclave.
@@ -202,8 +202,8 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use assert_matches::assert_matches;
 
     use hex_literal::hex;
 
@@ -291,10 +291,10 @@ mod tests {
             vec![v3_fog_view.clone(), v4_fog_view.clone()]
         );
 
-        assert!(matches!(
+        assert_matches!(
             tms.measurements("impostor"),
             Err(Error::NoMeasurementsFound(_))
-        ));
+        );
     }
 
     const TEST_DATA2: &str = r#"{

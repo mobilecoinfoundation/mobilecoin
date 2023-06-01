@@ -20,4 +20,5 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 mc-common = { path = "../../../common", features = ["std"] }
 mc-util-logger-macros = { path = "../../../util/logger-macros" }
 
+assert_matches = "1.5"
 hex-literal = "0.3.4"
