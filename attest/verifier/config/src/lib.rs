@@ -13,36 +13,10 @@ use alloc::{
     vec::Vec,
 };
 use displaydoc::Display;
-use mc_attestation_verifier::{TrustedMrEnclaveIdentity, TrustedMrSignerIdentity};
+use mc_attestation_verifier::TrustedIdentity;
 use serde::{Deserialize, Serialize};
 
-/// Trusted measurement for an enclave.
-///
-/// Either a MRENCLAVE or MRSIGNER type, and the type is inferred by
-///
-/// Supports de/serialization to/from JSON.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(untagged)]
-pub enum TrustedMeasurement {
-    /// MRENCLAVE measurement type
-    MrEnclave(TrustedMrEnclaveIdentity),
-    /// MRSIGNER measurement type
-    MrSigner(TrustedMrSignerIdentity),
-}
-
-impl From<TrustedMrEnclaveIdentity> for TrustedMeasurement {
-    fn from(mr_enclave: TrustedMrEnclaveIdentity) -> Self {
-        Self::MrEnclave(mr_enclave)
-    }
-}
-
-impl From<TrustedMrSignerIdentity> for TrustedMeasurement {
-    fn from(mr_signer: TrustedMrSignerIdentity) -> Self {
-        Self::MrSigner(mr_signer)
-    }
-}
-
-/// Defines a json schema for a "trusted-measurements.json" file.
+/// Defines a json schema for a "trusted-identities.json" file.
 /// See README.md for example.
 ///
 /// The outermost string key of this is the release version number. This is not
@@ -50,18 +24,18 @@ impl From<TrustedMrSignerIdentity> for TrustedMeasurement {
 /// something, and helps with maintenance of the file.
 ///
 /// The second string key, within a release, is the name of the enclave that
-/// this is a measurement for.
+/// this is an identity for.
 ///
 /// The VerifierConfig object contains measurement and hardening advisory data
 /// for that enclave at that release.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct TrustedMeasurementSet {
-    table: BTreeMap<String, BTreeMap<String, TrustedMeasurement>>,
+pub struct TrustedIdentitySet {
+    table: BTreeMap<String, BTreeMap<String, TrustedIdentity>>,
 }
 
-// Allow TrustedMeasurementSet to be logged nicely in json format
-impl core::fmt::Display for TrustedMeasurementSet {
+// Allow TrustedIdentitySet to be logged nicely in json format
+impl core::fmt::Display for TrustedIdentitySet {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             fmt,
@@ -72,34 +46,31 @@ impl core::fmt::Display for TrustedMeasurementSet {
     }
 }
 
-impl TrustedMeasurementSet {
-    /// Get the measurements for a given enclave name.
-    pub fn measurements(
-        &self,
-        enclave_name: impl AsRef<str>,
-    ) -> Result<Vec<TrustedMeasurement>, Error> {
+impl TrustedIdentitySet {
+    /// Get the identities for a given enclave name.
+    pub fn identities(&self, enclave_name: impl AsRef<str>) -> Result<Vec<TrustedIdentity>, Error> {
         let enclave_name = enclave_name.as_ref();
-        let mut measurements = vec![];
+        let mut identities = vec![];
 
         for row in self.table.values() {
-            if let Some(measurement) = row.get(enclave_name) {
-                measurements.push(measurement.clone());
+            if let Some(identity) = row.get(enclave_name) {
+                identities.push(identity.clone());
             }
         }
 
-        match measurements.len() {
-            0 => Err(Error::NoMeasurementsFound(enclave_name.to_string())),
-            _ => Ok(measurements),
+        match identities.len() {
+            0 => Err(Error::NoIdentitiesFound(enclave_name.to_string())),
+            _ => Ok(identities),
         }
     }
 }
 
 /// An error which can occur when trying to build an attestation verifier from a
-/// TrustedMeasurementSet
+/// TrustedIdentitySet
 #[derive(Display, Debug)]
 pub enum Error {
-    /// No measurements found for enclave name "{0}"
-    NoMeasurementsFound(String),
+    /// No identities found for enclave name "{0}"
+    NoIdentitiesFound(String),
 }
 
 #[cfg(test)]
@@ -108,6 +79,7 @@ mod tests {
     use assert_matches::assert_matches;
 
     use hex::FromHex;
+    use mc_attestation_verifier::{TrustedMrEnclaveIdentity, TrustedMrSignerIdentity};
     use mc_sgx_core_types::{MrEnclave, MrSigner};
 
     const TEST_DATA: &str = r#"{
@@ -151,14 +123,14 @@ mod tests {
 
     #[test]
     fn test_loading() {
-        let tms: TrustedMeasurementSet = serde_json::from_str(TEST_DATA).unwrap();
+        let tms: TrustedIdentitySet = serde_json::from_str(TEST_DATA).unwrap();
         let no_config_advisories: &[&str] = &[];
 
         assert_eq!(tms.table.len(), 2);
         let v3 = tms.table.get("v3").unwrap();
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
-        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_consensus = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c")
                 .expect("BUG: Invalid test data provided"),
             no_config_advisories,
@@ -166,7 +138,7 @@ mod tests {
         ));
         assert_eq!(v3_consensus, &expected_consensus);
         let v3_fog_view = v3.get("fog-view").unwrap();
-        let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_fog_view = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("dca7521ce4564cc2e54e1637e533ea9d1901c2adcbab0e7a41055e719fb0ff9d")
                 .expect("BUG: Invalid test data provided"),
             no_config_advisories,
@@ -177,7 +149,7 @@ mod tests {
         let v4 = tms.table.get("v4").unwrap();
         assert_eq!(v4.len(), 4);
         let v4_consensus = v4.get("consensus").unwrap();
-        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_consensus = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5")
                 .expect("BUG: Invalid test data provided"),
             no_config_advisories,
@@ -186,7 +158,7 @@ mod tests {
         assert_eq!(v4_consensus, &expected_consensus);
 
         let v4_fog_view = v4.get("fog-view").unwrap();
-        let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_fog_view = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3")
                 .expect("BUG: Invalid test data provided"),
             no_config_advisories,
@@ -195,18 +167,15 @@ mod tests {
         assert_eq!(v4_fog_view, &expected_fog_view);
 
         assert_eq!(
-            tms.measurements("consensus").unwrap(),
+            tms.identities("consensus").unwrap(),
             vec![v3_consensus.clone(), v4_consensus.clone()]
         );
         assert_eq!(
-            tms.measurements("fog-view").unwrap(),
+            tms.identities("fog-view").unwrap(),
             vec![v3_fog_view.clone(), v4_fog_view.clone()]
         );
 
-        assert_matches!(
-            tms.measurements("impostor"),
-            Err(Error::NoMeasurementsFound(_))
-        );
+        assert_matches!(tms.identities("impostor"), Err(Error::NoIdentitiesFound(_)));
     }
 
     const TEST_DATA2: &str = r#"{
@@ -264,13 +233,13 @@ mod tests {
 
     #[test]
     fn test_loading2() {
-        let tms: TrustedMeasurementSet = serde_json::from_str(TEST_DATA2).unwrap();
+        let tms: TrustedIdentitySet = serde_json::from_str(TEST_DATA2).unwrap();
 
         assert_eq!(tms.table.len(), 2);
         let v3 = tms.table.get("v3").unwrap();
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
-        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_consensus = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c")
                 .expect("BUG: Invalid test data provided"),
             ["FOO"],
@@ -279,7 +248,7 @@ mod tests {
         assert_eq!(v3_consensus, &expected_consensus);
 
         let v3_fog_view = v3.get("fog-view").unwrap();
-        let expected_fog_view = TrustedMeasurement::from(TrustedMrSignerIdentity::new(
+        let expected_fog_view = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             MrSigner::from_hex("2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e")
                 .expect("BUG: Invalid test data provided"),
             3.into(),
@@ -292,7 +261,7 @@ mod tests {
         let v4 = tms.table.get("v4").unwrap();
         assert_eq!(v4.len(), 4);
         let v4_consensus = v4.get("consensus").unwrap();
-        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_consensus = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5")
                 .expect("BUG: Invalid test data provided"),
             ["FOO"],
@@ -301,7 +270,7 @@ mod tests {
         assert_eq!(v4_consensus, &expected_consensus);
 
         let v4_fog_view = v4.get("fog-view").unwrap();
-        let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let expected_fog_view = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from_hex("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3")
                 .expect("BUG: Invalid test data provided"),
             ["FOO"],
@@ -310,24 +279,24 @@ mod tests {
         assert_eq!(v4_fog_view, &expected_fog_view);
 
         assert_eq!(
-            tms.measurements("consensus").unwrap(),
+            tms.identities("consensus").unwrap(),
             vec![v3_consensus.clone(), v4_consensus.clone()]
         );
         assert_eq!(
-            tms.measurements("fog-view").unwrap(),
+            tms.identities("fog-view").unwrap(),
             vec![v3_fog_view.clone(), v4_fog_view.clone()]
         );
 
         assert!(matches!(
-            tms.measurements("impostor"),
-            Err(Error::NoMeasurementsFound(_))
+            tms.identities("impostor"),
+            Err(Error::NoIdentitiesFound(_))
         ));
     }
 
     #[test]
     fn test_expected_failures() {
         // Not enough hex characters
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -339,7 +308,7 @@ mod tests {
         assert!(result.is_err());
 
         // Too many hex characters
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -351,7 +320,7 @@ mod tests {
         assert!(result.is_err());
 
         // Should work with right number of characters
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -363,7 +332,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Mispelled key
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -375,7 +344,7 @@ mod tests {
         assert!(result.is_err());
 
         // Missing MRSIGNER required attributes
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -387,7 +356,7 @@ mod tests {
         assert!(result.is_err());
 
         // Missing MRSIGNER required attributes
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -400,7 +369,7 @@ mod tests {
         assert!(result.is_err());
 
         // Missing MRSIGNER required attributes
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -413,7 +382,7 @@ mod tests {
         assert!(result.is_err());
 
         // Working with MRSIGNER required attributes
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -427,7 +396,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Misspelled key
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {
@@ -440,7 +409,7 @@ mod tests {
         assert!(result.is_err());
 
         // Corrected key
-        let result: Result<TrustedMeasurementSet, _> = serde_json::from_str(
+        let result: Result<TrustedIdentitySet, _> = serde_json::from_str(
             r#"{
             "v0": {
                 "consensus": {

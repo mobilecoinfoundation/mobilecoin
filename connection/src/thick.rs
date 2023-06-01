@@ -24,7 +24,7 @@ use mc_attest_ake::{
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
 use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
@@ -146,8 +146,9 @@ pub struct ThickClient<CP: CredentialsProvider> {
     attested_api_client: AttestedApiClient,
     /// The gRPC API client we will use for legacy transaction submission.
     consensus_client_api_client: ConsensusClientApiClient,
-    /// An object which can verify a consensus node's provided IAS report
-    verifier: Verifier,
+    /// The allowed identities for the enclave. If the enclave matches any of
+    /// these identities it will be allowed to attest.
+    identities: Vec<TrustedIdentity>,
     /// The AKE state machine object, if one is available.
     enclave_connection: Option<Ready<Aes256Gcm>>,
     /// Generic interface for retreiving GRPC credentials.
@@ -162,7 +163,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
     pub fn new(
         chain_id: String,
         uri: ClientUri,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         credentials_provider: CP,
         logger: Logger,
@@ -182,7 +183,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             blockchain_api_client,
             consensus_client_api_client,
             attested_api_client,
-            verifier,
+            identities: identities.into(),
             enclave_connection: None,
             credentials_provider,
             cookies: CookieJar::default(),
@@ -319,7 +320,7 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
             })?;
 
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
         let (initiator, verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 

@@ -5,7 +5,6 @@
 use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use grpcio::Environment;
 use mc_attest_core::{VerificationReport, VerificationReportData};
-use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -73,12 +72,11 @@ impl NodeClient for ConsensusNodeClient {
             };
 
         // Contact node and get a VerificationReport.
-        let verifier = Verifier::default();
         let mut client = ThickClient::new(
             // TODO: Supply a chain-id to watcher?
             String::default(),
             node_url.clone(),
-            verifier,
+            [],
             env,
             credentials_provider,
             logger,

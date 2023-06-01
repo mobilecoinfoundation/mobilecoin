@@ -20,6 +20,7 @@ sgx-sim = [
 [dependencies]
 mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
+mc-attestation-verifier = "0.2.0"
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 

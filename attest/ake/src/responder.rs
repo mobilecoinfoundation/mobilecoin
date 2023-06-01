@@ -9,6 +9,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use mc_attest_core::{ReportDataMask, VerificationReport};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
@@ -139,7 +140,9 @@ where
                 input.local_identity,
             )?;
 
-        let mut verifier = input.verifier;
+        let identities = input.identities;
+        let mut verifier = Verifier::default();
+        verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
         // Parse the received IAS report
         let remote_report = VerificationReport::decode(payload.as_slice())

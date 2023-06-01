@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 mc-api = { path = "../../../api" }
 mc-attest-ake = { path = "../../../attest/ake" }
 mc-attest-core = { path = "../../../attest/core" }
-mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }

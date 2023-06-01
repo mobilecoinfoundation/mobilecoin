@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_common::logger::{log, o, Logger};
 use mc_connection::{
     Error as ConnectionError, HardcodedCredentialsProvider, ProposeTxResult, RetryError,
@@ -95,17 +93,7 @@ impl TxSubmitter {
         env: Arc<grpcio::Environment>,
         logger: &Logger,
     ) -> Result<Vec<ConnectionType>, ConnectionError> {
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-        let advisories = Advisories::new(
-            mc_consensus_enclave_measurement::HARDENING_ADVISORIES,
-            AdvisoryStatus::SWHardeningNeeded,
-        );
-        mr_signer_verifier.set_advisories(advisories);
-
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-
+        let identity = mc_consensus_enclave_measurement::mr_signer_identity(None);
         uris.iter()
             .map(|uri| {
                 let logger = logger.new(o!("mc.cxn" => uri.addr()));
@@ -113,7 +101,7 @@ impl TxSubmitter {
                     // TODO: Pass a chain id to the mobilecoind-dev-faucet?
                     String::default(),
                     uri.clone(),
-                    verifier.clone(),
+                    [identity.clone()],
                     env.clone(),
                     HardcodedCredentialsProvider::from(uri),
                     logger.clone(),

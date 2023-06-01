@@ -20,7 +20,6 @@ bypass-ip-check = []
 mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
-mc-attest-verifier = { path = "../attest/verifier" }
 mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log"] }

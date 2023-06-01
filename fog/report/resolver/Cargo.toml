@@ -14,6 +14,7 @@ automock = ["mockall"]
 [dependencies]
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
+mc-attestation-verifier = "0.2.0"
 mc-fog-ingest-report = { path = "../../ingest/report" }
 mc-fog-report-types = { path = "../types" }
 mc-fog-report-validation = { path = "../validation" }

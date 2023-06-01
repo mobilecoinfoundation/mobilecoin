@@ -872,6 +872,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-util-build-script",
@@ -950,7 +951,6 @@ dependencies = [
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-attest-core",
- "mc-attest-verifier-config",
  "mc-attestation-verifier",
  "mc-common",
  "mc-sgx-core-types",
@@ -962,18 +962,6 @@ dependencies = [
  "rand_hc",
  "serde",
  "sha2",
-]
-
-[[package]]
-name = "mc-attest-verifier-config"
-version = "4.0.2"
-dependencies = [
- "displaydoc",
- "hex",
- "mc-attestation-verifier",
- "mc-sgx-core-types",
- "serde",
- "serde_json",
 ]
 
 [[package]]

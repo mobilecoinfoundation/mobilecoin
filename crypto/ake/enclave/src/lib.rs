@@ -21,8 +21,8 @@ use mc_attest_enclave_api::{
     PlaintextClientRequest, Result, SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
-use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Advisories, AdvisoryStatus};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{TrustedIdentity, TrustedMrEnclaveIdentity};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_rand::McRng;
@@ -152,14 +152,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     // Kex related
     //
 
-    /// Construct a new verifier which ensures MRENCLAVE and debug settings
-    /// match.
-    fn get_verifier(&self) -> Result<Verifier> {
-        let mut verifier = Verifier::default();
-
+    /// Get identity which ensures MRENCLAVE matches
+    fn trusted_identity(&self) -> Result<TrustedIdentity> {
         let report_body = Report::new(None, None)?.body();
 
-        let mut mr_enclave_verifier = MrEnclaveVerifier::new(report_body.mr_enclave());
+        let mr_enclave = report_body.mr_enclave();
+
         // INTEL-SA-00334: LVI hardening is handled via rustc arguments set in
         // mc-util-build-enclave
         //
@@ -171,13 +169,20 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // enclave are aligned to an 8-byte boundary, and performed in multiples
         // of 8 bytes. In our codebase, this happens within the sgx_edger8r code-gen, so
         // building against SGX 2.17.1 is sufficient hardening for now.
-        mr_enclave_verifier.set_advisories(Advisories::new(
+        Ok(TrustedMrEnclaveIdentity::new(
+            mr_enclave,
+            [] as [&str; 0],
             ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
-            AdvisoryStatus::SWHardeningNeeded,
-        ));
+        )
+        .into())
+    }
 
+    /// Construct a new verifier which ensures MRENCLAVE and debug settings
+    /// match.
+    fn get_verifier(&self) -> Result<Verifier> {
+        let mut verifier = Verifier::default();
         verifier
-            .mr_enclave(mr_enclave_verifier)
+            .identities([&self.trusted_identity()?])
             .debug(DEBUG_ENCLAVE);
 
         Ok(verifier)
@@ -314,8 +319,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut csprng = McRng::default();
 
         let auth_response_output_bytes: Vec<u8> = backend_auth_response.into();
-        let auth_response_event =
-            AuthResponseInput::new(auth_response_output_bytes.into(), self.get_verifier()?);
+        let auth_response_event = AuthResponseInput::new(
+            auth_response_output_bytes.into(),
+            [self.trusted_identity()?],
+        );
         let (initiator, _verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
@@ -407,7 +414,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
                 AuthRequestOutput::from(req),
                 local_identity,
                 ias_report,
-                self.get_verifier()?,
+                [self.trusted_identity()?],
             )
         };
 
@@ -440,8 +447,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         let msg: Vec<u8> = msg.into();
         let auth_response_output = AuthResponseOutput::from(msg);
-        let verifier = self.get_verifier()?;
-        let auth_response_input = AuthResponseInput::new(auth_response_output, verifier);
+        let identities = [self.trusted_identity()?];
+        let auth_response_input = AuthResponseInput::new(auth_response_output, identities);
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();

@@ -8,7 +8,7 @@
 pub mod fog_view_router_client;
 
 use grpcio::{ChannelBuilder, Environment};
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -42,14 +42,14 @@ impl FogViewGrpcClient {
     /// * chain-id: The id of the network we expect to connect to, if available
     /// * uri: The Uri to connect to
     /// * grpc_retry_config: Retry policy to use for connection issues
-    /// * verifier: The attestation verifier
+    /// * identities: The identities that are allowed for attestation
     /// * env: A grpc environment (thread pool) to use for this connection
     /// * logger: For logging
     pub fn new(
         chain_id: String,
         uri: FogViewUri,
         grpc_retry_config: GrpcRetryConfig,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Self {
@@ -64,7 +64,7 @@ impl FogViewGrpcClient {
                 chain_id,
                 uri.clone(),
                 grpc_client,
-                verifier,
+                identities,
                 logger.clone(),
             ),
             grpc_retry_config,

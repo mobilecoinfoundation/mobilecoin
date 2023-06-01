@@ -13,7 +13,7 @@ rust-version = { workspace = true }
 mc-attest-ake = { path = "../../../attest/ake" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
-mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-noise = { path = "../../../crypto/noise" }

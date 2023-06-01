@@ -3,7 +3,7 @@
 use super::Error;
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_common::logger::{o, Logger};
 use mc_fog_api::ledger_grpc::FogMerkleProofApiClient;
 use mc_fog_enclave_connection::EnclaveConnection;
@@ -31,14 +31,14 @@ impl FogMerkleProofGrpcClient {
     ///   empty.
     /// * uri: The uri to connect to
     /// * grpc_retry_config: The retry policy to use for connection errors
-    /// * verifier: The attestation verifier
+    /// * identities: The identities that are allowed for attestation
     /// * env: The grpc environment to use (thread pool)
     /// * logger: for logging
     pub fn new(
         chain_id: String,
         uri: FogLedgerUri,
         grpc_retry_config: GrpcRetryConfig,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Self {
@@ -49,7 +49,7 @@ impl FogMerkleProofGrpcClient {
         let grpc_client = FogMerkleProofApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(chain_id, uri.clone(), grpc_client, verifier, logger),
+            conn: EnclaveConnection::new(chain_id, uri.clone(), grpc_client, identities, logger),
             grpc_retry_config,
             uri,
         }

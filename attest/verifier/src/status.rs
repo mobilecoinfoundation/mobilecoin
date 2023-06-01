@@ -16,9 +16,8 @@
 use crate::Verify;
 use alloc::borrow::ToOwned;
 use mc_attest_core::{IasQuoteError, IasQuoteResult, IsvSvn, ProductId, VerificationReportData};
-use mc_attest_verifier_config::TrustedMeasurement;
 use mc_attestation_verifier::{
-    Advisories, AdvisoriesVerifier, AdvisoryStatus, TrustedMrEnclaveIdentity,
+    Advisories, AdvisoriesVerifier, AdvisoryStatus, TrustedIdentity, TrustedMrEnclaveIdentity,
     TrustedMrSignerIdentity, Verifier,
 };
 use mc_sgx_core_types::{MrEnclave, MrSigner};
@@ -88,11 +87,11 @@ impl Kind {
     }
 }
 
-impl From<&TrustedMeasurement> for Kind {
-    fn from(trusted_measurement: &TrustedMeasurement) -> Kind {
-        match trusted_measurement {
-            TrustedMeasurement::MrEnclave(mr_enclave) => MrEnclaveVerifier::from(mr_enclave).into(),
-            TrustedMeasurement::MrSigner(mr_signer) => MrSignerVerifier::from(mr_signer).into(),
+impl From<&TrustedIdentity> for Kind {
+    fn from(trusted_identity: &TrustedIdentity) -> Kind {
+        match trusted_identity {
+            TrustedIdentity::MrEnclave(mr_enclave) => MrEnclaveVerifier::from(mr_enclave).into(),
+            TrustedIdentity::MrSigner(mr_signer) => MrSignerVerifier::from(mr_signer).into(),
         }
     }
 }
@@ -1161,12 +1160,12 @@ mod test {
 
     #[test]
     fn allow_config_advisories_mr_enclave_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let identity = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from(MR_ENCLAVE),
             [] as [&str; 0],
             [] as [&str; 0],
         ));
-        let mut verifier = Kind::from(&measurement);
+        let mut verifier = Kind::from(&identity);
         verifier.set_advisories(Advisories::new(
             ["one", "two", "three"],
             AdvisoryStatus::ConfigurationNeeded,
@@ -1184,12 +1183,12 @@ mod test {
 
     #[test]
     fn allow_hardening_advisories_mr_enclave_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
+        let identity = TrustedIdentity::from(TrustedMrEnclaveIdentity::new(
             MrEnclave::from(MR_ENCLAVE),
             [] as [&str; 0],
             [] as [&str; 0],
         ));
-        let mut verifier = Kind::from(&measurement);
+        let mut verifier = Kind::from(&identity);
         verifier.set_advisories(Advisories::new(
             ["for", "four", "fore"],
             AdvisoryStatus::SWHardeningNeeded,
@@ -1207,14 +1206,14 @@ mod test {
 
     #[test]
     fn allow_config_advisories_mr_signer_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrSignerIdentity::new(
+        let identity = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             MrSigner::from(MR_SIGNER),
             1.into(),
             2.into(),
             [] as [&str; 0],
             [] as [&str; 0],
         ));
-        let mut verifier = Kind::from(&measurement);
+        let mut verifier = Kind::from(&identity);
         verifier.set_advisories(Advisories::new(
             ["who", "what", "when"],
             AdvisoryStatus::ConfigurationNeeded,
@@ -1232,14 +1231,14 @@ mod test {
 
     #[test]
     fn allow_hardening_advisories_mr_signer_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrSignerIdentity::new(
+        let identity = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             MrSigner::from(MR_SIGNER),
             3.into(),
             4.into(),
             [] as [&str; 0],
             [] as [&str; 0],
         ));
-        let mut verifier = Kind::from(&measurement);
+        let mut verifier = Kind::from(&identity);
         verifier.set_advisories(Advisories::new(
             ["past", "present", "future"],
             AdvisoryStatus::SWHardeningNeeded,

@@ -7,8 +7,6 @@ use futures::executor::block_on;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -162,23 +160,13 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
             ledger_server.start();
 
-            // Make ledger enclave client
-            let mut mr_signer_verifier =
-                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            let advisories = Advisories::new(
-                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-                AdvisoryStatus::SWHardeningNeeded,
-            );
-            mr_signer_verifier.set_advisories(advisories);
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
 
             let mut client = FogMerkleProofGrpcClient::new(
                 "local".to_string(),
                 client_listen_uri.clone(),
                 GRPC_RETRY_CONFIG,
-                verifier.clone(),
+                [identity.clone()],
                 grpc_env.clone(),
                 logger.clone(),
             );
@@ -233,7 +221,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 "wrong".to_string(),
                 client_listen_uri,
                 GRPC_RETRY_CONFIG,
-                verifier,
+                [identity],
                 grpc_env,
                 logger.clone(),
             );
@@ -443,21 +431,11 @@ fn fog_ledger_key_images_test(logger: Logger) {
             store_server.start();
             router_server.start();
 
-            // Make ledger enclave client
-            let mut mr_signer_verifier =
-                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            let advisories = Advisories::new(
-                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-                AdvisoryStatus::SWHardeningNeeded,
-            );
-            mr_signer_verifier.set_advisories(advisories);
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
 
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
             let mut client =
-                LedgerGrpcClient::new(client_listen_uri, verifier, grpc_env, logger.clone());
+                LedgerGrpcClient::new(client_listen_uri, [identity], grpc_env, logger.clone());
 
             // Check on key images
             let mut response =
@@ -1025,24 +1003,14 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             store_server.start();
             router_server.start();
 
-            // Make ledger enclave client
-            let mut mr_signer_verifier =
-                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            let advisories = Advisories::new(
-                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-                AdvisoryStatus::SWHardeningNeeded,
-            );
-            mr_signer_verifier.set_advisories(advisories);
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
 
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
             let mut client = FogKeyImageGrpcClient::new(
                 String::default(),
                 router_client_listen_uri,
                 GRPC_RETRY_CONFIG,
-                verifier,
+                [identity],
                 grpc_env,
                 logger.clone(),
             );

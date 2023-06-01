@@ -37,7 +37,7 @@ mod test {
     use aes_gcm::Aes256Gcm;
     use mc_attest_core::Quote;
     use mc_attest_net::{Client, RaClient};
-    use mc_attest_verifier::{MrSignerVerifier, Verifier, IAS_SIM_ROOT_ANCHORS};
+    use mc_attestation_verifier::{TrustedIdentity, TrustedMrSignerIdentity};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
     use mc_util_encodings::{FromBase64, ToX64};
     use mc_util_from_random::FromRandom;
@@ -78,17 +78,14 @@ mod test {
             .report_body()
             .expect("Could not retrieve report body from cached report");
 
-        // Construct a report verifier that will check the MRSIGNER, product ID, and
-        // security version
-        let mr_signer = MrSignerVerifier::new(
+        let mr_signer = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             report_body.mr_signer(),
-            report_body.product_id(),
+            report_body.product_id().into(),
             report_body.security_version(),
-        );
-
-        let mut verifier = Verifier::new(&[IAS_SIM_ROOT_ANCHORS])
-            .expect("Could not construct verifier with sim root anchors");
-        verifier.mr_signer(mr_signer).debug(true);
+            [] as [&str; 0],
+            [] as [&str; 0],
+        ));
+        let identities = [mr_signer];
 
         let initiator = Start::new(RESPONDER_ID_STR.into());
         let responder = Start::new(RESPONDER_ID_STR.into());
@@ -101,15 +98,19 @@ mod test {
 
         // initiator = authpending, responder = start
 
-        let auth_request_input =
-            NodeAuthRequestInput::new(auth_request_output, identity, ias_report, verifier.clone());
+        let auth_request_input = NodeAuthRequestInput::new(
+            auth_request_output,
+            identity,
+            ias_report,
+            identities.clone(),
+        );
         let (responder, auth_response_output) = responder
             .try_next(&mut csprng, auth_request_input)
             .expect("Responder could not process auth request");
 
         // initiator = authpending, responder = ready
 
-        let auth_response_input = AuthResponseInput::new(auth_response_output, verifier);
+        let auth_response_input = AuthResponseInput::new(auth_response_output, identities);
         let (initiator, _) = initiator
             .try_next(&mut csprng, auth_response_input)
             .expect("Initiator not process auth response");

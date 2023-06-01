@@ -22,7 +22,6 @@
 use core::{cell::RefCell, cmp::max};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{create_app_logger, log, o, Logger},
     HashMap, HashSet,
@@ -474,14 +473,8 @@ fn build_fog_resolver(
     )
     .expect("Could not contact fog report server");
 
-    let report_verifier = {
-        let mr_signer_verifier = mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
-        let mut verifier = Verifier::default();
-        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-        verifier
-    };
-
-    FogResolver::new(responses, &report_verifier).expect("Could not get FogResolver")
+    let identity = mc_fog_ingest_enclave_measurement::mr_signer_identity(None);
+    FogResolver::new(responses, [&identity]).expect("Could not get FogResolver")
 }
 
 /// Entry point for a worker thread which tries to pull spendable tx outs rom

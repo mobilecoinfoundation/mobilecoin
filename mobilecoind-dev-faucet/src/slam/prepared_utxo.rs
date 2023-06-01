@@ -3,7 +3,6 @@
 use super::{SlamParams, UtxoRecord};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::ConversionError;
-use mc_attest_verifier::Verifier;
 use mc_common::logger::{log, Logger};
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_resolver::FogResolver;
@@ -159,10 +158,8 @@ impl PreparedUtxo {
         // because we are slamming ourself, at least at this revision)
         let fog_resolver = {
             let responses = Default::default();
-            let report_verifier = Verifier::default();
 
-            FogResolver::new(responses, &report_verifier)
-                .map_err(|err| format!("Fog resolver: {err}"))?
+            FogResolver::new(responses, []).map_err(|err| format!("Fog resolver: {err}"))?
         };
 
         // Create tx_builder.
