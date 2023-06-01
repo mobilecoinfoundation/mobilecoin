@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
-  {{- toYaml .Values.fogLedgerStores | nindent 2 }}
+  {{- include "fogServices.fogLedgerStores" . | nindent 2 }}
   blockCountURL: {{ include "fogServices.blockHeightURL" . | quote }}
   {{- with .Values.blockHeighRetrieval }}
   blockCountQueryInterval: {{ .queryInterval | quote }}
@@ -34,6 +34,9 @@ spec:
               app: fog-ledger-router
               {{- include "fogServices.labels" . | nindent 14 }}
           spec:
+            # Prevent endpoint creation until all shards for this router are ready
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
             # Try to balance pods across zones
             topologySpreadConstraints:
             - topologyKey: topology.kubernetes.io/zone
@@ -42,16 +45,14 @@ spec:
               labelSelector:
                 matchLabels:
                   app: fog-ledger-router
-                  helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 16 }}
-            affinity:
-              podAntiAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                - topologyKey: kubernetes.io/hostname
-                  labelSelector:
-                    app: fog-ledger-router
-                    helm.sh/chart: {{ include "fogServices.chart" . }}
-                    {{- include "fogServices.selectorLabels" . | nindent 18 }}
+            - topologyKey: kubernetes.io/hostname
+              maxSkew: 1
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app: fog-ledger-router
+                  {{- include "fogServices.selectorLabels" . | nindent 16 }}
             imagePullSecrets:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
             terminationGracePeriodSeconds: 30
@@ -79,6 +80,8 @@ spec:
                   name: ipinfo
                   optional: true
               env:
+              - name: MC_LEDGER_DB_MIGRATE
+                value: "true"
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogLedgerRouter.rust.backtrace | quote }}
               - name: RUST_LOG
@@ -212,7 +215,7 @@ spec:
         - metadata:
             name: fog-data
           spec:
-            {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
+            {{- toYaml .Values.fogLedger.persistence.spec | nindent 12 }}
         {{- end }}
 
   store:
@@ -242,15 +245,24 @@ spec:
             labelSelector:
               matchLabels:
                 app: fog-ledger-store
-                helm.sh/chart: {{ include "fogServices.chart" . }}
                 {{- include "fogServices.selectorLabels" . | nindent 14 }}
+            matchLabelKeys:
+            - statefulset
+          - topologyKey: kubernetes.io/hostname
+            maxSkew: 1
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app: fog-ledger-store
+                {{- include "fogServices.selectorLabels" . | nindent 14 }}
+            matchLabelKeys:
+            - statefulset
           affinity:
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
               - topologyKey: kubernetes.io/hostname
                 labelSelector:
                   app: fog-ledger-store
-                  helm.sh/chart: {{ include "fogServices.chart" . }}
                   {{- include "fogServices.selectorLabels" . | nindent 16 }}
           imagePullSecrets:
           {{- toYaml .Values.imagePullSecrets | nindent 10 }}
@@ -259,8 +271,6 @@ spec:
             options:
             - name: ndots
               value: "1"
-          initContainers:
-          {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 10 }}
           containers:
           - name: fog-ledger-store
             image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -281,6 +291,8 @@ spec:
                 name: ipinfo
                 optional: true
             env:
+            - name: MC_LEDGER_DB_MIGRATE
+              value: "true"
             - name: RUST_BACKTRACE
               value: {{ .Values.fogLedger.rust.backtrace | quote }}
             - name: RUST_LOG
@@ -307,18 +319,17 @@ spec:
                   name: client-auth-token
                   key: token
                   optional: true
+            livenessProbe:
+              grpc:
+                port: 3228
+              failureThreshold: 5
+              periodSeconds: 30
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               grpc:
                 port: 3228
               # Wait up to 2 hours for startup
               failureThreshold: 240
-              periodSeconds: 30
-            # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
-            livenessProbe:
-              grpc:
-                port: 3228
-              failureThreshold: 5
               periodSeconds: 30
             # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:

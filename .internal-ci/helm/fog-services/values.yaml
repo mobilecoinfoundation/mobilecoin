@@ -20,8 +20,10 @@ fogViewRouter:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 1Gi
     requests:
       intel.com/sgx: 5000
+      memory: 1Gi
   nodeSelector:
     sgx-enabled-node: 'true'
   tolerations:
@@ -52,14 +54,24 @@ blockHeighRetrieval:
   responseJQ: .result.network_status.network_block_height
 
 fogViewStores:
-  shardSize: 400_000
-  exceedBlockHeightBy: 200_000
-  shardOverlap: 200_000
+  main:
+    shardSize: 400_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 200_000
+  test:
+    shardSize: 800_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 400_000
 
 fogLedgerStores:
-  shardSize: 400_000
-  exceedBlockHeightBy: 200_000
-  shardOverlap: 200_000
+  main:
+    shardSize: 400_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 200_000
+  test:
+    shardSize: 800_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 400_000
 
 imagePullSecrets:
 - name: docker-credentials
@@ -174,8 +186,10 @@ fogView:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
+      memory: 3Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -206,8 +220,10 @@ fogLedgerRouter:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 1Gi
     requests:
       intel.com/sgx: 5000
+      memory: 1Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -241,24 +257,6 @@ fogLedger:
         requests:
           storage: 512Gi
 
-  initContainers:
-  - name: migrate-ledger
-    image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-    imagePullPolicy: Always
-    command: [ '/bin/bash' ]
-    args:
-    - -c
-    - |
-      set -e
-      if [[ -f "/fog-data/ledger/data.mdb" ]]
-      then
-        cp /fog-data/ledger/data.mdb /fog-data/ledger/data.mdb.bak
-        /usr/bin/mc-ledger-migration --ledger-db /fog-data/ledger
-      fi
-    volumeMounts:
-    - name: fog-data
-      mountPath: /fog-data
-
   ingress:
     common:
       annotations: |-
@@ -288,8 +286,10 @@ fogLedger:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
+      memory: 3Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'
