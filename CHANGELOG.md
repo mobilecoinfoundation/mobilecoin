@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.2]
+
+### Added
+
+- Add block signatures to mobilecoind-json block response ([#3366])
+
+[#3366]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3366
+
+## [5.0.1]
+
+### Fixed
+
+- GPG key used in CD pipeline ([#3361])
+
+[#3361]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3361
+
 ## [5.0.0]
 
 ### Added

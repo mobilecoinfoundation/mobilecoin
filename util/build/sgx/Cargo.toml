@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-sgx"
-version = "5.0.0"
+version = "5.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "SGX utilities assistance, from MobileCoin."
