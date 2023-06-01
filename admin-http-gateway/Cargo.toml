@@ -1,6 +1,6 @@
 [package]
 name = "mc-admin-http-gateway"
-version = "5.0.0"
+version = "5.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"

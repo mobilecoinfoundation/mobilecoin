@@ -308,7 +308,7 @@ spec:
               grpc:
                 port: 3225
               failureThreshold: 5
-              periodSeconds: 30             value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
+              periodSeconds: 30
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               grpc:
