@@ -109,6 +109,7 @@ spec:
                     key: token
                     optional: true
               - name: CLIENT_RESPONDER_ID
+                value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
               livenessProbe:
                 grpc:
                   port: 3228
