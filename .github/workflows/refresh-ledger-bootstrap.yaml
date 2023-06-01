@@ -4,9 +4,9 @@
 
 name: Refresh ledger bootstrap
 
-on:
-  schedule:
-  - cron: '0 0 * * *'
+on: {}
+  # schedule:
+  # - cron: '0 0 * * *'
 
 # Start mobilecoind
 # Monitor mobilecoind until ledger has finished syncing
