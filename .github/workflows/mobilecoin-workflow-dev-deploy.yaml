@@ -160,11 +160,16 @@ jobs:
           responseJQ: '.index'
           requestBody: ' '
           queryInterval: 5m
-        fogViewStores: &stores
-          shardSize: 100_000
-          exceedBlockHeightBy: 5_000
-          shardOverlap: 0
+        fogViewStores:
+          override: &stores
+            shardSize: 100_000
+            exceedBlockHeightBy: 5_000
+            shardOverlap: 0
         fogLedgerStores: *stores
+          override: *stores
+            shardSize: 100_000
+            exceedBlockHeightBy: 5_000
+            shardOverlap: 0
         EOF
 
     - name: Deploy fog-services

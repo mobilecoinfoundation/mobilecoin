@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
-  {{- toYaml .Values.fogLedgerStores | nindent 2 }}
+  {{- include "fogServices.fogLedgerStores" | toYaml | nindent 2 }}
   blockCountURL: {{ include "fogServices.blockHeightURL" . | quote }}
   {{- with .Values.blockHeighRetrieval }}
   blockCountQueryInterval: {{ .queryInterval | quote }}
