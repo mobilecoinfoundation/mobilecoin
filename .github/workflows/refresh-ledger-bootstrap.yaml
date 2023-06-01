@@ -52,12 +52,37 @@ jobs:
             -p '${{ matrix.network.chain_id }}net-mobilecoind-linux-x86_64-*.tar.gz' \
             -O "${DOWNLOAD_DIR}/linux.tar.gz"
 
-    - name: Unpack full-service
+    - name: Unpack mobilecoind
       run: |
         cd "${DOWNLOAD_DIR}"
         tar --skip-old-files -xvzf linux.tar.gz
 
-    - name: Run full-service - wait for ledger sync
+    - name: Download current watcher and ledger databases
+      run: |
+        cd "${DOWNLOAD_DIR}"
+
+        # Download the current ledger db
+        echo "Downloading ledger database..."
+        export AZURE_STORAGE_CONNECTION_STRING='${{ secrets.MC_LEDGER_DB_AZURE_STORAGE_CONNECTION_STRING }}'
+        if az storage blob download -f ./ledger-data.mdb -c ${{ matrix.network.chain_id }} -n mcd/ledger/data.mdb --overwrite
+        then
+          ls -l ./ledger-data.mdb
+          md5sum ./ledger-data.mdb
+          mkdir -p ${MC_LEDGER_DB}
+          mv ./ledger-data.mdb ${MC_LEDGER_DB}/data.mdb
+        fi
+
+        # Download the current watcher db
+        echo "Downloading watcher database..."
+        if az storage blob download -f ./watcher-data.mdb -c ${{ matrix.network.chain_id }} -n mcd/watcher/data.mdb --overwrite
+        then
+          ls -l ./watcher-data.mdb
+          md5sum ./watcher-data.mdb
+          mkdir -p ${MC_WATCHER_DB}
+          mv ./watcher-data.mdb ${MC_WATCHER_DB}/data.mdb
+        fi
+
+    - name: Run mobilecoind mobilecoind-json - wait for ledger sync
       shell: bash
       env:
         MC_FOG_INGEST_ENCLAVE_CSS: ./ingest-enclave.css
@@ -93,6 +118,8 @@ jobs:
         echo "ledger is in sync, stop mobilecoind"
         kill ${mcj_pid}
         kill ${mc_pid}
+        md5sum ${MC_LEDGER_DIR}/data.mdb
+        md5sum ${MC_WATCHER_DIR}/data.mdb
         echo "mobilecoind shutdown successfully"
 
     - name: copy ledger/watcher data.mdb to Azure Blob Storage
