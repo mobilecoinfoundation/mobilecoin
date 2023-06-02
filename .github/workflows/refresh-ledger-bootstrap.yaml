@@ -4,14 +4,20 @@
 
 name: Refresh ledger bootstrap
 
-on: {}
-  # schedule:
-  # - cron: '0 0 * * *'
+on:
+  schedule:
+  - cron: '0 0 * * *'
 
 # Start mobilecoind
 # Monitor mobilecoind until ledger has finished syncing
 # Stop mobilecoind
 # Copy ledger/watcher to azure blob
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   refresh-ledger:
@@ -45,10 +51,10 @@ jobs:
 
     - name: Download latest linux release
       env:
-        GH_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         mkdir -p "${DOWNLOAD_DIR}"
-        gh release download \
+        gh release download v5.0.2 \
             -p '${{ matrix.network.chain_id }}net-mobilecoind-linux-x86_64-*.tar.gz' \
             -O "${DOWNLOAD_DIR}/linux.tar.gz"
 
@@ -119,8 +125,9 @@ jobs:
         echo "ledger is in sync, stop mobilecoind"
         kill ${mcj_pid}
         kill ${mc_pid}
-        md5sum ${MC_LEDGER_DIR}/data.mdb
-        md5sum ${MC_WATCHER_DIR}/data.mdb
+
+        md5sum "${MC_LEDGER_DB}/data.mdb"
+        md5sum "${MC_WATCHER_DB}/data.mdb"
         echo "mobilecoind shutdown successfully"
 
     - name: copy ledger/watcher data.mdb to Azure Blob Storage
