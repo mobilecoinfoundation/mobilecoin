@@ -79,6 +79,22 @@ The use of `MRSIGNER` is also supported, but the product id and minimum SVN (sec
 }
 ```
 
+It is also possible to specify `mitigated_config_advisories`.
+
+```json
+{
+  "v3": {
+    "fog-ingest": {
+        "MRSIGNER": "2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e",
+        "product_id": 1,
+        "minimum_svn": 5,
+        "mitigated_config_advisories": ["INTEL-SA-XXXXX"],
+        "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"],
+    }
+  }
+}
+```
+
 Suggestions for use
 -------------------
 

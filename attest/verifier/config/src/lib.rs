@@ -34,6 +34,10 @@ pub struct TrustedMrEnclaveMeasurement {
     /// For JSON this will be hex-encoded bytes.
     #[serde(with = "hex", rename = "MRENCLAVE")]
     mr_enclave: [u8; 32],
+    /// The list of config advisories that are known to be mitigated in
+    /// software at this enclave revision.
+    #[serde(default)]
+    mitigated_config_advisories: Vec<String>,
     /// The list of hardening advisories that are known to be mitigated in
     /// software at this enclave revision.
     #[serde(default)]
@@ -42,14 +46,24 @@ pub struct TrustedMrEnclaveMeasurement {
 
 impl TrustedMrEnclaveMeasurement {
     /// Create a new instance.
-    pub fn new<'a, E, I>(mr_enclave: &[u8; 32], advisories: I) -> Self
+    pub fn new<'a, CA, I, HA, J>(
+        mr_enclave: &[u8; 32],
+        config_advisories: I,
+        hardening_advisories: J,
+    ) -> Self
     where
-        I: IntoIterator<Item = &'a E>,
-        E: ToString + 'a + ?Sized,
+        I: IntoIterator<Item = &'a CA>,
+        CA: ToString + 'a + ?Sized,
+        J: IntoIterator<Item = &'a HA>,
+        HA: ToString + 'a + ?Sized,
     {
         Self {
             mr_enclave: *mr_enclave,
-            mitigated_hardening_advisories: advisories
+            mitigated_config_advisories: config_advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+            mitigated_hardening_advisories: hardening_advisories
                 .into_iter()
                 .map(ToString::to_string)
                 .collect(),
@@ -84,6 +98,10 @@ pub struct TrustedMrSignerMeasurement {
     /// The minimum security version number that is considered valid by this
     /// verifier.
     minimum_svn: u16,
+    /// The list of config advisories that are known to be mitigated in
+    /// software at this enclave revision.
+    #[serde(default)]
+    mitigated_config_advisories: Vec<String>,
     /// The list of hardening advisories that are known to be mitigated in
     /// software at this enclave revision.
     #[serde(default)]
@@ -92,21 +110,28 @@ pub struct TrustedMrSignerMeasurement {
 
 impl TrustedMrSignerMeasurement {
     /// Create a new instance.
-    pub fn new<'a, E, I>(
+    pub fn new<'a, CA, I, HA, J>(
         mr_signer: &[u8; 32],
         product_id: u16,
         minimum_svn: u16,
-        advisories: I,
+        config_advisories: I,
+        hardening_advisories: J,
     ) -> Self
     where
-        I: IntoIterator<Item = &'a E>,
-        E: ToString + 'a + ?Sized,
+        I: IntoIterator<Item = &'a CA>,
+        CA: ToString + 'a + ?Sized,
+        J: IntoIterator<Item = &'a HA>,
+        HA: ToString + 'a + ?Sized,
     {
         Self {
             mr_signer: *mr_signer,
             product_id,
             minimum_svn,
-            mitigated_hardening_advisories: advisories
+            mitigated_config_advisories: config_advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+            mitigated_hardening_advisories: hardening_advisories
                 .into_iter()
                 .map(ToString::to_string)
                 .collect(),
@@ -249,6 +274,7 @@ mod tests {
     #[test]
     fn test_loading() {
         let tms: TrustedMeasurementSet = serde_json::from_str(TEST_DATA).unwrap();
+        let no_config_advisories: &[&str] = &[];
 
         assert_eq!(tms.table.len(), 2);
         let v3 = tms.table.get("v3").unwrap();
@@ -256,12 +282,14 @@ mod tests {
         let v3_consensus = v3.get("consensus").unwrap();
         let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            no_config_advisories,
             ["INTEL-SA-00334", "INTEL-SA-00615"],
         ));
         assert_eq!(v3_consensus, &expected_consensus);
         let v3_fog_view = v3.get("fog-view").unwrap();
         let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("dca7521ce4564cc2e54e1637e533ea9d1901c2adcbab0e7a41055e719fb0ff9d"),
+            no_config_advisories,
             ["INTEL-SA-00334", "INTEL-SA-00615"],
         ));
         assert_eq!(v3_fog_view, &expected_fog_view);
@@ -271,6 +299,7 @@ mod tests {
         let v4_consensus = v4.get("consensus").unwrap();
         let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
+            no_config_advisories,
             ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
         ));
         assert_eq!(v4_consensus, &expected_consensus);
@@ -278,6 +307,7 @@ mod tests {
         let v4_fog_view = v4.get("fog-view").unwrap();
         let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
+            no_config_advisories,
             ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
         ));
         assert_eq!(v4_fog_view, &expected_fog_view);
@@ -301,42 +331,50 @@ mod tests {
     "v3": {
        "consensus": {
            "MRENCLAVE": "207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c",
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"]
        },
        "fog-ingest": {
            "MRSIGNER": "2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e",
            "product_id": 1,
            "minimum_svn": 4,
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"]
        },
        "fog-ledger": {
            "MRSIGNER": "2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e",
            "product_id": 2,
            "minimum_svn": 4,
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"]
        },
        "fog-view": {
            "MRSIGNER": "2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e",
            "product_id": 3,
            "minimum_svn": 4,
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615"]
        }
     },
     "v4": {
        "consensus": {
            "MRENCLAVE": "e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5",
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        },
        "fog-ingest": {
            "MRENCLAVE": "a8af815564569aae3558d8e4e4be14d1bcec896623166a10494b4eaea3e1c48c",
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        },
        "fog-ledger": {
            "MRENCLAVE": "da209f4b24e8f4471bd6440c4e9f1b3100f1da09e2836d236e285b274901ed3b",
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        },
        "fog-view": {
            "MRENCLAVE": "8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3",
+           "mitigated_config_advisories": ["FOO"],
            "mitigated_hardening_advisories": ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"]
        }
     }
@@ -352,6 +390,7 @@ mod tests {
         let v3_consensus = v3.get("consensus").unwrap();
         let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            ["FOO"],
             ["INTEL-SA-00334", "INTEL-SA-00615"],
         ));
         assert_eq!(v3_consensus, &expected_consensus);
@@ -361,6 +400,7 @@ mod tests {
             &hex!("2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e"),
             3,
             4,
+            ["FOO"],
             ["INTEL-SA-00334", "INTEL-SA-00615"],
         ));
         assert_eq!(v3_fog_view, &expected_fog_view);
@@ -370,6 +410,7 @@ mod tests {
         let v4_consensus = v4.get("consensus").unwrap();
         let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
+            ["FOO"],
             ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
         ));
         assert_eq!(v4_consensus, &expected_consensus);
@@ -377,6 +418,7 @@ mod tests {
         let v4_fog_view = v4.get("fog-view").unwrap();
         let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
             &hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
+            ["FOO"],
             ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
         ));
         assert_eq!(v4_fog_view, &expected_fog_view);
