@@ -58,6 +58,7 @@ jobs:
         tar --skip-old-files -xvzf linux.tar.gz
 
     - name: Download current watcher and ledger databases
+      shell: bash
       run: |
         cd "${DOWNLOAD_DIR}"
 
