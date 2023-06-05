@@ -16,6 +16,7 @@ then
         echo "Found existing ledger database, skipping download"
     else
         echo "Downloading ledger data.mdb"
+        mkdir -p "${data}/ledger"
         curl -L "${MC_LEDGER_DB_URL}" -o "${data}/ledger/data.mdb"
     fi
 fi
@@ -28,6 +29,7 @@ then
         echo "Found existing watcher database, skipping download"
     else
         echo "Downloading watcher data.mdb"
+        mkdir -p "${data}/watcher"
         curl -L "${MC_WATCHER_DB_URL}" -o "${data}/watcher/data.mdb"
     fi
 fi
