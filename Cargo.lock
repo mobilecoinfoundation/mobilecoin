@@ -2536,6 +2536,7 @@ dependencies = [
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-attest-core",
+ "mc-attest-verifier-config",
  "mc-common",
  "mc-sgx-css",
  "mc-sgx-types",
@@ -2556,10 +2557,6 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex-literal",
- "mc-attest-core",
- "mc-attest-verifier",
- "mc-common",
- "mc-util-logger-macros",
  "serde",
  "serde_json",
 ]
