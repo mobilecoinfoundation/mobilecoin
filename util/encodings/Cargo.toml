@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-encodings"
-version = "5.0.2"
+version = "5.0.3"
 authors = ["MobileCoin"]
 description = "Support for various simple encodings (hex strings, base64 strings, Intel x86_64 structures, etc.)"
 edition = "2021"
