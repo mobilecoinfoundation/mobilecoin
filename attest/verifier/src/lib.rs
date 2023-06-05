@@ -344,19 +344,32 @@ impl Verifier {
         self
     }
 
-    /// Verify the given MrEnclave-based status verifier succeeds
+    /// Add a MrEnclave-based status verifier to the potential status verifiers
+    ///
+    /// For MRENCLAVE and MRSIGNER verifiers, only one of them needs to succeed.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn mr_enclave(&mut self, verifier: MrEnclaveVerifier) -> &mut Self {
         self.status_verifiers.push(verifier.into());
         self
     }
 
-    /// Verify the given MrSigner-based status verifier succeeds
+    /// Add a MrSigner-based status verifier to the potential status verifiers
+    ///
+    /// For MRENCLAVE and MRSIGNER verifiers, only one of them needs to succeed.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn mr_signer(&mut self, verifier: MrSignerVerifier) -> &mut Self {
         self.status_verifiers.push(verifier.into());
         self
     }
 
-    /// Verify at least one of the provided measurements matches the enclave
+    /// Add a measurement as a potential status verifier
+    ///
+    /// For MRENCLAVE and MRSIGNER measurements, only one of them needs to
+    /// match.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn measurements<'a>(
         &mut self,
         measurements: impl IntoIterator<Item = &'a TrustedMeasurement>,
