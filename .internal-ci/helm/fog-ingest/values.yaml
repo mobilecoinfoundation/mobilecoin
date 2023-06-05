@@ -53,8 +53,10 @@ fogIngest:
   resources:
     limits:
       intel.com/sgx: 5000
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
+      memory: 3Gi
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -102,10 +104,22 @@ fogIngest:
       then
         cp /fog-data/ledger/data.mdb /fog-data/ledger/data.mdb.bak
         /usr/bin/mc-ledger-migration --ledger-db /fog-data/ledger
+      else
+        if [[ -n "${MC_LEDGER_DB_URL}" ]]
+        then
+          mkdir /fog-data/ledger
+        fi
+        if [[ -n "${MC_WATCHER_DB_URL}" ]]
+        then
+          mkdir /fog-data/watcher
+        fi
       fi
     volumeMounts:
     - name: fog-data
       mountPath: /fog-data
+    envFrom:
+    - configMapRef:
+        name: fog-ingest
 
 ### Toolbox deployment. Used for activating and retiring.
 toolbox:
