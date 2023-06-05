@@ -77,6 +77,8 @@ spec:
           value: {{ .Values.fogIngest.rust.backtrace | quote }}
         - name: RUST_LOG
           value: {{ .Values.fogIngest.rust.log | quote }}
+        - name: MC_LEDGER_DB_MIGRATE
+          value: "true"
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
