@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-mint-client-types"
-version = "5.0.2"
+version = "5.0.3"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"

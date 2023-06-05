@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-types"
-version = "5.0.2"
+version = "5.0.3"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "Apache-2.0"
