@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.3]
+
+### Fixed
+
+#### CI/CD
+
+- Ledger and watcher database restore in CD pipeline ([#3379])
+
+[#3379]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3379
+
 ## [5.0.2]
 
 ### Added
