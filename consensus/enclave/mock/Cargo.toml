@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-mock"
-version = "5.0.3"
+version = "5.0.4"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"

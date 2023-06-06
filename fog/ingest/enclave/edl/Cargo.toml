@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-enclave-edl"
-version = "5.0.3"
+version = "5.0.4"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "ingest_enclave_edl"
