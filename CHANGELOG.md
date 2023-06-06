@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.4]
+
+### Fixed
+
+#### CI/CD
+
+- Helm: init containers, add startupprobes ([#3383])
+- Removed block-v2 tests (commit [bb15dc](https://github.com/mobilecoinfoundation/mobilecoin/commit/bb15dc33a30b0931a892d6ff3f04c291dcd57d0e))
+- Removed bv2 bootstrap (commit [1a9de0](https://github.com/mobilecoinfoundation/mobilecoin/commit/1a9de0c288b09c1a7ba731ebe40ad617b43dd8ff))
+
+## [5.0.3]
+
+### Fixed
+
+#### CI/CD
+
+- Ledger and watcher database restore in CD pipeline ([#3379])
+
+[#3379]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3379
+
 ## [5.0.2]
 
 ### Added
