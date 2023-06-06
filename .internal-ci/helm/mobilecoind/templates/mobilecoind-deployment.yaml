@@ -92,6 +92,8 @@ spec:
         - name: wallet-seeds
           mountPath: /wallet-seeds
           readOnly: true
+        - name: tmp
+          mountPath: /tmp
       {{- if eq .Values.jaegerTracing.enabled true }}
       - name: jaeger-agent
         image: jaegertracing/jaeger-agent:latest
@@ -130,6 +132,8 @@ spec:
       {{- end }}
       volumes:
       - name: data
+        emptyDir: {}
+      - name: tmp
         emptyDir: {}
       - name: wallet-seeds
         secret:
