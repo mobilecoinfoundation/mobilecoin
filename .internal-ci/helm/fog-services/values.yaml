@@ -16,14 +16,13 @@ fogServicesConfig:
 fogViewRouter:
   podManagementPolicy: Parallel
   replicaCount: 2
-  # TODO verify resources with Sam / James
   resources:
     limits:
       intel.com/sgx: 5000
-      memory: 1Gi
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
-      memory: 1Gi
+      memory: 3Gi
   nodeSelector:
     sgx-enabled-node: 'true'
   tolerations:
