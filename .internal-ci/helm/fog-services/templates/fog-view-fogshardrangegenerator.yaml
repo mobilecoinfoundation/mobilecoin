@@ -69,6 +69,18 @@ spec:
                   app: fog-view-router
             imagePullSecrets:
             {{- toYaml .Values.imagePullSecrets | nindent 12 }}
+            initContainers:
+            - name: sysctl
+              image: ubuntu:20.04
+              command:
+              - sysctl
+              - -w
+              - net.ipv4.tcp_retries2=5
+              - net.core.somaxconn=65535
+              securityContext:
+                privileged: true
+                runAsUser: 0
+                runAsNonRoot: False
             containers:
             - name: fog-view-router
               image: "{{ .Values.fogViewRouter.image.org | default .Values.image.org }}/{{ .Values.fogViewRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -85,6 +97,13 @@ spec:
                   name: fog-view
               - secretRef:
                   name: ias
+              startupProbe:
+                grpc:
+                  port: 3225
+                failureThreshold: 240
+                periodSeconds: 30
+                timeoutSeconds: 1
+                successThreshold: 1
               livenessProbe:
                 grpc:
                   port: 3225
@@ -182,7 +201,7 @@ spec:
                 - --reporter.type=grpc
                 - --agent.tags=cluster=undefined,container.name=fog-view-router,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
             {{- end }}
-        
+
   store:
     containerName: fog-view-store
     servicePort: 80
@@ -310,18 +329,24 @@ spec:
                 port: 3225
               failureThreshold: 5
               periodSeconds: 30
+              timeoutSeconds: 1
+              successThreshold: 1
             # Hold liveness and readiness until this probe passes.
             startupProbe:
               grpc:
                 port: 3225
               failureThreshold: 480
               periodSeconds: 30
+              timeoutSeconds: 1
+              successThreshold: 1
             # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:
               grpc:
                 port: 3225
               failureThreshold: 2
               periodSeconds: 10
+              timeoutSeconds: 1
+              successThreshold: 1
             volumeMounts:
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d

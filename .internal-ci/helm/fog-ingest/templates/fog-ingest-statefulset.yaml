@@ -162,6 +162,8 @@ spec:
         - name: supervisor-conf
           mountPath: /etc/supervisor/conf.d
           readOnly: true
+        - name: tmp
+          mountPath: /tmp
         resources:
           {{- toYaml .Values.fogIngest.resources | nindent 10 }}
       {{- if eq .Values.jaegerTracing.enabled true }}
@@ -211,6 +213,8 @@ spec:
       - name: fog-data
         emptyDir: {}
       {{- end }}
+      - name: tmp
+        emptyDir: {}
       - name: aesm-socket-dir
         emptyDir: {}
       - name: ingest-run-data
