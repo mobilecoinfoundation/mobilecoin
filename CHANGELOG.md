@@ -12,6 +12,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 #### CI/CD
 
+- Helm: init containers, add startupprobes ([#3383])
 - Removed block-v2 tests (commit [bb15dc](https://github.com/mobilecoinfoundation/mobilecoin/commit/bb15dc33a30b0931a892d6ff3f04c291dcd57d0e))
 - Removed bv2 bootstrap (commit [1a9de0](https://github.com/mobilecoinfoundation/mobilecoin/commit/1a9de0c288b09c1a7ba731ebe40ad617b43dd8ff))
 
