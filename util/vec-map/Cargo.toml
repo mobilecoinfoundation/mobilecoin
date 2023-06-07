@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-vec-map"
-version = "5.0.4"
+version = "5.0.5"
 authors = ["MobileCoin"]
 description = "A map object based on heapless Vec"
 edition = "2021"
