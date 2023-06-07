@@ -86,6 +86,9 @@ global:
     enabled: "false"
     pattern: patterns/blocked-countries
 
+ingress:
+  enabled: true
+
 ### Fog Report Service
 fogReport:
   replicaCount: 2

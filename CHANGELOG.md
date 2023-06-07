@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.5]
+
+### Fixed
+
+#### Deployments
+
+- fix: remove client-auth-token from store configs ([#3387])
+- feat: (helm) add ingress switch to fog-services for blue/green style deployments. ([#3389])
+
 ## [5.0.4]
 
 ### Fixed
