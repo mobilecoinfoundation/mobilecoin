@@ -274,12 +274,6 @@ spec:
               value: {{ .Values.fogView.rust.backtrace | quote }}
             - name: RUST_LOG
               value: {{ .Values.fogView.rust.log | quote }}
-            - name: CLIENT_AUTH_TOKEN_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: client-auth-token
-                  key: token
-                  optional: true
             - name: FOG_VIEW_SENTRY_DSN
               valueFrom:
                 configMapKeyRef:
