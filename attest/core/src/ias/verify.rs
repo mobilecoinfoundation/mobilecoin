@@ -9,7 +9,7 @@ use crate::{
         PseManifestHashError, PseManifestResult, RevocationCause, VerifyError,
     },
     nonce::IasNonce,
-    quote::{Quote, QuoteSignType},
+    //quote::{Quote, QuoteSignType},
     types::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
@@ -24,6 +24,7 @@ use alloc::{
 use base64::Engine;
 use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, result::Result, str};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
+use mc_sgx_core_types::quote::Quote;
 use serde::{Deserialize, Serialize};
 
 // The lengths of the two EPID Pseudonym chunks

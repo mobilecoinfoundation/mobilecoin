@@ -14,8 +14,6 @@ extern crate mc_util_repr_bytes;
 mod error;
 mod ias;
 mod nonce;
-mod quote;
-mod report;
 mod seal;
 mod sigrl;
 mod traits;
@@ -30,10 +28,9 @@ pub use crate::{
     },
     ias::verify::{EpidPseudonym, VerificationReportData},
     nonce::{IasNonce, Nonce, QuoteNonce},
-    quote::{Quote, QuoteSignType},
-    report::Report,
     seal::{IntelSealed, IntelSealingError, ParseSealedError, Sealed},
     sigrl::SigRL,
+    QuoteVerifyError,
     types::{
         attributes::Attributes,
         basename::Basename,
@@ -46,7 +43,6 @@ pub use crate::{
         mac::Mac,
         measurement::{Measurement, MrEnclave, MrSigner},
         pib::PlatformInfoBlob,
-        report_body::ReportBody,
         report_data::{ReportData, ReportDataMask},
         spid::ProviderId,
         target_info::TargetInfo,

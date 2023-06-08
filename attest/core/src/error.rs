@@ -3,7 +3,6 @@
 //! Errors which can occur during the attestation process
 
 use crate::{
-    quote::QuoteSignType,
     types::{
         epid_group_id::EpidGroupId,
         measurement::{Measurement, MrEnclave, MrSigner},
@@ -308,47 +307,6 @@ impl From<QuoteSignTypeError> for FmtError {
 impl From<EncodingError> for QuoteSignTypeError {
     fn from(src: EncodingError) -> QuoteSignTypeError {
         QuoteSignTypeError::Encoding(src)
-    }
-}
-
-/// An enumeration of failure conditions when verifying a Quote
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum QuoteVerifyError {
-    /// The quote body could not be decoded: {0}
-    Decode(EncodingError),
-    /// The quote's GID, {0}, was not the expected {1}
-    GidMismatch(EpidGroupId, EpidGroupId),
-    /// The quote's linkable vs. unlinkable type was incorrect
-    QuoteSignType(QuoteSignTypeError),
-    /// The quote's report could not be verified: {0}
-    ReportBodyVerify(ReportBodyVerifyError),
-    /// The QE version in the quote and the one in the QE's report don't match.
-    QeVersionMismatch,
-    /// The quote appears valid, but the report is not expected.
-    QuotedReportMismatch,
-}
-
-impl From<DecodeError> for QuoteVerifyError {
-    fn from(src: DecodeError) -> Self {
-        QuoteVerifyError::Decode(src.into())
-    }
-}
-
-impl From<EncodingError> for QuoteVerifyError {
-    fn from(src: EncodingError) -> Self {
-        QuoteVerifyError::Decode(src)
-    }
-}
-
-impl From<QuoteSignTypeError> for QuoteVerifyError {
-    fn from(src: QuoteSignTypeError) -> Self {
-        QuoteVerifyError::QuoteSignType(src)
-    }
-}
-
-impl From<ReportBodyVerifyError> for QuoteVerifyError {
-    fn from(src: ReportBodyVerifyError) -> Self {
-        QuoteVerifyError::ReportBodyVerify(src)
     }
 }
 
