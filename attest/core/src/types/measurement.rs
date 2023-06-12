@@ -4,56 +4,9 @@
 //!
 //! Different types are used for MrSigner and MrEnclave to prevent misuse.
 
-use crate::{
-    impl_base64str_for_bytestruct, impl_hexstr_for_bytestruct, impl_sgx_newtype_for_bytestruct,
-};
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use mc_sgx_types::{sgx_measurement_t, SGX_HASH_SIZE};
 use serde::{Deserialize, Serialize};
-
-/// An opaque type for MRENCLAVE values
-///
-/// A MRENCLAVE value is a chained cryptographic hash of the signed
-/// enclave binary (.so), and the results of the page initialization
-/// steps which created the enclave's pages.
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct MrEnclave(sgx_measurement_t);
-
-impl From<[u8; SGX_HASH_SIZE]> for MrEnclave {
-    fn from(m: [u8; SGX_HASH_SIZE]) -> Self {
-        MrEnclave(sgx_measurement_t { m })
-    }
-}
-
-/// An opaque type for MRSIGNER values.
-///
-/// A MRSIGNER value is a cryptographic hash of the public key an enclave
-/// was signed with.
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct MrSigner(sgx_measurement_t);
-
-impl From<[u8; SGX_HASH_SIZE]> for MrSigner {
-    fn from(m: [u8; SGX_HASH_SIZE]) -> Self {
-        MrSigner(sgx_measurement_t { m })
-    }
-}
-
-impl_sgx_newtype_for_bytestruct! {
-    MrEnclave, sgx_measurement_t, SGX_HASH_SIZE, m;
-    MrSigner, sgx_measurement_t, SGX_HASH_SIZE, m;
-}
-
-impl_base64str_for_bytestruct! {
-    MrEnclave, SGX_HASH_SIZE, m;
-    MrSigner, SGX_HASH_SIZE, m;
-}
-
-impl_hexstr_for_bytestruct! {
-    MrEnclave, SGX_HASH_SIZE, m;
-    MrSigner, SGX_HASH_SIZE, m;
-}
+pub use mc_sgx_core_types::{MrEnclave, MrSigner};
 
 /// An enumeration of measurement options, mainly useful for describing
 /// enclave-vs-author attestation policy.

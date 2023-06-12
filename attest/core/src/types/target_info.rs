@@ -7,7 +7,7 @@ use crate::{
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
     types::{
-        attributes::Attributes, config_id::ConfigId, measurement::MrEnclave, ConfigSecurityVersion,
+        attributes::Attributes, config_id::ConfigId, ConfigSecurityVersion,
         MiscSelect,
     },
 };
@@ -22,11 +22,12 @@ use mc_sgx_types::{
     sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES, SGX_TARGET_INFO_RESERVED2_BYTES,
     SGX_TARGET_INFO_RESERVED3_BYTES,
 };
+use mc_sgx_core_types::MrEnclave;
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // byte positions for each field in an x86_64 representation
 const TI_MRENCLAVE_START: usize = 0;
-const TI_MRENCLAVE_END: usize = TI_MRENCLAVE_START + <MrEnclave as IntelLayout>::X86_64_CSIZE;
+const TI_MRENCLAVE_END: usize = TI_MRENCLAVE_START + MrEnclave::SIZE;
 const TI_ATTRIBUTES_START: usize = TI_MRENCLAVE_END;
 const TI_ATTRIBUTES_END: usize = TI_ATTRIBUTES_START + <Attributes as IntelLayout>::X86_64_CSIZE;
 const TI_RESERVED1_START: usize = TI_ATTRIBUTES_END;

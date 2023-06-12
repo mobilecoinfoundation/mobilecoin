@@ -12,7 +12,7 @@ use crate::{
         cpu_svn::CpuSecurityVersion,
         ext_prod_id::ExtendedProductId,
         family_id::FamilyId,
-        measurement::{Measurement, MrEnclave, MrSigner},
+        measurement::Measurement,
         report_data::{ReportData, ReportDataMask},
         ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
     },
@@ -25,6 +25,7 @@ use core::{
     mem::size_of,
 };
 use mc_sgx_types::{sgx_report_body_t, SGX_FLAGS_DEBUG};
+use mc_sgx_core_types::{MrEnclave, MrSigner};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
@@ -40,11 +41,11 @@ const RB_EXTPRODID_END: usize =
 const RB_ATTRIBUTES_START: usize = RB_EXTPRODID_END;
 const RB_ATTRIBUTES_END: usize = RB_ATTRIBUTES_START + <Attributes as IntelLayout>::X86_64_CSIZE;
 const RB_MRENCLAVE_START: usize = RB_ATTRIBUTES_END;
-const RB_MRENCLAVE_END: usize = RB_MRENCLAVE_START + <MrEnclave as IntelLayout>::X86_64_CSIZE;
+const RB_MRENCLAVE_END: usize = RB_MRENCLAVE_START + MrEnclave::SIZE;
 const RB_RESERVED2_START: usize = RB_MRENCLAVE_END;
 const RB_RESERVED2_END: usize = RB_RESERVED2_START + 32;
 const RB_MRSIGNER_START: usize = RB_RESERVED2_END;
-const RB_MRSIGNER_END: usize = RB_MRSIGNER_START + <MrSigner as IntelLayout>::X86_64_CSIZE;
+const RB_MRSIGNER_END: usize = RB_MRSIGNER_START + MrSigner::SIZE;
 const RB_RESERVED3_START: usize = RB_MRSIGNER_END;
 const RB_RESERVED3_END: usize = RB_RESERVED3_START + 32;
 const RB_CONFIGID_START: usize = RB_RESERVED3_END;
