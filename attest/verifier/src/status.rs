@@ -16,9 +16,10 @@
 use crate::Verify;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use mc_attest_core::{
-    IasQuoteError, IasQuoteResult, MrEnclave, MrSigner, ProductId, SecurityVersion,
+    IasQuoteError, IasQuoteResult, ProductId, SecurityVersion,
     VerificationReportData,
 };
+use mc_sgx_core_types::{MrEnclave, MrSigner};
 use mc_sgx_css::Signature;
 use serde::{Deserialize, Serialize};
 

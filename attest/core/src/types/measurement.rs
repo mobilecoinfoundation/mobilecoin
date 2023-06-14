@@ -6,7 +6,7 @@
 
 use core::fmt::{Display, Formatter, Result as FmtResult};
 use serde::{Deserialize, Serialize};
-pub use mc_sgx_core_types::{MrEnclave, MrSigner};
+use mc_sgx_core_types::{MrEnclave, MrSigner};
 
 /// An enumeration of measurement options, mainly useful for describing
 /// enclave-vs-author attestation policy.

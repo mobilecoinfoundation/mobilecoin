@@ -2555,6 +2555,7 @@ dependencies = [
  "mbedtls-sys-auto",
  "mc-attest-core",
  "mc-common",
+ "mc-sgx-core-types",
  "mc-sgx-css",
  "mc-sgx-types",
  "mc-util-build-script",
