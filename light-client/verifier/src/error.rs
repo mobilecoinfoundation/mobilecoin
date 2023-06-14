@@ -14,7 +14,7 @@ pub enum Error {
     NotAQuorum,
     /// The block id does not match the block
     InvalidBlockId,
-    /// No configured validator set for this block index, and id not whitelisted
+    /// No configured validator set for this block index, and id not allowlisted
     NoMatchingValidatorSet,
     /// The block content hash does not match the block
     BlockContentHashMismatch,
