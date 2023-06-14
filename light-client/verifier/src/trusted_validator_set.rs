@@ -56,7 +56,7 @@ impl TrustedValidatorSet {
 
         // These node id's have been validated. We need to check if these constitute a
         // quorum according to our quorum set.
-        let responder_ids: HashSet<_> = block_metadata
+        let node_ids: HashSet<_> = block_metadata
             .iter()
             .map(|meta| NodeID {
                 responder_id: meta.contents().responder_id().clone(),
@@ -64,7 +64,7 @@ impl TrustedValidatorSet {
             })
             .collect();
 
-        if !Self::validate_quorum_helper(&responder_ids, &self.quorum_set) {
+        if !Self::validate_quorum_helper(&node_ids, &self.quorum_set) {
             return Err(Error::NotAQuorum);
         }
         Ok(block_id)
