@@ -54,7 +54,7 @@ blockHeighRetrieval:
 
 fogViewStores:
   main:
-    shardSize: 400_000
+    shardSize: 200_000
     exceedBlockHeightBy: 200_000
     shardOverlap: 200_000
   test:
