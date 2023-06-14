@@ -23,7 +23,7 @@ pub struct LightClientVerifier {
     /// which they were valid
     pub historical_validator_sets: Vec<(Range<BlockIndex>, TrustedValidatorSet)>,
     /// A list of known valid block ids, which may appear before
-    /// trusted_validator_set_start_block.
+    /// `trusted_validator_set_start_block`.
     pub known_valid_block_ids: HashSet<BlockID>,
 }
 
