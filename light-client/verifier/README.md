@@ -1,7 +1,7 @@
 mc-light-client-verifier
 ========================
 
-The mc-light-client-verifier module contains code for a stateless validation routine
+The mc-light-client-verifier crate contains code for a stateless validation routine
 which can verify, based on static configuration, that a given block was externalized
 by the network, given node signatures from the BlockMetadata for that Block.
 
