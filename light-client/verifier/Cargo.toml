@@ -2,7 +2,7 @@
 name = "mc-light-client-verifier"
 version = "4.1.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 rust-version = { workspace = true }
 
