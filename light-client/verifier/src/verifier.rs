@@ -68,7 +68,7 @@ impl LightClientVerifier {
                 return Ok(());
             }
         }
-        return Err(Error::NoMatchingValidatorSet);
+        Error::NoMatchingValidatorSet
     }
 
     /// Validate that a given block has been externalized, and that it matches

@@ -60,7 +60,7 @@ impl TrustedValidatorSet {
             .iter()
             .map(|meta| NodeID {
                 responder_id: meta.contents().responder_id().clone(),
-                public_key: meta.node_key().clone(),
+                public_key: *meta.node_key(),
             })
             .collect();
 
@@ -70,7 +70,7 @@ impl TrustedValidatorSet {
         Ok(block_id)
     }
 
-    // Check whether a threshold of elements of this quorum set are satisfied,
+    // Check whether a threshold of members of this quorum set are satisfied,
     // recursing if necessary.
     fn validate_quorum_helper(signing_node_ids: &HashSet<NodeID>, quorum_set: &QuorumSet) -> bool {
         let mut satisfied_members = 0;
@@ -85,7 +85,7 @@ impl TrustedValidatorSet {
                     }
                 }
                 Some(QuorumSetMember::InnerSet(inner_set)) => {
-                    if Self::validate_quorum_helper(signing_node_ids, &inner_set) {
+                    if Self::validate_quorum_helper(signing_node_ids, inner_set) {
                         satisfied_members += 1;
                     }
                 }
