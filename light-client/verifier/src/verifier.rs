@@ -8,22 +8,25 @@ use std::{collections::HashSet, ops::Range};
 /// The light client verifier
 ///
 /// This object is capable of:
-/// * Validating a Block given BlockMetadata containing node signatures
-/// * Validating one or more TxOut's, that appeared in a given Block.
+/// * Verifying a Block given BlockMetadata containing node signatures
+/// * Verifying one or more TxOut's, that appeared in a given Block.
 ///
-/// Without making network connections.
+/// The verifier does not make network connections and its state does not
+/// change when it verifies things. It needs to be configured with correct
+/// trusted validator sets to give give correct results.
 #[derive(Clone, Debug)]
 pub struct LightClientVerifier {
     /// A quorum configuration and expected signing keys for the validator
     /// network.
     pub trusted_validator_set: TrustedValidatorSet,
-    /// A block index before which this trusted validator set is not used
+    /// The first block index at which this trusted validator set is applied.
     pub trusted_validator_set_start_block: BlockIndex,
     /// A list of historical validator sets, and ranges of block indices at
-    /// which they were valid
+    /// which they should be used.
     pub historical_validator_sets: Vec<(Range<BlockIndex>, TrustedValidatorSet)>,
     /// A list of known valid block ids, which may appear before
-    /// `trusted_validator_set_start_block`.
+    /// `trusted_validator_set_start_block` and outside of any of the historical
+    /// ranges.
     pub known_valid_block_ids: HashSet<BlockID>,
 }
 
@@ -40,9 +43,10 @@ impl From<TrustedValidatorSet> for LightClientVerifier {
 }
 
 impl LightClientVerifier {
-    /// Validate that a given block has been externalized by the network, given
-    /// additional evidence in the form of BlockMetadata with signatures.
-    pub fn validate_block(&self, block: &Block, metadata: &[BlockMetadata]) -> Result<(), Error> {
+    /// Verify that a given block has been externalized by the network, given
+    /// additional evidence in the form of BlockMetadata with signatures,
+    /// relative to our configuration of trusted validator sets.
+    pub fn verify_block(&self, block: &Block, metadata: &[BlockMetadata]) -> Result<(), Error> {
         if !block.is_block_id_valid() {
             return Err(Error::InvalidBlockId);
         }
@@ -50,66 +54,56 @@ impl LightClientVerifier {
             return Ok(());
         }
         if block.index >= self.trusted_validator_set_start_block {
-            let metadata_block_id = self
+            return self
                 .trusted_validator_set
-                .validate_block_id_signatures(metadata)?;
-            if metadata_block_id != block.id {
-                return Err(Error::BlockIdMismatch);
-            }
-            return Ok(());
+                .verify_block_id_signatures(&block.id, metadata);
         }
 
         for (range, validator_set) in self.historical_validator_sets.iter() {
             if range.contains(&block.index) {
-                let metadata_block_id = validator_set.validate_block_id_signatures(metadata)?;
-                if metadata_block_id != block.id {
-                    return Err(Error::BlockIdMismatch);
-                }
-                return Ok(());
+                return validator_set.verify_block_id_signatures(&block.id, metadata);
             }
         }
-        Err(Error::NoMatchingValidatorSet)
+        Err(Error::NoMatchingValidatorSet(block.index))
     }
 
-    /// Validate that a given block has been externalized, and that it matches
-    /// to given block contents
-    pub fn validate_block_and_block_contents(
+    /// Verify that a given block has been externalized, and that it matches
+    /// to given block contents.
+    pub fn verify_block_and_block_contents(
         &self,
         block: &Block,
         block_contents: &BlockContents,
         block_metadata: &[BlockMetadata],
     ) -> Result<(), Error> {
-        // Validate the block
-        self.validate_block(block, block_metadata)?;
-        // Validate that the contents match the block
+        self.verify_block(block, block_metadata)?;
+        // Verify that the contents match the block
         let contents_hash = block_contents.hash();
         if contents_hash != block.contents_hash {
-            return Err(Error::BlockContentHashMismatch);
+            return Err(Error::BlockContentHashMismatch(contents_hash));
         }
         Ok(())
     }
 
-    /// Validate that one or more TxOut's appeared in a particular block that
+    /// Verify that one or more TxOut's appeared in a particular block that
     /// was externalized
-    pub fn validate_txos_in_block(
+    pub fn verify_txos_in_block(
         &self,
         txos: &[TxOut],
         block: &Block,
         block_contents: &BlockContents,
         block_metadata: &[BlockMetadata],
     ) -> Result<(), Error> {
-        // Validate the block and block contents
-        self.validate_block_and_block_contents(block, block_contents, block_metadata)?;
-        // Validate that each Txo actually appears in the block.
+        self.verify_block_and_block_contents(block, block_contents, block_metadata)?;
+        // Verify that each Txo actually appears in the block.
         // Note: for big enough blocks, it's probably faster to throw them in a hash set
         // first, but it has to be very big for this to be noticeable.
-        for txo in txos {
+        for (idx, txo) in txos.iter().enumerate() {
             if !block_contents
                 .outputs
                 .iter()
                 .any(|block_contents_txo| block_contents_txo == txo)
             {
-                return Err(Error::TxOutNotFound);
+                return Err(Error::TxOutNotFound(idx));
             }
         }
         Ok(())

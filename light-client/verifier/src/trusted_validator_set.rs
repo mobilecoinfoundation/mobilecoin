@@ -12,8 +12,7 @@ use std::collections::HashSet;
 /// * Implicit in the quorum set, an association of responder id's to node
 ///   signing keys.
 ///
-/// A trusted validator set can verify a set of BlockMetadata, producing a
-/// validated BlockID.
+/// A trusted validator set can verify a BlockID, given a set of BlockMetadata.
 ///
 /// A block id is considered valid if:
 /// * It appeared in BlockMetadataContents corresponding to a quorum of nodes
@@ -31,26 +30,23 @@ impl TrustedValidatorSet {
     /// ID constitutes a quorum of signatures.
     ///
     /// Arguments:
+    /// * block_id - The id of the block that we are verifying
     /// * block_metadata - A collection of block metadata signatures, obtained
     ///   from ArchiveBlock of several validator nodes.
-    pub fn validate_block_id_signatures(
+    pub fn verify_block_id_signatures(
         &self,
+        block_id: &BlockID,
         block_metadata: &[BlockMetadata],
-    ) -> Result<BlockID, Error> {
-        if block_metadata.is_empty() {
-            return Err(Error::NoBlockMetadata);
-        }
-        let block_id = block_metadata[0].contents().block_id().clone();
-
+    ) -> Result<(), Error> {
         for meta in block_metadata.iter() {
-            // All block metadata should be signing the same Block Id.
-            if meta.contents().block_id() != &block_id {
-                return Err(Error::BlockIdMismatch);
+            // All block metadata should be signing the expected Block Id.
+            if meta.contents().block_id() != block_id {
+                return Err(Error::BlockIdMismatch(meta.contents().block_id().clone()));
             }
 
             // All block metadata should have valid signatures
             if meta.verify().is_err() {
-                return Err(Error::BlockSignature);
+                return Err(Error::BlockMetadataSignature);
             }
         }
 
@@ -64,28 +60,28 @@ impl TrustedValidatorSet {
             })
             .collect();
 
-        if !Self::validate_quorum_helper(&node_ids, &self.quorum_set) {
+        if !Self::verify_quorum_helper(&node_ids, &self.quorum_set) {
             return Err(Error::NotAQuorum);
         }
-        Ok(block_id)
+        Ok(())
     }
 
     // Check whether a threshold of members of this quorum set are satisfied,
     // recursing if necessary.
-    fn validate_quorum_helper(signing_node_ids: &HashSet<NodeID>, quorum_set: &QuorumSet) -> bool {
+    fn verify_quorum_helper(signing_node_ids: &HashSet<NodeID>, quorum_set: &QuorumSet) -> bool {
         let mut satisfied_members = 0;
         for member in quorum_set.members.iter() {
             match &member.member {
                 None => continue,
-                // Note: We could try to log warnings if signing_node_id mismatches in responder id
-                // or public key, to make this easier to debug
                 Some(QuorumSetMember::Node(id)) => {
+                    // Note: We could try to log warnings if signing_node_id mismatches in responder
+                    // id or public key, to make this easier to debug
                     if signing_node_ids.contains(id) {
                         satisfied_members += 1;
                     }
                 }
                 Some(QuorumSetMember::InnerSet(inner_set)) => {
-                    if Self::validate_quorum_helper(signing_node_ids, inner_set) {
+                    if Self::verify_quorum_helper(signing_node_ids, inner_set) {
                         satisfied_members += 1;
                     }
                 }
