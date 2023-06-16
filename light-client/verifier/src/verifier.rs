@@ -3,7 +3,8 @@
 use crate::{Error, TrustedValidatorSet};
 use mc_blockchain_types::{Block, BlockContents, BlockID, BlockIndex, BlockMetadata};
 use mc_transaction_core::tx::TxOut;
-use std::{collections::HashSet, ops::Range};
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeSet, ops::Range};
 
 /// The light client verifier
 ///
@@ -14,7 +15,7 @@ use std::{collections::HashSet, ops::Range};
 /// The verifier does not make network connections and its state does not
 /// change when it verifies things. It needs to be configured with correct
 /// trusted validator sets to give give correct results.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LightClientVerifier {
     /// A quorum configuration and expected signing keys for the validator
     /// network.
@@ -27,7 +28,7 @@ pub struct LightClientVerifier {
     /// A list of known valid block ids, which may appear before
     /// `trusted_validator_set_start_block` and outside of any of the historical
     /// ranges.
-    pub known_valid_block_ids: HashSet<BlockID>,
+    pub known_valid_block_ids: BTreeSet<BlockID>,
 }
 
 // For a simple LightClientVerifier initialization
