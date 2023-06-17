@@ -321,11 +321,11 @@ fn load_test(config: &TestConfig, test_params: TestParams, logger: Logger) -> Te
             for _ in 0..config.repetitions {
                 let result1 = get_blocks(
                     block_version,
-                    1,
-                    config.chunk_size,
-                    1,
-                    config.chunk_size,
-                    1 << 20,
+                    1,                 // num_blocks
+                    config.chunk_size, // num_recipients
+                    1,                 // num_tokens
+                    1,                 // num_tx_out per recipient
+                    1 << 20,           // amount
                     last_block,
                     rng,
                 );
