@@ -4851,6 +4851,7 @@ dependencies = [
  "mc-consensus-scp-types",
  "mc-crypto-keys",
  "mc-transaction-core",
+ "serde",
 ]
 
 [[package]]

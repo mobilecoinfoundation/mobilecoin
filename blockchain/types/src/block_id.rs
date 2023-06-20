@@ -13,7 +13,9 @@ use prost::{
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-#[derive(Clone, Default, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Default, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 #[digestible(transparent)]
 /// Identifies a block with its hash.
 pub struct BlockID(pub [u8; 32]);

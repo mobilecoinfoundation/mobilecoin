@@ -4,6 +4,7 @@ use crate::Error;
 use mc_blockchain_types::{BlockID, BlockMetadata};
 use mc_common::NodeID;
 use mc_consensus_scp_types::{QuorumSet, QuorumSetMember};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// A trusted validator set consists of:
@@ -19,7 +20,7 @@ use std::collections::HashSet;
 /// * The message signing key signatures of those nodes are valid
 /// * The message signing key signatures were made using the expected keys for
 ///   that responder id.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TrustedValidatorSet {
     /// A quorum set of validator nodes that this light client will trust
     pub quorum_set: QuorumSet,
