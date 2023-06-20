@@ -39,4 +39,4 @@ cargo-emit = "0.2.1"
 pkg-config = "0.3"
 
 [patch.crates-io]
-mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "9f9575f36cea8154d244fd95dcb303563fb38495" }
+mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "254fe805cbae20e67e3c8a3ac671d5694f8313ed" }
