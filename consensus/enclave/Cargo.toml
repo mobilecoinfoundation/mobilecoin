@@ -49,4 +49,4 @@ lazy_static = "1"
 sha2 = "0.10"
 
 [patch.crates-io]
-mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "7003bd505bb60bd85840020908d75d9590b5665b" }
+mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "54ed59f6076d8c265ad6dad6d2c9223f63e51919" }

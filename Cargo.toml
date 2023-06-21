@@ -246,4 +246,4 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 # Fix issues with recent nightlies, bump curve25519-dalek version
 x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
-mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "7003bd505bb60bd85840020908d75d9590b5665b" }
+mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "54ed59f6076d8c265ad6dad6d2c9223f63e51919" }
