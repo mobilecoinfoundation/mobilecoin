@@ -235,8 +235,6 @@ fn load_test(config: &TestConfig, test_params: TestParams, logger: Logger) -> Te
         state_file_path.push(".mc-fog-ingest-state");
 
         // Start ingest server.
-        // Note: we omit IAS API KEY, but maybe we should take from env or something
-        // Maybe we should take ias-spid from env also
         let mut command = std::process::Command::new(config.ingest_server_binary.to_str().unwrap());
         command
             .args(["--ledger-db", ledger_db_path.path().to_str().unwrap()])
