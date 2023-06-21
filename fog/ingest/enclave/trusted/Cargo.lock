@@ -1381,7 +1381,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-build"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9f9575f36cea8154d244fd95dcb303563fb38495#9f9575f36cea8154d244fd95dcb303563fb38495"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=d32ff4a359232411b4814320e8b14ea100ded952#d32ff4a359232411b4814320e8b14ea100ded952"
 dependencies = [
  "bindgen 0.65.1",
  "cargo-emit",
@@ -1390,7 +1390,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-sys-types"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9f9575f36cea8154d244fd95dcb303563fb38495#9f9575f36cea8154d244fd95dcb303563fb38495"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=d32ff4a359232411b4814320e8b14ea100ded952#d32ff4a359232411b4814320e8b14ea100ded952"
 dependencies = [
  "bindgen 0.65.1",
  "cargo-emit",
@@ -1401,7 +1401,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-types"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9f9575f36cea8154d244fd95dcb303563fb38495#9f9575f36cea8154d244fd95dcb303563fb38495"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=d32ff4a359232411b4814320e8b14ea100ded952#d32ff4a359232411b4814320e8b14ea100ded952"
 dependencies = [
  "bitflags 2.0.1",
  "displaydoc",
@@ -1501,7 +1501,7 @@ version = "4.1.0-pre0"
 [[package]]
 name = "mc-sgx-util"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9f9575f36cea8154d244fd95dcb303563fb38495#9f9575f36cea8154d244fd95dcb303563fb38495"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=d32ff4a359232411b4814320e8b14ea100ded952#d32ff4a359232411b4814320e8b14ea100ded952"
 
 [[package]]
 name = "mc-transaction-core"

@@ -91,4 +91,4 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 
 x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
-mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "254fe805cbae20e67e3c8a3ac671d5694f8313ed" }
+mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "d32ff4a359232411b4814320e8b14ea100ded952" }
