@@ -118,9 +118,9 @@ pub fn get_blocks_with_recipients<R: RngCore + CryptoRng>(
         prev_block = Some(block.clone());
 
         let signature = make_block_signature(&block, rng);
-        //let metadata = make_block_metadata(block.id.clone(), rng);
+        let metadata = make_block_metadata(block.id.clone(), rng);
 
-        let block_data = BlockData::new(block, block_contents, signature, None);
+        let block_data = BlockData::new(block, block_contents, signature, Some(metadata));
 
         blocks.push(block_data);
     }
