@@ -54,37 +54,3 @@ impl Display for Measurement {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use mc_util_serial::{deserialize, serialize};
-
-    #[test]
-    fn test_mrenclave_serde() {
-        let mr_value = sgx_measurement_t {
-            m: [
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                24, 25, 26, 27, 28, 29, 30, 31, 32,
-            ],
-        };
-        let mrenclave: MrEnclave = mr_value.into();
-        let mrser = serialize(&mrenclave).expect("Could not serialize MrEnclave.");
-        let mrdeser: MrEnclave = deserialize(&mrser).expect("Could not deserialize MrEnclave.");
-        assert_eq!(mrenclave, mrdeser);
-    }
-
-    #[test]
-    fn test_mrsigner_serde() {
-        let mr_value = sgx_measurement_t {
-            m: [
-                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                24, 25, 26, 27, 28, 29, 30, 31, 32,
-            ],
-        };
-        let mrsigner: MrSigner = mr_value.into();
-        let mrser = serialize(&mrsigner).expect("Could not serialize MrSigner.");
-        let mrdeser: MrSigner = deserialize(&mrser).expect("Could not deserialize MrSigner.");
-        assert_eq!(mrsigner, mrdeser);
-    }
-}

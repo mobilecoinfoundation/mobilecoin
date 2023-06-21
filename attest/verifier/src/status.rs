@@ -254,7 +254,6 @@ mod test {
     use super::*;
     use alloc::vec;
     use mc_attest_core::VerificationReport;
-    use mc_sgx_types::sgx_measurement_t;
 
     /// Report with OK status
     const IAS_OK: &str = include_str!("../data/test/ias_ok.json");
@@ -275,24 +274,16 @@ mod test {
     /// and 615 advisories.
     const IAS_CONFIG_SW_334_615: &str = include_str!("../data/test/ias_config_sw_334_615.json");
 
-    const MR_ENCLAVE: sgx_measurement_t = sgx_measurement_t {
-        m: [
-            247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232, 138, 9, 180, 143, 195,
-            110, 244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234,
-        ],
-    };
-    const MR_SIGNER: sgx_measurement_t = sgx_measurement_t {
-        m: [
-            126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230, 243, 187, 11, 134,
-            193, 35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17,
-        ],
-    };
+    const MR_ENCLAVE: [u8; 32] = [247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232,
+        138, 9, 180, 143, 195, 110, 244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234];
+    const MR_SIGNER: [u8; 32] = [126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230,
+        243, 187, 11, 134, 193, 35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17];
 
     /// Ensure an OK result with the expected MRENCLAVE value succeeds.
     #[test]
     fn mrenclave_ok() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec![],
             sw_ids: vec![],
         };
@@ -311,7 +302,7 @@ mod test {
     #[test]
     fn mrenclave_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_SIGNER),
+            mr_enclave: MrEnclave::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             config_ids: vec![],
             sw_ids: vec![],
         };
@@ -331,7 +322,7 @@ mod test {
     #[test]
     fn mrenclave_config_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00239".to_owned()],
             sw_ids: vec!["INTEL-SA-00123".to_owned()],
         };
@@ -351,7 +342,7 @@ mod test {
     #[test]
     fn mrenclave_config_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00123".to_owned()],
             sw_ids: vec!["INTEL-SA-00239".to_owned()],
         };
@@ -371,7 +362,7 @@ mod test {
     #[test]
     fn mrenclave_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00123".to_owned()],
             sw_ids: vec!["INTEL-SA-00239".to_owned()],
         };
@@ -391,7 +382,7 @@ mod test {
     #[test]
     fn mrenclave_multi_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec![],
             sw_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
         };
@@ -411,7 +402,7 @@ mod test {
     #[test]
     fn mrenclave_sw_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00239".to_owned()],
             sw_ids: vec!["INTEL-SA-00123".to_owned()],
         };
@@ -431,7 +422,7 @@ mod test {
     #[test]
     fn mrenclave_sw_empty_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00334".to_owned()],
             sw_ids: vec![],
         };
@@ -451,7 +442,7 @@ mod test {
     #[test]
     fn mrenclave_multi_sw_empty_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00334".to_owned()],
             sw_ids: vec![],
         };
@@ -471,7 +462,7 @@ mod test {
     #[test]
     fn mrenclave_multi_sw_short_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec![],
             sw_ids: vec!["INTEL-SA-00334".to_owned()],
         };
@@ -491,7 +482,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00239".to_owned()],
             sw_ids: vec!["INTEL-SA-00239".to_owned()],
         };
@@ -511,7 +502,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
             sw_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
         };
@@ -531,7 +522,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_fail_config() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00239".to_owned()],
             sw_ids: vec!["INTEL-SA-00123".to_owned()],
         };
@@ -551,7 +542,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_no_config() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec![],
             sw_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
         };
@@ -571,7 +562,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_no_sw() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
             sw_ids: vec![],
         };
@@ -591,7 +582,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_short_sw() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
             sw_ids: vec!["INTEL-SA-00334".to_owned()],
         };
@@ -611,7 +602,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_short_config() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00615".to_owned()],
             sw_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
         };
@@ -630,7 +621,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_fail_sw() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00123".to_owned()],
             sw_ids: vec!["INTEL-SA-00239".to_owned()],
         };
@@ -650,7 +641,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_fail_neither() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00123".to_owned()],
             sw_ids: vec!["INTEL-SA-00123".to_owned()],
         };
@@ -671,7 +662,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_short() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             config_ids: vec!["INTEL-SA-00334".to_owned()],
             sw_ids: vec!["INTEL-SA-00334".to_owned()],
         };
@@ -691,7 +682,7 @@ mod test {
     #[test]
     fn mrsigner_ok() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -713,7 +704,7 @@ mod test {
     #[test]
     fn mrsigner_fail_notok() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -734,7 +725,7 @@ mod test {
     #[test]
     fn mrsigner_fail_mrsigner() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_ENCLAVE),
+            mr_signer: MrSigner::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -755,7 +746,7 @@ mod test {
     #[test]
     fn mrsigner_fail_product_id() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
             minimum_svn: 0,
             config_ids: vec![],
@@ -776,7 +767,7 @@ mod test {
     #[test]
     fn mrsigner_fail_version() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 1,
             config_ids: vec![],
@@ -799,7 +790,7 @@ mod test {
     #[test]
     fn mrsigner_pass_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00239".to_owned()],
@@ -822,7 +813,7 @@ mod test {
     #[test]
     fn mrsigner_pass_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -845,7 +836,7 @@ mod test {
     #[test]
     fn mrsigner_pass_multi_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -868,7 +859,7 @@ mod test {
     #[test]
     fn mrsigner_pass_config_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00239".to_owned()],
@@ -891,7 +882,7 @@ mod test {
     #[test]
     fn mrsigner_fail_config_sw_no_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00239".to_owned()],
@@ -914,7 +905,7 @@ mod test {
     #[test]
     fn mrsigner_fail_config_sw_no_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -937,7 +928,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_no_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -960,7 +951,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_short_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00615".to_owned()],
@@ -983,7 +974,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_no_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec![],
@@ -1006,7 +997,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_short_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00334".to_owned()],
@@ -1029,7 +1020,7 @@ mod test {
     #[test]
     fn mrsigner_fail_sw_config_sw_for_product() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00239".to_owned()],
@@ -1052,7 +1043,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_sw_config_sw_for_product() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
             minimum_svn: 0,
             config_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -1075,7 +1066,7 @@ mod test {
     #[test]
     fn mrsigner_fail_config_sw_for_version() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 1,
             config_ids: vec!["INTEL-SA-00239".to_owned()],
@@ -1098,7 +1089,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_for_version() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::from(&MR_SIGNER),
+            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 1,
             config_ids: vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
