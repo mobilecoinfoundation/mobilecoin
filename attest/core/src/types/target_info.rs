@@ -6,10 +6,7 @@ use crate::{
     error::TargetInfoError,
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
-    types::{
-        attributes::Attributes, config_id::ConfigId, ConfigSecurityVersion,
-        MiscSelect,
-    },
+    types::{attributes::Attributes, config_id::ConfigId, ConfigSecurityVersion, MiscSelect},
 };
 use alloc::vec::Vec;
 use core::{
@@ -18,11 +15,11 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
+use mc_sgx_core_types::MrEnclave;
 use mc_sgx_types::{
     sgx_measurement_t, sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES,
     SGX_TARGET_INFO_RESERVED2_BYTES, SGX_TARGET_INFO_RESERVED3_BYTES,
 };
-use mc_sgx_core_types::MrEnclave;
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // byte positions for each field in an x86_64 representation
@@ -172,7 +169,9 @@ impl<'src> TryFrom<&'src [u8]> for TargetInfo {
         }
 
         let mr_enclave = sgx_measurement_t {
-            m: src[TI_MRENCLAVE_START..TI_MRENCLAVE_END].try_into().unwrap()
+            m: src[TI_MRENCLAVE_START..TI_MRENCLAVE_END]
+                .try_into()
+                .unwrap(),
         };
         let attributes = Attributes::try_from(&src[TI_ATTRIBUTES_START..TI_ATTRIBUTES_END])?.into();
         let config_id = ConfigId::try_from(&src[TI_CONFIGID_START..TI_CONFIGID_END])?.into();

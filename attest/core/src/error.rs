@@ -5,9 +5,7 @@
 use crate::{
     quote::QuoteSignType,
     types::{
-        epid_group_id::EpidGroupId,
-        measurement::Measurement,
-        pib::PlatformInfoBlob,
+        epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         update_info::UpdateInfo,
     },
 };

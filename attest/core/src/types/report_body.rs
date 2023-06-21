@@ -24,8 +24,8 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
-use mc_sgx_types::{sgx_measurement_t, sgx_report_body_t, SGX_FLAGS_DEBUG};
 use mc_sgx_core_types::{MrEnclave, MrSigner};
+use mc_sgx_types::{sgx_measurement_t, sgx_report_body_t, SGX_FLAGS_DEBUG};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
@@ -362,13 +362,15 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
             .into(),
             attributes: Attributes::try_from(&src[RB_ATTRIBUTES_START..RB_ATTRIBUTES_END])?.into(),
             mr_enclave: sgx_measurement_t {
-                m: src[RB_MRENCLAVE_START..RB_MRENCLAVE_END].try_into().unwrap()
+                m: src[RB_MRENCLAVE_START..RB_MRENCLAVE_END]
+                    .try_into()
+                    .unwrap(),
             },
             reserved2: (&src[RB_RESERVED2_START..RB_RESERVED2_END])
                 .try_into()
                 .map_err(|_e| EncodingError::InvalidInput)?,
             mr_signer: sgx_measurement_t {
-                m: src[RB_MRSIGNER_START..RB_MRSIGNER_END].try_into().unwrap()
+                m: src[RB_MRSIGNER_START..RB_MRSIGNER_END].try_into().unwrap(),
             },
             reserved3: (&src[RB_RESERVED3_START..RB_RESERVED3_END])
                 .try_into()

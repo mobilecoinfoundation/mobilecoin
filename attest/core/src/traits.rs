@@ -9,9 +9,7 @@ pub(crate) use core::{
     hash::{Hash, Hasher},
 };
 pub(crate) use hex::{decode_to_slice as hex_decode, encode_to_slice as hex_encode};
-pub(crate) use mc_util_encodings::{
-    Error as EncodingError, FromHex, IntelLayout, ToHex, ToX64,
-};
+pub(crate) use mc_util_encodings::{Error as EncodingError, FromHex, IntelLayout, ToHex, ToX64};
 pub(crate) use mc_util_repr_bytes::derive_debug_and_display_hex_from_as_ref;
 pub(crate) use serde::{
     de::{

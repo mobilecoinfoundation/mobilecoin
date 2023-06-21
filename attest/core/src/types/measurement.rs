@@ -5,8 +5,8 @@
 //! Different types are used for MrSigner and MrEnclave to prevent misuse.
 
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use serde::{Deserialize, Serialize};
 use mc_sgx_core_types::{MrEnclave, MrSigner};
+use serde::{Deserialize, Serialize};
 
 /// An enumeration of measurement options, mainly useful for describing
 /// enclave-vs-author attestation policy.

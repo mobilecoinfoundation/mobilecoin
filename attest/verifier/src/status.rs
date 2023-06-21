@@ -16,8 +16,7 @@
 use crate::Verify;
 use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use mc_attest_core::{
-    IasQuoteError, IasQuoteResult, ProductId, SecurityVersion,
-    VerificationReportData,
+    IasQuoteError, IasQuoteResult, ProductId, SecurityVersion, VerificationReportData,
 };
 use mc_sgx_core_types::{MrEnclave, MrSigner};
 use mc_sgx_css::Signature;
@@ -274,10 +273,14 @@ mod test {
     /// and 615 advisories.
     const IAS_CONFIG_SW_334_615: &str = include_str!("../data/test/ias_config_sw_334_615.json");
 
-    const MR_ENCLAVE: [u8; 32] = [247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232,
-        138, 9, 180, 143, 195, 110, 244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234];
-    const MR_SIGNER: [u8; 32] = [126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230,
-        243, 187, 11, 134, 193, 35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17];
+    const MR_ENCLAVE: [u8; 32] = [
+        247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232, 138, 9, 180, 143, 195, 110,
+        244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234,
+    ];
+    const MR_SIGNER: [u8; 32] = [
+        126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230, 243, 187, 11, 134, 193,
+        35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17,
+    ];
 
     /// Ensure an OK result with the expected MRENCLAVE value succeeds.
     #[test]
