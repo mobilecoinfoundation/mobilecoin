@@ -4545,6 +4545,7 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "4.1.0"
 dependencies = [
+ "clap 4.0.32",
  "grpcio",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -4554,6 +4555,7 @@ dependencies = [
  "mc-fog-enclave-connection",
  "mc-fog-types",
  "mc-fog-uri",
+ "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
  "mc-util-grpc",
  "mc-util-serial",

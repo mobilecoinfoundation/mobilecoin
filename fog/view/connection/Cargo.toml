@@ -6,12 +6,17 @@ edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
 
+[[bin]]
+name = "fog_view_client"
+path = "src/bin/client.rs"
+
 [dependencies]
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-telemetry = { path = "../../../util/telemetry" }
@@ -24,5 +29,6 @@ mc-fog-uri = { path = "../../uri" }
 mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
+clap = { version = "4.0", features = ["derive", "env"] }
 grpcio = "0.12.0"
 retry = "2.0"
