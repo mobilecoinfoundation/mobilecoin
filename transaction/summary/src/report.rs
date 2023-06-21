@@ -35,12 +35,15 @@ pub enum TransactionEntity {
 // is particularly useful for eliding generics when using this and is expected
 // to be helpful when building support for account info caching.)
 pub trait TransactionReport {
-    /// Add value to the transaction running transaction totals
-    fn total_add(&mut self, amount: Amount) -> Result<(), Error>;
+    /// Add value to the running transaction totals
+    fn input_add(&mut self, amount: Amount) -> Result<(), Error>;
 
-    /// Add matched change outputs to the report, these are subtracted from the
-    /// transaction totals
-    fn change_add(&mut self, amount: Amount) -> Result<(), Error>;
+    /// Subtract an amount from the transaction total, used for change outputs
+    /// and SCIs if enabled
+    fn change_sub(&mut self, amount: Amount) -> Result<(), Error>;
+
+    /// Add SCI input not owned by our account
+    fn sci_add(&mut self, _amount: Amount) -> Result<(), Error>;
 
     /// Add output value for a particular entity / address to the report
     fn output_add(&mut self, entity: TransactionEntity, amount: Amount) -> Result<(), Error>;
@@ -57,12 +60,16 @@ pub trait TransactionReport {
 
 /// [TransactionReport] impl for `&mut T` where `T: TransactionReport`
 impl<T: TransactionReport> TransactionReport for &mut T {
-    fn total_add(&mut self, amount: Amount) -> Result<(), Error> {
-        <T as TransactionReport>::total_add(self, amount)
+    fn input_add(&mut self, amount: Amount) -> Result<(), Error> {
+        <T as TransactionReport>::input_add(self, amount)
     }
 
-    fn change_add(&mut self, amount: Amount) -> Result<(), Error> {
-        <T as TransactionReport>::change_add(self, amount)
+    fn change_sub(&mut self, amount: Amount) -> Result<(), Error> {
+        <T as TransactionReport>::change_sub(self, amount)
+    }
+
+    fn sci_add(&mut self, amount: Amount) -> Result<(), Error> {
+        <T as TransactionReport>::sci_add(self, amount)
     }
 
     fn output_add(&mut self, entity: TransactionEntity, amount: Amount) -> Result<(), Error> {
@@ -97,6 +104,8 @@ pub const MAX_TOTALS: usize = 4;
 /// This uses a double-entry approach where outputs and totals should be
 /// balanced. For each token, totals = our inputs - sum(change outputs) ==
 /// sum(other outputs) + fee
+///
+/// SCI inputs are currently ignored
 #[derive(Clone, Debug, Default)]
 pub struct TxSummaryUnblindingReport<
     const RECORDS: usize = MAX_RECORDS,
@@ -112,7 +121,7 @@ pub struct TxSummaryUnblindingReport<
     ///
     /// Note that swap inputs are elided as these are not inputs
     /// owned by us (ie. are not spent from our account)
-    pub totals: Vec<(TokenId, i64), TOTALS>,
+    pub totals: Vec<(TokenId, TotalKind, i64), TOTALS>,
 
     /// The network fee that we pay to execute the transaction
     pub network_fee: Amount,
@@ -121,24 +130,36 @@ pub struct TxSummaryUnblindingReport<
     pub tombstone_block: u64,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum TotalKind {
+    /// Input owned by our account
+    Ours,
+    /// Input owned by SCI counterparty
+    Sci,
+}
+
 impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     for TxSummaryUnblindingReport<RECORDS, TOTALS>
 {
-    /// Add input, added to the transaction total
-    fn total_add(&mut self, amount: Amount) -> Result<(), Error> {
+    /// Add owned input, added to the transaction total
+    fn input_add(&mut self, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
 
         // Ensure value will not overflow
         let value = i64::try_from(value).map_err(|_| Error::NumericOverflow)?;
 
         // Check for existing total entry for this token
-        match self.totals.iter_mut().find(|(t, _)| t == &token_id) {
+        match self
+            .totals
+            .iter_mut()
+            .find(|(t, k, _)| t == &token_id && *k == TotalKind::Ours)
+        {
             // If we have an entry, add the value to this
-            Some(v) => v.1 = v.1.checked_add(value).ok_or(Error::NumericOverflow)?,
+            Some(v) => v.2 = v.2.checked_add(value).ok_or(Error::NumericOverflow)?,
             // If we do not, create a new entry
             None => self
                 .totals
-                .push((token_id, value))
+                .push((token_id, TotalKind::Ours, value))
                 .map_err(|_| Error::BufferOverflow)?,
         }
 
@@ -146,23 +167,51 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     }
 
     /// Add change output, subtracted from the transaction total
-    fn change_add(&mut self, amount: Amount) -> Result<(), Error> {
+    fn change_sub(&mut self, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
 
         // Ensure value will not overflow
         let value = i64::try_from(value).map_err(|_| Error::NumericOverflow)?;
 
         // Check for existing total entry for this token
-        match self.totals.iter_mut().find(|(t, _)| t == &token_id) {
+        match self
+            .totals
+            .iter_mut()
+            .find(|(t, k, _)| t == &token_id && *k == TotalKind::Ours)
+        {
             // If we have an entry, subtract the change value from this
-            Some(v) => v.1 = v.1.checked_sub(value).ok_or(Error::NumericOverflow)?,
+            Some(v) => v.2 = v.2.checked_sub(value).ok_or(Error::NumericOverflow)?,
             // If we do not, create a new entry
             None => self
                 .totals
-                .push((token_id, -value))
+                .push((token_id, TotalKind::Ours, -value))
                 .map_err(|_| Error::BufferOverflow)?,
         }
 
+        Ok(())
+    }
+
+    /// Add SCI (or other) input not owned by our account
+    fn sci_add(&mut self, amount: Amount) -> Result<(), Error> {
+        let Amount { token_id, value } = amount;
+
+        // Ensure value will not overflow
+        let value = i64::try_from(value).map_err(|_| Error::NumericOverflow)?;
+
+        // Check for existing total entry for this token
+        match self
+            .totals
+            .iter_mut()
+            .find(|(t, k, _)| t == &token_id && *k == TotalKind::Sci)
+        {
+            // If we have an entry, add the value to this
+            Some(v) => v.2 = v.2.checked_add(value).ok_or(Error::NumericOverflow)?,
+            // If we do not, create a new entry
+            None => self
+                .totals
+                .push((token_id, TotalKind::Sci, value))
+                .map_err(|_| Error::BufferOverflow)?,
+        }
         Ok(())
     }
 
@@ -202,18 +251,41 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
         Ok(())
     }
 
-    /// Finalise report, checking totals and sorting report entries
+    /// Finalise report, checking and balancing totals and sorting report
+    /// entries
     fn finalize(&mut self) -> Result<(), Error> {
         // Sort outputs and totals
         self.sort();
 
         // For each token id, check that inputs match outputs
-        for (token_id, value) in &self.totals {
+        // (this is only executed where _totals_ exist, so skipped
+        // for the current SCI implementation)
+        for (token_id, total_kind, value) in &mut self.totals {
             // Sum outputs for this token id
             let mut balance = 0u64;
-            for (_e, id, v) in &self.outputs {
-                if id == token_id {
-                    balance = balance.checked_add(*v).ok_or(Error::NumericOverflow)?;
+            for (e, id, v) in &self.outputs {
+                // Skip other tokens
+                if id != token_id {
+                    continue;
+                }
+
+                // Handle balance / values depending on whether the total is from us or a swap
+                // counterparty
+                match total_kind {
+                    // If it's coming from our account, track total balance
+                    TotalKind::Ours => {
+                        balance = balance.checked_add(*v).ok_or(Error::NumericOverflow)?;
+                    }
+                    // If it's coming from an SCI, and returned to the counterparty, reduce total by
+                    // outgoing value
+                    TotalKind::Sci if e == &TransactionEntity::Swap => {
+                        *value = value.checked_sub(*v as i64).ok_or(Error::NumericOverflow)?;
+                    }
+                    // If it's coming from an SCI to us, add to total balance
+                    TotalKind::Sci if e != &TransactionEntity::Swap => {
+                        balance = balance.checked_add(*v).ok_or(Error::NumericOverflow)?;
+                    }
+                    _ => (),
                 }
             }
 
@@ -251,10 +323,11 @@ impl<const RECORDS: usize, const TOTALS: usize> TxSummaryUnblindingReport<RECORD
     pub fn sort(&mut self) {
         // TODO: should we remove zeroed balances / totals?
 
-        (&mut self.outputs[..]).sort_by_key(|(_, t, _)| *t);
-        (&mut self.outputs[..]).sort_by_key(|(e, _, _)| e.clone());
+        self.outputs[..].sort_by_key(|(_, t, _)| *t);
+        self.outputs[..].sort_by_key(|(e, _, _)| e.clone());
 
-        (&mut self.totals[..]).sort_by_key(|(t, _)| *t);
+        self.totals[..].sort_by_key(|(t, _, _)| *t);
+        self.totals[..].sort_by_key(|(_, k, _)| *k);
     }
 }
 
@@ -289,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_report_size() {
-        assert_eq!(core::mem::size_of::<TxSummaryUnblindingReport>(), 1384);
+        assert_eq!(core::mem::size_of::<TxSummaryUnblindingReport>(), 1416);
     }
 
     #[test]
@@ -304,28 +377,34 @@ mod tests {
         ];
 
         for a in amounts {
-            report.total_add(a).unwrap();
+            report.input_add(a).unwrap();
         }
 
         // Check total inputs
         report.sort();
         assert_eq!(
             &report.totals[..],
-            &[(TokenId::from(1), 100), (TokenId::from(2), 300)]
+            &[
+                (TokenId::from(1), TotalKind::Ours, 100),
+                (TokenId::from(2), TotalKind::Ours, 300)
+            ]
         );
 
         // Subtract change amounts
         report
-            .change_add(Amount::new(25, TokenId::from(1)))
+            .change_sub(Amount::new(25, TokenId::from(1)))
             .unwrap();
         report
-            .change_add(Amount::new(50, TokenId::from(2)))
+            .change_sub(Amount::new(50, TokenId::from(2)))
             .unwrap();
 
         // Check total inputs - change
         assert_eq!(
             &report.totals[..],
-            &[(TokenId::from(1), 75), (TokenId::from(2), 250)]
+            &[
+                (TokenId::from(1), TotalKind::Ours, 75),
+                (TokenId::from(2), TotalKind::Ours, 250)
+            ]
         );
     }
 

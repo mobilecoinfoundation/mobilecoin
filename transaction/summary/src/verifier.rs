@@ -142,7 +142,7 @@ impl TxSummaryStreamingVerifierCtx {
                     && address.spend_public_key() == self.change_address.spend_public_key()
                 {
                     // If this is to our change address, subtract this from the total inputs
-                    report.change_add(amount)?;
+                    report.change_sub(amount)?;
                 } else {
                     // Otherwise, add this as an output to ourself
                     report
@@ -200,10 +200,7 @@ impl TxSummaryStreamingVerifierCtx {
                 return Err(Error::AmountVerificationFailed);
             }
 
-            // Add swap output to report
-            // NOTE: this is not exercised as swap rings are created without a transaction
-            // ... does this mean the ocurrence of a swap output is invalid / doesn't need
-            // to be handled here?
+            // Add outputs to swap counterparty to the report
             report.output_add(TransactionEntity::Swap, unmasked_amount.into())?;
         }
 
@@ -253,10 +250,11 @@ impl TxSummaryStreamingVerifierCtx {
         if tx_in_summary.input_rules_digest.is_empty() {
             // If we have no input rules digest, then this is a normal input
             // add this to the report total
-            report.total_add(tx_in_summary_unblinding_data.into())?;
+            report.input_add(tx_in_summary_unblinding_data.into())?;
         } else {
             // If we have input rules this is an SCI input and does not impact
-            // our balance
+            // our balance, but we _can_ track this if required
+            report.sci_add(tx_in_summary_unblinding_data.into())?;
         };
 
         // We've now verified the tx_in_summary and added it to the report.
@@ -366,7 +364,7 @@ mod tests {
 
     use rand::rngs::OsRng;
 
-    use crate::TxSummaryUnblindingReport;
+    use crate::{report::TotalKind, TxSummaryUnblindingReport};
     use mc_account_keys::AccountKey;
     use mc_transaction_core::{tx::TxOut, BlockVersion};
     use mc_transaction_types::TokenId;
@@ -391,7 +389,7 @@ mod tests {
         /// Outputs produced by the transaction
         outputs: Vec<(OutputTarget, Amount)>,
         /// Totals / balances by token
-        totals: Vec<(TokenId, i64)>,
+        totals: Vec<(TokenId, TotalKind, i64)>,
         /// Changes produced by the transaction
         changes: Vec<(TransactionEntity, TokenId, u64)>,
     }
@@ -448,7 +446,7 @@ mod tests {
                     token_id,
                     amount.value,
                 )],
-                totals: vec![(token_id, (amount.value + fee) as i64)],
+                totals: vec![(token_id, TotalKind::Ours, (amount.value + fee) as i64)],
             },
             // Output to our change address, should show no outputs with balance change = fee
             TxOutReportTest {
@@ -463,7 +461,7 @@ mod tests {
                 changes: vec![
                     //(TransactionEntity::Total, token_id, 0),
                 ],
-                totals: vec![(token_id, fee as i64)],
+                totals: vec![(token_id, TotalKind::Ours, fee as i64)],
             },
             // Output to someone else, should show their address and total of output + fee
             TxOutReportTest {
@@ -474,7 +472,7 @@ mod tests {
                     token_id,
                     amount.value,
                 )],
-                totals: vec![(token_id, (amount.value + fee) as i64)],
+                totals: vec![(token_id, TotalKind::Ours, (amount.value + fee) as i64)],
             },
             // Basic SCI. consuming entire swap, inputs should not count towards totals
             TxOutReportTest {
@@ -500,7 +498,9 @@ mod tests {
                 ],
                 totals: vec![
                     // The total is the change to _our_ balance spent during the transaction
-                    (token_id, (10_000 + fee) as i64),
+                    (token_id, TotalKind::Ours, (10_000 + fee) as i64),
+                    // And the SCI input
+                    (TokenId::from(2), TotalKind::Sci, (200) as i64),
                 ],
             },
             // Partial SCI
@@ -530,7 +530,9 @@ mod tests {
                 ],
                 totals: vec![
                     // The total is the change to _our_ balance spent during the transaction
-                    (token_id, (7_500 + fee) as i64),
+                    (token_id, TotalKind::Ours, (7_500 + fee) as i64),
+                    // And the SCI input - partial value returned
+                    (TokenId::from(2), TotalKind::Sci, (150) as i64),
                 ],
             },
         ];
@@ -598,8 +600,7 @@ mod tests {
                     associated_to_input_rules: target == &OutputTarget::Swap,
                 };
 
-                // Set address for normal outputs or SCIs
-                // TODO: do we _never_ have the output address for an SCI?
+                // Set address for normal outputs, not provided for SCIs
                 let address = match target != &OutputTarget::Swap {
                     true => Some((
                         ShortAddressHash::from(receive_subaddress),
@@ -674,7 +675,7 @@ mod tests {
             report.finalize().unwrap();
 
             // Check report totals
-            let totals: Vec<_> = report.totals.iter().map(|(t, v)| (*t, *v)).collect();
+            let totals: Vec<_> = report.totals.iter().map(|(t, k, v)| (*t, *k, *v)).collect();
             assert_eq!(&totals, &t.totals, "Total mismatch");
 
             // Check report outputs

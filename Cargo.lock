@@ -680,30 +680,38 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.1.11"
+version = "4.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42dfd32784433290c51d92c438bb72ea5063797fc3cc9a21a8c4346bebbb2098"
+checksum = "906f7fe1da4185b7a282b2bc90172a496f9def1aca4545fe7526810741591e14"
 dependencies = [
- "bitflags 2.0.2",
+ "clap_builder",
  "clap_derive",
- "clap_lex 0.3.0",
- "is-terminal",
  "once_cell",
+]
+
+[[package]]
+name = "clap_builder"
+version = "4.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "351f9ad9688141ed83dfd8f5fb998a06225ef444b48ff4dc43de6d409b7fd10b"
+dependencies = [
+ "bitflags 1.3.2",
+ "clap_lex 0.4.1",
+ "is-terminal",
  "strsim 0.10.0",
  "termcolor",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "4.1.9"
+version = "4.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fddf67631444a3a3e3e5ac51c36a5e01335302de677bd78759eaa90ab1f46644"
+checksum = "81d7dc0031c3a59a04fc2ba395c8e2dd463cba1859275f065d225f6122221b45"
 dependencies = [
  "heck",
- "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.12",
 ]
 
 [[package]]
@@ -717,12 +725,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d4198f73e42b4936b35b5bb248d81d2b595ecb170da0bac7655c54eedfa8da8"
-dependencies = [
- "os_str_bytes",
-]
+checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
 
 [[package]]
 name = "clear_on_drop"
@@ -1160,9 +1165,9 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "4.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
+checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
  "dirs-sys",
 ]
@@ -1179,13 +1184,14 @@ dependencies = [
 
 [[package]]
 name = "dirs-sys"
-version = "0.3.6"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03d86534ed367a67548dc68113a0f5db55432fdfbb6e6f9d77704397d95d5780"
+checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
 dependencies = [
  "libc",
+ "option-ext",
  "redox_users",
- "winapi",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1589,7 +1595,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 name = "go-grpc-gateway-testing"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "futures",
  "grpcio",
@@ -2296,7 +2302,7 @@ dependencies = [
 name = "mc-admin-http-gateway"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -2843,7 +2849,7 @@ dependencies = [
 name = "mc-consensus-mint-client"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "grpcio",
  "hex",
@@ -2915,7 +2921,7 @@ dependencies = [
 name = "mc-consensus-scp-play"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
@@ -2945,7 +2951,7 @@ version = "5.0.8"
 dependencies = [
  "base64 0.21.0",
  "chrono",
- "clap 4.1.11",
+ "clap 4.1.14",
  "curve25519-dalek",
  "displaydoc",
  "fs_extra",
@@ -3009,7 +3015,7 @@ name = "mc-consensus-service-config"
 version = "5.0.8"
 dependencies = [
  "base64 0.21.0",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "hex",
  "mc-attest-core",
@@ -3035,7 +3041,7 @@ dependencies = [
 name = "mc-consensus-tool"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "mc-common",
  "mc-connection",
@@ -3050,7 +3056,7 @@ name = "mc-core"
 version = "5.0.8"
 dependencies = [
  "anyhow",
- "clap 4.1.11",
+ "clap 4.1.14",
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
@@ -3341,7 +3347,7 @@ name = "mc-crypto-x509-test-vectors"
 version = "5.0.8"
 dependencies = [
  "cargo-emit",
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
@@ -3407,7 +3413,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
@@ -3465,7 +3471,7 @@ name = "mc-fog-ingest-client"
 version = "5.0.8"
 dependencies = [
  "assert_cmd",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "grpcio",
  "hex",
@@ -3620,7 +3626,7 @@ dependencies = [
 name = "mc-fog-ingest-server"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "dirs",
  "displaydoc",
  "futures",
@@ -3842,7 +3848,7 @@ name = "mc-fog-ledger-server"
 version = "5.0.8"
 dependencies = [
  "aes-gcm",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "futures",
  "grpcio",
@@ -3925,7 +3931,7 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "mc-account-keys",
  "mc-blockchain-test-utils",
@@ -3997,7 +4003,7 @@ dependencies = [
 name = "mc-fog-overseer-server"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "grpcio",
  "lazy_static",
@@ -4080,7 +4086,7 @@ name = "mc-fog-report-cli"
 version = "5.0.8"
 dependencies = [
  "base64 0.21.0",
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "hex",
  "mc-account-keys",
@@ -4135,7 +4141,7 @@ dependencies = [
 name = "mc-fog-report-server"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4203,7 +4209,7 @@ name = "mc-fog-sample-paykit"
 version = "5.0.8"
 dependencies = [
  "cargo-emit",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4301,7 +4307,7 @@ name = "mc-fog-sql-recovery-db"
 version = "5.0.8"
 dependencies = [
  "chrono",
- "clap 4.1.11",
+ "clap 4.1.14",
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
@@ -4334,7 +4340,7 @@ name = "mc-fog-sql-recovery-db-cleanup"
 version = "5.0.8"
 dependencies = [
  "chrono",
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-common",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
@@ -4345,7 +4351,7 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "grpcio",
  "hex_fmt",
@@ -4379,7 +4385,7 @@ dependencies = [
 name = "mc-fog-test-infra"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "digest 0.10.6",
  "hex",
  "mc-account-keys",
@@ -4572,7 +4578,7 @@ dependencies = [
 name = "mc-fog-view-load-test"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
@@ -4614,7 +4620,7 @@ dependencies = [
 name = "mc-fog-view-server"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4725,7 +4731,7 @@ dependencies = [
 name = "mc-ledger-distribution"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "dirs",
  "displaydoc",
  "mc-api",
@@ -4748,7 +4754,7 @@ dependencies = [
 name = "mc-ledger-from-archive"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
@@ -4759,7 +4765,7 @@ dependencies = [
 name = "mc-ledger-migration"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
@@ -4807,7 +4813,7 @@ name = "mc-mobilecoind"
 version = "5.0.8"
 dependencies = [
  "aes-gcm",
- "clap 4.1.11",
+ "clap 4.1.14",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4895,7 +4901,7 @@ name = "mc-mobilecoind-dev-faucet"
 version = "5.0.8"
 dependencies = [
  "async-channel",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "grpcio",
  "hex",
@@ -4926,7 +4932,7 @@ dependencies = [
 name = "mc-mobilecoind-json"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "hex",
  "mc-api",
@@ -5106,7 +5112,7 @@ dependencies = [
 name = "mc-sgx-css-dump"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "hex_fmt",
  "mc-sgx-css",
 ]
@@ -5392,7 +5398,7 @@ name = "mc-transaction-signer"
 version = "5.0.8"
 dependencies = [
  "anyhow",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "hex",
  "log",
@@ -5421,15 +5427,19 @@ name = "mc-transaction-summary"
 version = "5.0.8"
 dependencies = [
  "displaydoc",
+ "heapless",
  "mc-account-keys",
  "mc-core",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
+ "mc-transaction-core",
  "mc-transaction-types",
+ "mc-util-from-random",
  "mc-util-vec-map",
  "mc-util-zip-exact",
  "prost",
+ "rand",
  "serde",
  "subtle",
  "zeroize",
@@ -5458,7 +5468,7 @@ dependencies = [
 name = "mc-util-b58-decoder"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "hex",
  "mc-account-keys",
  "mc-api",
@@ -5522,7 +5532,7 @@ dependencies = [
 name = "mc-util-cli"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-util-build-info",
 ]
 
@@ -5530,7 +5540,7 @@ dependencies = [
 name = "mc-util-dump-ledger"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "mc-blockchain-types",
  "mc-common",
@@ -5565,7 +5575,7 @@ dependencies = [
 name = "mc-util-generate-sample-ledger"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-account-keys",
  "mc-blockchain-test-utils",
  "mc-common",
@@ -5585,7 +5595,7 @@ name = "mc-util-grpc"
 version = "5.0.8"
 dependencies = [
  "base64 0.21.0",
- "clap 4.1.11",
+ "clap 4.1.14",
  "cookie 0.17.0",
  "displaydoc",
  "futures",
@@ -5618,7 +5628,7 @@ dependencies = [
 name = "mc-util-grpc-admin-tool"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -5629,7 +5639,7 @@ dependencies = [
 name = "mc-util-grpc-token-generator"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-common",
  "mc-util-grpc",
  "mc-util-parse",
@@ -5645,7 +5655,7 @@ name = "mc-util-keyfile"
 version = "5.0.8"
 dependencies = [
  "base64 0.21.0",
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "hex",
  "mc-account-keys",
@@ -5733,7 +5743,7 @@ dependencies = [
 name = "mc-util-seeded-ed25519-key-gen"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-parse",
@@ -5769,7 +5779,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "itertools",
  "lazy_static",
  "mc-account-keys",
@@ -5851,7 +5861,7 @@ dependencies = [
 name = "mc-watcher"
 version = "5.0.8"
 dependencies = [
- "clap 4.1.11",
+ "clap 4.1.14",
  "displaydoc",
  "futures",
  "grpcio",
@@ -6238,6 +6248,12 @@ dependencies = [
  "rand",
  "thiserror",
 ]
+
+[[package]]
+name = "option-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "ordered-float"
@@ -7451,9 +7467,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.159"
+version = "1.0.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c04e8343c3daeec41f58990b9d77068df31209f2af111e059e9fe9646693065"
+checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
 dependencies = [
  "serde_derive",
 ]
@@ -7479,9 +7495,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.159"
+version = "1.0.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c614d17805b093df4b147b51339e7e44bf05ef59fba1e45d83500bcfb4d8585"
+checksum = "d9735b638ccc51c28bf6914d90a2e9725b377144fc612c49a611fddd1b631d68"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8662,13 +8678,37 @@ version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a3e1820f08b8513f676f7ab6c1f99ff312fb97b553d30ff4dd86f9f15728aa7"
 dependencies = [
- "windows_aarch64_gnullvm",
+ "windows_aarch64_gnullvm 0.42.0",
  "windows_aarch64_msvc 0.42.0",
  "windows_i686_gnu 0.42.0",
  "windows_i686_msvc 0.42.0",
  "windows_x86_64_gnu 0.42.0",
- "windows_x86_64_gnullvm",
+ "windows_x86_64_gnullvm 0.42.0",
  "windows_x86_64_msvc 0.42.0",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "677d2418bec65e3338edb076e806bc1ec15693c5d0104683f2efe857f61056a9"
+dependencies = [
+ "windows-targets",
+]
+
+[[package]]
+name = "windows-targets"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b1eb6f0cd7c80c79759c929114ef071b87354ce476d9d94271031c0497adfd5"
+dependencies = [
+ "windows_aarch64_gnullvm 0.48.0",
+ "windows_aarch64_msvc 0.48.0",
+ "windows_i686_gnu 0.48.0",
+ "windows_i686_msvc 0.48.0",
+ "windows_x86_64_gnu 0.48.0",
+ "windows_x86_64_gnullvm 0.48.0",
+ "windows_x86_64_msvc 0.48.0",
 ]
 
 [[package]]
@@ -8676,6 +8716,12 @@ name = "windows_aarch64_gnullvm"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41d2aa71f6f0cbe00ae5167d90ef3cfe66527d6f613ca78ac8024c3ccab9a19e"
+
+[[package]]
+name = "windows_aarch64_gnullvm"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91ae572e1b79dba883e0d315474df7305d12f569b400fcf90581b06062f7e1bc"
 
 [[package]]
 name = "windows_aarch64_msvc"
@@ -8690,6 +8736,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd0f252f5a35cac83d6311b2e795981f5ee6e67eb1f9a7f64eb4500fbc4dcdb4"
 
 [[package]]
+name = "windows_aarch64_msvc"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2ef27e0d7bdfcfc7b868b317c1d32c641a6fe4629c171b8928c7b08d98d7cf3"
+
+[[package]]
 name = "windows_i686_gnu"
 version = "0.36.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8700,6 +8752,12 @@ name = "windows_i686_gnu"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbeae19f6716841636c28d695375df17562ca208b2b7d0dc47635a50ae6c5de7"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "622a1962a7db830d6fd0a69683c80a18fda201879f0f447f065a3b7467daa241"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -8714,6 +8772,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84c12f65daa39dd2babe6e442988fc329d6243fdce47d7d2d155b8d874862246"
 
 [[package]]
+name = "windows_i686_msvc"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4542c6e364ce21bf45d69fdd2a8e455fa38d316158cfd43b3ac1c5b1b19f8e00"
+
+[[package]]
 name = "windows_x86_64_gnu"
 version = "0.36.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8726,10 +8790,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf7b1b21b5362cbc318f686150e5bcea75ecedc74dd157d874d754a2ca44b0ed"
 
 [[package]]
+name = "windows_x86_64_gnu"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca2b8a661f7628cbd23440e50b05d705db3686f894fc9580820623656af974b1"
+
+[[package]]
 name = "windows_x86_64_gnullvm"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09d525d2ba30eeb3297665bd434a54297e4170c7f1a44cad4ef58095b4cd2028"
+
+[[package]]
+name = "windows_x86_64_gnullvm"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7896dbc1f41e08872e9d5e8f8baa8fdd2677f29468c4e156210174edc7f7b953"
 
 [[package]]
 name = "windows_x86_64_msvc"
@@ -8742,6 +8818,12 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
 name = "winnow"
