@@ -33,7 +33,7 @@ pub struct Uri<Scheme: UriScheme> {
     url: Url,
 
     /// Hostname.
-    host: String,
+    pub host: String,
 
     /// Consensus port.
     port: u16,

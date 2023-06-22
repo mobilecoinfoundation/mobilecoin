@@ -21,3 +21,6 @@ spec:
   - name: view-http
     port: 8225
     targetPort: view-http
+  - name: metrics
+    port: 9090
+    targetPort: metrics

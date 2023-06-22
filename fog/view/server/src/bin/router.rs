@@ -14,12 +14,15 @@ use mc_fog_view_server::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use prometheus::{Encoder, TextEncoder};
 use std::{
     env,
     sync::{Arc, RwLock},
 };
+use warp::Filter;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     mc_common::setup_panic_handler();
@@ -41,6 +44,14 @@ fn main() {
         logger.clone(),
     );
 
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[(
+            "client_responser_id",
+            config.client_responder_id.to_string(),
+        )],
+    )
+    .expect("Failed setting telemetry tracer");
     let mut shards = Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
@@ -65,16 +76,39 @@ fn main() {
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = FogViewRouterServer::new(
-        config,
+        config.clone(),
         sgx_enclave,
         ias_client,
         shards,
         SystemTimeProvider::default(),
-        logger,
+        logger.clone(),
     );
     router_server.start();
+
+    if config.enable_metrics_server {
+        let metrics_path = warp::path(config.metric_path.clone()).and_then(metrics_handler);
+        log::info!(logger.clone(), "Starting metrics endpoint");
+        warp::serve(metrics_path)
+            .run(([0, 0, 0, 0], config.metric_port))
+            .await;
+    }
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
+}
+
+async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
+    let encoder = TextEncoder::new();
+    let mut buffer = Vec::new();
+    let metrics_families = prometheus::gather();
+    encoder
+        .encode(&metrics_families, &mut buffer)
+        .expect("could not encode prometheus metrics");
+
+    let response = String::from_utf8(buffer.clone()).expect("unable to format utf8");
+    Ok(warp::reply::with_status(
+        response,
+        warp::http::StatusCode::OK,
+    ))
 }
