@@ -5154,7 +5154,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-build"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284#ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=a2e2496cb32f7cb08722d2e4dc92f10890dd818f#a2e2496cb32f7cb08722d2e4dc92f10890dd818f"
 dependencies = [
  "bindgen 0.65.1",
  "cargo-emit",
@@ -5163,7 +5163,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-sys-types"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284#ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=a2e2496cb32f7cb08722d2e4dc92f10890dd818f#a2e2496cb32f7cb08722d2e4dc92f10890dd818f"
 dependencies = [
  "bindgen 0.65.1",
  "cargo-emit",
@@ -5174,7 +5174,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-types"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284#ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=a2e2496cb32f7cb08722d2e4dc92f10890dd818f#a2e2496cb32f7cb08722d2e4dc92f10890dd818f"
 dependencies = [
  "bitflags 2.0.2",
  "displaydoc",
@@ -5279,7 +5279,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-util"
 version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284#ade3b7ed01fa7ea0c1d0c13485aa6c8e2e155284"
+source = "git+https://github.com/dolanbernard/sgx.git?rev=a2e2496cb32f7cb08722d2e4dc92f10890dd818f#a2e2496cb32f7cb08722d2e4dc92f10890dd818f"
 
 [[package]]
 name = "mc-test-vectors-account-keys"
