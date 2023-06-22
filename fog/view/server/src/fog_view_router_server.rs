@@ -37,7 +37,7 @@ where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
 {
-    metrics_path: warp::filters::BoxedFilter<(Box<dyn Reply>,)>,
+    metrics_path: warp::filters::BoxedFilter<(Box<dyn warp::Reply>,)>,
     router_server: grpcio::Server,
     admin_server: grpcio::Server,
     enclave: E,
