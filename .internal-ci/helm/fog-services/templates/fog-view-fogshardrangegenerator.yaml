@@ -121,6 +121,8 @@ spec:
               env:
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
+              - name: MC_TELEMETRY
+                value: true
               - name: RUST_LOG
                 value: {{ .Values.fogViewRouter.rust.log | quote }}
               - name: CLIENT_AUTH_TOKEN_SECRET
@@ -186,6 +188,8 @@ spec:
                   name: admin-http
                   protocol: TCP
               env:
+                - name: MC_TELEMETRY
+                  value: true
                 - name: POD_NAME
                   valueFrom:
                     fieldRef:
