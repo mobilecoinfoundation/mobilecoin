@@ -118,9 +118,8 @@ async fn main() {
             }
         }
     });
-    let addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 3030);
-    warp::serve(metrics_path).run(addr).await;
     log::info!(logger.clone(), "Metrics API listening on :3030");
+    warp::serve(metrics_path).run(([127, 0, 0, 1], 3030)).await;
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
