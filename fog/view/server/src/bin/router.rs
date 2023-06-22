@@ -21,7 +21,7 @@ use std::{
     net::{Ipv4Addr, SocketAddr},
     sync::{Arc, RwLock},
 };
-use warp::Filter;
+use warp::{http::StatusCode, Filter};
 
 #[tokio::main]
 async fn main() {
@@ -87,13 +87,14 @@ async fn main() {
     );
     router_server.start();
 
-    let metrics_path = warp::path!("metrics").map(|| {
-        log::info!(logger.clone(), "Metrics endpoint hit");
+    let logger_clone = logger.clone();
+    let metrics_path = warp::path!("metrics").map(move || {
+        log::info!(logger_clone.clone(), "Metrics endpoint hit");
 
         let metric_families = prometheus::gather();
 
         log::info!(
-            logger.clone(),
+            logger_clone.clone(),
             "Number of metric families gathered: {}",
             metric_families.len()
         );
@@ -102,15 +103,18 @@ async fn main() {
         let encoder = TextEncoder::new();
         match encoder.encode(&metric_families, &mut buffer) {
             Ok(_) => {
-                log::info!(logger.clone(), "Metrics successfully encoded");
+                log::info!(logger_clone.clone(), "Metrics successfully encoded");
                 Response::builder()
                     .header("Content-Type", encoder.format_type())
                     .body(buffer)
                     .unwrap()
             }
             Err(e) => {
-                log::error!(logger.clone(), "Failed to encode metrics: {}", e);
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                log::error!(logger_clone.clone(), "Failed to encode metrics: {}", e);
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(format!("Failed to encode metrics: {}", e).into_bytes())
+                    .unwrap()
             }
         }
     });
