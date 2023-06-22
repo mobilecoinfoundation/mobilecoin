@@ -18,7 +18,6 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use prometheus::{Encoder, TextEncoder};
 use std::{
     env,
-    net::{Ipv4Addr, SocketAddr},
     sync::{Arc, RwLock},
 };
 use warp::{http::StatusCode, Filter};
