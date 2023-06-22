@@ -3,6 +3,7 @@
 
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
+use hyper::Response;
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
@@ -14,12 +15,16 @@ use mc_fog_view_server::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use prometheus::{Encoder, TextEncoder};
 use std::{
     env,
+    net::{Ipv4Addr, SocketAddr},
     sync::{Arc, RwLock},
 };
+use warp::Filter;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     mc_common::setup_panic_handler();
@@ -78,9 +83,26 @@ fn main() {
         ias_client,
         shards,
         SystemTimeProvider::default(),
-        logger,
+        logger.clone(),
     );
     router_server.start();
+
+    let metrics_path = warp::path!("metrics").map(|| {
+        let metric_families = prometheus::gather();
+        let mut buffer = vec![];
+        let encoder = TextEncoder::new();
+        encoder
+            .encode(&metric_families, &mut buffer)
+            .expect("unable to encode metrics families");
+
+        Response::builder()
+            .header("Content-Type", encoder.format_type())
+            .body(buffer)
+            .unwrap()
+    });
+    let addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 3030);
+    warp::serve(metrics_path).run(addr).await;
+    log::info!(logger.clone(), "Metrics API listening on :3030");
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
