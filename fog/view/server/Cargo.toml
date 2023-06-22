@@ -28,7 +28,7 @@ grpcio = "0.12.1"
 lazy_static = "1.4"
 prometheus = "0.8"
 hyper = "0.13"
-warp = { version = "0.2", features = ["unstable"] }
+warp = { version = "0.2.5", features = ["unstable"] }
 tokio = { version = "0.2", features = ["full"] }
 
 # mobilecoin
