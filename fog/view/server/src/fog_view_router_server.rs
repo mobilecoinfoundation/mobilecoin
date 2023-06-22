@@ -25,7 +25,7 @@ use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
-use prometheus::{opts, register_counter, Counter, Encoder, TextEncoder};
+use prometheus::{Encoder, TextEncoder};
 use std::{
     net::{Ipv4Addr, SocketAddr},
     sync::{Arc, RwLock},
