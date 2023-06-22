@@ -11,6 +11,7 @@ use crate::{
     router_admin_service::FogViewRouterAdminService,
 };
 use futures::executor::block_on;
+use hyper::Response;
 use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
@@ -24,13 +25,19 @@ use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
-use std::sync::{Arc, RwLock};
+use prometheus::{opts, register_counter, Counter, Encoder, TextEncoder};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    sync::{Arc, RwLock},
+};
+use warp::Filter;
 
 pub struct FogViewRouterServer<E, RC>
 where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
 {
+    metrics_path: warp::filters::BoxedFilter<(impl warp::Reply)>,
     router_server: grpcio::Server,
     admin_server: grpcio::Server,
     enclave: E,
@@ -160,7 +167,20 @@ where
             .build_using_uri(&config.admin_listen_uri, logger.clone())
             .expect("Unable to build Fog View Router admin server");
 
+        let metrics_path = warp::path!("metrics").map(|| {
+            let metric_families = prometheus::gather();
+            let mut buffer = vec![];
+            let encoder = TextEncoder::new();
+            encoder.encode(&metric_families, &mut buffer).unwrap();
+
+            Response::builder()
+                .header("Content-Type", encoder.format_type())
+                .body(buffer)
+                .unwrap()
+        });
+
         Self {
+            metrics_path,
             router_server,
             admin_server,
             enclave,
@@ -173,6 +193,13 @@ where
 
     /// Starts the server
     pub fn start(&mut self) {
+        // TODO make addr & port configurable
+        let addr = Ipv4Addr::new(0, 0, 0, 0);
+        let server = warp::serve(self.metrics_route)
+            .run(SocketAddr::new(addr, 3030))
+            .expect("failed starting metrics server");
+        log::info!(self.logger, "Metrics API listening on :3030",);
+
         self.report_cache_thread = Some(
             ReportCacheThread::start(
                 self.enclave.clone(),

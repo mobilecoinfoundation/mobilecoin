@@ -41,6 +41,14 @@ fn main() {
         logger.clone(),
     );
 
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[(
+            "client_responser_id",
+            config.client_responder_id.to_string(),
+        )],
+    )
+    .expect("Failed setting telemetry tracer");
     let mut shards = Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
