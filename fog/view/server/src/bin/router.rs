@@ -88,17 +88,31 @@ async fn main() {
     router_server.start();
 
     let metrics_path = warp::path!("metrics").map(|| {
+        log::info!(logger.clone(), "Metrics endpoint hit");
+
         let metric_families = prometheus::gather();
+
+        log::info!(
+            logger.clone(),
+            "Number of metric families gathered: {}",
+            metric_families.len()
+        );
+
         let mut buffer = vec![];
         let encoder = TextEncoder::new();
-        encoder
-            .encode(&metric_families, &mut buffer)
-            .expect("unable to encode metrics families");
-
-        Response::builder()
-            .header("Content-Type", encoder.format_type())
-            .body(buffer)
-            .unwrap()
+        match encoder.encode(&metric_families, &mut buffer) {
+            Ok(_) => {
+                log::info!(logger.clone(), "Metrics successfully encoded");
+                Response::builder()
+                    .header("Content-Type", encoder.format_type())
+                    .body(buffer)
+                    .unwrap()
+            }
+            Err(e) => {
+                log::error!(logger.clone(), "Failed to encode metrics: {}", e);
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
     });
     let addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 3030);
     warp::serve(metrics_path).run(addr).await;
