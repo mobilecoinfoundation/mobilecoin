@@ -3,7 +3,7 @@
 //! Configuration parameters for the MobileCoin Fog View Node
 #![deny(missing_docs)]
 use crate::sharding_strategy::EpochShardingStrategy;
-use clap::Parser;
+use clap::{ArgAction::SetTrue, Parser};
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
@@ -165,6 +165,18 @@ pub struct FogViewRouterConfig {
     /// hours).
     #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
+
+    /// Port for serving prometheus metrics.
+    #[clap(long, env = "MC_METRIC_SERVER", action = SetTrue)]
+    pub enable_metrics_server: bool,
+
+    /// Port for serving prometheus metrics.
+    #[clap(long, default_value = "9090", env = "MC_METRIC_PORT")]
+    pub metric_port: u16,
+
+    /// Port for serving prometheus metrics.
+    #[clap(long, default_value = "metrics", env = "MC_METRIC_PATH")]
+    pub metric_path: String,
 }
 
 /// A FogViewRouterServer can either fulfill streaming or unary requests, and

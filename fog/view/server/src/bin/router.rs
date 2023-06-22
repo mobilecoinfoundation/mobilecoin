@@ -13,7 +13,6 @@ use mc_fog_view_server::{
     sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
-use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{
     env,
     sync::{Arc, RwLock},
@@ -41,6 +40,14 @@ fn main() {
         logger.clone(),
     );
 
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[(
+            "client_responser_id",
+            config.client_responder_id.to_string(),
+        )],
+    )
+    .expect("Failed setting telemetry tracer");
     let mut shards = Vec::new();
     let grpc_env = Arc::new(
         grpcio::EnvBuilder::new()
@@ -65,12 +72,12 @@ fn main() {
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = FogViewRouterServer::new(
-        config,
+        config.clone(),
         sgx_enclave,
         ias_client,
         shards,
         SystemTimeProvider::default(),
-        logger,
+        logger.clone(),
     );
     router_server.start();
 

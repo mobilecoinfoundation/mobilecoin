@@ -91,6 +91,8 @@ spec:
                 containerPort: 3225
               - name: mgmt-http
                 containerPort: 8000
+              - name: metrics
+                containerPort: 9090
               envFrom:
               - configMapRef:
                   # This is pre-installed from the fog-services-config chart or Terraform
@@ -121,6 +123,12 @@ spec:
               env:
               - name: RUST_BACKTRACE
                 value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
+              - name: MC_METRIC_SERVER
+                value: "true"
+              {{- if eq .Values.jaegerTracing.enabled true }}
+              - name: MC_TELEMETRY
+                value: "true"
+              {{- end }}
               - name: RUST_LOG
                 value: {{ .Values.fogViewRouter.rust.log | quote }}
               - name: CLIENT_AUTH_TOKEN_SECRET
@@ -274,6 +282,10 @@ spec:
               value: {{ .Values.fogView.rust.backtrace | quote }}
             - name: RUST_LOG
               value: {{ .Values.fogView.rust.log | quote }}
+            {{- if eq .Values.jaegerTracing.enabled true }}
+            - name: MC_TELEMETRY
+              value: "true"
+            {{- end }}
             - name: FOG_VIEW_SENTRY_DSN
               valueFrom:
                 configMapKeyRef:
