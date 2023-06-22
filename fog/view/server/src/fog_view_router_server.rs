@@ -37,7 +37,7 @@ where
     E: ViewEnclaveProxy,
     RC: RaClient + Send + Sync + 'static,
 {
-    metrics_path: warp::filters::BoxedFilter<(impl warp::Reply)>,
+    metrics_path: warp::filters::BoxedFilter<(Box<dyn Reply>,)>,
     router_server: grpcio::Server,
     admin_server: grpcio::Server,
     enclave: E,
@@ -171,7 +171,7 @@ where
             let metric_families = prometheus::gather();
             let mut buffer = vec![];
             let encoder = TextEncoder::new();
-            encoder.encode(&metric_families, &mut buffer).unwrap();
+            encoder.encode(&metric_families, &mut buffer).boxed();
 
             Response::builder()
                 .header("Content-Type", encoder.format_type())
