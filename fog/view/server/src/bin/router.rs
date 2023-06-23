@@ -13,16 +13,16 @@ use mc_fog_view_server::{
     sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
-use mc_util_grpc::{AdminServer, ConnectionUriGrpcioChannel};
+use mc_util_grpc::ConnectionUriGrpcioChannel;
+use prometheus::Encoder;
 use std::{
     env,
     sync::{Arc, RwLock},
 };
-// use warp::{http::StatusCode, Filter};
-// use prometheus::{Encoder, TextEncoder};
-// use hyper::Response;
+use warp::Filter;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     mc_common::setup_panic_handler();
@@ -88,15 +88,12 @@ fn main() {
     // let logger_clone = logger.clone();
     // let metrics_path = warp::path!("metrics").map(move || {
     //     log::info!(logger_clone.clone(), "Metrics endpoint hit");
-
     //     let metric_families = prometheus::gather();
-
     //     log::info!(
     //         logger_clone.clone(),
     //         "Number of metric families gathered: {}",
     //         metric_families.len()
     //     );
-
     //     let mut buffer = vec![];
     //     let encoder = TextEncoder::new();
     //     match encoder.encode(&metric_families, &mut buffer) {
@@ -116,23 +113,45 @@ fn main() {
     //         }
     //     }
     // });
-    // log::info!(logger.clone(), "Metrics API listening on :3030");
-    // warp::serve(metrics_path).run(([127, 0, 0, 1], 3030)).await;
 
-    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
-    let get_config_json = Arc::new(move || Ok(config_json.clone()));
-    let config = config.clone();
-    AdminServer::start(
-        None,
-        &config.admin_listen_uri,
-        "Fog View".to_owned(),
-        config.client_responder_id.to_string(),
-        Some(get_config_json),
-        vec![],
-        logger,
-    )
-    .expect("Failed starting fog-view admin server");
+    let metrics_path = warp::path!("metrics").and_then(metrics_handler);
+    log::info!(logger.clone(), "Metrics API listening on :3030");
+    warp::serve(metrics_path).run(([0, 0, 0, 0], 3030)).await;
+
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
+}
+
+async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
+    let encoder = prometheus::TextEncoder::new();
+
+    // let mut buffer = Vec::new();
+    // if let Err(e) = encoder.encode(&REGISTRY.gather(), &mut buffer) {
+    //     eprintln!("could not encode custom metrics: {}", e);
+    // };
+    // let mut res = match String::from_utf8(buffer.clone()) {
+    //     Ok(v) => v,
+    //     Err(e) => {
+    //         eprintln!("custom metrics could not be from_utf8'd: {}", e);
+    //         String::default()
+    //     }
+    // };
+    // buffer.clear();
+
+    let mut buffer = Vec::new();
+    if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
+        eprintln!("could not encode prometheus metrics: {}", e);
+    };
+    let res_custom = match String::from_utf8(buffer.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("prometheus metrics could not be from_utf8'd: {}", e);
+            String::default()
+        }
+    };
+    buffer.clear();
+
+    // res.push_str(&res_custom);
+    Ok(res_custom)
 }
