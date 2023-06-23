@@ -4821,7 +4821,6 @@ dependencies = [
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
- "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
  "mc-ledger-db",
  "mc-peers-test-utils",
@@ -4847,12 +4846,15 @@ dependencies = [
  "clap 4.1.14",
  "grpcio",
  "mc-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-api",
  "mc-consensus-scp-types",
+ "mc-ledger-sync",
  "mc-light-client-verifier",
  "mc-util-grpc",
  "mc-util-uri",
+ "protobuf",
  "serde_json",
 ]
 

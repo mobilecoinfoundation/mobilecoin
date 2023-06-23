@@ -19,7 +19,6 @@ mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
-mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }

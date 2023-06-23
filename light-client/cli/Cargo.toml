@@ -12,13 +12,16 @@ path = "src/bin/main.rs"
 
 [dependencies]
 mc-api = { path = "../../api" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-scp-types = { path = "../../consensus/scp/types" }
+mc-ledger-sync = { path = "../../ledger/sync" }
 mc-light-client-verifier = { path = "../verifier" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "4.1", features = ["derive", "env"] }
 grpcio = "0.12.1"
+protobuf = "2.27.1"
 serde_json = "1.0"
