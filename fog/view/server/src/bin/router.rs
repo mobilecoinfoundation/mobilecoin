@@ -3,7 +3,6 @@
 
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
-use hyper::Response;
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
@@ -14,16 +13,16 @@ use mc_fog_view_server::{
     sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
-use mc_util_grpc::ConnectionUriGrpcioChannel;
-use prometheus::{Encoder, TextEncoder};
+use mc_util_grpc::{AdminServer, ConnectionUriGrpcioChannel};
 use std::{
     env,
     sync::{Arc, RwLock},
 };
-use warp::{http::StatusCode, Filter};
+// use warp::{http::StatusCode, Filter};
+// use prometheus::{Encoder, TextEncoder};
+// use hyper::Response;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     mc_common::setup_panic_handler();
@@ -77,7 +76,7 @@ async fn main() {
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = FogViewRouterServer::new(
-        config,
+        config.clone(),
         sgx_enclave,
         ias_client,
         shards,
@@ -120,18 +119,19 @@ async fn main() {
     // log::info!(logger.clone(), "Metrics API listening on :3030");
     // warp::serve(metrics_path).run(([127, 0, 0, 1], 3030)).await;
 
-    let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
-        AdminServer::start(
-            None,
-            admin_listen_uri,
-            "Fog View".to_owned(),
-            config.client_responder_id.to_string(),
-            Some(get_config_json),
-            vec![],
-            logger,
-        )
-        .expect("Failed starting fog-view admin server")
-    });
+    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
+    let get_config_json = Arc::new(move || Ok(config_json.clone()));
+    let config = config.clone();
+    AdminServer::start(
+        None,
+        &config.admin_listen_uri,
+        "Fog View".to_owned(),
+        config.client_responder_id.to_string(),
+        Some(get_config_json),
+        vec![],
+        logger,
+    )
+    .expect("Failed starting fog-view admin server");
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
