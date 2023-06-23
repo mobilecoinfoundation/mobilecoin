@@ -14,7 +14,7 @@ use mc_consensus_api::{
 use mc_consensus_scp_types::QuorumSet;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_light_client_verifier::{
-    HexKeyNodeID, LightClientVerifierConfig, TrustedValidatorSetConfig,
+    HexKeyNodeID, LightClientVerifier, LightClientVerifierConfig, TrustedValidatorSetConfig,
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConsensusClientUri;
@@ -51,6 +51,11 @@ pub enum Commands {
         /// File to write the fetched ArchiveBlocks protobuf to.
         #[clap(long, env = "MC_OUT_FILE")]
         out_file: PathBuf,
+
+        /// Optional LightClientVerifierConfig to use for verifying the fetched
+        /// blocks before writing them to disk.
+        #[clap(long, env = "MC_LIGHT_CLIENT_VERIFIER_CONFIG")]
+        light_client_verifier_config: Option<PathBuf>,
     },
 }
 
@@ -77,8 +82,15 @@ fn main() {
             tx_source_urls,
             block_index,
             out_file,
+            light_client_verifier_config,
         } => {
-            cmd_fetch_archive_blocks(tx_source_urls, block_index, out_file, logger);
+            cmd_fetch_archive_blocks(
+                tx_source_urls,
+                block_index,
+                out_file,
+                light_client_verifier_config,
+                logger,
+            );
         }
     }
 }
@@ -148,9 +160,10 @@ fn cmd_fetch_archive_blocks(
     tx_source_urls: Vec<String>,
     block_index: u64,
     out_file: PathBuf,
+    light_client_verifier_config_path: Option<PathBuf>,
     logger: Logger,
 ) {
-    let block_datas = tx_source_urls
+    let block_data = tx_source_urls
         .into_iter()
         .map(|url| {
             log::info!(logger, "Fetching block data from {}", url);
@@ -161,7 +174,19 @@ fn cmd_fetch_archive_blocks(
         })
         .collect::<Vec<_>>();
 
-    let archive_blocks = ArchiveBlocks::from(&block_datas[..]);
+    if let Some(path) = light_client_verifier_config_path {
+        let json_data =
+            fs::read_to_string(path).expect("failed reading LightClientVerifierConfig file");
+        let light_client_verifier_config: LightClientVerifierConfig =
+            serde_json::from_str(&json_data).expect("failed parsing LightClientVerifierConfig");
+        let light_client_verifer = LightClientVerifier::from(light_client_verifier_config);
+
+        light_client_verifer
+            .verify_block_data(&block_data[..])
+            .expect("failed verifying block data");
+    }
+
+    let archive_blocks = ArchiveBlocks::from(&block_data[..]);
     let bytes = archive_blocks
         .write_to_bytes()
         .expect("failed serializing ArchiveBlocks");

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use crate::{Error, TrustedValidatorSet};
-use mc_blockchain_types::{Block, BlockContents, BlockID, BlockIndex, BlockMetadata};
+use mc_blockchain_types::{Block, BlockContents, BlockData, BlockID, BlockIndex, BlockMetadata};
 use mc_transaction_core::tx::TxOut;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, ops::Range};
@@ -113,6 +113,37 @@ impl LightClientVerifier {
             }
         }
         Ok(())
+    }
+
+    /// Verify that a list of BlockDatas all contain the same block and
+    /// block_contents, and that the block was externalized given evidence in
+    /// the BlockMetadata available.
+    pub fn verify_block_data(
+        &self,
+        block_data: &[BlockData],
+    ) -> Result<(Block, BlockContents), Error> {
+        if block_data.is_empty() {
+            return Err(Error::NoBlockData);
+        }
+
+        // All block_data should point at the same block/block_contents.
+        if !block_data
+            .windows(2)
+            .all(|w| w[0].block() == w[1].block() && w[0].contents() == w[1].contents())
+        {
+            return Err(Error::BlockDataMismatch);
+        }
+
+        let block = block_data[0].block();
+        let block_contents = block_data[0].contents();
+
+        let block_metadata = block_data
+            .iter()
+            .filter_map(|block_data| block_data.metadata().cloned())
+            .collect::<Vec<_>>();
+        self.verify_block_and_block_contents(block, block_contents, &block_metadata[..])?;
+
+        Ok((block.clone(), block_contents.clone()))
     }
 }
 
