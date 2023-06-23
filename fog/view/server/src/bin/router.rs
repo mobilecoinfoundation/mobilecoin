@@ -86,40 +86,52 @@ async fn main() {
     );
     router_server.start();
 
-    let logger_clone = logger.clone();
-    let metrics_path = warp::path!("metrics").map(move || {
-        log::info!(logger_clone.clone(), "Metrics endpoint hit");
+    // let logger_clone = logger.clone();
+    // let metrics_path = warp::path!("metrics").map(move || {
+    //     log::info!(logger_clone.clone(), "Metrics endpoint hit");
 
-        let metric_families = prometheus::gather();
+    //     let metric_families = prometheus::gather();
 
-        log::info!(
-            logger_clone.clone(),
-            "Number of metric families gathered: {}",
-            metric_families.len()
-        );
+    //     log::info!(
+    //         logger_clone.clone(),
+    //         "Number of metric families gathered: {}",
+    //         metric_families.len()
+    //     );
 
-        let mut buffer = vec![];
-        let encoder = TextEncoder::new();
-        match encoder.encode(&metric_families, &mut buffer) {
-            Ok(_) => {
-                log::info!(logger_clone.clone(), "Metrics successfully encoded");
-                Response::builder()
-                    .header("Content-Type", encoder.format_type())
-                    .body(buffer)
-                    .unwrap()
-            }
-            Err(e) => {
-                log::error!(logger_clone.clone(), "Failed to encode metrics: {}", e);
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(format!("Failed to encode metrics: {}", e).into_bytes())
-                    .unwrap()
-            }
-        }
+    //     let mut buffer = vec![];
+    //     let encoder = TextEncoder::new();
+    //     match encoder.encode(&metric_families, &mut buffer) {
+    //         Ok(_) => {
+    //             log::info!(logger_clone.clone(), "Metrics successfully encoded");
+    //             Response::builder()
+    //                 .header("Content-Type", encoder.format_type())
+    //                 .body(buffer)
+    //                 .unwrap()
+    //         }
+    //         Err(e) => {
+    //             log::error!(logger_clone.clone(), "Failed to encode metrics: {}",
+    // e);             Response::builder()
+    //                 .status(StatusCode::INTERNAL_SERVER_ERROR)
+    //                 .body(format!("Failed to encode metrics: {}",
+    // e).into_bytes())                 .unwrap()
+    //         }
+    //     }
+    // });
+    // log::info!(logger.clone(), "Metrics API listening on :3030");
+    // warp::serve(metrics_path).run(([127, 0, 0, 1], 3030)).await;
+
+    let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
+        AdminServer::start(
+            None,
+            admin_listen_uri,
+            "Fog View".to_owned(),
+            config.client_responder_id.to_string(),
+            Some(get_config_json),
+            vec![],
+            logger,
+        )
+        .expect("Failed starting fog-view admin server")
     });
-    log::info!(logger.clone(), "Metrics API listening on :3030");
-    warp::serve(metrics_path).run(([127, 0, 0, 1], 3030)).await;
-
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
