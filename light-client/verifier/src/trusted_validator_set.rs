@@ -300,7 +300,7 @@ pub mod tests {
 
     pub fn sign_block_id_for_test_node_ids(block_id: &BlockID, ids: &[u32]) -> Vec<BlockMetadata> {
         ids.iter()
-            .map(|node_id: &u32| sign_block_id_for_test_node_id(&block_id, *node_id))
+            .map(|node_id: &u32| sign_block_id_for_test_node_id(block_id, *node_id))
             .collect()
     }
 
@@ -334,7 +334,7 @@ pub mod tests {
         );
 
         let old_contents = metadata[0].contents().clone();
-        let old_node_key = metadata[0].node_key().clone();
+        let old_node_key = *metadata[0].node_key();
 
         // Test that if the first metadata is changed to sign a different block id from
         // the others, we have an error.
@@ -350,7 +350,7 @@ pub mod tests {
 
         // Test that if the first metadata has the old (correct) contents and node key,
         // but the new signature, we have an error.
-        let new_sig = metadata[0].signature().clone();
+        let new_sig = *metadata[0].signature();
         metadata[0] = BlockMetadata::new(old_contents, old_node_key, new_sig);
         assert_matches!(
             tvs.verify_block_id_signatures(&block_id1, &metadata),
