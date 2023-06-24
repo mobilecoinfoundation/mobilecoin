@@ -4851,6 +4851,8 @@ dependencies = [
  "mc-consensus-scp-types",
  "mc-crypto-keys",
  "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-test-helper",
  "serde",
 ]
 

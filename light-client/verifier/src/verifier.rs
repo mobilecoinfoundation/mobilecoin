@@ -123,6 +123,9 @@ mod tests {
     use core::assert_matches::assert_matches;
     use mc_blockchain_types::{Block, BlockID};
     use mc_consensus_scp_types::{test_utils::test_node_id, QuorumSet, QuorumSetMember};
+    use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx::TxOut, Amount};
+    use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::get_seeded_rng;
 
     fn get_light_client_verifier(known_valid_block_ids: BTreeSet<BlockID>) -> LightClientVerifier {
         let current_tvs = TrustedValidatorSet {
@@ -284,5 +287,99 @@ mod tests {
             &sign_block_id_for_test_node_ids(&block99999.id, &[1, 2, 3]),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_verify_txos_in_block() {
+        let mut rng = get_seeded_rng();
+
+        let lcv = get_light_client_verifier(Default::default());
+
+        let txo1 = TxOut::new(
+            Default::default(),
+            Amount::new(1, 0.into()),
+            &FromRandom::from_random(&mut rng),
+            &FromRandom::from_random(&mut rng),
+            EncryptedFogHint::fake_onetime_hint(&mut rng),
+        )
+        .unwrap();
+
+        let txo2 = TxOut::new(
+            Default::default(),
+            Amount::new(2, 0.into()),
+            &FromRandom::from_random(&mut rng),
+            &FromRandom::from_random(&mut rng),
+            EncryptedFogHint::fake_onetime_hint(&mut rng),
+        )
+        .unwrap();
+
+        let txo3 = TxOut::new(
+            Default::default(),
+            Amount::new(2, 0.into()),
+            &FromRandom::from_random(&mut rng),
+            &FromRandom::from_random(&mut rng),
+            EncryptedFogHint::fake_onetime_hint(&mut rng),
+        )
+        .unwrap();
+
+        let bc = BlockContents {
+            outputs: vec![txo1.clone(), txo2.clone()],
+            ..Default::default()
+        };
+
+        let block9999 = Block::new(
+            Default::default(),
+            &Default::default(),
+            9999,
+            9999,
+            &Default::default(),
+            &bc,
+        );
+
+        let metadata = sign_block_id_for_test_node_ids(&block9999.id, &[1, 2, 3]);
+
+        // We can verify that these block contents are correct
+        lcv.verify_block_and_block_contents(&block9999, &bc, &metadata)
+            .unwrap();
+
+        // We cannot verify that different block contents are correct
+        assert_matches!(
+            lcv.verify_block_and_block_contents(&block9999, &BlockContents::default(), &metadata,),
+            Err(Error::BlockContentHashMismatch(_))
+        );
+
+        // We can verify that txo1 is in the block
+        lcv.verify_txos_in_block(&[txo1.clone()], &block9999, &bc, &metadata)
+            .unwrap();
+
+        // We can verify that txo2 is in the block
+        lcv.verify_txos_in_block(&[txo2.clone()], &block9999, &bc, &metadata)
+            .unwrap();
+
+        // We can verify that txo1 and txo2 are in the block
+        lcv.verify_txos_in_block(&[txo1.clone(), txo2.clone()], &block9999, &bc, &metadata)
+            .unwrap();
+
+        // We cannot verify that all three are in the block
+        assert_matches!(
+            lcv.verify_txos_in_block(
+                &[txo1.clone(), txo2.clone(), txo3.clone()],
+                &block9999,
+                &bc,
+                &metadata,
+            ),
+            Err(Error::TxOutNotFound(_))
+        );
+
+        // We cannot verify that txo3 is in the block
+        assert_matches!(
+            lcv.verify_txos_in_block(&[txo3.clone()], &block9999, &bc, &metadata,),
+            Err(Error::TxOutNotFound(_))
+        );
+
+        // Suppress clippies
+        drop(txo1);
+        drop(txo2);
+        drop(txo3);
     }
 }
