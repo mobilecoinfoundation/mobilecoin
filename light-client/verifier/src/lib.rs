@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
+#![feature(assert_matches)]
+
 mod error;
 mod trusted_validator_set;
 mod verifier;

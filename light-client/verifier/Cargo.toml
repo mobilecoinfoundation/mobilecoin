@@ -16,3 +16,6 @@ mc-common = { path = "../../common" }
 mc-consensus-scp-types = { path = "../../consensus/scp/types" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-transaction-core = { path = "../../transaction/core" }
+
+[dev-dependencies]
+mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }

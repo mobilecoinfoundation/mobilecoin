@@ -24,6 +24,11 @@ pub struct LightClientVerifier {
     pub trusted_validator_set_start_block: BlockIndex,
     /// A list of historical validator sets, and ranges of block indices at
     /// which they should be used.
+    ///
+    /// Note: There can only be one correct TrustedValidatorSet for a given
+    /// block index, the light client verifier should not accept blocks from
+    /// two different forks. It is a precondition violation if these ranges
+    /// overlap or extend past trusted_validator_set_start_block.
     pub historical_validator_sets: Vec<(Range<BlockIndex>, TrustedValidatorSet)>,
     /// A list of known valid block ids, which may appear before
     /// `trusted_validator_set_start_block` and outside of any of the historical
@@ -98,15 +103,186 @@ impl LightClientVerifier {
         // Verify that each Txo actually appears in the block.
         // Note: for big enough blocks, it's probably faster to throw them in a hash set
         // first, but it has to be very big for this to be noticeable.
-        for (idx, txo) in txos.iter().enumerate() {
+        for txo in txos.iter() {
             if !block_contents
                 .outputs
                 .iter()
                 .any(|block_contents_txo| block_contents_txo == txo)
             {
-                return Err(Error::TxOutNotFound(idx));
+                return Err(Error::TxOutNotFound(*txo.public_key.as_bytes()));
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::trusted_validator_set::tests::*;
+    use core::assert_matches::assert_matches;
+    use mc_blockchain_types::{Block, BlockID};
+    use mc_consensus_scp_types::{test_utils::test_node_id, QuorumSet, QuorumSetMember};
+
+    fn get_light_client_verifier(known_valid_block_ids: BTreeSet<BlockID>) -> LightClientVerifier {
+        let current_tvs = TrustedValidatorSet {
+            quorum_set: QuorumSet::new(
+                3,
+                vec![
+                    QuorumSetMember::Node(test_node_id(1)),
+                    QuorumSetMember::Node(test_node_id(2)),
+                    QuorumSetMember::Node(test_node_id(3)),
+                    QuorumSetMember::Node(test_node_id(4)),
+                    QuorumSetMember::Node(test_node_id(5)),
+                ],
+            ),
+        };
+
+        let old_tvs = TrustedValidatorSet {
+            quorum_set: QuorumSet::new(
+                2,
+                vec![
+                    QuorumSetMember::Node(test_node_id(1)),
+                    QuorumSetMember::Node(test_node_id(2)),
+                    QuorumSetMember::Node(test_node_id(3)),
+                ],
+            ),
+        };
+
+        LightClientVerifier {
+            trusted_validator_set: current_tvs,
+            trusted_validator_set_start_block: 10_000,
+            historical_validator_sets: vec![((5_000..10_000), old_tvs)],
+            known_valid_block_ids,
+        }
+    }
+
+    #[test]
+    fn test_verify_block() {
+        let block88 = Block::new(
+            Default::default(),
+            &Default::default(),
+            88,
+            88,
+            &Default::default(),
+            &Default::default(),
+        );
+
+        let lcv = get_light_client_verifier(BTreeSet::from([block88.id.clone()]));
+
+        let block99 = Block::new(
+            Default::default(),
+            &Default::default(),
+            99,
+            99,
+            &Default::default(),
+            &Default::default(),
+        );
+        let block9999 = Block::new(
+            Default::default(),
+            &Default::default(),
+            9999,
+            9999,
+            &Default::default(),
+            &Default::default(),
+        );
+        let block99999 = Block::new(
+            Default::default(),
+            &Default::default(),
+            99999,
+            99999,
+            &Default::default(),
+            &Default::default(),
+        );
+
+        // Block 88 verifies even without any signatures, because we put it in the
+        // known-valid list.
+        lcv.verify_block(&block88, &[]).unwrap();
+        lcv.verify_block(
+            &block88,
+            &sign_block_id_for_test_node_ids(&block99.id, &[1, 2]),
+        )
+        .unwrap();
+        lcv.verify_block(
+            &block88,
+            &sign_block_id_for_test_node_ids(&block99.id, &[4, 5]),
+        )
+        .unwrap();
+        lcv.verify_block(
+            &block88,
+            &sign_block_id_for_test_node_ids(&block99.id, &[1, 2, 3]),
+        )
+        .unwrap();
+
+        // Block 99 doesn't verify with any number of signatures, because it's not known
+        // to be valid and is outside all ranges
+        assert_matches!(
+            lcv.verify_block(&block99, &[]),
+            Err(Error::NoMatchingValidatorSet(99))
+        );
+        assert_matches!(
+            lcv.verify_block(
+                &block99,
+                &sign_block_id_for_test_node_ids(&block99.id, &[1, 2])
+            ),
+            Err(Error::NoMatchingValidatorSet(99))
+        );
+        assert_matches!(
+            lcv.verify_block(
+                &block99,
+                &sign_block_id_for_test_node_ids(&block99.id, &[4, 5])
+            ),
+            Err(Error::NoMatchingValidatorSet(99))
+        );
+        assert_matches!(
+            lcv.verify_block(
+                &block99,
+                &sign_block_id_for_test_node_ids(&block99.id, &[1, 2, 3])
+            ),
+            Err(Error::NoMatchingValidatorSet(99))
+        );
+
+        // Block 9999 needs two signatures of [1, 2, 3], because it belongs to the old
+        // tvs
+        assert_matches!(lcv.verify_block(&block9999, &[]), Err(Error::NotAQuorum));
+        lcv.verify_block(
+            &block9999,
+            &sign_block_id_for_test_node_ids(&block9999.id, &[1, 2]),
+        )
+        .unwrap();
+        assert_matches!(
+            lcv.verify_block(
+                &block9999,
+                &sign_block_id_for_test_node_ids(&block9999.id, &[4, 5])
+            ),
+            Err(Error::NotAQuorum)
+        );
+        lcv.verify_block(
+            &block9999,
+            &sign_block_id_for_test_node_ids(&block9999.id, &[1, 2, 3]),
+        )
+        .unwrap();
+
+        // Block 99999 needs three signatures, because it belongs to the new tvs
+        assert_matches!(lcv.verify_block(&block99999, &[]), Err(Error::NotAQuorum));
+        assert_matches!(
+            lcv.verify_block(
+                &block99999,
+                &sign_block_id_for_test_node_ids(&block99999.id, &[1, 2])
+            ),
+            Err(Error::NotAQuorum)
+        );
+        assert_matches!(
+            lcv.verify_block(
+                &block99999,
+                &sign_block_id_for_test_node_ids(&block99999.id, &[4, 5])
+            ),
+            Err(Error::NotAQuorum)
+        );
+        lcv.verify_block(
+            &block99999,
+            &sign_block_id_for_test_node_ids(&block99999.id, &[1, 2, 3]),
+        )
+        .unwrap();
     }
 }

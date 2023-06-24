@@ -17,6 +17,6 @@ pub enum Error {
     NoMatchingValidatorSet(BlockIndex),
     /// The block content hash does not match the block: {0:?}
     BlockContentHashMismatch(BlockContentsHash),
-    /// TxOut (index {0}) was not found among the block contents
-    TxOutNotFound(usize),
+    /// TxOut (public key {0:?}) was not found among the block contents
+    TxOutNotFound([u8; 32]),
 }
