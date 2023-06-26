@@ -4841,18 +4841,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-light-client-cli"
+version = "4.1.0-pre0"
+dependencies = [
+ "clap 4.1.14",
+ "grpcio",
+ "mc-api",
+ "mc-common",
+ "mc-consensus-api",
+ "mc-consensus-scp-types",
+ "mc-light-client-verifier",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "serde_json",
+]
+
+[[package]]
 name = "mc-light-client-verifier"
 version = "4.1.0-pre0"
 dependencies = [
+ "base64 0.21.0",
  "displaydoc",
  "mc-api",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-scp-types",
+ "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-test-helper",
+ "prost",
  "serde",
 ]
 
