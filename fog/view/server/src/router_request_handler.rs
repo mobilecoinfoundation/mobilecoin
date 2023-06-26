@@ -324,7 +324,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     Ok(())
 }
 
-/// Initialize global metrics
+// Initialize global metrics
 lazy_static! {
     pub static ref QUERY_REQUESTS: IntCounterVec =
         register_int_counter_vec!(opts!("query_requests", "Queries to stores"), &["a", "b"])
