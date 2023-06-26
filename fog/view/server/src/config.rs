@@ -171,7 +171,7 @@ pub struct FogViewRouterConfig {
     pub metric_port: u16,
 
     /// Port for serving prometheus metrics.
-    #[clap(long, default_value = "9090", env = "MC_METRIC_PATH")]
+    #[clap(long, default_value = "metrics", env = "MC_METRIC_PATH")]
     pub metric_path: String,
 }
 

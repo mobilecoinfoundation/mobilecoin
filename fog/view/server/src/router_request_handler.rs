@@ -114,7 +114,7 @@ pub fn handle_auth_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    AUTH_REQUESTS.inc();
+    AUTH_CLIENT_REQUESTS.inc();
     let (client_auth_response, _) = enclave.client_accept(auth_message.into()).map_err(|err| {
         router_server_err_to_rpc_status("Auth: e client accept", err.into(), logger)
     })?;
@@ -183,6 +183,9 @@ where
     let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
     while remaining_tries > 0 {
+        if remaining_tries < RETRY_COUNT {
+            QUERY_GROUP_RETRY.inc();
+        }
         let multi_view_store_query_request = enclave
             .create_multi_view_store_query_data(sealed_query.clone())
             .map_err(|err| {
@@ -326,16 +329,18 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
 
 // Initialize global metrics
 lazy_static! {
-    pub static ref QUERY_REQUESTS: IntCounterVec =
-        register_int_counter_vec!(opts!("query_requests", "Queries to stores"), &["a", "b"])
+    pub static ref QUERY_REQUESTS: IntCounterVec = register_int_counter_vec!(
+        opts!("query_requests", "Queries to individual stores"),
+        &["store_uri"]
+    )
+    .expect("metric cannot be created");
+    pub static ref QUERY_GROUP_RETRY: IntCounter =
+        register_int_counter!("query_group_retry", "Query retries per client request")
             .expect("metric cannot be created");
-    pub static ref AUTH_REQUESTS: IntCounter =
-        register_int_counter!("auth_requests", "Auth requests to stores")
+    pub static ref AUTH_CLIENT_REQUESTS: IntCounter =
+        register_int_counter!("auth_client_requests", "Auth requests to stores")
             .expect("metric cannot be created");
     pub static ref CONNECTED_CLIENTS: IntGauge =
         register_int_gauge!("connected_clients", "Connected Clients")
-            .expect("metric cannot be created");
-    pub static ref CONNECTED_QUERIES: IntGauge =
-        register_int_gauge!("connected_queries", "Connected store queries")
             .expect("metric cannot be created");
 }
