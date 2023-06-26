@@ -80,9 +80,6 @@ where
     E: ViewEnclaveProxy,
 {
     let tracer = tracer!();
-
-    INCOMING_REQUESTS.inc();
-
     if request.has_auth() {
         tracer.in_span("router_auth", |_cx| {
             handle_auth_request(enclave, request.take_auth(), logger)
@@ -326,8 +323,8 @@ lazy_static! {
     pub static ref CONNECTED_CLIENTS: IntGauge =
         register_int_gauge!("connected_clients", "Connected Clients")
             .expect("metric cannot be created");
-    pub static ref QUERY_REQUESTS: IntGauge =
-        register_int_gauge!("query_requests", "Queries to stores")
+    pub static ref QUERY_REQUESTS: IntCounter =
+        register_int_counter!("query_requests", "Queries to stores")
             .expect("metric cannot be created");
     pub static ref AUTH_REQUESTS: IntCounter =
         register_int_counter!("auth_requests", "Auth requests to stores")
