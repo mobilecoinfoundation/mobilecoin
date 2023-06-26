@@ -142,10 +142,6 @@ async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
             ));
         }
     };
-    buffer.clear();
-
-    // res.push_str(&res_custom);
-    // Ok(res_custom);
     Ok(warp::reply::with_status(
         res_custom,
         warp::http::StatusCode::OK,
