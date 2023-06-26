@@ -125,33 +125,29 @@ async fn main() {
 
 async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
     let encoder = prometheus::TextEncoder::new();
-
-    // let mut buffer = Vec::new();
-    // if let Err(e) = encoder.encode(&REGISTRY.gather(), &mut buffer) {
-    //     eprintln!("could not encode custom metrics: {}", e);
-    // };
-    // let mut res = match String::from_utf8(buffer.clone()) {
-    //     Ok(v) => v,
-    //     Err(e) => {
-    //         eprintln!("custom metrics could not be from_utf8'd: {}", e);
-    //         String::default()
-    //     }
-    // };
-    // buffer.clear();
-
     let mut buffer = Vec::new();
     if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
-        eprintln!("could not encode prometheus metrics: {}", e);
+        let response = format!("could not encode prometheus metrics: {}", e);
+        return Ok(warp::reply::with_status(
+            response,
+            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+        ));
     };
     let res_custom = match String::from_utf8(buffer.clone()) {
         Ok(v) => v,
-        Err(e) => {
-            eprintln!("prometheus metrics could not be from_utf8'd: {}", e);
-            String::default()
+        Err(_) => {
+            return Ok(warp::reply::with_status(
+                String::from("prometheus metrics could not be from_utf8'd"),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            ));
         }
     };
     buffer.clear();
 
     // res.push_str(&res_custom);
-    Ok(res_custom)
+    // Ok(res_custom);
+    Ok(warp::reply::with_status(
+        res_custom,
+        warp::http::StatusCode::OK,
+    ))
 }
