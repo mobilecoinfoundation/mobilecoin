@@ -110,6 +110,7 @@ pub fn handle_auth_request<E>(
 where
     E: ViewEnclaveProxy,
 {
+    AUTH_REQUESTS.inc();
     let (client_auth_response, _) = enclave.client_accept(auth_message.into()).map_err(|err| {
         router_server_err_to_rpc_status("Auth: e client accept", err.into(), logger)
     })?;
@@ -130,6 +131,7 @@ pub async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
+    QUERY_REQUESTS.inc();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
         .map_err(|err| {
@@ -323,10 +325,13 @@ lazy_static! {
             .expect("metric can be created");
     pub static ref CONNECTED_CLIENTS: IntGauge =
         register_int_gauge!("connected_clients", "Connected Clients")
-            .expect("metric can be created");
-    pub static ref ACTIVE_QUERIES: IntGauge =
-        register_int_gauge!("active_queries", "Active Queries")
-            .expect("metric can be created");
+            .expect("metric cannot be created");
+    pub static ref QUERY_REQUESTS: IntGauge =
+        register_int_gauge!("query_requests", "Queries to stores")
+            .expect("metric cannot be created");
+    pub static ref AUTH_REQUESTS: IntCounter =
+        register_int_counter!("auth_requests", "Auth requests to stores")
+            .expect("metric cannot be created");
     // pub static ref RESPONSE_CODE_COLLECTOR: IntCounterVec = register_int_counter_vec!(
     //     opts!("response_code", "Response Codes"),
     //     &["env", "statuscode", "type"]

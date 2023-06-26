@@ -98,12 +98,13 @@ async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
     let encoder = TextEncoder::new();
     let mut buffer = Vec::new();
     let metrics_families = prometheus::gather();
-
     encoder
         .encode(&metrics_families, &mut buffer)
         .expect("could not encode prometheus metrics");
 
-    let output = String::from_utf8(buffer.clone()).expect("unable to format utf8");
-
-    Ok(warp::reply::with_status(output, warp::http::StatusCode::OK))
+    let response = String::from_utf8(buffer.clone()).expect("unable to format utf8");
+    Ok(warp::reply::with_status(
+        response,
+        warp::http::StatusCode::OK,
+    ))
 }
