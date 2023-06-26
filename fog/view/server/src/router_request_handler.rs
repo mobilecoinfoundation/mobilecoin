@@ -334,13 +334,15 @@ lazy_static! {
         &["store_uri"]
     )
     .expect("metric cannot be created");
-    pub static ref QUERY_GROUP_RETRY: IntCounter =
-        register_int_counter!("query_group_retry", "Query retries per client request")
-            .expect("metric cannot be created");
+    pub static ref QUERY_GROUP_RETRY: IntCounter = register_int_counter!(
+        "fog_view_query_group_retry",
+        "Query retries per client request"
+    )
+    .expect("metric cannot be created");
     pub static ref AUTH_CLIENT_REQUESTS: IntCounter =
-        register_int_counter!("auth_client_requests", "Auth requests to stores")
+        register_int_counter!("fog_view_auth_client_requests", "Auth requests to stores")
             .expect("metric cannot be created");
     pub static ref CONNECTED_CLIENTS: IntGauge =
-        register_int_gauge!("connected_clients", "Connected Clients")
+        register_int_gauge!("fog_view_connected_clients", "Connected Clients")
             .expect("metric cannot be created");
 }
