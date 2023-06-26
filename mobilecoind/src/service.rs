@@ -126,7 +126,7 @@ impl Service {
         // Health check service.
         let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
 
-        // Admon service.
+        // Admin service.
         let admin_service = AdminService::new(
             "mobilecoind".to_owned(),
             listen_uri.to_string(),

@@ -4841,6 +4841,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-light-client-verifier"
+version = "4.1.0-pre0"
+dependencies = [
+ "displaydoc",
+ "mc-api",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "serde",
+]
+
+[[package]]
 name = "mc-mobilecoind"
 version = "4.1.0-pre0"
 dependencies = [
