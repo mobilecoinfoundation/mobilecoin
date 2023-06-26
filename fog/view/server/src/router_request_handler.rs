@@ -330,7 +330,7 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
 // Initialize global metrics
 lazy_static! {
     pub static ref QUERY_REQUESTS: IntCounterVec = register_int_counter_vec!(
-        opts!("query_requests", "Queries to individual stores"),
+        opts!("fog_view_query_requests", "Queries to individual stores"),
         &["store_uri"]
     )
     .expect("metric cannot be created");
