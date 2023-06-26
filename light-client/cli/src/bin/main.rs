@@ -187,9 +187,9 @@ fn cmd_fetch_archive_blocks(
             fs::read_to_string(path).expect("failed reading LightClientVerifierConfig file");
         let light_client_verifier_config: LightClientVerifierConfig =
             serde_json::from_str(&json_data).expect("failed parsing LightClientVerifierConfig");
-        let light_client_verifer = LightClientVerifier::from(light_client_verifier_config);
+        let light_client_verifier = LightClientVerifier::from(light_client_verifier_config);
 
-        light_client_verifer
+        light_client_verifier
             .verify_block_data(&block_data[..])
             .expect("failed verifying block data");
     }
