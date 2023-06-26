@@ -1,8 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-#![deny(missing_docs)]
+#![allow(missing_docs)]
 
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
+use lazy_static::lazy_static;
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
@@ -14,7 +15,9 @@ use mc_fog_view_server::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use prometheus::Encoder;
+use prometheus::{
+    Encoder, HistogramOpts, HistogramVec, IntCounter, IntCounterVec, IntGauge, Opts, Registry,
+};
 use std::{
     env,
     sync::{Arc, RwLock},

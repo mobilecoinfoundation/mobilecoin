@@ -7,6 +7,7 @@ use crate::{
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
+use lazy_static::lazy_static;
 use mc_attest_api::attest;
 use mc_attest_enclave_api::SealedClientMessage;
 use mc_common::logger::Logger;
@@ -21,6 +22,7 @@ use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseSt
 use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
+use prometheus::{register_int_counter, register_int_gauge, IntCounter, IntGauge};
 use std::sync::Arc;
 
 const RETRY_COUNT: usize = 3;
@@ -39,6 +41,8 @@ where
 {
     while let Some(request) = requests.try_next().await? {
         let _timer = SVC_COUNTERS.req_impl(&method_name);
+        INCOMING_REQUESTS.inc();
+        CONNECTED_CLIENTS.inc();
         let result = handle_request(request, shards.clone(), enclave.clone(), logger.clone()).await;
 
         // Perform prometheus logic before the match statement to ensure that
@@ -52,8 +56,16 @@ where
             Err(rpc_status) => return responses.fail(rpc_status).await,
         }
     }
-    responses.close().await?;
-    Ok(())
+    match responses.close().await {
+        Ok(value) => {
+            CONNECTED_CLIENTS.dec();
+            Ok(value)
+        }
+        Err(err) => {
+            CONNECTED_CLIENTS.dec();
+            Err(err)
+        }
+    }
 }
 
 /// Handles a client's request by performing either an authentication or a
@@ -299,4 +311,29 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
 
     enclave.view_store_connect(view_store_id, nonce_auth_response.into())?;
     Ok(())
+}
+
+// Initialize global metrics
+lazy_static! {
+    pub static ref INCOMING_REQUESTS: IntCounter =
+        register_int_counter!("incoming_requests", "Incoming Requests")
+            .expect("metric can be created");
+    pub static ref CONNECTED_CLIENTS: IntGauge =
+        register_int_gauge!("connected_clients", "Connected Clients")
+            .expect("metric can be created");
+    // pub static ref RESPONSE_CODE_COLLECTOR: IntCounterVec = register_int_counter_vec!(
+    //     opts!("response_code", "Response Codes"),
+    //     &["env", "statuscode", "type"]
+    // );
+    // pub static ref RESPONSE_CODE_COLLECTOR: IntCounterVec = IntCounterVec::new(
+    //     Opts::new("response_code", "Response Codes"),
+    //     &["env", "statuscode", "type"]
+    // )
+    // .expect("metric can be created");
+    // pub static ref RESPONSE_TIME_COLLECTOR: HistogramVec = HistogramVec::new(
+    //     HistogramOpts::new("response_time", "Response Times"),
+    //     &["env"]
+    // )
+    // .expect("metric can be created");
+    // pub static ref REGISTRY: Registry = Registry::new();
 }
