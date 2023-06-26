@@ -92,6 +92,8 @@ impl RouterTestEnvironment {
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
+            metric_path: Default::default(),
+            metric_port: Default::default(),
             omap_capacity,
             admin_listen_uri,
         };
@@ -132,6 +134,8 @@ impl RouterTestEnvironment {
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
+            metric_path: Default::default(),
+            metric_port: Default::default(),
             omap_capacity,
             admin_listen_uri,
         };
