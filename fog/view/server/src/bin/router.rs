@@ -14,7 +14,7 @@ use mc_fog_view_server::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use prometheus::Encoder;
+use prometheus::{Encoder, TextEncoder};
 use std::{
     env,
     sync::{Arc, RwLock},
@@ -85,35 +85,6 @@ async fn main() {
     );
     router_server.start();
 
-    // let logger_clone = logger.clone();
-    // let metrics_path = warp::path!("metrics").map(move || {
-    //     log::info!(logger_clone.clone(), "Metrics endpoint hit");
-    //     let metric_families = prometheus::gather();
-    //     log::info!(
-    //         logger_clone.clone(),
-    //         "Number of metric families gathered: {}",
-    //         metric_families.len()
-    //     );
-    //     let mut buffer = vec![];
-    //     let encoder = TextEncoder::new();
-    //     match encoder.encode(&metric_families, &mut buffer) {
-    //         Ok(_) => {
-    //             log::info!(logger_clone.clone(), "Metrics successfully encoded");
-    //             Response::builder()
-    //                 .header("Content-Type", encoder.format_type())
-    //                 .body(buffer)
-    //                 .unwrap()
-    //         }
-    //         Err(e) => {
-    //             log::error!(logger_clone.clone(), "Failed to encode metrics: {}",
-    // e);             Response::builder()
-    //                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-    //                 .body(format!("Failed to encode metrics: {}",
-    // e).into_bytes())                 .unwrap()
-    //         }
-    //     }
-    // });
-
     let metrics_path = warp::path!("metrics").and_then(metrics_handler);
     log::info!(logger.clone(), "Metrics API listening on :3030");
     warp::serve(metrics_path).run(([0, 0, 0, 0], 3030)).await;
@@ -124,26 +95,15 @@ async fn main() {
 }
 
 async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
-    let encoder = prometheus::TextEncoder::new();
+    let encoder = TextEncoder::new();
     let mut buffer = Vec::new();
-    if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
-        let response = format!("could not encode prometheus metrics: {}", e);
-        return Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-        ));
-    };
-    let res_custom = match String::from_utf8(buffer.clone()) {
-        Ok(v) => v,
-        Err(_) => {
-            return Ok(warp::reply::with_status(
-                String::from("prometheus metrics could not be from_utf8'd"),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            ));
-        }
-    };
-    Ok(warp::reply::with_status(
-        res_custom,
-        warp::http::StatusCode::OK,
-    ))
+    let metrics_families = prometheus::gather();
+
+    encoder
+        .encode(&metrics_families, &mut buffer)
+        .expect("could not encode prometheus metrics");
+
+    let output = String::from_utf8(buffer.clone()).expect("unable to format utf8");
+
+    Ok(warp::reply::with_status(output, warp::http::StatusCode::OK))
 }
