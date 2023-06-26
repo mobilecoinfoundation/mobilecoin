@@ -413,4 +413,93 @@ mod tests {
         drop(txo2);
         drop(txo3);
     }
+
+    #[test]
+    fn test_verify_block_data() {
+        let mut rng = get_seeded_rng();
+
+        let lcv = get_light_client_verifier(Default::default());
+
+        let txo1 = TxOut::new(
+            Default::default(),
+            Amount::new(1, 0.into()),
+            &FromRandom::from_random(&mut rng),
+            &FromRandom::from_random(&mut rng),
+            EncryptedFogHint::fake_onetime_hint(&mut rng),
+        )
+        .unwrap();
+
+        let txo2 = TxOut::new(
+            Default::default(),
+            Amount::new(2, 0.into()),
+            &FromRandom::from_random(&mut rng),
+            &FromRandom::from_random(&mut rng),
+            EncryptedFogHint::fake_onetime_hint(&mut rng),
+        )
+        .unwrap();
+
+        let txo3 = TxOut::new(
+            Default::default(),
+            Amount::new(2, 0.into()),
+            &FromRandom::from_random(&mut rng),
+            &FromRandom::from_random(&mut rng),
+            EncryptedFogHint::fake_onetime_hint(&mut rng),
+        )
+        .unwrap();
+
+        let bc = BlockContents {
+            outputs: vec![txo1, txo2],
+            ..Default::default()
+        };
+
+        let block9999 = Block::new(
+            Default::default(),
+            &Default::default(),
+            9999,
+            9999,
+            &Default::default(),
+            &bc,
+        );
+
+        let metadata = sign_block_id_for_test_node_ids(&block9999.id, &[1, 2, 3]);
+
+        let block_datas = metadata
+            .into_iter()
+            .map(|metadata| BlockData::new(block9999.clone(), bc.clone(), None, Some(metadata)))
+            .collect::<Vec<_>>();
+
+        // Calling verify_block_data without any block data returns an error.
+        assert_matches!(lcv.verify_block_data(&[]), Err(Error::NoBlockData));
+
+        // Calling verify_block_data with block data that differs from each other
+        // returns an error.
+        let different_block_data = block_datas[0].clone();
+        let different_block_data =
+            different_block_data.mutate(|_, contents, _, _| contents.outputs.push(txo3));
+
+        assert_matches!(
+            lcv.verify_block_data(&[block_datas[0].clone(), different_block_data]),
+            Err(Error::BlockDataMismatch)
+        );
+
+        // Passing the correct block metadata verifies successfully and returns the
+        // block and its contents.
+        let (block, block_contents) = lcv.verify_block_data(&block_datas[..]).unwrap();
+
+        assert_eq!(block, block9999);
+        assert_eq!(block_contents, bc);
+
+        // Omitting one of the block data entries should still succeed since we need 2
+        // out of 3.
+        let (block, block_contents) = lcv.verify_block_data(&block_datas[1..]).unwrap();
+
+        assert_eq!(block, block9999);
+        assert_eq!(block_contents, bc);
+
+        // Omitting two of the block data entries should fail since we need 2 out of 3.
+        assert_matches!(
+            lcv.verify_block_data(&block_datas[2..]),
+            Err(Error::NotAQuorum)
+        );
+    }
 }
