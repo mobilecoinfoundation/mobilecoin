@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use clap::{Parser, Subcommand};
+use clio::Output;
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_api::blockchain::ArchiveBlocks;
 use mc_blockchain_types::BlockIndex;
@@ -19,7 +20,7 @@ use mc_light_client_verifier::{
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConsensusClientUri;
 use protobuf::Message;
-use std::{fs, path::PathBuf, str::FromStr, sync::Arc};
+use std::{fs, io::Write, path::PathBuf, str::FromStr, sync::Arc};
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -29,6 +30,10 @@ pub enum Commands {
         /// Node URIs to use for generating the config.
         #[clap(long = "node", use_value_delimiter = true, env = "MC_NODES")]
         nodes: Vec<ConsensusClientUri>,
+
+        /// File to write the config to.
+        #[clap(long, env = "MC_OUT_FILE", value_parser, default_value = "-")]
+        out_file: Output,
     },
 
     /// Fetch one or more `[ArchiveBlock]`s from a list of tx source urls and
@@ -49,8 +54,8 @@ pub enum Commands {
         block_index: BlockIndex,
 
         /// File to write the fetched ArchiveBlocks protobuf to.
-        #[clap(long, env = "MC_OUT_FILE")]
-        out_file: PathBuf,
+        #[clap(long, env = "MC_OUT_FILE", value_parser)]
+        out_file: Output,
 
         /// Optional LightClientVerifierConfig to use for verifying the fetched
         /// blocks before writing them to disk.
@@ -74,8 +79,8 @@ fn main() {
     let config = Config::parse();
 
     match config.command {
-        Commands::GenerateConfig { nodes } => {
-            cmd_generate_config(nodes, logger);
+        Commands::GenerateConfig { nodes, out_file } => {
+            cmd_generate_config(nodes, out_file, logger);
         }
 
         Commands::FetchArchiveBlocks {
@@ -95,7 +100,7 @@ fn main() {
     }
 }
 
-fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, logger: Logger) {
+fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, mut out_file: Output, logger: Logger) {
     let env = Arc::new(EnvBuilder::new().name_prefix("light-client-grpc").build());
 
     let (node_configs, last_block_infos): (Vec<_>, Vec<_>) = nodes
@@ -150,16 +155,19 @@ fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, logger: Logger) {
         known_valid_block_ids: Default::default(),
     };
 
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&light_client_verifier).unwrap()
-    );
+    out_file
+        .write_all(
+            &serde_json::to_string_pretty(&light_client_verifier)
+                .unwrap()
+                .as_bytes(),
+        )
+        .expect("failed writing config to file");
 }
 
 fn cmd_fetch_archive_blocks(
     tx_source_urls: Vec<String>,
     block_index: u64,
-    out_file: PathBuf,
+    mut out_file: Output,
     light_client_verifier_config_path: Option<PathBuf>,
     logger: Logger,
 ) {
@@ -190,12 +198,10 @@ fn cmd_fetch_archive_blocks(
     let bytes = archive_blocks
         .write_to_bytes()
         .expect("failed serializing ArchiveBlocks");
-    fs::write(&out_file, bytes).expect("failed writing ArchiveBlocks to file");
-    log::info!(
-        logger,
-        "Wrote ArchiveBlocks to file {}",
-        out_file.to_string_lossy()
-    );
+    out_file
+        .write_all(&bytes)
+        .expect("failed writing ArchiveBlocks to file");
+    log::info!(logger, "Wrote ArchiveBlocks to file {}", out_file.path());
 
     // Give the logger time to flush :/
     std::thread::sleep(std::time::Duration::from_millis(100));
