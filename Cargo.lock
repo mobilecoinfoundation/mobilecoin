@@ -2552,6 +2552,7 @@ dependencies = [
 name = "mc-attest-verifier-config"
 version = "4.0.2"
 dependencies = [
+ "assert_matches",
  "displaydoc",
  "hex",
  "hex-literal",
