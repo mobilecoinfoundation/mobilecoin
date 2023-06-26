@@ -98,6 +98,10 @@ spec:
                 value: {{ .Values.fogLedgerRouter.rust.backtrace | quote }}
               - name: RUST_LOG
                 value: {{ .Values.fogLedgerRouter.rust.log | quote }}
+              {{- if eq .Values.jaegerTracing.enabled true }}
+              - name: MC_TELEMETRY
+                value: "true"
+              {{- end }}
               - name: FOG_LEDGER_SENTRY_DSN
                 valueFrom:
                   configMapKeyRef:
@@ -327,6 +331,10 @@ spec:
                 name: ipinfo
                 optional: true
             env:
+            {{- if eq .Values.jaegerTracing.enabled true }}
+            - name: MC_TELEMETRY
+              value: "true"
+            {{- end }}
             - name: MC_LEDGER_DB_MIGRATE
               value: "true"
             - name: RUST_BACKTRACE
