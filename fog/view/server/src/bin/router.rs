@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-#![allow(missing_docs)]
+#![deny(missing_docs)]
 
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;

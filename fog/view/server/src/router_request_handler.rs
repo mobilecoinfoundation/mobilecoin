@@ -10,7 +10,7 @@ use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use lazy_static::lazy_static;
 use mc_attest_api::attest;
 use mc_attest_enclave_api::SealedClientMessage;
-use mc_common::logger::Logger;
+use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
     view_grpc::FogViewStoreApiClient,
@@ -22,7 +22,10 @@ use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseSt
 use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
-use prometheus::{register_int_counter, register_int_gauge, IntCounter, IntGauge};
+use prometheus::{
+    opts, register_int_counter, register_int_counter_vec, register_int_gauge, IntCounter,
+    IntCounterVec, IntGauge,
+};
 use std::sync::Arc;
 
 const RETRY_COUNT: usize = 3;
@@ -41,7 +44,6 @@ where
 {
     while let Some(request) = requests.try_next().await? {
         let _timer = SVC_COUNTERS.req_impl(&method_name);
-        INCOMING_REQUESTS.inc();
         CONNECTED_CLIENTS.inc();
         let result = handle_request(request, shards.clone(), enclave.clone(), logger.clone()).await;
 
@@ -53,7 +55,11 @@ where
 
         match result {
             Ok(response) => responses.send((response, WriteFlags::default())).await?,
-            Err(rpc_status) => return responses.fail(rpc_status).await,
+            Err(rpc_status) => {
+                log::error!(logger, "error handling request: {}", &method_name);
+                CONNECTED_CLIENTS.dec();
+                return responses.fail(rpc_status).await;
+            }
         }
     }
     match responses.close().await {
@@ -62,6 +68,7 @@ where
             Ok(value)
         }
         Err(err) => {
+            log::error!(logger, "error closing response");
             CONNECTED_CLIENTS.dec();
             Err(err)
         }
@@ -128,7 +135,6 @@ pub async fn handle_query_request<E>(
 where
     E: ViewEnclaveProxy,
 {
-    QUERY_REQUESTS.inc();
     let sealed_query = enclave
         .decrypt_and_seal_query(query.into())
         .map_err(|err| {
@@ -264,6 +270,9 @@ async fn query_shard(
     request: &MultiViewStoreQueryRequest,
     shard: Shard,
 ) -> Result<(Shard, MultiViewStoreQueryResponse), RouterServerError> {
+    QUERY_REQUESTS
+        .with_label_values(&[shard.uri.host.as_str()])
+        .inc();
     let client_unary_receiver = shard.grpc_client.multi_view_store_query_async(request)?;
     let response = client_unary_receiver.await?;
 
@@ -315,33 +324,18 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
     Ok(())
 }
 
-// Initialize global metrics
+/// Initialize global metrics
 lazy_static! {
-    pub static ref INCOMING_REQUESTS: IntCounter =
-        register_int_counter!("incoming_requests", "Incoming Requests")
-            .expect("metric can be created");
-    pub static ref CONNECTED_CLIENTS: IntGauge =
-        register_int_gauge!("connected_clients", "Connected Clients")
-            .expect("metric cannot be created");
-    pub static ref QUERY_REQUESTS: IntCounter =
-        register_int_counter!("query_requests", "Queries to stores")
+    pub static ref QUERY_REQUESTS: IntCounterVec =
+        register_int_counter_vec!(opts!("query_requests", "Queries to stores"), &["a", "b"])
             .expect("metric cannot be created");
     pub static ref AUTH_REQUESTS: IntCounter =
         register_int_counter!("auth_requests", "Auth requests to stores")
             .expect("metric cannot be created");
-    // pub static ref RESPONSE_CODE_COLLECTOR: IntCounterVec = register_int_counter_vec!(
-    //     opts!("response_code", "Response Codes"),
-    //     &["env", "statuscode", "type"]
-    // );
-    // pub static ref RESPONSE_CODE_COLLECTOR: IntCounterVec = IntCounterVec::new(
-    //     Opts::new("response_code", "Response Codes"),
-    //     &["env", "statuscode", "type"]
-    // )
-    // .expect("metric can be created");
-    // pub static ref RESPONSE_TIME_COLLECTOR: HistogramVec = HistogramVec::new(
-    //     HistogramOpts::new("response_time", "Response Times"),
-    //     &["env"]
-    // )
-    // .expect("metric can be created");
-    // pub static ref REGISTRY: Registry = Registry::new();
+    pub static ref CONNECTED_CLIENTS: IntGauge =
+        register_int_gauge!("connected_clients", "Connected Clients")
+            .expect("metric cannot be created");
+    pub static ref CONNECTED_QUERIES: IntGauge =
+        register_int_gauge!("connected_queries", "Connected store queries")
+            .expect("metric cannot be created");
 }
