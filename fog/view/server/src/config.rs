@@ -165,6 +165,10 @@ pub struct FogViewRouterConfig {
     /// hours).
     #[clap(long, default_value = "86400", value_parser = parse_duration_in_seconds, env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
+
+    /// Port for serving prometheus metrics.
+    #[clap(long, default_value = "9090", env = "MC_METRIC_PORT")]
+    pub metric_port: u16,
 }
 
 /// A FogViewRouterServer can either fulfill streaming or unary requests, and

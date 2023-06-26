@@ -87,7 +87,9 @@ async fn main() {
 
     let metrics_path = warp::path!("metrics").and_then(metrics_handler);
     log::info!(logger.clone(), "Metrics API listening on :3030");
-    warp::serve(metrics_path).run(([0, 0, 0, 0], 3030)).await;
+    warp::serve(metrics_path)
+        .run(([0, 0, 0, 0], config.metric_port))
+        .await;
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
