@@ -157,7 +157,7 @@ fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, mut out_file: Output, log
 
     out_file
         .write_all(
-            &serde_json::to_string_pretty(&light_client_verifier)
+            serde_json::to_string_pretty(&light_client_verifier)
                 .unwrap()
                 .as_bytes(),
         )
