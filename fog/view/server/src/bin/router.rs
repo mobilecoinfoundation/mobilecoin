@@ -85,11 +85,13 @@ async fn main() {
     );
     router_server.start();
 
-    let metrics_path = warp::path(config.metric_path.clone()).and_then(metrics_handler);
-    log::info!(logger.clone(), "Starting metrics endpoint");
-    warp::serve(metrics_path)
-        .run(([0, 0, 0, 0], config.metric_port))
-        .await;
+    if config.enable_metrics_server {
+        let metrics_path = warp::path(config.metric_path.clone()).and_then(metrics_handler);
+        log::info!(logger.clone(), "Starting metrics endpoint");
+        warp::serve(metrics_path)
+            .run(([0, 0, 0, 0], config.metric_port))
+            .await;
+    }
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));

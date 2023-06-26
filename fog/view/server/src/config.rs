@@ -167,6 +167,10 @@ pub struct FogViewRouterConfig {
     pub client_auth_token_max_lifetime: Duration,
 
     /// Port for serving prometheus metrics.
+    #[clap(long, default_value = false, env = "MC_METRIC_SERVER")]
+    pub enable_metrics_server: bool,
+
+    /// Port for serving prometheus metrics.
     #[clap(long, default_value = "9090", env = "MC_METRIC_PORT")]
     pub metric_port: u16,
 
