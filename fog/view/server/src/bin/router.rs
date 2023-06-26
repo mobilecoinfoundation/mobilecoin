@@ -14,6 +14,7 @@ use mc_fog_view_server::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use prometheus::Encoder;
 use std::{
     env,
     sync::{Arc, RwLock},
