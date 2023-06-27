@@ -94,6 +94,7 @@ impl RouterTestEnvironment {
             client_auth_token_secret: None,
             metric_path: Default::default(),
             metric_port: Default::default(),
+            enable_metrics_server: false,
             omap_capacity,
             admin_listen_uri,
         };
@@ -136,6 +137,7 @@ impl RouterTestEnvironment {
             client_auth_token_secret: None,
             metric_path: Default::default(),
             metric_port: Default::default(),
+            enable_metrics_server: false,
             omap_capacity,
             admin_listen_uri,
         };
