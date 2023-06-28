@@ -12,7 +12,7 @@ use std::path::PathBuf;
 /// Configuration parameters for light client relayer
 #[derive(Debug, Parser, Serialize)]
 #[clap(
-    name = "light-client-relayer",
+    name = "mc-light-client-relayer",
     about = "A process which scans the blockchain and forwards blocks matching some criteria, and block metadata signatures to a remote party"
 )]
 pub struct Config {

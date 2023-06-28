@@ -26,7 +26,7 @@ fn main() {
             None,
             admin_listen_uri,
             "Light Client Relayer".to_owned(),
-            "".to_string(), //config.client_listen_uri.to_string(),
+            "".to_string(),
             Some(get_config_json),
             vec![],
             logger.clone(),

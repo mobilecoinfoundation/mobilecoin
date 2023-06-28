@@ -4863,19 +4863,26 @@ version = "1.3.0-pre0"
 dependencies = [
  "clap 4.1.14",
  "displaydoc",
+ "lazy_static",
  "mc-account-keys",
  "mc-blockchain-types",
  "mc-common",
+ "mc-crypto-keys",
  "mc-ledger-db",
  "mc-transaction-core",
+ "mc-transaction-extra",
  "mc-util-cli",
+ "mc-util-from-random",
  "mc-util-grpc",
+ "mc-util-metrics",
  "mc-util-telemetry",
  "mc-util-uri",
  "mc-watcher",
+ "rand",
  "rayon",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

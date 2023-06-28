@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
 mod config;
+mod counters;
 mod relayer;
 mod sender;
 
