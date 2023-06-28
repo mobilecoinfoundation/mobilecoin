@@ -4872,6 +4872,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-uri",
  "protobuf",
+ "rayon",
  "serde_json",
 ]
 
@@ -4892,6 +4893,7 @@ dependencies = [
  "mc-util-test-helper",
  "prost",
  "serde",
+ "serde_with",
 ]
 
 [[package]]

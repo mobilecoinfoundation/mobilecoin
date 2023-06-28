@@ -20,6 +20,7 @@ use mc_light_client_verifier::{
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConsensusClientUri;
 use protobuf::Message;
+use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{fs, io::Write, path::PathBuf, str::FromStr, sync::Arc};
 
 #[derive(Subcommand)]
@@ -172,7 +173,7 @@ fn cmd_fetch_archive_blocks(
     logger: Logger,
 ) {
     let block_data = tx_source_urls
-        .into_iter()
+        .into_par_iter()
         .map(|url| {
             log::info!(logger, "Fetching block data from {}", url);
             let rts = ReqwestTransactionsFetcher::new(vec![url], logger.clone())
