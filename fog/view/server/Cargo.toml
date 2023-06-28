@@ -30,6 +30,7 @@ lazy_static = "1.4"
 prometheus = "0.13"
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"
+regex = "1.5"
 
 # mobilecoin
 mc-api = { path = "../../../api" }
