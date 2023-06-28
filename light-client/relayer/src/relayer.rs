@@ -91,11 +91,7 @@ impl<S: Sender> Relayer<S> {
 
         span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
 
-        // First, check if there's anything interesting in this block
         let relevant_burns = Self::check_for_relevant_burns(&block_data.contents().outputs);
-
-        // There are no burns with relevant memos in this block so this block is
-        // finished processing.
         if relevant_burns.is_empty() {
             return Ok(());
         }
