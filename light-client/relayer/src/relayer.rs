@@ -84,7 +84,6 @@ impl<S: Sender> Relayer<S> {
     }
 
     fn process_block(&mut self, block_data: &BlockData) -> Result<(), WatcherDBError> {
-        // Tracing
         let tracer = tracer!();
 
         let mut span =
