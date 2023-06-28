@@ -31,7 +31,7 @@ fn main() {
             vec![],
             logger.clone(),
         )
-        .expect("Failed starting fog-report admin server")
+        .expect("Failed starting light client relayer admin server")
     });
 
     let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
