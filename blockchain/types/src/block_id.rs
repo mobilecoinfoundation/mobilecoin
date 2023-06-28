@@ -30,6 +30,14 @@ impl TryFrom<&[u8]> for BlockID {
     }
 }
 
+impl TryFrom<Vec<u8>> for BlockID {
+    type Error = ConvertError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        Self::try_from(src.as_slice())
+    }
+}
+
 impl AsRef<[u8]> for BlockID {
     fn as_ref(&self) -> &[u8] {
         &self.0
