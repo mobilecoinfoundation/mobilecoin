@@ -10,6 +10,7 @@ rust-version = { workspace = true }
 [[bin]]
 name = "ledger-sync-test-app"
 path = "src/test_app/main.rs"
+required-features = ["mc-consensus-enclave-measurement"]
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
@@ -19,7 +20,7 @@ mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
-mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement", optional = true }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
