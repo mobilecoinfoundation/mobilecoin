@@ -23,11 +23,10 @@ use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
 use prometheus::{
-    opts, register_int_counter, register_int_counter_vec, register_int_gauge, IntCounter,
-    IntCounterVec, IntGauge,
+    histogram_opts, register_histogram_vec, register_int_counter, register_int_gauge, HistogramVec,
+    IntCounter, IntGauge,
 };
-use std::sync::Arc;
-
+use std::{sync::Arc, time::Instant};
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Router client.
@@ -273,11 +272,24 @@ async fn query_shard(
     request: &MultiViewStoreQueryRequest,
     shard: Shard,
 ) -> Result<(Shard, MultiViewStoreQueryResponse), RouterServerError> {
-    QUERY_REQUESTS
-        .with_label_values(&[shard.uri.host.as_str()])
-        .inc();
-    let client_unary_receiver = shard.grpc_client.multi_view_store_query_async(request)?;
-    let response = client_unary_receiver.await?;
+    let start_time = Instant::now();
+    let client_unary_receiver = shard
+        .grpc_client
+        .multi_view_store_query_async(request)
+        .or_else(|err| {
+            let histogram =
+                QUERY_REQUESTS.with_label_values(&[shard.uri.host.as_str(), &err.to_string()]);
+            histogram.observe(start_time.elapsed().as_secs_f64());
+            Err(err)
+        })?;
+    let response = client_unary_receiver.await.or_else(|err| {
+        let histogram =
+            QUERY_REQUESTS.with_label_values(&[shard.uri.host.as_str(), &err.to_string()]);
+        histogram.observe(start_time.elapsed().as_secs_f64());
+        Err(err)
+    })?;
+    let histogram = QUERY_REQUESTS.with_label_values(&[shard.uri.host.as_str(), "ok"]);
+    histogram.observe(start_time.elapsed().as_secs_f64());
 
     Ok((shard, response.try_into()?))
 }
@@ -329,9 +341,9 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
 
 // Initialize global metrics
 lazy_static! {
-    pub static ref QUERY_REQUESTS: IntCounterVec = register_int_counter_vec!(
-        opts!("fog_view_query_requests", "Queries to individual stores"),
-        &["store_uri"]
+    pub static ref QUERY_REQUESTS: HistogramVec = register_histogram_vec!(
+        histogram_opts!("fog_view_query_requests", "Queries to individual stores"),
+        &["store_uri", "status"]
     )
     .expect("metric cannot be created");
     pub static ref QUERY_GROUP_RETRY: IntCounter = register_int_counter!(
