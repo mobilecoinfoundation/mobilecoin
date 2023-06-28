@@ -6,7 +6,6 @@
 use clap::Parser;
 use mc_blockchain_types::BlockIndex;
 use mc_util_uri::AdminUri;
-//use displaydoc::Display;
 use serde::Serialize;
 use std::path::PathBuf;
 
