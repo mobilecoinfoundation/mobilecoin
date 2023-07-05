@@ -4755,6 +4755,7 @@ dependencies = [
  "prometheus",
  "rand",
  "rand_core",
+ "regex",
  "serde",
  "serde_json",
  "tokio 1.25.0",
