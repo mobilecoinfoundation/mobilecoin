@@ -298,7 +298,6 @@ async fn query_shard(
     })?;
     let histogram = QUERY_REQUESTS.with_label_values(&[&subdomain, "ok"]);
     histogram.observe(start_time.elapsed().as_secs_f64());
-
     Ok((shard, response.try_into()?))
 }
 
