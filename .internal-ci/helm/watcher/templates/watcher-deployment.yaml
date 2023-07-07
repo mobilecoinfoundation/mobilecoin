@@ -33,7 +33,7 @@ spec:
 {{- if eq $.Values.watcher.backupEnabled true }}
       initContainers:
         - name: watcherdb-restore
-          image: "amazon/aws-cli:2.0.19"
+          image: "mobilecoin/infra-replication-sidecar:latest"
           imagePullPolicy: Always
           command: [ "/bin/bash" ]
           env:
@@ -126,7 +126,7 @@ spec:
             - -c
             - |
               set -e
-              while true; do /scripts/backup.sh ; sleep 3600; done
+              while true; do /scripts/backup.sh ; sleep 86400; done
           lifecycle:
             preStop:
               exec:
