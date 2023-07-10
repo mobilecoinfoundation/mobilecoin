@@ -50,12 +50,32 @@ data:
     # Set sha256 signing
     ${AWS} configure set default payload_signing_enabled=true
 
+    # use the /watcher fs to do the backup since it has more space than
+    # the container root.
+    mkdir -p /backups/watcher
+
     # Do a lmbd tools copy on the db so we get a clean copy.
-    mdb_copy -n /watcher/data.mdb /tmp/data.mdb
+    echo "mdb_copy /watcher /backups/watcher - this will take a while"
+    mdb_copy /watcher /backups/watcher
+
+    # ehh just in case, this really uses system memory for caching :)
+    sync
+
+    # test did we get a clean backup?
+    ls -al /backups/watcher
+    echo "Can we list the DB contents?"
+    mdb_dump -l /backups/watcher
 
     # Copy to S3
-    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
-    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${LATEST_FILEPATH}
+    echo "copy data to s3"
+    ${AWS} s3 cp /backups/watcher/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
+
+    # Do an s3 -> s3 copy on the uploaded file to "latest" path.
+    echo "s3 -> s3 copy to create latest"
+    ${AWS} s3 cp s3://${AWS_BUCKET}/${BACKUP_FILEPATH} s3://${AWS_BUCKET}/${LATEST_FILEPATH}
+
+    # clean up backup
+    rm -rf /backups/watcher
 
   restore.sh: |
     #!/bin/bash

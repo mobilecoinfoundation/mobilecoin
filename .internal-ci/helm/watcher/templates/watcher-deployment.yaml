@@ -35,6 +35,9 @@ spec:
         - name: watcherdb-restore
           image: "mobilecoin/infra-replication-sidecar:latest"
           imagePullPolicy: Always
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
           command: [ "/bin/bash" ]
           env:
 {{- if .s3EndpointUrl }}
@@ -94,8 +97,11 @@ spec:
               mountPath: /config
 {{- if eq $.Values.watcher.backupEnabled true }}
         - name: watcherdb-backup
-          image: "amazon/aws-cli:2.0.19"
+          image: "mobilecoin/infra-replication-sidecar:latest"
           imagePullPolicy: Always
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
           command: [ "/bin/bash" ]
           env:
 {{- if .s3EndpointUrl }}
@@ -136,6 +142,8 @@ spec:
               mountPath: /watcher
             - name: watcher-backup-scripts
               mountPath: /scripts
+            - name: watcher-backup-data
+              mountPath: /backups
 {{- end }}
       volumes:
         - name: watcher-db-dir
@@ -145,6 +153,7 @@ spec:
 {{- else }}
           emptyDir: {}
 {{- end }}
+
         - name: config
           configMap:
             name: {{ include "chart.fullname" $ }}-config-watcher
@@ -153,6 +162,9 @@ spec:
           configMap:
             name: {{ include "chart.fullname" $ }}-watcher-backup-scripts
             defaultMode: 0755
+        - name: watcher-backup-data
+          persistentVolumeClaim:
+            claimName: {{ .watchername }}-{{ include "chart.fullname" $ }}-backup
 {{- end }}
 ---
 {{- end }}
