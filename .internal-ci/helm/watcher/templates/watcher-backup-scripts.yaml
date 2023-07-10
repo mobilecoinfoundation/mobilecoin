@@ -50,11 +50,9 @@ data:
     # Set sha256 signing
     ${AWS} configure set default payload_signing_enabled=true
 
-    # use the /watcher fs to do the backup since it has more space than
-    # the container root.
     mkdir -p /backups/watcher
 
-    # Do a lmbd tools copy on the db so we get a clean copy.
+    # Do a lmdb tools copy on the db so we get a clean copy.
     echo "mdb_copy /watcher /backups/watcher - this will take a while"
     mdb_copy /watcher /backups/watcher
 
