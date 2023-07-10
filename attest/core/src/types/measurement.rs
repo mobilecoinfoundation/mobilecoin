@@ -26,6 +26,12 @@ impl From<[u8; SGX_HASH_SIZE]> for MrEnclave {
     }
 }
 
+impl From<MrEnclave> for [u8; SGX_HASH_SIZE] {
+    fn from(mr_enclave: MrEnclave) -> Self {
+        mr_enclave.0.m
+    }
+}
+
 /// An opaque type for MRSIGNER values.
 ///
 /// A MRSIGNER value is a cryptographic hash of the public key an enclave
@@ -37,6 +43,12 @@ pub struct MrSigner(sgx_measurement_t);
 impl From<[u8; SGX_HASH_SIZE]> for MrSigner {
     fn from(m: [u8; SGX_HASH_SIZE]) -> Self {
         MrSigner(sgx_measurement_t { m })
+    }
+}
+
+impl From<MrSigner> for [u8; SGX_HASH_SIZE] {
+    fn from(mr_signer: MrSigner) -> Self {
+        mr_signer.0.m
     }
 }
 
