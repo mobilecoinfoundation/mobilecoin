@@ -19,6 +19,9 @@ use mc_attest_core::{
     IasQuoteError, IasQuoteResult, MrEnclave, MrSigner, ProductId, SecurityVersion,
     VerificationReportData,
 };
+use mc_attest_verifier_config::{
+    TrustedMeasurement, TrustedMrEnclaveMeasurement, TrustedMrSignerMeasurement,
+};
 use mc_sgx_css::Signature;
 use serde::{Deserialize, Serialize};
 
@@ -49,6 +52,59 @@ pub enum Kind {
     /// MRSIGNER/product-id/enclave-version tuple, allow select non-OK
     /// quote-status results from IAS.
     Signer(MrSignerVerifier),
+}
+
+impl Kind {
+    /// Assume an enclave with the specified measurement does not need
+    /// BIOS configuration changes to address the provided advisory IDs.
+    ///
+    /// This method should only be used when advised by an enclave author.
+    pub fn allow_config_advisories<'a>(
+        &mut self,
+        ids: impl IntoIterator<Item = &'a str>,
+    ) -> &mut Self {
+        for id in ids {
+            match self {
+                Kind::Enclave(v) => {
+                    v.allow_config_advisory(id);
+                }
+                Kind::Signer(v) => {
+                    v.allow_config_advisory(id);
+                }
+            }
+        }
+        self
+    }
+
+    /// Assume an enclave with the specified measurement has the appropriate
+    /// software/build-time hardening for the given advisory IDs.
+    ///
+    /// This method should only be used when advised by an enclave author.
+    pub fn allow_hardening_advisories<'a>(
+        &mut self,
+        ids: impl IntoIterator<Item = &'a str>,
+    ) -> &mut Self {
+        for id in ids {
+            match self {
+                Kind::Enclave(v) => {
+                    v.allow_hardening_advisory(id);
+                }
+                Kind::Signer(v) => {
+                    v.allow_hardening_advisory(id);
+                }
+            }
+        }
+        self
+    }
+}
+
+impl From<&TrustedMeasurement> for Kind {
+    fn from(trusted_measurement: &TrustedMeasurement) -> Kind {
+        match trusted_measurement {
+            TrustedMeasurement::MrEnclave(mr_enclave) => MrEnclaveVerifier::from(mr_enclave).into(),
+            TrustedMeasurement::MrSigner(mr_signer) => MrSignerVerifier::from(mr_signer).into(),
+        }
+    }
 }
 
 impl From<MrEnclaveVerifier> for Kind {
@@ -140,6 +196,19 @@ impl From<Signature> for MrEnclaveVerifier {
     }
 }
 
+impl From<&TrustedMrEnclaveMeasurement> for MrEnclaveVerifier {
+    fn from(enclave_measurement: &TrustedMrEnclaveMeasurement) -> Self {
+        let mut verifier = Self::new(MrEnclave::from(*enclave_measurement.mr_enclave()));
+        for id in enclave_measurement.config_advisories() {
+            verifier.allow_config_advisory(id);
+        }
+        for id in enclave_measurement.hardening_advisories() {
+            verifier.allow_hardening_advisory(id);
+        }
+        verifier
+    }
+}
+
 impl Verify<VerificationReportData> for MrEnclaveVerifier {
     fn verify(&self, data: &VerificationReportData) -> bool {
         if let Ok(report_body) = data.quote.report_body() {
@@ -225,13 +294,30 @@ impl MrSignerVerifier {
 
 impl From<Signature> for MrSignerVerifier {
     fn from(src: Signature) -> Self {
-        Self::new(src.mrsigner().into(), src.product_id(), src.version())
+        Self::from(&src)
     }
 }
 
 impl From<&Signature> for MrSignerVerifier {
     fn from(src: &Signature) -> Self {
         Self::new(src.mrsigner().into(), src.product_id(), src.version())
+    }
+}
+
+impl From<&TrustedMrSignerMeasurement> for MrSignerVerifier {
+    fn from(mr_signer_measurement: &TrustedMrSignerMeasurement) -> Self {
+        let mut verifier = Self::new(
+            MrSigner::from(*mr_signer_measurement.mr_signer()),
+            mr_signer_measurement.product_id(),
+            mr_signer_measurement.minimum_svn(),
+        );
+        for id in mr_signer_measurement.config_advisories() {
+            verifier.allow_config_advisory(id);
+        }
+        for id in mr_signer_measurement.hardening_advisories() {
+            verifier.allow_hardening_advisory(id);
+        }
+        verifier
     }
 }
 
@@ -1112,5 +1198,121 @@ mod test {
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
         assert!(!verifier.verify(&data))
+    }
+
+    #[test]
+    fn allow_config_advisories_mr_enclave_verifier() {
+        let measurement = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &MR_ENCLAVE.m,
+            [] as [&str; 0],
+            [] as [&str; 0],
+        ));
+        let mut verifier = Kind::from(&measurement);
+        verifier.allow_config_advisories(["one", "two", "three"]);
+
+        let Kind::Enclave(mr_enclave_verifier) = verifier
+            else {
+                panic!("Should be a mr enclave verifier");
+            };
+        assert_eq!(mr_enclave_verifier.config_ids, ["one", "two", "three"]);
+        assert_eq!(mr_enclave_verifier.sw_ids, [] as [&str; 0]);
+    }
+
+    #[test]
+    fn allow_hardening_advisories_mr_enclave_verifier() {
+        let measurement = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &MR_ENCLAVE.m,
+            [] as [&str; 0],
+            [] as [&str; 0],
+        ));
+        let mut verifier = Kind::from(&measurement);
+        verifier.allow_hardening_advisories(["for", "four", "fore"]);
+
+        let Kind::Enclave(mr_enclave_verifier) = verifier
+        else {
+            panic!("Should be a mr enclave verifier");
+        };
+        assert_eq!(mr_enclave_verifier.config_ids, [] as [&str; 0]);
+        assert_eq!(mr_enclave_verifier.sw_ids, ["for", "four", "fore"]);
+    }
+
+    #[test]
+    fn allow_config_advisories_mr_signer_verifier() {
+        let measurement = TrustedMeasurement::from(TrustedMrSignerMeasurement::new(
+            &MR_SIGNER.m,
+            1,
+            2,
+            [] as [&str; 0],
+            [] as [&str; 0],
+        ));
+        let mut verifier = Kind::from(&measurement);
+        verifier.allow_config_advisories(["who", "what", "when"]);
+
+        let Kind::Signer(mr_signer_verifier) = verifier
+            else {
+                panic!("Should be a mr signer verifier");
+            };
+        assert_eq!(mr_signer_verifier.config_ids, ["who", "what", "when"]);
+        assert_eq!(mr_signer_verifier.sw_ids, [] as [&str; 0]);
+    }
+
+    #[test]
+    fn allow_hardening_advisories_mr_signer_verifier() {
+        let measurement = TrustedMeasurement::from(TrustedMrSignerMeasurement::new(
+            &MR_SIGNER.m,
+            3,
+            4,
+            [] as [&str; 0],
+            [] as [&str; 0],
+        ));
+        let mut verifier = Kind::from(&measurement);
+        verifier.allow_hardening_advisories(["past", "present", "future"]);
+
+        let Kind::Signer(mr_signer_verifier) = verifier
+            else {
+                panic!("Should be a mr signer verifier");
+            };
+        assert_eq!(mr_signer_verifier.config_ids, [] as [&str; 0]);
+        assert_eq!(mr_signer_verifier.sw_ids, ["past", "present", "future"]);
+    }
+    #[test]
+    fn mr_signer_verifier_from_mr_signer_measurement() {
+        let mr_signer_measurement = TrustedMrSignerMeasurement::new(
+            &MR_SIGNER.m,
+            1,
+            2,
+            ["config_1", "config_2", "config_3"],
+            ["hardening_1", "hardening_2", "hardening_3"],
+        );
+
+        let verifier = MrSignerVerifier::from(&mr_signer_measurement);
+        assert_eq!(verifier.mr_signer, MrSigner::from(&MR_SIGNER));
+        assert_eq!(verifier.product_id, 1);
+        assert_eq!(verifier.minimum_svn, 2);
+        assert_eq!(verifier.config_ids, ["config_1", "config_2", "config_3"]);
+        assert_eq!(
+            verifier.sw_ids,
+            ["hardening_1", "hardening_2", "hardening_3"]
+        );
+    }
+
+    #[test]
+    fn mr_enclave_verifier_from_mr_enclave_measurement() {
+        let mr_enclave_measurement = TrustedMrEnclaveMeasurement::new(
+            &MR_ENCLAVE.m,
+            ["e_config_1", "e_config_2", "e_config_3"],
+            ["e_hardening_1", "e_hardening_2", "e_hardening_3"],
+        );
+
+        let verifier = MrEnclaveVerifier::from(&mr_enclave_measurement);
+        assert_eq!(verifier.mr_enclave, MrEnclave::from(&MR_ENCLAVE));
+        assert_eq!(
+            verifier.config_ids,
+            ["e_config_1", "e_config_2", "e_config_3"]
+        );
+        assert_eq!(
+            verifier.sw_ids,
+            ["e_hardening_1", "e_hardening_2", "e_hardening_3"]
+        );
     }
 }

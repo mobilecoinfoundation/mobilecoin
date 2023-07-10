@@ -69,6 +69,21 @@ impl TrustedMrEnclaveMeasurement {
                 .collect(),
         }
     }
+
+    /// Get the MRENCLAVE measurement.
+    pub fn mr_enclave(&self) -> &[u8; 32] {
+        &self.mr_enclave
+    }
+
+    /// Get the mitigated config advisories
+    pub fn config_advisories(&self) -> &[String] {
+        &self.mitigated_config_advisories
+    }
+
+    /// Get the mitigated hardening advisories
+    pub fn hardening_advisories(&self) -> &[String] {
+        &self.mitigated_hardening_advisories
+    }
 }
 
 /// Trusted measurement for MRSIGNER values.
@@ -136,6 +151,31 @@ impl TrustedMrSignerMeasurement {
                 .map(ToString::to_string)
                 .collect(),
         }
+    }
+
+    /// Get the MRSIGNER measurement.
+    pub fn mr_signer(&self) -> &[u8; 32] {
+        &self.mr_signer
+    }
+
+    /// Get the product ID.
+    pub fn product_id(&self) -> u16 {
+        self.product_id
+    }
+
+    /// Get the minimum SVN.
+    pub fn minimum_svn(&self) -> u16 {
+        self.minimum_svn
+    }
+
+    /// Get the mitigated config advisories
+    pub fn config_advisories(&self) -> &[String] {
+        &self.mitigated_config_advisories
+    }
+
+    /// Get the mitigated hardening advisories
+    pub fn hardening_advisories(&self) -> &[String] {
+        &self.mitigated_hardening_advisories
     }
 }
 

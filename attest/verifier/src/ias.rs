@@ -4,7 +4,7 @@
 //! [`VerificationReport`](::mc_attest_core::VerificationReport)
 //! structure.
 
-use crate::{avr::Kind as AvrKind, Error, StatusKind, Verify};
+use crate::{avr::Kind as AvrKind, Error, StatusVerifier, Verify};
 use alloc::{vec, vec::Vec};
 use mbedtls::{
     alloc::{Box as MbedtlsBox, List as MbedtlsList},
@@ -26,7 +26,7 @@ pub struct IasReportVerifier {
     /// chain against.
     trust_anchors: Vec<MbedtlsBox<Certificate>>,
     /// A vector of report verifiers, one of which must succeed.
-    or_verifiers: Vec<StatusKind>,
+    or_verifiers: Vec<StatusVerifier>,
     /// A vector of report verifiers, all of which must succeed.
     and_verifiers: Vec<AvrKind>,
 }
@@ -35,7 +35,7 @@ impl IasReportVerifier {
     /// Create a new IAS report verifier
     pub fn new(
         trust_anchors: Vec<MbedtlsBox<Certificate>>,
-        or_verifiers: Vec<StatusKind>,
+        or_verifiers: Vec<StatusVerifier>,
         and_verifiers: Vec<AvrKind>,
     ) -> Self {
         Self {

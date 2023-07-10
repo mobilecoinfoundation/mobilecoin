@@ -10,6 +10,7 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::Ed25519Public;
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use serde_with::{hex::Hex, serde_as};
 use std::{collections::BTreeSet, fmt, ops::Range};
 
 /// A version of `[TrustedValidatorSet]` that uses a quorum set that encodes
@@ -33,11 +34,14 @@ impl From<TrustedValidatorSetConfig> for TrustedValidatorSet {
 /// node keys as base64 strings. This makes it more pleasant to use in config
 /// files, as well as allowing the key format to match what consensus already
 /// uses.
+#[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LightClientVerifierConfig {
     pub trusted_validator_set: TrustedValidatorSetConfig,
     pub trusted_validator_set_start_block: BlockIndex,
     pub historical_validator_sets: Vec<(Range<BlockIndex>, TrustedValidatorSetConfig)>,
+
+    #[serde_as(as = "BTreeSet<Hex>")]
     pub known_valid_block_ids: BTreeSet<BlockID>,
 }
 

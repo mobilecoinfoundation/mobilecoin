@@ -19,4 +19,8 @@ pub enum Error {
     BlockContentHashMismatch(BlockContentsHash),
     /// TxOut (public key {0:?}) was not found among the block contents
     TxOutNotFound([u8; 32]),
+    /// Not all BlockDatas point at the same block
+    BlockDataMismatch,
+    /// No block data was provided
+    NoBlockData,
 }
