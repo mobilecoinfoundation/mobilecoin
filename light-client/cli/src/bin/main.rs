@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use clio::Output;
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_api::blockchain::ArchiveBlocks;
-use mc_blockchain_types::BlockIndex;
+use mc_blockchain_types::{BlockID, BlockIndex};
 use mc_common::{
     logger::{create_app_logger, log, o, Logger},
     ResponderId,
@@ -21,7 +21,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConsensusClientUri;
 use protobuf::Message;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
-use std::{fs, io::Write, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::BTreeSet, fs, io::Write, path::PathBuf, str::FromStr, sync::Arc};
 
 /// File formats supported by the `FetchBlocks` command.
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
@@ -47,20 +47,14 @@ pub enum Commands {
         #[clap(long, env = "MC_OUT_FILE", value_parser, default_value = "-")]
         out_file: Output,
 
-        /// Known valid block indices to include in the config.
-        /// Blocks will be downloaded to get their id.
+        /// Known valid block ids to include in the config.
         #[clap(
-            long = "known-valid-block-index",
+            long = "known-valid-block-id",
             use_value_delimiter = true,
-            env = "MC_KNOWN_VALID_BLOCK_INDEX",
-            requires = "tx_source_url"
+            env = "MC_KNOWN_VALID_BLOCK_IDS",
+            value_parser = block_id_from_hex_str,
         )]
-        known_valid_block_indices: Vec<BlockIndex>,
-
-        /// URL to use for fetching blocks.
-        /// Needed when `known_valid_block_index` is used.
-        #[clap(long = "tx-source-url", env = "MC_TX_SOURCE_URL")]
-        tx_source_url: Option<String>,
+        known_valid_block_ids: Vec<BlockID>,
     },
 
     /// Fetch blocks from a list of tx source urls and store them in a file.
@@ -112,16 +106,9 @@ fn main() {
         Commands::GenerateConfig {
             nodes,
             out_file,
-            known_valid_block_indices,
-            tx_source_url,
+            known_valid_block_ids,
         } => {
-            cmd_generate_config(
-                nodes,
-                out_file,
-                known_valid_block_indices,
-                tx_source_url,
-                logger,
-            );
+            cmd_generate_config(nodes, out_file, known_valid_block_ids, logger);
         }
 
         Commands::FetchBlocks {
@@ -146,8 +133,7 @@ fn main() {
 fn cmd_generate_config(
     nodes: Vec<ConsensusClientUri>,
     mut out_file: Output,
-    known_valid_block_indices: Vec<BlockIndex>,
-    tx_source_url: Option<String>,
+    known_valid_block_ids: Vec<BlockID>,
     logger: Logger,
 ) {
     let env = Arc::new(EnvBuilder::new().name_prefix("light-client-grpc").build());
@@ -197,31 +183,11 @@ fn cmd_generate_config(
         .max()
         .unwrap_or_default();
 
-    let known_valid_block_ids = if known_valid_block_indices.is_empty() {
-        Default::default()
-    } else {
-        let rts = ReqwestTransactionsFetcher::new(
-            vec![tx_source_url.expect("no tx_source_url")],
-            logger.clone(),
-        )
-        .expect("failed creating ReqwestTransactionsFetcher");
-        known_valid_block_indices
-            .iter()
-            .map(|block_index| {
-                rts.get_block_data_by_index(*block_index, None)
-                    .expect("failed fetching block data")
-                    .block()
-                    .id
-                    .clone()
-            })
-            .collect()
-    };
-
     let light_client_verifier = LightClientVerifierConfig {
         trusted_validator_set,
         trusted_validator_set_start_block,
         historical_validator_sets: Default::default(),
-        known_valid_block_ids,
+        known_valid_block_ids: BTreeSet::from_iter(known_valid_block_ids),
     };
 
     out_file
@@ -288,4 +254,11 @@ fn cmd_fetch_blocks(
 
     // Give the logger time to flush :/
     std::thread::sleep(std::time::Duration::from_millis(100));
+}
+
+fn block_id_from_hex_str(src: &str) -> Result<BlockID, String> {
+    let bytes = hex::decode(src).map_err(|e| format!("failed decoding hex: {}", e))?;
+    let block_id =
+        BlockID::try_from(bytes).map_err(|e| format!("failed parsing BlockID: {}", e))?;
+    Ok(block_id)
 }

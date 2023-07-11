@@ -4884,6 +4884,7 @@ dependencies = [
  "clap 4.1.14",
  "clio",
  "grpcio",
+ "hex",
  "mc-api",
  "mc-blockchain-types",
  "mc-common",
