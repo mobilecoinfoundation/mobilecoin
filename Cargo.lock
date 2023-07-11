@@ -4892,6 +4892,7 @@ dependencies = [
  "mc-ledger-sync",
  "mc-light-client-verifier",
  "mc-util-grpc",
+ "mc-util-serial",
  "mc-util-uri",
  "protobuf",
  "rayon",

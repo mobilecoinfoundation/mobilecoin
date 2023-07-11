@@ -23,6 +23,17 @@ use protobuf::Message;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{fs, io::Write, path::PathBuf, str::FromStr, sync::Arc};
 
+/// File formats supported by the `FetchBlocks` command.
+#[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
+pub enum FileFormat {
+    /// ArchiveBlocks protobuf
+    ArchiveBlocksProtobuf,
+
+    /// JSON containing an array of arrays, where each inner array is a list of
+    /// bytes containing a protobuf-encoded BlockData.
+    JsonBlockDataBytesArray,
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Generate a light client verifier config from a list of nodes.
@@ -35,18 +46,32 @@ pub enum Commands {
         /// File to write the config to.
         #[clap(long, env = "MC_OUT_FILE", value_parser, default_value = "-")]
         out_file: Output,
+
+        /// Known valid block indices to include in the config.
+        /// Blocks will be downloaded to get their id.
+        #[clap(
+            long = "known-valid-block-index",
+            use_value_delimiter = true,
+            env = "MC_KNOWN_VALID_BLOCK_INDEX",
+            requires = "tx_source_url"
+        )]
+        known_valid_block_indices: Vec<BlockIndex>,
+
+        /// URL to use for fetching blocks.
+        /// Needed when `known_valid_block_index` is used.
+        #[clap(long = "tx-source-url", env = "MC_TX_SOURCE_URL")]
+        tx_source_url: Option<String>,
     },
 
-    /// Fetch one or more `[ArchiveBlock]`s from a list of tx source urls and
-    /// store them in a Protobuf file.
-    FetchArchiveBlocks {
+    /// Fetch blocks from a list of tx source urls and store them in a file.
+    FetchBlocks {
         /// URLs to use for fetching blocks.
         ///
         /// For example: https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com
         #[clap(
             long = "tx-source-url",
             use_value_delimiter = true,
-            env = "MC_TX_SOURCE_URL"
+            env = "MC_TX_SOURCE_URLS"
         )]
         tx_source_urls: Vec<String>,
 
@@ -57,6 +82,10 @@ pub enum Commands {
         /// File to write the fetched ArchiveBlocks protobuf to.
         #[clap(long, env = "MC_OUT_FILE", value_parser)]
         out_file: Output,
+
+        /// File format to use for the output file.
+        #[clap(long, env = "MC_OUT_FILE_FORMAT")]
+        out_file_format: FileFormat,
 
         /// Optional LightClientVerifierConfig to use for verifying the fetched
         /// blocks before writing them to disk.
@@ -80,20 +109,33 @@ fn main() {
     let config = Config::parse();
 
     match config.command {
-        Commands::GenerateConfig { nodes, out_file } => {
-            cmd_generate_config(nodes, out_file, logger);
+        Commands::GenerateConfig {
+            nodes,
+            out_file,
+            known_valid_block_indices,
+            tx_source_url,
+        } => {
+            cmd_generate_config(
+                nodes,
+                out_file,
+                known_valid_block_indices,
+                tx_source_url,
+                logger,
+            );
         }
 
-        Commands::FetchArchiveBlocks {
+        Commands::FetchBlocks {
             tx_source_urls,
             block_index,
             out_file,
+            out_file_format,
             light_client_verifier_config,
         } => {
-            cmd_fetch_archive_blocks(
+            cmd_fetch_blocks(
                 tx_source_urls,
                 block_index,
                 out_file,
+                out_file_format,
                 light_client_verifier_config,
                 logger,
             );
@@ -101,7 +143,13 @@ fn main() {
     }
 }
 
-fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, mut out_file: Output, logger: Logger) {
+fn cmd_generate_config(
+    nodes: Vec<ConsensusClientUri>,
+    mut out_file: Output,
+    known_valid_block_indices: Vec<BlockIndex>,
+    tx_source_url: Option<String>,
+    logger: Logger,
+) {
     let env = Arc::new(EnvBuilder::new().name_prefix("light-client-grpc").build());
 
     let (node_configs, last_block_infos): (Vec<_>, Vec<_>) = nodes
@@ -149,11 +197,31 @@ fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, mut out_file: Output, log
         .max()
         .unwrap_or_default();
 
+    let known_valid_block_ids = if known_valid_block_indices.is_empty() {
+        Default::default()
+    } else {
+        let rts = ReqwestTransactionsFetcher::new(
+            vec![tx_source_url.expect("no tx_source_url")],
+            logger.clone(),
+        )
+        .expect("failed creating ReqwestTransactionsFetcher");
+        known_valid_block_indices
+            .iter()
+            .map(|block_index| {
+                rts.get_block_data_by_index(*block_index, None)
+                    .expect("failed fetching block data")
+                    .block()
+                    .id
+                    .clone()
+            })
+            .collect()
+    };
+
     let light_client_verifier = LightClientVerifierConfig {
         trusted_validator_set,
         trusted_validator_set_start_block,
         historical_validator_sets: Default::default(),
-        known_valid_block_ids: Default::default(),
+        known_valid_block_ids,
     };
 
     out_file
@@ -165,10 +233,11 @@ fn cmd_generate_config(nodes: Vec<ConsensusClientUri>, mut out_file: Output, log
         .expect("failed writing config to file");
 }
 
-fn cmd_fetch_archive_blocks(
+fn cmd_fetch_blocks(
     tx_source_urls: Vec<String>,
     block_index: u64,
     mut out_file: Output,
+    out_file_format: FileFormat,
     light_client_verifier_config_path: Option<PathBuf>,
     logger: Logger,
 ) {
@@ -195,14 +264,27 @@ fn cmd_fetch_archive_blocks(
             .expect("failed verifying block data");
     }
 
-    let archive_blocks = ArchiveBlocks::from(&block_data[..]);
-    let bytes = archive_blocks
-        .write_to_bytes()
-        .expect("failed serializing ArchiveBlocks");
+    let bytes = match out_file_format {
+        FileFormat::ArchiveBlocksProtobuf => {
+            let archive_blocks = ArchiveBlocks::from(&block_data[..]);
+            archive_blocks
+                .write_to_bytes()
+                .expect("failed serializing ArchiveBlocks")
+        }
+
+        FileFormat::JsonBlockDataBytesArray => {
+            let block_data_bytes = block_data
+                .iter()
+                .map(|block_data| mc_util_serial::encode(block_data))
+                .collect::<Vec<_>>();
+            serde_json::to_vec(&block_data_bytes).expect("failed serializing block data bytes")
+        }
+    };
+
     out_file
         .write_all(&bytes)
-        .expect("failed writing ArchiveBlocks to file");
-    log::info!(logger, "Wrote ArchiveBlocks to file {}", out_file.path());
+        .expect("failed writing blocks to file");
+    log::info!(logger, "Wrote blocks to file {}", out_file.path());
 
     // Give the logger time to flush :/
     std::thread::sleep(std::time::Duration::from_millis(100));
