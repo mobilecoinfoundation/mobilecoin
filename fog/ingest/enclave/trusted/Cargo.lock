@@ -136,11 +136,11 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.65.1"
+version = "0.66.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfdf7b466f9a4903edc73f95d6d2bcd5baf8ae620638762244d3f60143643cc5"
+checksum = "f2b84e06fc203107bfbad243f4aba2af864eb7db3b1cf46ea0a023b0b433d2a7"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.3.3",
  "cexpr",
  "clang-sys",
  "lazy_static",
@@ -171,9 +171,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.0.1"
+version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5dd14596c0e5b954530d0e6f1fd99b89c03e313aa2086e8da4303701a09e1cf"
+checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
 dependencies = [
  "serde",
 ]
@@ -767,7 +767,7 @@ name = "mc-attest-core"
 version = "4.1.0-pre0"
 dependencies = [
  "base64",
- "bitflags 2.0.1",
+ "bitflags 2.3.3",
  "cargo-emit",
  "chrono",
  "digest",
@@ -1380,19 +1380,21 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-build"
-version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9a5f275bd5f848e257158e732f7122af04cb72ca#9a5f275bd5f848e257158e732f7122af04cb72ca"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1784654e22ce8151cc489ab3085ad60fe316b9e622287bdbe2fe5a9e6309ee50"
 dependencies = [
- "bindgen 0.65.1",
+ "bindgen 0.66.1",
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-core-sys-types"
-version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9a5f275bd5f848e257158e732f7122af04cb72ca#9a5f275bd5f848e257158e732f7122af04cb72ca"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a677ce030ac497d65bc09db138ea0b0132751ae3c42a8c355036c1fce27b0b94"
 dependencies = [
- "bindgen 0.65.1",
+ "bindgen 0.66.1",
  "cargo-emit",
  "mc-sgx-core-build",
  "serde",
@@ -1400,10 +1402,11 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-types"
-version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9a5f275bd5f848e257158e732f7122af04cb72ca#9a5f275bd5f848e257158e732f7122af04cb72ca"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b63a299fb2c7fd97b002e1f336c8e9a3851e239d1bd4747f3e8a1fbb9d6aea8"
 dependencies = [
- "bitflags 2.0.1",
+ "bitflags 2.3.3",
  "displaydoc",
  "getrandom",
  "mc-sgx-core-sys-types",
@@ -1500,8 +1503,9 @@ version = "4.1.0-pre0"
 
 [[package]]
 name = "mc-sgx-util"
-version = "0.6.1"
-source = "git+https://github.com/dolanbernard/sgx.git?rev=9a5f275bd5f848e257158e732f7122af04cb72ca#9a5f275bd5f848e257158e732f7122af04cb72ca"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4be2b6aafa233df6bdbb27d46e4badd0de8347c9907081e6a2abfe24fd132455"
 
 [[package]]
 name = "mc-transaction-core"

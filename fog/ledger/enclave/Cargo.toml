@@ -37,6 +37,3 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 cargo-emit = "0.2.1"
 pkg-config = "0.3"
-
-[patch.crates-io]
-mc-sgx-core-types = { git = "https://github.com/dolanbernard/sgx.git", rev = "9a5f275bd5f848e257158e732f7122af04cb72ca" }
