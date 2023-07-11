@@ -12,7 +12,7 @@ use crate::{
         cpu_svn::CpuSecurityVersion,
         ext_prod_id::ExtendedProductId,
         family_id::FamilyId,
-        measurement::{Measurement, MrEnclave, MrSigner},
+        measurement::Measurement,
         report_data::{ReportData, ReportDataMask},
         ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
     },
@@ -24,7 +24,8 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
-use mc_sgx_types::{sgx_report_body_t, SGX_FLAGS_DEBUG};
+use mc_sgx_core_types::{MrEnclave, MrSigner};
+use mc_sgx_types::{sgx_measurement_t, sgx_report_body_t, SGX_FLAGS_DEBUG};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
@@ -40,11 +41,11 @@ const RB_EXTPRODID_END: usize =
 const RB_ATTRIBUTES_START: usize = RB_EXTPRODID_END;
 const RB_ATTRIBUTES_END: usize = RB_ATTRIBUTES_START + <Attributes as IntelLayout>::X86_64_CSIZE;
 const RB_MRENCLAVE_START: usize = RB_ATTRIBUTES_END;
-const RB_MRENCLAVE_END: usize = RB_MRENCLAVE_START + <MrEnclave as IntelLayout>::X86_64_CSIZE;
+const RB_MRENCLAVE_END: usize = RB_MRENCLAVE_START + MrEnclave::SIZE;
 const RB_RESERVED2_START: usize = RB_MRENCLAVE_END;
 const RB_RESERVED2_END: usize = RB_RESERVED2_START + 32;
 const RB_MRSIGNER_START: usize = RB_RESERVED2_END;
-const RB_MRSIGNER_END: usize = RB_MRSIGNER_START + <MrSigner as IntelLayout>::X86_64_CSIZE;
+const RB_MRSIGNER_END: usize = RB_MRSIGNER_START + MrSigner::SIZE;
 const RB_RESERVED3_START: usize = RB_MRSIGNER_END;
 const RB_RESERVED3_END: usize = RB_RESERVED3_START + 32;
 const RB_CONFIGID_START: usize = RB_RESERVED3_END;
@@ -108,7 +109,7 @@ impl ReportBody {
 
     /// Retrieve the enclave measurement
     pub fn mr_enclave(&self) -> MrEnclave {
-        self.0.mr_enclave.into()
+        MrEnclave::from(self.0.mr_enclave.m)
     }
 
     /// Retrieve whether the extended SSA frame feature was requested (source
@@ -119,7 +120,7 @@ impl ReportBody {
 
     /// Retrieve the enclave signer measurement
     pub fn mr_signer(&self) -> MrSigner {
-        self.0.mr_signer.into()
+        MrSigner::from(self.0.mr_signer.m)
     }
 
     /// Retrieve the product ID of the enclave
@@ -309,14 +310,14 @@ impl SgxWrapperType<sgx_report_body_t> for ReportBody {
             &src.attributes,
             &mut dest[RB_ATTRIBUTES_START..RB_ATTRIBUTES_END],
         )?;
-        MrEnclave::write_ffi_bytes(
-            &src.mr_enclave,
-            &mut dest[RB_MRENCLAVE_START..RB_MRENCLAVE_END],
-        )?;
-        MrSigner::write_ffi_bytes(
-            &src.mr_signer,
-            &mut dest[RB_MRSIGNER_START..RB_MRSIGNER_END],
-        )?;
+        if MrEnclave::SIZE != dest[RB_MRENCLAVE_START..RB_MRENCLAVE_END].len() {
+            return Err(EncodingError::InvalidOutputLength);
+        }
+        dest[RB_MRENCLAVE_START..RB_MRENCLAVE_END].copy_from_slice(&src.mr_enclave.m);
+        if MrSigner::SIZE != dest[RB_MRSIGNER_START..RB_MRSIGNER_END].len() {
+            return Err(EncodingError::InvalidOutputLength);
+        }
+        dest[RB_MRSIGNER_START..RB_MRSIGNER_END].copy_from_slice(&src.mr_signer.m);
         ConfigId::write_ffi_bytes(
             &src.config_id,
             &mut dest[RB_CONFIGID_START..RB_CONFIGID_END],
@@ -360,11 +361,17 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
             )?
             .into(),
             attributes: Attributes::try_from(&src[RB_ATTRIBUTES_START..RB_ATTRIBUTES_END])?.into(),
-            mr_enclave: MrEnclave::try_from(&src[RB_MRENCLAVE_START..RB_MRENCLAVE_END])?.into(),
+            mr_enclave: sgx_measurement_t {
+                m: src[RB_MRENCLAVE_START..RB_MRENCLAVE_END]
+                    .try_into()
+                    .unwrap(),
+            },
             reserved2: (&src[RB_RESERVED2_START..RB_RESERVED2_END])
                 .try_into()
                 .map_err(|_e| EncodingError::InvalidInput)?,
-            mr_signer: MrSigner::try_from(&src[RB_MRSIGNER_START..RB_MRSIGNER_END])?.into(),
+            mr_signer: sgx_measurement_t {
+                m: src[RB_MRSIGNER_START..RB_MRSIGNER_END].try_into().unwrap(),
+            },
             reserved3: (&src[RB_RESERVED3_START..RB_RESERVED3_END])
                 .try_into()
                 .map_err(|_e| EncodingError::InvalidInput)?,

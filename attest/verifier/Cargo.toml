@@ -29,6 +29,7 @@ ias-dev = []
 mc-attest-core = { path = "../core", default-features = false }
 mc-attest-verifier-config = { path = "config", default-features = false }
 mc-common = { path = "../../common", default-features = false }
+mc-sgx-core-types = "0.7.0"
 mc-sgx-css = { path = "../../sgx/css", default-features = false }
 mc-sgx-types = { path = "../../sgx/types", default-features = false }
 
