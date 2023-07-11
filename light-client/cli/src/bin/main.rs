@@ -241,7 +241,7 @@ fn cmd_fetch_blocks(
         FileFormat::JsonBlockDataBytesArray => {
             let block_data_bytes = block_data
                 .iter()
-                .map(|block_data| mc_util_serial::encode(block_data))
+                .map(mc_util_serial::encode)
                 .collect::<Vec<_>>();
             serde_json::to_vec(&block_data_bytes).expect("failed serializing block data bytes")
         }
@@ -257,8 +257,7 @@ fn cmd_fetch_blocks(
 }
 
 fn block_id_from_hex_str(src: &str) -> Result<BlockID, String> {
-    let bytes = hex::decode(src).map_err(|e| format!("failed decoding hex: {}", e))?;
-    let block_id =
-        BlockID::try_from(bytes).map_err(|e| format!("failed parsing BlockID: {}", e))?;
+    let bytes = hex::decode(src).map_err(|e| format!("failed decoding hex: {e}"))?;
+    let block_id = BlockID::try_from(bytes).map_err(|e| format!("failed parsing BlockID: {e}"))?;
     Ok(block_id)
 }
