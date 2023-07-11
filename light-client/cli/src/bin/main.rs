@@ -12,7 +12,7 @@ use mc_common::{
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
 };
-use mc_consensus_scp_types::QuorumSet;
+use mc_light_client_verifier::QuorumSet;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_light_client_verifier::{
     HexKeyNodeID, LightClientVerifier, LightClientVerifierConfig, TrustedValidatorSetConfig,
