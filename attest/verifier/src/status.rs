@@ -1198,7 +1198,7 @@ mod test {
     #[test]
     fn allow_config_advisories_mr_enclave_verifier() {
         let measurement = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
-            &MR_ENCLAVE.m,
+            &MR_ENCLAVE,
             [] as [&str; 0],
             [] as [&str; 0],
         ));
@@ -1216,7 +1216,7 @@ mod test {
     #[test]
     fn allow_hardening_advisories_mr_enclave_verifier() {
         let measurement = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
-            &MR_ENCLAVE.m,
+            &MR_ENCLAVE,
             [] as [&str; 0],
             [] as [&str; 0],
         ));
@@ -1234,7 +1234,7 @@ mod test {
     #[test]
     fn allow_config_advisories_mr_signer_verifier() {
         let measurement = TrustedMeasurement::from(TrustedMrSignerMeasurement::new(
-            &MR_SIGNER.m,
+            &MR_SIGNER,
             1,
             2,
             [] as [&str; 0],
@@ -1254,7 +1254,7 @@ mod test {
     #[test]
     fn allow_hardening_advisories_mr_signer_verifier() {
         let measurement = TrustedMeasurement::from(TrustedMrSignerMeasurement::new(
-            &MR_SIGNER.m,
+            &MR_SIGNER,
             3,
             4,
             [] as [&str; 0],
@@ -1273,7 +1273,7 @@ mod test {
     #[test]
     fn mr_signer_verifier_from_mr_signer_measurement() {
         let mr_signer_measurement = TrustedMrSignerMeasurement::new(
-            &MR_SIGNER.m,
+            &MR_SIGNER,
             1,
             2,
             ["config_1", "config_2", "config_3"],
@@ -1281,7 +1281,7 @@ mod test {
         );
 
         let verifier = MrSignerVerifier::from(&mr_signer_measurement);
-        assert_eq!(verifier.mr_signer, MrSigner::from(&MR_SIGNER));
+        assert_eq!(verifier.mr_signer, MrSigner::from(MR_SIGNER));
         assert_eq!(verifier.product_id, 1);
         assert_eq!(verifier.minimum_svn, 2);
         assert_eq!(verifier.config_ids, ["config_1", "config_2", "config_3"]);
@@ -1294,13 +1294,13 @@ mod test {
     #[test]
     fn mr_enclave_verifier_from_mr_enclave_measurement() {
         let mr_enclave_measurement = TrustedMrEnclaveMeasurement::new(
-            &MR_ENCLAVE.m,
+            &MR_ENCLAVE,
             ["e_config_1", "e_config_2", "e_config_3"],
             ["e_hardening_1", "e_hardening_2", "e_hardening_3"],
         );
 
         let verifier = MrEnclaveVerifier::from(&mr_enclave_measurement);
-        assert_eq!(verifier.mr_enclave, MrEnclave::from(&MR_ENCLAVE));
+        assert_eq!(verifier.mr_enclave, MrEnclave::from(MR_ENCLAVE));
         assert_eq!(
             verifier.config_ids,
             ["e_config_1", "e_config_2", "e_config_3"]
