@@ -19,7 +19,7 @@ mod status;
 
 extern crate alloc;
 
-pub use crate::status::{MrEnclaveVerifier, MrSignerVerifier};
+pub use crate::status::{Kind as StatusVerifier, MrEnclaveVerifier, MrSignerVerifier};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
@@ -60,7 +60,6 @@ use crate::{
         ConfigVersionVerifier, DebugVerifier, Kind as ReportBodyKind, MiscSelectVerifier,
         ProductIdVerifier, VersionVerifier,
     },
-    status::Kind as StatusKind,
 };
 use alloc::{
     borrow::ToOwned,
@@ -76,6 +75,7 @@ use mc_attest_core::{
     ExtendedProductId, FamilyId, IasNonce, MiscSelect, ProductId, Quote, QuoteSignType,
     ReportDataMask, SecurityVersion, VerificationReport, VerificationReportData, VerifyError,
 };
+use mc_attest_verifier_config::TrustedMeasurement;
 use serde::{Deserialize, Serialize};
 
 /// Private macros used inside this crate.
@@ -159,7 +159,7 @@ pub struct Verifier {
     report_body_verifiers: Vec<ReportBodyKind>,
     quote_verifiers: Vec<QuoteKind>,
     avr_verifiers: Vec<AvrKind>,
-    status_verifiers: Vec<StatusKind>,
+    status_verifiers: Vec<StatusVerifier>,
 }
 
 /// Construct a new builder using the baked-in IAS root certificates and debug
@@ -344,15 +344,40 @@ impl Verifier {
         self
     }
 
-    /// Verify the given MrEnclave-based status verifier succeeds
+    /// Add a MrEnclave-based status verifier to the potential status verifiers
+    ///
+    /// For MRENCLAVE and MRSIGNER verifiers, only one of them needs to succeed.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn mr_enclave(&mut self, verifier: MrEnclaveVerifier) -> &mut Self {
         self.status_verifiers.push(verifier.into());
         self
     }
 
-    /// Verify the given MrSigner-based status verifier succeeds
+    /// Add a MrSigner-based status verifier to the potential status verifiers
+    ///
+    /// For MRENCLAVE and MRSIGNER verifiers, only one of them needs to succeed.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn mr_signer(&mut self, verifier: MrSignerVerifier) -> &mut Self {
         self.status_verifiers.push(verifier.into());
+        self
+    }
+
+    /// Add a measurement as a potential status verifier
+    ///
+    /// For MRENCLAVE and MRSIGNER measurements, only one of them needs to
+    /// match.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
+    pub fn measurements<'a>(
+        &mut self,
+        measurements: impl IntoIterator<Item = &'a TrustedMeasurement>,
+    ) -> &mut Self {
+        for measurement in measurements {
+            self.status_verifiers
+                .push(StatusVerifier::from(measurement));
+        }
         self
     }
 

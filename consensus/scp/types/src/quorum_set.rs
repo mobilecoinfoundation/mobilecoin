@@ -53,6 +53,14 @@ impl<ID: GenericNodeId> From<QuorumSetMember<ID>> for QuorumSetMemberWrapper<ID>
     }
 }
 
+impl<ID: GenericNodeId> From<ID> for QuorumSetMemberWrapper<ID> {
+    fn from(src: ID) -> Self {
+        Self {
+            member: Some(QuorumSetMember::Node(src)),
+        }
+    }
+}
+
 impl<ID: GenericNodeId> Deref for QuorumSetMemberWrapper<ID> {
     type Target = Option<QuorumSetMember<ID>>;
 

@@ -33,7 +33,7 @@ use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
 use retry::{delay, retry, OperationResult};
 use std::{
-    path::Path,
+    path::PathBuf,
     str::FromStr,
     sync::Arc,
     thread::sleep,
@@ -153,7 +153,20 @@ impl Drop for AutoKillChild {
     }
 }
 
-fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logger) -> TestResult {
+struct TestConfig {
+    // path to ingest server binary to launch
+    pub ingest_server_binary: PathBuf,
+    // ias-spid to use
+    pub ias_spid: Option<String>,
+    // ias-api-key to use
+    pub ias_api_key: Option<String>,
+    // how many txos to put in a block
+    pub chunk_size: usize,
+    // how many blocks to do (repetitions of the timing test)
+    pub repetitions: usize,
+}
+
+fn load_test(config: &TestConfig, test_params: TestParams, logger: Logger) -> TestResult {
     let mut test_results = TestResult {
         params: test_params.clone(),
         ..Default::default()
@@ -222,16 +235,20 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         state_file_path.push(".mc-fog-ingest-state");
 
         // Start ingest server.
-        // Note: we omit IAS API KEY, but maybe we should take from env or something
-        // Maybe we should take ias-spid from env also
-        let mut command = std::process::Command::new(ingest_server_binary.to_str().unwrap());
+        let mut command = std::process::Command::new(config.ingest_server_binary.to_str().unwrap());
         command
             .args(["--ledger-db", ledger_db_path.path().to_str().unwrap()])
             .args(["--watcher-db", watcher_db_path.path().to_str().unwrap()])
             .args(["--client-listen-uri", client_listen_uri.as_ref()])
             .args(["--peer-listen-uri", peer_listen_uri.as_ref()])
-            .args(["--ias-spid", &"0".repeat(32)])
-            .args(["--ias-api-key", &"0".repeat(32)])
+            .args([
+                "--ias-spid",
+                &config.ias_spid.clone().unwrap_or("0".repeat(32)),
+            ])
+            .args([
+                "--ias-api-key",
+                &config.ias_api_key.clone().unwrap_or("0".repeat(32)),
+            ])
             .args(["--local-node-id", &local_node_id.to_string()])
             .args(["--peers", peer_listen_uri.as_ref()])
             .args(["--state-file", state_file_path.to_str().unwrap()])
@@ -290,37 +307,38 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
 
         // Measure process_txs load
         {
-            // How many txos we add at a time
-            const CHUNK_SIZE: usize = 250;
-            // How many repetitions we do
-            const REPETITIONS: usize = 100;
-
-            log::info!(logger, "Generating {} random blocks", REPETITIONS);
+            log::info!(logger, "Generating {} random blocks", config.repetitions);
             let num_blocks = ledger_db.num_blocks().unwrap();
-            let last_block = ledger_db.get_block(num_blocks - 1).unwrap();
+            let mut last_block = ledger_db.get_block(num_blocks - 1).unwrap();
             assert_eq!(
                 last_block.cumulative_txo_count,
                 ledger_db.num_txos().unwrap()
             );
 
-            let results = get_blocks(
-                block_version,
-                REPETITIONS,
-                CHUNK_SIZE,
-                1,
-                CHUNK_SIZE,
-                1 << 20,
-                last_block,
-                rng,
-            );
+            let mut results = Vec::default();
+            for _ in 0..config.repetitions {
+                let result1 = get_blocks(
+                    block_version,
+                    1,                 // num_blocks
+                    config.chunk_size, // num_recipients
+                    1,                 // num_tokens
+                    1,                 // num_tx_out per recipient
+                    1 << 20,           // amount
+                    last_block,
+                    rng,
+                );
+                log::info!(logger, ".");
+                last_block = result1[0].block().clone();
+                results.extend(result1);
+            }
 
             log::info!(
                 logger,
                 "Adding blocks with {} Txos ({} repetitions)",
-                CHUNK_SIZE,
-                REPETITIONS
+                config.chunk_size,
+                config.repetitions
             );
-            let mut timings = Vec::<Duration>::with_capacity(REPETITIONS);
+            let mut timings = Vec::<Duration>::with_capacity(config.repetitions);
             for block_data in results {
                 let initial_highest_known_block_index = recovery_db
                     .get_highest_known_block_index()
@@ -368,8 +386,8 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                         break;
                     }
                     sleep(Duration::from_millis(10));
-                    if start.elapsed() >= std::time::Duration::from_secs(60) {
-                        panic!("Time exceeded 30 seconds");
+                    if start.elapsed() >= std::time::Duration::from_secs(120) {
+                        panic!("Time exceeded 120 seconds");
                     }
                     ingest_server.assert_not_stopped();
                 }
@@ -383,10 +401,10 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
             log::crit!(
                 logger,
                 "Process Txs timings ({} txos): {}",
-                CHUNK_SIZE,
+                config.chunk_size,
                 stats
             );
-            test_results.num_txs_added = CHUNK_SIZE;
+            test_results.num_txs_added = config.chunk_size;
             test_results.process_tx_timings = stats;
         }
     }
@@ -408,6 +426,14 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
 struct LoadTestOptions {
     #[clap(long, env = "MC_USER_CAPACITY")]
     user_capacity: Option<Vec<u64>>,
+    #[clap(long, env = "MC_IAS_SPID")]
+    ias_spid: Option<String>,
+    #[clap(long, env = "MC_IAS_API_KEY")]
+    ias_api_key: Option<String>,
+    #[clap(long, env = "MC_CHUNK_SIZE", default_value = "250")]
+    chunk_size: usize,
+    #[clap(long, env = "MC_REPETITONS", default_value = "100")]
+    repetitions: usize,
 }
 
 fn main() {
@@ -418,7 +444,13 @@ fn main() {
     // Reduce log level maybe?
     let logger = mc_common::logger::create_root_logger();
 
-    let load_test_target = get_bin_path("fog_ingest_server");
+    let config = TestConfig {
+        ingest_server_binary: get_bin_path("fog_ingest_server"),
+        ias_spid: opt.ias_spid.clone(),
+        ias_api_key: opt.ias_api_key.clone(),
+        chunk_size: opt.chunk_size,
+        repetitions: opt.repetitions,
+    };
 
     let mut results = Vec::new();
 
@@ -431,7 +463,7 @@ fn main() {
 
     for cap in capacities_to_test.iter() {
         results.push(load_test(
-            &load_test_target,
+            &config,
             TestParams {
                 user_capacity: *cap,
             },

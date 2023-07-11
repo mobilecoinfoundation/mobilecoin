@@ -112,6 +112,8 @@ members = [
     "ledger/from-archive",
     "ledger/migration",
     "ledger/sync",
+    "light-client/cli",
+    "light-client/verifier",
     "mobilecoind",
     "mobilecoind-dev-faucet",
     "mobilecoind-json",

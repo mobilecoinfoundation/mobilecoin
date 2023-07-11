@@ -6,94 +6,202 @@
 
 extern crate alloc;
 
-use alloc::{borrow::ToOwned, collections::BTreeMap, string::String, vec::Vec};
+use alloc::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use displaydoc::Display;
-use mc_attest_core::{MrEnclave, MrSigner};
-use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use serde::{Deserialize, Serialize};
 
-/// Defines a json schema for an individual attestation status verifier.
-/// This is either a MRENCLAVE or MRSIGNER type, and the type is inferred by
-/// the presence of these fields.
-/// Unknown fields are flagged as an error.
+/// Trusted measurement for MRENCLAVE values.
+///
+/// The MRENCLAVE is the hash over the enclave pages loaded into the SGX
+/// protected memory. Whenever the contents of the signed enclave have changed,
+/// its MRENCLAVE will change.
+///
+/// This measurement is also referred to as "Strict Enclave Modification
+/// Policy".
+///
+/// Supports de/serialization to/from JSON. Unknown JSON fields are flagged as
+/// an error.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(untagged)]
 #[serde(deny_unknown_fields)]
-pub enum StatusVerifierConfig {
-    /// A MRENCLAVE-based status verifier
-    Mrenclave {
-        /// The hex-encoded bytes of the MRENCLAVE measurement. This is
-        /// enclavehash in the .css file
-        #[serde(with = "hex", rename = "MRENCLAVE")]
-        mr_enclave: [u8; 32],
-        /// The list of config advisories that are known to be mitigated in
-        /// software at this enclave revision.
-        #[serde(default)]
-        mitigated_config_advisories: Vec<String>,
-        /// The list of hardening advisories that are known to be mitigated in
-        /// software at this enclave revision.
-        #[serde(default)]
-        mitigated_hardening_advisories: Vec<String>,
-    },
-    /// A MRSIGNER-based status verifier
-    Mrsigner {
-        /// The hex-encoded bytes of the MRSIGNER measurement. This is a digest
-        /// of the modulus in the .css file. Use a tool to see what it is.
-        #[serde(with = "hex", rename = "MRSIGNER")]
-        mr_signer: [u8; 32],
-        /// The product id that this verifier checks for.
-        product_id: u16,
-        /// The minimum security version number that is considered valid by this
-        /// verifier.
-        minimum_svn: u16,
-        /// The list of config advisories that are known to be mitigated in
-        /// software at this enclave revision.
-        #[serde(default)]
-        mitigated_config_advisories: Vec<String>,
-        /// The list of hardening advisories that are known to be mitigated in
-        /// software at this enclave revision.
-        #[serde(default)]
-        mitigated_hardening_advisories: Vec<String>,
-    },
+pub struct TrustedMrEnclaveMeasurement {
+    /// The MRENCLAVE measurement
+    ///
+    /// For JSON this will be hex-encoded bytes.
+    #[serde(with = "hex", rename = "MRENCLAVE")]
+    mr_enclave: [u8; 32],
+    /// The list of config advisories that are known to be mitigated in
+    /// software at this enclave revision.
+    #[serde(default)]
+    mitigated_config_advisories: Vec<String>,
+    /// The list of hardening advisories that are known to be mitigated in
+    /// software at this enclave revision.
+    #[serde(default)]
+    mitigated_hardening_advisories: Vec<String>,
 }
 
-impl StatusVerifierConfig {
-    /// Build status verifier corresponding to ourself, and add it to a given
-    /// verifier
-    pub fn add_to_verifier(&self, verifier: &mut Verifier) {
-        match self {
-            Self::Mrenclave {
-                mr_enclave,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                let mut mr_enclave_verifier = MrEnclaveVerifier::new(MrEnclave::from(*mr_enclave));
-                for advisory in mitigated_config_advisories.iter() {
-                    mr_enclave_verifier.allow_config_advisory(advisory);
-                }
-                for advisory in mitigated_hardening_advisories.iter() {
-                    mr_enclave_verifier.allow_hardening_advisory(advisory);
-                }
-                verifier.mr_enclave(mr_enclave_verifier);
-            }
-            Self::Mrsigner {
-                mr_signer,
-                product_id,
-                minimum_svn,
-                mitigated_config_advisories,
-                mitigated_hardening_advisories,
-            } => {
-                let mut mr_signer_verifier =
-                    MrSignerVerifier::new(MrSigner::from(*mr_signer), *product_id, *minimum_svn);
-                for advisory in mitigated_config_advisories.iter() {
-                    mr_signer_verifier.allow_config_advisory(advisory);
-                }
-                for advisory in mitigated_hardening_advisories.iter() {
-                    mr_signer_verifier.allow_hardening_advisory(advisory);
-                }
-                verifier.mr_signer(mr_signer_verifier);
-            }
+impl TrustedMrEnclaveMeasurement {
+    /// Create a new instance.
+    pub fn new<'a, CA, I, HA, J>(
+        mr_enclave: &[u8; 32],
+        config_advisories: I,
+        hardening_advisories: J,
+    ) -> Self
+    where
+        I: IntoIterator<Item = &'a CA>,
+        CA: ToString + 'a + ?Sized,
+        J: IntoIterator<Item = &'a HA>,
+        HA: ToString + 'a + ?Sized,
+    {
+        Self {
+            mr_enclave: *mr_enclave,
+            mitigated_config_advisories: config_advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+            mitigated_hardening_advisories: hardening_advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
         }
+    }
+
+    /// Get the MRENCLAVE measurement.
+    pub fn mr_enclave(&self) -> &[u8; 32] {
+        &self.mr_enclave
+    }
+
+    /// Get the mitigated config advisories
+    pub fn config_advisories(&self) -> &[String] {
+        &self.mitigated_config_advisories
+    }
+
+    /// Get the mitigated hardening advisories
+    pub fn hardening_advisories(&self) -> &[String] {
+        &self.mitigated_hardening_advisories
+    }
+}
+
+/// Trusted measurement for MRSIGNER values.
+///
+/// The MRSIGNER is the hash of the public portion of the key used to sign the
+/// enclave. The product ID is used to distinguish different enclaves signed
+/// with the same key. Using the MRSIGNER + product ID allows for the same
+/// measurements to be used for updates to the enclave. A security version
+/// number (SVN) is also used to distinguish different versions of the same
+/// enclave.
+///
+/// This measurement is also referred to as "Security Enclave Modification
+/// Policy".
+///
+/// Supports de/serialization to/from JSON. Unknown JSON fields are flagged as
+/// an error.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrustedMrSignerMeasurement {
+    /// The MRSIGNER measurement
+    ///
+    /// For JSON this will be hex-encoded bytes.
+    #[serde(with = "hex", rename = "MRSIGNER")]
+    mr_signer: [u8; 32],
+    /// The product ID that this verifier checks for.
+    product_id: u16,
+    /// The minimum security version number that is considered valid by this
+    /// verifier.
+    minimum_svn: u16,
+    /// The list of config advisories that are known to be mitigated in
+    /// software at this enclave revision.
+    #[serde(default)]
+    mitigated_config_advisories: Vec<String>,
+    /// The list of hardening advisories that are known to be mitigated in
+    /// software at this enclave revision.
+    #[serde(default)]
+    mitigated_hardening_advisories: Vec<String>,
+}
+
+impl TrustedMrSignerMeasurement {
+    /// Create a new instance.
+    pub fn new<'a, CA, I, HA, J>(
+        mr_signer: &[u8; 32],
+        product_id: u16,
+        minimum_svn: u16,
+        config_advisories: I,
+        hardening_advisories: J,
+    ) -> Self
+    where
+        I: IntoIterator<Item = &'a CA>,
+        CA: ToString + 'a + ?Sized,
+        J: IntoIterator<Item = &'a HA>,
+        HA: ToString + 'a + ?Sized,
+    {
+        Self {
+            mr_signer: *mr_signer,
+            product_id,
+            minimum_svn,
+            mitigated_config_advisories: config_advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+            mitigated_hardening_advisories: hardening_advisories
+                .into_iter()
+                .map(ToString::to_string)
+                .collect(),
+        }
+    }
+
+    /// Get the MRSIGNER measurement.
+    pub fn mr_signer(&self) -> &[u8; 32] {
+        &self.mr_signer
+    }
+
+    /// Get the product ID.
+    pub fn product_id(&self) -> u16 {
+        self.product_id
+    }
+
+    /// Get the minimum SVN.
+    pub fn minimum_svn(&self) -> u16 {
+        self.minimum_svn
+    }
+
+    /// Get the mitigated config advisories
+    pub fn config_advisories(&self) -> &[String] {
+        &self.mitigated_config_advisories
+    }
+
+    /// Get the mitigated hardening advisories
+    pub fn hardening_advisories(&self) -> &[String] {
+        &self.mitigated_hardening_advisories
+    }
+}
+
+/// Trusted measurement for an enclave.
+///
+/// Either a MRENCLAVE or MRSIGNER type, and the type is inferred by
+///
+/// Supports de/serialization to/from JSON.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
+pub enum TrustedMeasurement {
+    /// MRENCLAVE measurement type
+    MrEnclave(TrustedMrEnclaveMeasurement),
+    /// MRSIGNER measurement type
+    MrSigner(TrustedMrSignerMeasurement),
+}
+
+impl From<TrustedMrEnclaveMeasurement> for TrustedMeasurement {
+    fn from(mr_enclave: TrustedMrEnclaveMeasurement) -> Self {
+        Self::MrEnclave(mr_enclave)
+    }
+}
+
+impl From<TrustedMrSignerMeasurement> for TrustedMeasurement {
+    fn from(mr_signer: TrustedMrSignerMeasurement) -> Self {
+        Self::MrSigner(mr_signer)
     }
 }
 
@@ -112,7 +220,7 @@ impl StatusVerifierConfig {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TrustedMeasurementSet {
-    table: BTreeMap<String, BTreeMap<String, StatusVerifierConfig>>,
+    table: BTreeMap<String, BTreeMap<String, TrustedMeasurement>>,
 }
 
 // Allow TrustedMeasurementSet to be logged nicely in json format
@@ -128,29 +236,24 @@ impl core::fmt::Display for TrustedMeasurementSet {
 }
 
 impl TrustedMeasurementSet {
-    /// Create a verifier from this measurement set for a given enclave name.
-    pub fn create_verifier(&self, enclave_name: impl AsRef<str>) -> Result<Verifier, Error> {
+    /// Get the measurements for a given enclave name.
+    pub fn measurements(
+        &self,
+        enclave_name: impl AsRef<str>,
+    ) -> Result<Vec<TrustedMeasurement>, Error> {
         let enclave_name = enclave_name.as_ref();
-        let mut count = 0usize;
+        let mut measurements = vec![];
 
-        let mut verifier = Verifier::default();
-        verifier.debug(DEBUG_ENCLAVE);
-
-        for measurements in self.table.values() {
-            if let Some(measurement) = measurements.get(enclave_name) {
-                // TODO: it would be nice to add the release name in also as like
-                // a debug string somewhere that would show up in error messages
-                // when attestation fails?
-                measurement.add_to_verifier(&mut verifier);
-                count += 1;
+        for row in self.table.values() {
+            if let Some(measurement) = row.get(enclave_name) {
+                measurements.push(measurement.clone());
             }
         }
 
-        if count == 0 {
-            return Err(Error::NoMeasurementsFound(enclave_name.to_owned()));
+        match measurements.len() {
+            0 => Err(Error::NoMeasurementsFound(enclave_name.to_string())),
+            _ => Ok(measurements),
         }
-
-        Ok(verifier)
     }
 }
 
@@ -164,10 +267,9 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use assert_matches::assert_matches;
 
-    use alloc::{string::ToString, vec};
     use hex_literal::hex;
 
     const TEST_DATA: &str = r#"{
@@ -212,63 +314,57 @@ mod tests {
     #[test]
     fn test_loading() {
         let tms: TrustedMeasurementSet = serde_json::from_str(TEST_DATA).unwrap();
+        let no_config_advisories: &[&str] = &[];
 
         assert_eq!(tms.table.len(), 2);
         let v3 = tms.table.get("v3").unwrap();
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
-        let expected_consensus = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
-            mitigated_config_advisories: vec![],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-            ],
-        };
+        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            no_config_advisories,
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+        ));
         assert_eq!(v3_consensus, &expected_consensus);
         let v3_fog_view = v3.get("fog-view").unwrap();
-        let expected_fog_view = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("dca7521ce4564cc2e54e1637e533ea9d1901c2adcbab0e7a41055e719fb0ff9d"),
-            mitigated_config_advisories: vec![],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-            ],
-        };
+        let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("dca7521ce4564cc2e54e1637e533ea9d1901c2adcbab0e7a41055e719fb0ff9d"),
+            no_config_advisories,
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+        ));
         assert_eq!(v3_fog_view, &expected_fog_view);
 
         let v4 = tms.table.get("v4").unwrap();
         assert_eq!(v4.len(), 4);
         let v4_consensus = v4.get("consensus").unwrap();
-        let expected_consensus = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
-            mitigated_config_advisories: vec![],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-                "INTEL-SA-00657".to_string(),
-            ],
-        };
+        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
+            no_config_advisories,
+            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+        ));
         assert_eq!(v4_consensus, &expected_consensus);
 
         let v4_fog_view = v4.get("fog-view").unwrap();
-        let expected_fog_view = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
-            mitigated_config_advisories: vec![],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-                "INTEL-SA-00657".to_string(),
-            ],
-        };
+        let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
+            no_config_advisories,
+            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+        ));
         assert_eq!(v4_fog_view, &expected_fog_view);
 
-        let _ = tms.create_verifier("consensus").unwrap();
-        let _ = tms.create_verifier("fog-ingest").unwrap();
-        let _ = tms.create_verifier("fog-ledger").unwrap();
-        let _ = tms.create_verifier("fog-view").unwrap();
+        assert_eq!(
+            tms.measurements("consensus").unwrap(),
+            vec![v3_consensus.clone(), v4_consensus.clone()]
+        );
+        assert_eq!(
+            tms.measurements("fog-view").unwrap(),
+            vec![v3_fog_view.clone(), v4_fog_view.clone()]
+        );
 
-        assert!(tms.create_verifier("impostor").is_err());
+        assert_matches!(
+            tms.measurements("impostor"),
+            Err(Error::NoMeasurementsFound(_))
+        );
     }
 
     const TEST_DATA2: &str = r#"{
@@ -332,61 +428,54 @@ mod tests {
         let v3 = tms.table.get("v3").unwrap();
         assert_eq!(v3.len(), 4);
         let v3_consensus = v3.get("consensus").unwrap();
-        let expected_consensus = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
-            mitigated_config_advisories: vec!["FOO".to_string()],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-            ],
-        };
+        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("207c9705bf640fdb960034595433ee1ff914f9154fbe4bc7fc8a97e912961e5c"),
+            ["FOO"],
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+        ));
         assert_eq!(v3_consensus, &expected_consensus);
 
         let v3_fog_view = v3.get("fog-view").unwrap();
-        let expected_fog_view = StatusVerifierConfig::Mrsigner {
-            mr_signer: hex!("2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e"),
-            product_id: 3,
-            minimum_svn: 4,
-            mitigated_config_advisories: vec!["FOO".to_string()],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-            ],
-        };
+        let expected_fog_view = TrustedMeasurement::from(TrustedMrSignerMeasurement::new(
+            &hex!("2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e"),
+            3,
+            4,
+            ["FOO"],
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+        ));
         assert_eq!(v3_fog_view, &expected_fog_view);
 
         let v4 = tms.table.get("v4").unwrap();
         assert_eq!(v4.len(), 4);
         let v4_consensus = v4.get("consensus").unwrap();
-        let expected_consensus = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
-            mitigated_config_advisories: vec!["FOO".to_string()],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-                "INTEL-SA-00657".to_string(),
-            ],
-        };
+        let expected_consensus = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("e35bc15ee92775029a60a715dca05d310ad40993f56ad43bca7e649ccc9021b5"),
+            ["FOO"],
+            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+        ));
         assert_eq!(v4_consensus, &expected_consensus);
 
         let v4_fog_view = v4.get("fog-view").unwrap();
-        let expected_fog_view = StatusVerifierConfig::Mrenclave {
-            mr_enclave: hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
-            mitigated_config_advisories: vec!["FOO".to_string()],
-            mitigated_hardening_advisories: vec![
-                "INTEL-SA-00334".to_string(),
-                "INTEL-SA-00615".to_string(),
-                "INTEL-SA-00657".to_string(),
-            ],
-        };
+        let expected_fog_view = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+            &hex!("8c80a2b95a549fa8d928dd0f0771be4f3d774408c0f98bf670b1a2c390706bf3"),
+            ["FOO"],
+            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+        ));
         assert_eq!(v4_fog_view, &expected_fog_view);
 
-        let _ = tms.create_verifier("consensus").unwrap();
-        let _ = tms.create_verifier("fog-ingest").unwrap();
-        let _ = tms.create_verifier("fog-ledger").unwrap();
-        let _ = tms.create_verifier("fog-view").unwrap();
+        assert_eq!(
+            tms.measurements("consensus").unwrap(),
+            vec![v3_consensus.clone(), v4_consensus.clone()]
+        );
+        assert_eq!(
+            tms.measurements("fog-view").unwrap(),
+            vec![v3_fog_view.clone(), v4_fog_view.clone()]
+        );
 
-        assert!(tms.create_verifier("impostor").is_err());
+        assert!(matches!(
+            tms.measurements("impostor"),
+            Err(Error::NoMeasurementsFound(_))
+        ));
     }
 
     #[test]

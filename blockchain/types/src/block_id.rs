@@ -13,7 +13,9 @@ use prost::{
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-#[derive(Clone, Default, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Default, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 #[digestible(transparent)]
 /// Identifies a block with its hash.
 pub struct BlockID(pub [u8; 32]);
@@ -25,6 +27,14 @@ impl TryFrom<&[u8]> for BlockID {
         Ok(Self(<[u8; 32] as TryFrom<&[u8]>>::try_from(src).map_err(
             |_| ConvertError::LengthMismatch(core::mem::size_of::<Self>(), src.len()),
         )?))
+    }
+}
+
+impl TryFrom<Vec<u8>> for BlockID {
+    type Error = ConvertError;
+
+    fn try_from(src: Vec<u8>) -> Result<Self, Self::Error> {
+        Self::try_from(src.as_slice())
     }
 }
 
