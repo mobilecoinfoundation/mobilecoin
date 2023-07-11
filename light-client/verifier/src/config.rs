@@ -13,9 +13,9 @@ use serde_with::{hex::Hex, serde_as};
 use std::{collections::BTreeSet, fmt, ops::Range};
 
 /// A version of `[QuorumSetMember]` that does not use an internally-tagged
-/// enum. The only reseaon this is needed is because we want to be able to use
+/// enum. The only reason this is needed is because we want to be able to use
 /// this configuration inside a cosmos wasm contract, and unfortunately the
-/// cosmwasm runtime does not suppoprt floating point operations. It turns out
+/// cosmwasm runtime does not support floating point operations. It turns out
 /// that serde generates some floating point code when using internally-tagged
 /// enums, so we have to use a non-tagged enum instead :/
 /// See https://medium.com/cosmwasm/debugging-floating-point-generation-in-rust-wasm-smart-contract-f47d833b5fba
