@@ -43,7 +43,7 @@ pub trait TransactionReport {
     fn change_sub(&mut self, amount: Amount) -> Result<(), Error>;
 
     /// Add SCI input not owned by our account
-    fn sci_add(&mut self, _amount: Amount) -> Result<(), Error>;
+    fn sci_add(&mut self, amount: Amount) -> Result<(), Error>;
 
     /// Add output value for a particular entity / address to the report
     fn output_add(&mut self, entity: TransactionEntity, amount: Amount) -> Result<(), Error>;
