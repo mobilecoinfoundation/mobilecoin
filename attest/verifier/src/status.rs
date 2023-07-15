@@ -18,9 +18,8 @@ use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use mc_attest_core::{
     IasQuoteError, IasQuoteResult, ProductId, SecurityVersion, VerificationReportData,
 };
-use mc_attest_verifier_config::{
-    TrustedMeasurement, TrustedMrEnclaveMeasurement, TrustedMrSignerMeasurement,
-};
+use mc_attest_verifier_config::TrustedMeasurement;
+use mc_attestation_verifier::{TrustedMrEnclaveIdentity, TrustedMrSignerIdentity};
 use mc_sgx_core_types::{MrEnclave, MrSigner};
 use mc_sgx_css::Signature;
 use serde::{Deserialize, Serialize};
@@ -196,13 +195,13 @@ impl From<Signature> for MrEnclaveVerifier {
     }
 }
 
-impl From<&TrustedMrEnclaveMeasurement> for MrEnclaveVerifier {
-    fn from(enclave_measurement: &TrustedMrEnclaveMeasurement) -> Self {
-        let mut verifier = Self::new(MrEnclave::from(*enclave_measurement.mr_enclave()));
-        for id in enclave_measurement.config_advisories() {
+impl From<&TrustedMrEnclaveIdentity> for MrEnclaveVerifier {
+    fn from(enclave_identity: &TrustedMrEnclaveIdentity) -> Self {
+        let mut verifier = Self::new(MrEnclave::from(enclave_identity.mr_enclave()));
+        for id in enclave_identity.config_advisories() {
             verifier.allow_config_advisory(id);
         }
-        for id in enclave_measurement.hardening_advisories() {
+        for id in enclave_identity.hardening_advisories() {
             verifier.allow_hardening_advisory(id);
         }
         verifier
@@ -304,17 +303,17 @@ impl From<&Signature> for MrSignerVerifier {
     }
 }
 
-impl From<&TrustedMrSignerMeasurement> for MrSignerVerifier {
-    fn from(mr_signer_measurement: &TrustedMrSignerMeasurement) -> Self {
+impl From<&TrustedMrSignerIdentity> for MrSignerVerifier {
+    fn from(mr_signer_identity: &TrustedMrSignerIdentity) -> Self {
         let mut verifier = Self::new(
-            MrSigner::from(*mr_signer_measurement.mr_signer()),
-            mr_signer_measurement.product_id(),
-            mr_signer_measurement.minimum_svn(),
+            MrSigner::from(mr_signer_identity.mr_signer()),
+            mr_signer_identity.isv_product_id().into(),
+            mr_signer_identity.isv_svn().into(),
         );
-        for id in mr_signer_measurement.config_advisories() {
+        for id in mr_signer_identity.config_advisories() {
             verifier.allow_config_advisory(id);
         }
-        for id in mr_signer_measurement.hardening_advisories() {
+        for id in mr_signer_identity.hardening_advisories() {
             verifier.allow_hardening_advisory(id);
         }
         verifier
@@ -1197,7 +1196,7 @@ mod test {
 
     #[test]
     fn allow_config_advisories_mr_enclave_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+        let measurement = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
             &MR_ENCLAVE,
             [] as [&str; 0],
             [] as [&str; 0],
@@ -1215,7 +1214,7 @@ mod test {
 
     #[test]
     fn allow_hardening_advisories_mr_enclave_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrEnclaveMeasurement::new(
+        let measurement = TrustedMeasurement::from(TrustedMrEnclaveIdentity::new(
             &MR_ENCLAVE,
             [] as [&str; 0],
             [] as [&str; 0],
@@ -1253,7 +1252,7 @@ mod test {
 
     #[test]
     fn allow_hardening_advisories_mr_signer_verifier() {
-        let measurement = TrustedMeasurement::from(TrustedMrSignerMeasurement::new(
+        let measurement = TrustedMeasurement::from(TrustedMrSignerIdentity::new(
             &MR_SIGNER,
             3,
             4,
@@ -1271,8 +1270,8 @@ mod test {
         assert_eq!(mr_signer_verifier.sw_ids, ["past", "present", "future"]);
     }
     #[test]
-    fn mr_signer_verifier_from_mr_signer_measurement() {
-        let mr_signer_measurement = TrustedMrSignerMeasurement::new(
+    fn mr_signer_verifier_from_mr_signer_identity() {
+        let mr_signer_identity = TrustedMrSignerMeasurement::new(
             &MR_SIGNER,
             1,
             2,
@@ -1280,7 +1279,7 @@ mod test {
             ["hardening_1", "hardening_2", "hardening_3"],
         );
 
-        let verifier = MrSignerVerifier::from(&mr_signer_measurement);
+        let verifier = MrSignerVerifier::from(&mr_signer_identity);
         assert_eq!(verifier.mr_signer, MrSigner::from(MR_SIGNER));
         assert_eq!(verifier.product_id, 1);
         assert_eq!(verifier.minimum_svn, 2);
@@ -1292,14 +1291,14 @@ mod test {
     }
 
     #[test]
-    fn mr_enclave_verifier_from_mr_enclave_measurement() {
-        let mr_enclave_measurement = TrustedMrEnclaveMeasurement::new(
+    fn mr_enclave_verifier_from_mr_enclave_identity() {
+        let mr_enclave_identity = TrustedMrEnclaveIdentity::new(
             &MR_ENCLAVE,
             ["e_config_1", "e_config_2", "e_config_3"],
             ["e_hardening_1", "e_hardening_2", "e_hardening_3"],
         );
 
-        let verifier = MrEnclaveVerifier::from(&mr_enclave_measurement);
+        let verifier = MrEnclaveVerifier::from(&mr_enclave_identity);
         assert_eq!(verifier.mr_enclave, MrEnclave::from(MR_ENCLAVE));
         assert_eq!(
             verifier.config_ids,

@@ -2662,6 +2662,7 @@ dependencies = [
  "mbedtls-sys-auto",
  "mc-attest-core",
  "mc-attest-verifier-config",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-sgx-core-types",
  "mc-sgx-css",
