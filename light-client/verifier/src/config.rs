@@ -5,7 +5,6 @@
 use crate::{LightClientVerifier, TrustedValidatorSet};
 use mc_blockchain_types::{BlockID, BlockIndex};
 use mc_common::{NodeID, ResponderId};
-use mc_consensus_scp_types::{QuorumSet, QuorumSetMember, QuorumSetMemberWrapper};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::Ed25519Public;
 use prost::Message;
@@ -13,19 +12,74 @@ use serde::{Deserialize, Serialize};
 use serde_with::{hex::Hex, serde_as};
 use std::{collections::BTreeSet, fmt, ops::Range};
 
+/// A version of `[QuorumSetMember]` that does not use an internally-tagged
+/// enum. The only reason this is needed is because we want to be able to use
+/// this configuration inside a cosmos wasm contract, and unfortunately the
+/// cosmwasm runtime does not support floating point operations. It turns out
+/// that serde generates some floating point code when using internally-tagged
+/// enums, so we have to use a non-tagged enum instead :/
+/// See https://medium.com/cosmwasm/debugging-floating-point-generation-in-rust-wasm-smart-contract-f47d833b5fba
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum QuorumSetMember {
+    Node(HexKeyNodeID),
+    InnerSet(QuorumSet),
+}
+
+impl From<HexKeyNodeID> for QuorumSetMember {
+    fn from(src: HexKeyNodeID) -> Self {
+        Self::Node(src)
+    }
+}
+
+impl From<QuorumSet> for QuorumSetMember {
+    fn from(src: QuorumSet) -> Self {
+        Self::InnerSet(src)
+    }
+}
+
+/// A version of `[QuorumSet]` that uses our non-internally-tagged-enum
+/// `[QuorumSetMember]`.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct QuorumSet {
+    pub threshold: u32,
+    pub members: Vec<QuorumSetMember>,
+}
+
+impl From<QuorumSet> for mc_consensus_scp_types::QuorumSet<NodeID> {
+    fn from(src: QuorumSet) -> mc_consensus_scp_types::QuorumSet<NodeID> {
+        Self {
+            threshold: src.threshold,
+            members: src
+                .members
+                .into_iter()
+                .map(|member| mc_consensus_scp_types::QuorumSetMemberWrapper {
+                    member: match member {
+                        QuorumSetMember::Node(node_id) => Some(
+                            mc_consensus_scp_types::QuorumSetMember::Node(node_id.into()),
+                        ),
+                        QuorumSetMember::InnerSet(set) => Some(
+                            mc_consensus_scp_types::QuorumSetMember::InnerSet(Self::from(set)),
+                        ),
+                    },
+                })
+                .collect(),
+        }
+    }
+}
+
 /// A version of `[TrustedValidatorSet]` that uses a quorum set that encodes
 /// node keys as base64 strings. This makes it more pleasant to use in config
 /// files, as well as allowing the key format to match what consensus already
 /// uses.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TrustedValidatorSetConfig {
-    pub quorum_set: QuorumSet<HexKeyNodeID>,
+    pub quorum_set: QuorumSet,
 }
 
 impl From<TrustedValidatorSetConfig> for TrustedValidatorSet {
     fn from(config: TrustedValidatorSetConfig) -> Self {
         Self {
-            quorum_set: hex_key_node_id_from_node_id_quorum_set(config.quorum_set),
+            quorum_set: config.quorum_set.into(),
         }
     }
 }
@@ -35,7 +89,7 @@ impl From<TrustedValidatorSetConfig> for TrustedValidatorSet {
 /// files, as well as allowing the key format to match what consensus already
 /// uses.
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct LightClientVerifierConfig {
     pub trusted_validator_set: TrustedValidatorSetConfig,
     pub trusted_validator_set_start_block: BlockIndex,
@@ -91,27 +145,6 @@ impl From<HexKeyNodeID> for NodeID {
 impl fmt::Display for HexKeyNodeID {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}:{}", self.responder_id, self.public_key)
-    }
-}
-
-fn hex_key_node_id_from_node_id_quorum_set(src: QuorumSet<HexKeyNodeID>) -> QuorumSet<NodeID> {
-    QuorumSet {
-        threshold: src.threshold,
-        members: src
-            .members
-            .into_iter()
-            .map(|member| QuorumSetMemberWrapper {
-                member: match member.member {
-                    Some(QuorumSetMember::Node(node_id)) => {
-                        Some(QuorumSetMember::Node(node_id.into()))
-                    }
-                    Some(QuorumSetMember::InnerSet(set)) => Some(QuorumSetMember::InnerSet(
-                        hex_key_node_id_from_node_id_quorum_set(set),
-                    )),
-                    None => None,
-                },
-            })
-            .collect(),
     }
 }
 

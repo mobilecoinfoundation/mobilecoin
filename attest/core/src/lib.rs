@@ -44,7 +44,7 @@ pub use crate::{
         family_id::FamilyId,
         key_id::KeyId,
         mac::Mac,
-        measurement::{Measurement, MrEnclave, MrSigner},
+        measurement::Measurement,
         pib::PlatformInfoBlob,
         report_body::ReportBody,
         report_data::{ReportData, ReportDataMask},
@@ -56,6 +56,8 @@ pub use crate::{
 };
 
 pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
+
+pub use mc_sgx_core_types::{MrEnclave, MrSigner};
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;

@@ -5,9 +5,7 @@
 use crate::{
     quote::QuoteSignType,
     types::{
-        epid_group_id::EpidGroupId,
-        measurement::{Measurement, MrEnclave, MrSigner},
-        pib::PlatformInfoBlob,
+        epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         update_info::UpdateInfo,
     },
 };
@@ -19,6 +17,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use displaydoc::Display;
+use mc_sgx_core_types::{MrEnclave, MrSigner};
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
