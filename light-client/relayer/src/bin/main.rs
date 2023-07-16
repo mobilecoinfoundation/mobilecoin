@@ -8,7 +8,7 @@ use mc_light_client_relayer::{Config, DummySender, Relayer};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
-use std::sync::Arc;
+use std::{sync::Arc, time, thread};
 
 fn main() {
     std::env::set_var("MC_LOG_STDERR", "1");
@@ -39,7 +39,7 @@ fn main() {
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let mut relayer = Relayer::new(
+    Relayer::new(
         config,
         ledger_db,
         watcher,
@@ -48,5 +48,6 @@ fn main() {
         },
         logger,
     );
-    relayer.entry_point();
+    // run forever, no stopping condition at the moment
+    loop {thread::sleep(time::Duration::from_secs(1));}
 }

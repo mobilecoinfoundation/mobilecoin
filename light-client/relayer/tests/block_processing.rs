@@ -5,56 +5,27 @@ use mc_blockchain_types::{Block, BlockContents, BlockData, BlockMetadata, BlockM
 use mc_common::logger::{log, test_with_logger, Logger};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
-use mc_light_client_relayer::{Config, Relayer, Sender};
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx::TxOut, Amount, BlockVersion};
+use mc_light_client_relayer::{Config, DummySender, Relayer};
+use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage, tx::TxOut, Amount, BlockVersion,
+};
 use mc_transaction_extra::BurnRedemptionMemo;
 use mc_util_from_random::FromRandom;
 use mc_watcher::{watcher_db::WatcherDB, Url};
 use rand::{rngs::StdRng, SeedableRng};
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{str::FromStr, time::Duration};
 use tempfile::TempDir;
 
 const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
-/// Data sent to the Mock Sender
-#[derive(Clone)]
-pub struct SentData {
-    pub tx_outs: Vec<TxOut>,
-    pub block: Block,
-    pub block_contents: BlockContents,
-    pub block_metadata: Vec<BlockMetadata>,
-}
-
-/// A mock sender injected into the relayer for the test
-#[derive(Clone, Default)]
-pub struct MockSender {
-    pub sent: Arc<Mutex<Vec<SentData>>>,
-}
-
-impl Sender for MockSender {
-    fn send(
-        &mut self,
-        tx_outs: Vec<TxOut>,
-        block: &Block,
-        block_contents: &BlockContents,
-        block_metadata: Vec<BlockMetadata>,
-    ) {
-        self.sent.lock().unwrap().push(SentData {
-            tx_outs,
-            block: block.clone(),
-            block_contents: block_contents.clone(),
-            block_metadata,
-        });
-    }
-}
-
-fn append_tx_outs_as_block(ledger: &mut LedgerDB, tx_outs: &[TxOut]) -> (Block, BlockContents) {
+fn append_tx_outs_as_block(
+    ledger: &mut LedgerDB,
+    tx_outs: &[TxOut],
+    signers: Vec<Ed25519Pair>,
+) -> (Block, BlockContents, Vec<BlockMetadata>) {
     let block_contents = BlockContents {
         outputs: tx_outs.to_owned(),
+        key_images: vec![KeyImage::from(123)],
         ..Default::default()
     };
 
@@ -65,28 +36,30 @@ fn append_tx_outs_as_block(ledger: &mut LedgerDB, tx_outs: &[TxOut]) -> (Block, 
         &Default::default(),
         &block_contents,
     );
-    ledger
-        .append_block(&block, &block_contents, None, None)
-        .unwrap();
-    (block, block_contents)
-}
 
-// Note: We could improve this by also watching prometheus counters
-fn block_until_new_message_sent(mock_sender: &MockSender, logger: &Logger) {
-    log::info!(logger, "Waiting for message");
-    let mut retries = 100;
-    let start_msgs = mock_sender.sent.lock().unwrap().len();
-    loop {
-        if mock_sender.sent.lock().unwrap().len() > start_msgs {
-            break;
-        }
-        if retries == 0 {
-            panic!("relayer message not received");
-        }
-        retries -= 1;
-        std::thread::sleep(Duration::from_millis(100));
-    }
-    log::info!(logger, "Got message");
+    // Sign this block with all the signer identities
+    let block_metadata: Vec<BlockMetadata> = signers
+        .iter()
+        .map(|signer| {
+            let bmc = BlockMetadataContents::new(
+                block.id.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+            BlockMetadata::from_contents_and_keypair(bmc, signer).unwrap()
+        })
+        .collect();
+
+    ledger
+        .append_block(
+            &block,
+            &block_contents,
+            None,
+            Some(&block_metadata[0].clone()),
+        )
+        .unwrap();
+    (block, block_contents, block_metadata)
 }
 
 #[test_with_logger]
@@ -114,8 +87,11 @@ fn test_relayer_processing(logger: Logger) {
     };
 
     let mut ledger = LedgerDB::open(&ledger_db_path).unwrap();
-    let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = WatcherDB::open_rw(&watcher_db_path, &[tx_source_url], logger.clone())
+    let tx_source_urls: Vec<Url> = (0..5)
+        .filter_map(|idx| Url::parse(&format!("https://node{}.localhost", idx)).ok())
+        .collect();
+
+    let watcher = WatcherDB::open_rw(&watcher_db_path, &tx_source_urls, logger.clone())
         .expect("Could not create watcher_db");
 
     // Initialize ledger
@@ -134,91 +110,82 @@ fn test_relayer_processing(logger: Logger) {
         admin_listen_uri: None,
     };
 
-    let mock_sender = MockSender::default();
-
     log::info!(logger, "Starting relayer");
 
-    let mut relayer = Relayer::new(
+    let runner = Relayer::new(
         config,
         ledger.clone(),
         watcher.clone(),
-        mock_sender.clone(),
+        DummySender {
+            logger: logger.clone(),
+        },
         logger.clone(),
     );
-    std::thread::scope(|s| {
-        // Spawn a thread doing the relayer work
-        s.spawn(|| relayer.entry_point());
 
-        // Do happy path testing where there is a burn txo
-        let burn_txo = TxOut::new_with_memo(
-            BLOCK_VERSION,
-            Amount::new(100, 2.into()),
-            &burn_address(),
-            &FromRandom::from_random(&mut rng),
-            EncryptedFogHint::fake_onetime_hint(&mut rng),
-            |_ctxt| Ok(BurnRedemptionMemo::new([7u8; 64]).into()),
-        )
-        .unwrap(); // TODO: Use real format here?
+    // Do happy path testing where there is a burn txo
+    let burn_txo = TxOut::new_with_memo(
+        BLOCK_VERSION,
+        Amount::new(100, 2.into()),
+        &burn_address(),
+        &FromRandom::from_random(&mut rng),
+        EncryptedFogHint::fake_onetime_hint(&mut rng),
+        |_ctxt| Ok(BurnRedemptionMemo::new([7u8; 64]).into()),
+    )
+    .unwrap(); // TODO: Use real format here?
 
-        let random_txo = TxOut::new(
-            BLOCK_VERSION,
-            Amount::new(100, 2.into()),
-            &PublicAddress::from_random(&mut rng),
-            &FromRandom::from_random(&mut rng),
-            EncryptedFogHint::fake_onetime_hint(&mut rng),
-        )
-        .unwrap();
+    let random_txo = TxOut::new(
+        BLOCK_VERSION,
+        Amount::new(100, 2.into()),
+        &PublicAddress::from_random(&mut rng),
+        &FromRandom::from_random(&mut rng),
+        EncryptedFogHint::fake_onetime_hint(&mut rng),
+    )
+    .unwrap();
 
-        log::info!(logger, "Adding block");
+    log::info!(logger, "Adding block");
 
-        let (block, block_contents) =
-            append_tx_outs_as_block(&mut ledger, &[burn_txo.clone(), random_txo]);
+    let (block, block_contents, block_metadata) =
+        append_tx_outs_as_block(&mut ledger, &[burn_txo.clone(), random_txo], signers);
 
-        log::info!(logger, "Signing block");
+    log::info!(logger, "Adding block to watcher");
 
-        // Sign this block with all the signer identities
-        let block_metadata: Vec<BlockMetadata> = signers
-            .iter()
-            .map(|signer| {
-                let bmc = BlockMetadataContents::new(
-                    block.id.clone(),
-                    Default::default(),
-                    Default::default(),
-                    Default::default(),
-                );
-                BlockMetadata::from_contents_and_keypair(bmc, signer).unwrap()
-            })
-            .collect();
+    // Add this stuff to the watcher
+    for (idx, block_metadata) in block_metadata.iter().enumerate() {
+        let block_data = BlockData::new(
+            block.clone(),
+            block_contents.clone(),
+            None,
+            Some(block_metadata.clone()),
+        );
 
-        log::info!(logger, "Adding block to watcher");
+        let url = Url::from_str(&format!("https://node{}.localhost", idx)).unwrap();
 
-        // Add this stuff to the watcher
-        for (idx, block_metadata) in block_metadata.iter().enumerate() {
-            let block_data = BlockData::new(
-                block.clone(),
-                block_contents.clone(),
-                None,
-                Some(block_metadata.clone()),
-            );
+        watcher.add_block_data(&url, &block_data).unwrap();
+    }
 
-            let url = Url::from_str(&format!("fake{}.com", idx)).unwrap();
-
-            watcher.add_block_data(&url, &block_data).unwrap();
+    let mut retries = 100;
+    loop {
+        if retries == 0 {
+            panic!("relayer message not received");
         }
+        retries -= 1;
+        let records = runner.get_burned_tx_records();
+        if records.len() > 0 {
+            assert_eq!(records.len(), 1);
+            let burn_record = records[0].clone();
+            assert_eq!(burn_record.tx_outs, vec![burn_txo.clone()]);
+            assert_eq!(burn_record.block.id, block.id);
+            assert_eq!(burn_record.block.contents_hash, block.contents_hash);
+            assert_eq!(burn_record.block_contents, block_contents);
 
-        // At this point the relayer should pick this up
-        block_until_new_message_sent(&mock_sender, &logger);
-
-        let latest_sent = {
-            let sent = mock_sender.sent.lock().unwrap();
-            assert_eq!(sent.len(), 1);
-            sent[0].clone()
-        };
-
-        assert_eq!(latest_sent.tx_outs, vec![burn_txo]);
-        assert_eq!(latest_sent.block.id, block.id);
-        assert_eq!(latest_sent.block.contents_hash, block.contents_hash);
-        assert_eq!(latest_sent.block_contents, block_contents);
-        assert_eq!(latest_sent.block_metadata, block_metadata);
-    });
+            let burn_record_signatures_count = burn_record.signatures.iter().count();
+            let block_signatures_count = block_metadata.iter().count();
+            assert_eq!(burn_record_signatures_count, block_signatures_count);
+            for item in burn_record.signatures.iter() {
+                assert!(block_metadata.contains(item));
+            }
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
