@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use crate::{verifier::Verifier, Config, Sender};
+use crate::{error::Error, verifier::Verifier, Config, Sender};
 use mc_account_keys::burn_address_view_private;
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockMetadata};
 use mc_common::logger::{log, Logger};
@@ -46,7 +46,7 @@ pub struct Relayer {
 }
 
 impl Relayer {
-        pub fn new<
+    pub fn new<
         S: Sender + Clone + Send + Sync + 'static,
         V: Verifier + Clone + Send + Sync + 'static,
     >(
@@ -93,10 +93,10 @@ impl Relayer {
         self.shared_state().current_block_index
     }
 
-    pub fn stop(&mut self) -> Result<(), ()> {
+    pub fn stop(&mut self) -> Result<(), Error> {
         if let Some(join_handle) = self.join_handle.take() {
             self.stop_requested.store(true, Ordering::SeqCst);
-            join_handle.join().map_err(|_| ())?;
+            join_handle.join().map_err(|_| Error::ThreadJoin)?;
         }
 
         Ok(())
@@ -122,7 +122,7 @@ where
     S: Sender + Send + Sync + 'static,
     V: Verifier + Send + Sync + 'static,
 {
-    config: Config,
+    _config: Config,
     next_block_index: BlockIndex,
     ledger_db: LedgerDB,
     watcher_db: WatcherDB,
@@ -156,7 +156,7 @@ where
     ) {
         let next_block_index = config.start_block_index;
         let thread = Self {
-            config,
+            _config: config,
             next_block_index,
             ledger_db,
             watcher_db,
@@ -206,7 +206,7 @@ where
         }
     }
 
-    fn process_block(&mut self, block_data: &BlockData) -> Result<(), WatcherDBError> {
+    fn process_block(&mut self, block_data: &BlockData) -> Result<(), Error> {
         let tracer = tracer!();
 
         let mut span =
@@ -220,34 +220,17 @@ where
         }
 
         // Try to get signatures from the watcher
-        // Loop until we get enough signatures
         tracer.in_span("loop_for_signatures", |_cx| {
-            loop {
-                let signatures = self.get_block_signatures(self.next_block_index)?;
-                if signatures.len() >= self.config.min_signatures {
-                    let burned = BurnTx {
-                        block: block_data.block().clone(),
-                        block_contents: block_data.contents().clone(),
-                        signatures,
-                        tx_outs: relevant_burns.clone(),
-                    };
-                    self.verifier.verify_burned_tx(burned.clone()).unwrap();
-                    self.sender.send(burned);
-                    return Ok(());
-                } else {
-                    // We didn't get enough signatures, but let's assume that more are coming soon
-                    // TODO: An alternative here is, actually use a light-client verifier object,
-                    // which is a more correct approach.
-                    log::debug!(
-                        self.logger,
-                        "Did not find a quorum yet for block {}: {} signatures < {} required",
-                        self.next_block_index,
-                        signatures.len(),
-                        self.config.min_signatures
-                    );
-                    std::thread::sleep(Self::POLLING_FREQUENCY);
-                }
-            }
+            let signatures = self.get_block_signatures(self.next_block_index)?;
+            let burned = BurnTx {
+                block: block_data.block().clone(),
+                block_contents: block_data.contents().clone(),
+                signatures,
+                tx_outs: relevant_burns.clone(),
+            };
+            self.verifier.verify_burned_tx(burned.clone())?;
+            self.sender.send(burned);
+            return Ok(());
         })
     }
 
