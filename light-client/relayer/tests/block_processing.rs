@@ -178,8 +178,8 @@ fn test_relayer_processing(logger: Logger) {
             assert_eq!(burn_record.block.contents_hash, block.contents_hash);
             assert_eq!(burn_record.block_contents, block_contents);
 
-            let burn_record_signatures_count = burn_record.signatures.iter().count();
-            let block_signatures_count = block_metadata.iter().count();
+            let burn_record_signatures_count = burn_record.signatures.len();
+            let block_signatures_count = block_metadata.len();
             assert_eq!(burn_record_signatures_count, block_signatures_count);
             for item in burn_record.signatures.iter() {
                 assert!(block_metadata.contains(item));
