@@ -5,7 +5,7 @@ use mc_blockchain_types::{Block, BlockContents, BlockData, BlockMetadata, BlockM
 use mc_common::logger::{log, test_with_logger, Logger};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
-use mc_light_client_relayer::{Config, Relayer, TestSender};
+use mc_light_client_relayer::{Config, Relayer, TestSender, TestVerifier};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage, tx::TxOut, Amount, BlockVersion,
 };
@@ -115,11 +115,17 @@ fn test_relayer_processing(logger: Logger) {
         logger: logger.clone(),
         sent: Default::default(),
     };
+
+    let verifier = TestVerifier {
+        logger: logger.clone(),
+    };
+
     let mut relayer = Relayer::new(
         config,
         ledger.clone(),
         watcher.clone(),
         sender.clone(),
+        verifier.clone(),
         logger.clone(),
     );
 

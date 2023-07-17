@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use crate::{Config, Sender};
+use crate::{verifier::Verifier, Config, Sender};
 use mc_account_keys::burn_address_view_private;
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockMetadata};
 use mc_common::logger::{log, Logger};
@@ -46,11 +46,15 @@ pub struct Relayer {
 }
 
 impl Relayer {
-    pub fn new<S: Sender + Clone + Send + Sync + 'static>(
+        pub fn new<
+        S: Sender + Clone + Send + Sync + 'static,
+        V: Verifier + Clone + Send + Sync + 'static,
+    >(
         config: Config,
         ledger_db: LedgerDB,
         watcher_db: WatcherDB,
         sender: S,
+        verifier: V,
         logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -59,6 +63,7 @@ impl Relayer {
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = shared_state.clone();
         let thread_sender = sender.clone();
+        let thread_verifier = verifier.clone();
 
         let join_handle = Some(
             ThreadBuilder::new()
@@ -69,6 +74,7 @@ impl Relayer {
                         ledger_db,
                         watcher_db,
                         thread_sender,
+                        thread_verifier,
                         thread_stop_requested,
                         thread_shared_state,
                         logger,
@@ -111,18 +117,27 @@ impl Drop for Relayer {
 /// The relayer object is able to scan the blockchain for interesting burn txos,
 /// and forward them to a "sender", together with proofs of the block's
 /// validity, when it finds any.
-pub struct RelayerThread<S: Sender + Send + Sync + 'static> {
+pub struct RelayerThread<S, V>
+where
+    S: Sender + Send + Sync + 'static,
+    V: Verifier + Send + Sync + 'static,
+{
     config: Config,
     next_block_index: BlockIndex,
     ledger_db: LedgerDB,
     watcher_db: WatcherDB,
     sender: S,
+    verifier: V,
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<RelayerSharedState>>,
     logger: Logger,
 }
 
-impl<S: Sender + Send + Sync + 'static> RelayerThread<S> {
+impl<S, V> RelayerThread<S, V>
+where
+    S: Sender + Send + Sync + 'static,
+    V: Verifier + Send + Sync + 'static,
+{
     /// Poll for new data every 10 ms
     const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     /// How frequently to retry if an error occurs.
@@ -134,6 +149,7 @@ impl<S: Sender + Send + Sync + 'static> RelayerThread<S> {
         ledger_db: LedgerDB,
         watcher_db: WatcherDB,
         sender: S,
+        verifier: V,
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<RelayerSharedState>>,
         logger: Logger,
@@ -145,6 +161,7 @@ impl<S: Sender + Send + Sync + 'static> RelayerThread<S> {
             ledger_db,
             watcher_db,
             sender,
+            verifier,
             stop_requested,
             shared_state,
             logger,
@@ -212,8 +229,9 @@ impl<S: Sender + Send + Sync + 'static> RelayerThread<S> {
                         block: block_data.block().clone(),
                         block_contents: block_data.contents().clone(),
                         signatures,
-                        tx_outs: relevant_burns,
+                        tx_outs: relevant_burns.clone(),
                     };
+                    self.verifier.verify_burned_tx(burned.clone()).unwrap();
                     self.sender.send(burned);
                     return Ok(());
                 } else {

@@ -4928,6 +4928,7 @@ dependencies = [
  "mc-common",
  "mc-crypto-keys",
  "mc-ledger-db",
+ "mc-light-client-verifier",
  "mc-transaction-core",
  "mc-transaction-extra",
  "mc-util-cli",

@@ -11,7 +11,7 @@ pub trait Sender {
     fn send(&mut self, burn_tx: BurnTx);
 }
 
-/// A dummy sender which just logs anything that is sent.
+/// A test sender which stores and logs anything that is sent.
 #[derive(Clone)]
 pub struct TestSender {
     pub logger: Logger,

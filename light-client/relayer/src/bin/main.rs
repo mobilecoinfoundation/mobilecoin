@@ -4,7 +4,7 @@
 
 use mc_common::{logger, sentry};
 use mc_ledger_db::LedgerDB;
-use mc_light_client_relayer::{Config, Relayer, TestSender};
+use mc_light_client_relayer::{Config, Relayer, TestSender, TestVerifier};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
@@ -46,6 +46,9 @@ fn main() {
         TestSender {
             logger: logger.clone(),
             sent: Default::default(),
+        },
+        TestVerifier {
+            logger: logger.clone(),
         },
         logger,
     );

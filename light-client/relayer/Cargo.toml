@@ -22,6 +22,7 @@ mc-util-metrics = { path = "../../util/metrics" }
 mc-util-telemetry = { path = "../../util/telemetry" }
 mc-util-uri = { path = "../../util/uri" }
 mc-watcher = { path = "../../watcher" }
+mc-light-client-verifier = { path = "../verifier" }
 
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"
