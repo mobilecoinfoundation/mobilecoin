@@ -609,42 +609,6 @@ impl PartialEq<sgx_status_t> for SgxError {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum TargetInfoError {
-    /// SGX error: {0}
-    Sgx(SgxError),
-    /// Quoting enclave busy
-    QeBusy,
-    /// Error retrying: {0}
-    Retry(String),
-    /// String or binary conversion error: {0}
-    Convert(EncodingError),
-}
-
-impl From<DecodeError> for TargetInfoError {
-    fn from(src: DecodeError) -> Self {
-        TargetInfoError::Convert(src.into())
-    }
-}
-
-impl From<EncodingError> for TargetInfoError {
-    fn from(src: EncodingError) -> Self {
-        TargetInfoError::Convert(src)
-    }
-}
-
-impl From<SgxError> for TargetInfoError {
-    fn from(src: SgxError) -> Self {
-        TargetInfoError::Sgx(src)
-    }
-}
-
-impl From<sgx_status_t> for TargetInfoError {
-    fn from(src: sgx_status_t) -> TargetInfoError {
-        TargetInfoError::Sgx(src.into())
-    }
-}
-
 /// An enumeration of errors while parsing or verifying contents of a
 /// verification report
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]

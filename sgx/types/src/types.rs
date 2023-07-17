@@ -30,6 +30,9 @@ use core::default::Default;
 use error::*;
 use marker::ContiguousMemory;
 
+extern crate mc_sgx_core_sys_types;
+pub use self::mc_sgx_core_sys_types::sgx_target_info_t;
+
 //
 // sgx_attributes.h
 //
@@ -425,17 +428,6 @@ pub const SGX_TARGET_INFO_RESERVED3_BYTES: ::size_t = 384;
 
 impl_copy_clone! {
 
-    pub struct sgx_target_info_t {
-        pub mr_enclave: sgx_measurement_t,
-        pub attributes: sgx_attributes_t,
-        pub reserved1: [::uint8_t; SGX_TARGET_INFO_RESERVED1_BYTES],
-        pub config_svn: sgx_config_svn_t,
-        pub misc_select: sgx_misc_select_t,
-        pub reserved2: [::uint8_t; SGX_TARGET_INFO_RESERVED2_BYTES],
-        pub config_id: sgx_config_id_t,
-        pub reserved3: [::uint8_t; SGX_TARGET_INFO_RESERVED3_BYTES],
-    }
-
     pub struct sgx_report_body_t {
         pub cpu_svn: sgx_cpu_svn_t,
         pub misc_select: sgx_misc_select_t,
@@ -463,13 +455,11 @@ impl_copy_clone! {
 }
 
 impl_struct_default! {
-    sgx_target_info_t, 512;
     sgx_report_body_t, 384;
     sgx_report_t, 432;
 }
 
 impl_struct_ContiguousMemory! {
-    sgx_target_info_t;
     sgx_report_body_t;
     sgx_report_t;
 }
