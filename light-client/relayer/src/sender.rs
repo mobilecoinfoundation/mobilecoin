@@ -1,40 +1,32 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use mc_blockchain_types::{Block, BlockContents, BlockMetadata};
+use std::sync::{Arc, Mutex};
+
+use crate::BurnTx;
 use mc_common::logger::{log, Logger};
-use mc_transaction_core::tx::TxOut;
 
 // A sync which can send interesting blocks and metadata found by the relayer to
 // its intended destination.
 pub trait Sender {
-    fn send(
-        &mut self,
-        outputs: Vec<TxOut>,
-        block: &Block,
-        block_contents: &BlockContents,
-        block_metadata: Vec<BlockMetadata>,
-    );
+    fn send(&mut self, burn_tx: BurnTx);
 }
 
 /// A dummy sender which just logs anything that is sent.
-pub struct DummySender {
+#[derive(Clone)]
+pub struct TestSender {
     pub logger: Logger,
+    pub sent: Arc<Mutex<Vec<BurnTx>>>,
 }
 
-impl Sender for DummySender {
-    fn send(
-        &mut self,
-        outputs: Vec<TxOut>,
-        block: &Block,
-        _block_contents: &BlockContents,
-        block_metadata: Vec<BlockMetadata>,
-    ) {
+impl Sender for TestSender {
+    fn send(&mut self, burn_tx: BurnTx) {
+        self.sent.lock().unwrap().push(burn_tx.clone());
         log::info!(
             self.logger,
-            "Dummy sender: Got {} outputs and {} signatures to be sent in connection to block {}",
-            outputs.len(),
-            block_metadata.len(),
-            block.index
+            "Test sender: Got {} outputs and {} signatures to be sent in connection to block {}",
+            burn_tx.tx_outs.len(),
+            burn_tx.signatures.len(),
+            burn_tx.block.index
         );
     }
 }

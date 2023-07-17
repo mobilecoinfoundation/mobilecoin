@@ -7,4 +7,4 @@ mod sender;
 
 pub use config::Config;
 pub use relayer::{Relayer, RelayerSharedState, BurnTx};
-pub use sender::{DummySender, Sender};
+pub use sender::{TestSender, Sender};

@@ -21,7 +21,7 @@ use std::{
 /// Telemetry: block index currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct BurnTx {
     pub tx_outs: Vec<TxOut>,
     pub block: Block,
@@ -31,10 +31,10 @@ pub struct BurnTx {
 
 #[derive(Default)]
 pub struct RelayerSharedState {
-    pub burn_txs: Vec<BurnTx>,
+    pub current_block_index: BlockIndex,
 }
 
-pub struct Relayer<S: Sender> {
+pub struct Relayer {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
 
@@ -43,13 +43,10 @@ pub struct Relayer<S: Sender> {
 
     /// State shared with the worker thread.
     shared_state: Arc<Mutex<RelayerSharedState>>,
-
-    /// Sender for the burned transactions.
-    _sender: S,
 }
 
-impl<S: Sender> Relayer<S> {
-    pub fn new(
+impl Relayer {
+    pub fn new<S: Sender + Clone + Send + Sync + 'static>(
         config: Config,
         ledger_db: LedgerDB,
         watcher_db: WatcherDB,
@@ -61,6 +58,7 @@ impl<S: Sender> Relayer<S> {
 
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = shared_state.clone();
+        let thread_sender = sender.clone();
 
         let join_handle = Some(
             ThreadBuilder::new()
@@ -70,6 +68,7 @@ impl<S: Sender> Relayer<S> {
                         config,
                         ledger_db,
                         watcher_db,
+                        thread_sender,
                         thread_stop_requested,
                         thread_shared_state,
                         logger,
@@ -81,12 +80,11 @@ impl<S: Sender> Relayer<S> {
             join_handle,
             stop_requested,
             shared_state,
-            _sender: sender,
         }
     }
 
-    pub fn get_burned_tx_records(&self) -> Vec<BurnTx> {
-        self.shared_state().burn_txs.clone()
+    pub fn get_current_block_index(&self) -> BlockIndex {
+        self.shared_state().current_block_index
     }
 
     pub fn stop(&mut self) -> Result<(), ()> {
@@ -104,7 +102,7 @@ impl<S: Sender> Relayer<S> {
     }
 }
 
-impl<S: Sender> Drop for Relayer<S> {
+impl Drop for Relayer {
     fn drop(&mut self) {
         let _ = self.stop();
     }
@@ -113,17 +111,18 @@ impl<S: Sender> Drop for Relayer<S> {
 /// The relayer object is able to scan the blockchain for interesting burn txos,
 /// and forward them to a "sender", together with proofs of the block's
 /// validity, when it finds any.
-pub struct RelayerThread {
+pub struct RelayerThread<S: Sender + Send + Sync + 'static> {
     config: Config,
     next_block_index: BlockIndex,
     ledger_db: LedgerDB,
     watcher_db: WatcherDB,
+    sender: S,
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<RelayerSharedState>>,
     logger: Logger,
 }
 
-impl RelayerThread {
+impl<S: Sender + Send + Sync + 'static> RelayerThread<S> {
     /// Poll for new data every 10 ms
     const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     /// How frequently to retry if an error occurs.
@@ -134,6 +133,7 @@ impl RelayerThread {
         config: Config,
         ledger_db: LedgerDB,
         watcher_db: WatcherDB,
+        sender: S,
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<RelayerSharedState>>,
         logger: Logger,
@@ -144,8 +144,9 @@ impl RelayerThread {
             next_block_index,
             ledger_db,
             watcher_db,
-            shared_state,
+            sender,
             stop_requested,
+            shared_state,
             logger,
         };
         thread.run();
@@ -155,6 +156,7 @@ impl RelayerThread {
         // Poll ledger for data to relay
         log::info!(self.logger, "Relayer thread started.");
         loop {
+            self.shared_state().current_block_index = self.next_block_index;
             if self.stop_requested.load(Ordering::SeqCst) {
                 log::info!(self.logger, "Relayer thread stop requested.");
                 break;
@@ -212,7 +214,7 @@ impl RelayerThread {
                         signatures,
                         tx_outs: relevant_burns,
                     };
-                    self.shared_state().burn_txs.push(burned);
+                    self.sender.send(burned);
                     return Ok(());
                 } else {
                     // We didn't get enough signatures, but let's assume that more are coming soon

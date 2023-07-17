@@ -4,11 +4,11 @@
 
 use mc_common::{logger, sentry};
 use mc_ledger_db::LedgerDB;
-use mc_light_client_relayer::{Config, DummySender, Relayer};
+use mc_light_client_relayer::{Config, Relayer, TestSender};
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
-use std::{sync::Arc, time, thread};
+use std::{sync::Arc, thread, time};
 
 fn main() {
     std::env::set_var("MC_LOG_STDERR", "1");
@@ -43,11 +43,14 @@ fn main() {
         config,
         ledger_db,
         watcher,
-        DummySender {
+        TestSender {
             logger: logger.clone(),
+            sent: Default::default(),
         },
         logger,
     );
     // run forever, no stopping condition at the moment
-    loop {thread::sleep(time::Duration::from_secs(1));}
+    loop {
+        thread::sleep(time::Duration::from_secs(1));
+    }
 }

@@ -5,7 +5,7 @@ use mc_blockchain_types::{Block, BlockContents, BlockData, BlockMetadata, BlockM
 use mc_common::logger::{log, test_with_logger, Logger};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
-use mc_light_client_relayer::{Config, DummySender, Relayer};
+use mc_light_client_relayer::{Config, Relayer, TestSender};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage, tx::TxOut, Amount, BlockVersion,
 };
@@ -111,14 +111,15 @@ fn test_relayer_processing(logger: Logger) {
     };
 
     log::info!(logger, "Starting relayer");
-
-    let runner = Relayer::new(
+    let sender = TestSender {
+        logger: logger.clone(),
+        sent: Default::default(),
+    };
+    let mut relayer = Relayer::new(
         config,
         ledger.clone(),
         watcher.clone(),
-        DummySender {
-            logger: logger.clone(),
-        },
+        sender.clone(),
         logger.clone(),
     );
 
@@ -167,25 +168,27 @@ fn test_relayer_processing(logger: Logger) {
     loop {
         if retries == 0 {
             panic!("relayer message not received");
+        } else {
+            let records = sender.sent.lock().unwrap();
+            if records.len() > 0 {
+                assert_eq!(records.len(), 1);
+                let burn_record = records[0].clone();
+                assert_eq!(burn_record.tx_outs, vec![burn_txo.clone()]);
+                assert_eq!(burn_record.block.id, block.id);
+                assert_eq!(burn_record.block.contents_hash, block.contents_hash);
+                assert_eq!(burn_record.block_contents, block_contents);
+
+                let burn_record_signatures_count = burn_record.signatures.len();
+                let block_signatures_count = block_metadata.len();
+                assert_eq!(burn_record_signatures_count, block_signatures_count);
+                for item in burn_record.signatures.iter() {
+                    assert!(block_metadata.contains(item));
+                }
+                break;
+            }
         }
         retries -= 1;
-        let records = runner.get_burned_tx_records();
-        if records.len() > 0 {
-            assert_eq!(records.len(), 1);
-            let burn_record = records[0].clone();
-            assert_eq!(burn_record.tx_outs, vec![burn_txo.clone()]);
-            assert_eq!(burn_record.block.id, block.id);
-            assert_eq!(burn_record.block.contents_hash, block.contents_hash);
-            assert_eq!(burn_record.block_contents, block_contents);
-
-            let burn_record_signatures_count = burn_record.signatures.len();
-            let block_signatures_count = block_metadata.len();
-            assert_eq!(burn_record_signatures_count, block_signatures_count);
-            for item in burn_record.signatures.iter() {
-                assert!(block_metadata.contains(item));
-            }
-            break;
-        }
         std::thread::sleep(Duration::from_millis(100));
     }
+    relayer.stop().unwrap();
 }
