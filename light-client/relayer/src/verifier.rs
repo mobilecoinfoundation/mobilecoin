@@ -10,7 +10,12 @@ pub trait Verifier {
 
 impl Verifier for LightClientVerifier {
     fn verify_burned_tx(&mut self, burn_tx: BurnTx) -> Result<(), Error> {
-        self.verify_txos_in_block(&burn_tx.tx_outs, &burn_tx.block, &burn_tx.block_contents, &burn_tx.signatures)
+        self.verify_txos_in_block(
+            &burn_tx.tx_outs,
+            &burn_tx.block,
+            &burn_tx.block_contents,
+            &burn_tx.signatures,
+        )
     }
 }
 

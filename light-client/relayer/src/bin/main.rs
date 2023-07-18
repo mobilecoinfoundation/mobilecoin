@@ -38,7 +38,7 @@ fn main() {
 
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
-    
+
     Relayer::new(
         config,
         ledger_db,
