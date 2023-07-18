@@ -113,7 +113,7 @@ fn test_relayer_processing(logger: Logger) {
         signers.push(signer);
         quorum_nodes.push(QuorumSetMember::Node(node_id));
     }
-    
+
     let config = Config {
         start_block_index: 1,
         min_signatures: 4,
