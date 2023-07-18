@@ -34,5 +34,6 @@ serde_json = "1"
 [dev-dependencies]
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-extra = { path = "../../transaction/extra" }
+mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }
 rand = "0.8"
 tempfile = "3.4"

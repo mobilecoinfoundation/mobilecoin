@@ -220,7 +220,11 @@ where
         }
 
         // Try to get signatures from the watcher
-        tracer.in_span("loop_for_signatures", |_cx| {
+        tracer.in_span("loop_for_signatures", |_cx| loop {
+            if self.stop_requested.load(Ordering::SeqCst) {
+                log::info!(self.logger, "Relayer thread stop requested.");
+                return Ok(());
+            }
             let signatures = self.get_block_signatures(self.next_block_index)?;
             let burned = BurnTx {
                 block: block_data.block().clone(),
@@ -228,9 +232,21 @@ where
                 signatures,
                 tx_outs: relevant_burns.clone(),
             };
-            self.verifier.verify_burned_tx(burned.clone())?;
-            self.sender.send(burned);
-            Ok(())
+            match self.verifier.verify_burned_tx(burned.clone()) {
+                Ok(_) => {
+                    self.sender.send(burned);
+                    return Ok(());
+                }
+                Err(e) => {
+                    log::info!(
+                        self.logger,
+                        "Did not find a quorum yet for block {}: {}",
+                        self.next_block_index,
+                        e,
+                    );
+                    std::thread::sleep(Self::POLLING_FREQUENCY);
+                }
+            }
         })
     }
 

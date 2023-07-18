@@ -4926,6 +4926,7 @@ dependencies = [
  "mc-account-keys",
  "mc-blockchain-types",
  "mc-common",
+ "mc-consensus-scp-types",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-light-client-verifier",

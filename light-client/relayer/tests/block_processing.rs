@@ -2,10 +2,15 @@
 
 use mc_account_keys::{burn_address, AccountKey, PublicAddress};
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockMetadata, BlockMetadataContents};
-use mc_common::logger::{log, test_with_logger, Logger};
+use mc_common::{
+    logger::{log, test_with_logger, Logger},
+    NodeID, ResponderId,
+};
+use mc_consensus_scp_types::{test_utils::test_node_id_and_signer, QuorumSet, QuorumSetMember};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
-use mc_light_client_relayer::{Config, Relayer, TestSender, TestVerifier};
+use mc_light_client_relayer::{Config, Relayer, TestSender};
+use mc_light_client_verifier::{LightClientVerifier, TrustedValidatorSet};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage, tx::TxOut, Amount, BlockVersion,
 };
@@ -13,7 +18,7 @@ use mc_transaction_extra::BurnRedemptionMemo;
 use mc_util_from_random::FromRandom;
 use mc_watcher::{watcher_db::WatcherDB, Url};
 use rand::{rngs::StdRng, SeedableRng};
-use std::{str::FromStr, time::Duration};
+use std::{collections::BTreeSet, str::FromStr, time::Duration};
 use tempfile::TempDir;
 
 const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
@@ -40,12 +45,13 @@ fn append_tx_outs_as_block(
     // Sign this block with all the signer identities
     let block_metadata: Vec<BlockMetadata> = signers
         .iter()
-        .map(|signer| {
+        .enumerate()
+        .map(|(idx, signer)| {
             let bmc = BlockMetadataContents::new(
                 block.id.clone(),
                 Default::default(),
                 Default::default(),
-                Default::default(),
+                ResponderId::from_str(&format!("node{idx}.test.com:8433")).unwrap(),
             );
             BlockMetadata::from_contents_and_keypair(bmc, signer).unwrap()
         })
@@ -88,7 +94,7 @@ fn test_relayer_processing(logger: Logger) {
 
     let mut ledger = LedgerDB::open(&ledger_db_path).unwrap();
     let tx_source_urls: Vec<Url> = (0..5)
-        .filter_map(|idx| Url::parse(&format!("https://node{idx}.localhost")).ok())
+        .filter_map(|idx| Url::parse(&format!("https://node{idx}.test.com:8433")).ok())
         .collect();
 
     let watcher = WatcherDB::open_rw(&watcher_db_path, &tx_source_urls, logger.clone())
@@ -99,9 +105,15 @@ fn test_relayer_processing(logger: Logger) {
     let num_blocks = 1;
     initialize_ledger(BLOCK_VERSION, &mut ledger, num_blocks, &sender, &mut rng);
 
-    // Make node signer identities
-    let signers: Vec<Ed25519Pair> = (0..5).map(|_| Ed25519Pair::from_random(&mut rng)).collect();
-
+    // Make nodes and signer identities
+    let mut signers: Vec<Ed25519Pair> = Vec::new();
+    let mut quorum_nodes: Vec<QuorumSetMember<NodeID>> = Vec::new();
+    for idx in 0..5 {
+        let (node_id, signer) = test_node_id_and_signer(idx);
+        signers.push(signer);
+        quorum_nodes.push(QuorumSetMember::Node(node_id));
+    }
+    
     let config = Config {
         start_block_index: 1,
         min_signatures: 4,
@@ -116,8 +128,16 @@ fn test_relayer_processing(logger: Logger) {
         sent: Default::default(),
     };
 
-    let verifier = TestVerifier {
-        logger: logger.clone(),
+    let known_valid_block_ids = BTreeSet::default();
+    let current_tvs = TrustedValidatorSet {
+        quorum_set: QuorumSet::new(config.min_signatures, quorum_nodes),
+    };
+
+    let verifier = LightClientVerifier {
+        trusted_validator_set: current_tvs,
+        trusted_validator_set_start_block: 1,
+        historical_validator_sets: Default::default(),
+        known_valid_block_ids,
     };
 
     let mut relayer = Relayer::new(
@@ -164,8 +184,7 @@ fn test_relayer_processing(logger: Logger) {
             None,
             Some(block_metadata.clone()),
         );
-
-        let url = Url::from_str(&format!("https://node{idx}.localhost")).unwrap();
+        let url = Url::from_str(&format!("https://node{idx}.test.com:8433")).unwrap();
 
         watcher.add_block_data(&url, &block_data).unwrap();
     }

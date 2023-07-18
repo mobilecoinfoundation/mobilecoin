@@ -2,10 +2,16 @@
 
 use crate::BurnTx;
 use mc_common::logger::{log, Logger};
-use mc_light_client_verifier::Error;
+use mc_light_client_verifier::{Error, LightClientVerifier};
 
 pub trait Verifier {
     fn verify_burned_tx(&mut self, burn_tx: BurnTx) -> Result<(), Error>;
+}
+
+impl Verifier for LightClientVerifier {
+    fn verify_burned_tx(&mut self, burn_tx: BurnTx) -> Result<(), Error> {
+        self.verify_txos_in_block(&burn_tx.tx_outs, &burn_tx.block, &burn_tx.block_contents, &burn_tx.signatures)
+    }
 }
 
 #[derive(Clone)]
