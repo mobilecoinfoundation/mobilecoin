@@ -9,7 +9,7 @@ pub enum Error {
     /// Burned transaction verification error
     InvalidBurnedTx(mc_light_client_verifier::Error),
 
-    /// Unable to get block signatures from watcher
+    /// WatcherDb: {0}
     Watcher(WatcherDBError),
 }
 
