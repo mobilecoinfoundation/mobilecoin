@@ -62,8 +62,8 @@ impl Relayer {
 
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = shared_state.clone();
-        let thread_sender = sender.clone();
-        let thread_verifier = verifier.clone();
+        let thread_sender = sender;
+        let thread_verifier = verifier;
 
         let join_handle = Some(
             ThreadBuilder::new()
@@ -230,7 +230,7 @@ where
             };
             self.verifier.verify_burned_tx(burned.clone())?;
             self.sender.send(burned);
-            return Ok(());
+            Ok(())
         })
     }
 
