@@ -4,13 +4,13 @@ use std::sync::{Arc, Mutex};
 use crate::RelayedBlock;
 use mc_common::logger::{log, Logger};
 
-// A sync which can send interesting blocks and metadata found by the relayer to
-// its intended destination.
+/// The relayer finds blocks with burned TxOuts, and then uses the `Sender` to send the 
+/// found blocks to their intended destination. 
 pub trait Sender {
     fn send(&mut self, relayed_block: RelayedBlock);
 }
 
-/// A test sender which stores and logs anything that is sent.
+/// A test sender which stores and logs anything it receives for sending.
 #[derive(Clone)]
 pub struct TestSender {
     pub logger: Logger,
