@@ -69,7 +69,7 @@ mc-util-build-script = { path = "../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 [dev-dependencies]
-aes-gcm = "0.10.1"
+aes-gcm = "0.10.2"
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
