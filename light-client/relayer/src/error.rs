@@ -10,7 +10,7 @@ pub enum Error {
     InvalidBurnedTx(mc_light_client_verifier::Error),
 
     /// WatcherDb: {0}
-    Watcher(WatcherDBError),
+    WatcherDb(WatcherDBError),
 }
 
 impl From<WatcherDBError> for Error {
