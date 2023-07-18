@@ -23,8 +23,8 @@ use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
 use prometheus::{
-    histogram_opts, register_histogram_vec, register_int_counter, register_int_gauge, HistogramVec,
-    IntCounter, IntGauge,
+    histogram_opts, register_histogram, register_histogram_vec, register_int_counter,
+    register_int_gauge, Histogram, HistogramVec, IntCounter, IntGauge,
 };
 use std::{sync::Arc, time::Instant};
 const RETRY_COUNT: usize = 3;
@@ -182,6 +182,7 @@ where
 {
     let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
+    let _timer = BULK_QUERY_REQUESTS.start_timer();
     while remaining_tries > 0 {
         if remaining_tries < RETRY_COUNT {
             QUERY_GROUP_RETRY.inc();
@@ -349,14 +350,22 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
 // Initialize global metrics
 lazy_static! {
     pub static ref QUERY_REQUESTS: HistogramVec = register_histogram_vec!(
-        histogram_opts!("fog_view_query_requests", "Queries to individual stores"),
+        histogram_opts!(
+            "fog_view_router_query_requests",
+            "Queries to individual stores"
+        ),
         &["store_uri", "status"]
     )
     .expect("metric cannot be created");
     pub static ref QUERY_GROUP_RETRY: IntCounter = register_int_counter!(
-        "fog_view_query_group_retry",
+        "fog_view_router_bulk_query_retry",
         "Query retries per client request"
     )
+    .expect("metric cannot be created");
+    pub static ref BULK_QUERY_REQUESTS: Histogram = register_histogram!(histogram_opts!(
+        "fog_view_router_bulk_query_requests",
+        "Queries to router"
+    ))
     .expect("metric cannot be created");
     pub static ref AUTH_CLIENT_REQUESTS: IntCounter =
         register_int_counter!("fog_view_auth_client_requests", "Auth requests to stores")
