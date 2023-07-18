@@ -210,7 +210,7 @@ where
         let tracer = tracer!();
 
         let mut span =
-            block_span_builder(&tracer, "poll_block", self.next_block_index).start(&tracer);
+            block_span_builder(&tracer, "process_block", self.next_block_index).start(&tracer);
 
         span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
 
