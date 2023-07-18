@@ -39,6 +39,6 @@ pub struct Config {
     // Note, we could alternatively have a quorum set config here, or a light-client verifier
     // config.
     #[clap(long, env = "MC_MIN_SIGNATURES")]
-    pub min_signatures: usize,
+    pub min_signatures: u32,
     // TODO: Remote API?
 }
