@@ -6,8 +6,8 @@ pub enum Error {
     /// Thread join error
     ThreadJoin,
 
-    /// Burned transaction verification error
-    InvalidBurnedTx(mc_light_client_verifier::Error),
+    /// Light client verifeir: {0}
+    LightClientVerifer(mc_light_client_verifier::Error),
 
     /// WatcherDb: {0}
     WatcherDb(WatcherDBError),
@@ -15,12 +15,12 @@ pub enum Error {
 
 impl From<WatcherDBError> for Error {
     fn from(src: WatcherDBError) -> Self {
-        Self::Watcher(src)
+        Self::WatcherDb(src)
     }
 }
 
 impl From<mc_light_client_verifier::Error> for Error {
     fn from(src: mc_light_client_verifier::Error) -> Self {
-        Self::InvalidBurnedTx(src)
+        Self::LightClientVerifer(src)
     }
 }

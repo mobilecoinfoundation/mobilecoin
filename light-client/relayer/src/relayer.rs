@@ -22,16 +22,16 @@ use std::{
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 #[derive(Default, Debug, Clone)]
-pub struct BurnTx {
-    pub tx_outs: Vec<TxOut>,
+pub struct RelayedBlock {
+    pub burn_tx_outs: Vec<TxOut>,
     pub block: Block,
     pub block_contents: BlockContents,
     pub signatures: Vec<BlockMetadata>,
 }
 
 #[derive(Default)]
-pub struct RelayerSharedState {
-    pub current_block_index: BlockIndex,
+struct RelayerSharedState {
+    current_block_index: BlockIndex,
 }
 
 pub struct Relayer {
@@ -117,7 +117,7 @@ impl Drop for Relayer {
 /// The relayer object is able to scan the blockchain for interesting burn txos,
 /// and forward them to a "sender", together with proofs of the block's
 /// validity, when it finds any.
-pub struct RelayerThread<S, V>
+struct RelayerThread<S, V>
 where
     S: Sender + Send + Sync + 'static,
     V: Verifier + Send + Sync + 'static,
@@ -226,11 +226,11 @@ where
                 return Ok(());
             }
             let signatures = self.get_block_signatures(self.next_block_index)?;
-            let burned = BurnTx {
+            let burned = RelayedBlock {
                 block: block_data.block().clone(),
                 block_contents: block_data.contents().clone(),
                 signatures,
-                tx_outs: relevant_burns.clone(),
+                burn_tx_outs: relevant_burns.clone(),
             };
             match self.verifier.verify_burned_tx(burned.clone()) {
                 Ok(_) => {

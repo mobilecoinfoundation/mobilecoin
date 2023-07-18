@@ -11,5 +11,4 @@ pub mod metrics;
 pub mod verification_reports_collector;
 pub mod watcher;
 pub mod watcher_db;
-
 pub use url::Url;
