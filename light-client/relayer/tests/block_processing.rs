@@ -158,7 +158,7 @@ fn test_relayer_processing(logger: Logger) {
         EncryptedFogHint::fake_onetime_hint(&mut rng),
         |_ctxt| Ok(BurnRedemptionMemo::new([7u8; 64]).into()),
     )
-    .unwrap(); // TODO: Use real format here?
+    .unwrap();
 
     let random_txo = TxOut::new(
         BLOCK_VERSION,
