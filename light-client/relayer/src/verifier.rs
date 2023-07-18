@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use crate::RelayedBlock;
-use mc_common::logger::{log, Logger};
 use mc_light_client_verifier::{Error, LightClientVerifier};
 
 pub trait Verifier {

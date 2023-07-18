@@ -10,4 +10,4 @@ mod verifier;
 pub use config::Config;
 pub use relayer::{RelayedBlock, Relayer};
 pub use sender::{Sender, TestSender};
-pub use verifier::{TestVerifier, Verifier};
+pub use verifier::Verifier;
