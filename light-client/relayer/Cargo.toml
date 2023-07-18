@@ -14,6 +14,7 @@ mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
+mc-light-client-verifier = { path = "../verifier" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-cli = { path = "../../util/cli" }
 mc-util-from-random = { path = "../../util/from-random" }
@@ -22,7 +23,6 @@ mc-util-metrics = { path = "../../util/metrics" }
 mc-util-telemetry = { path = "../../util/telemetry" }
 mc-util-uri = { path = "../../util/uri" }
 mc-watcher = { path = "../../watcher" }
-mc-light-client-verifier = { path = "../verifier" }
 
 clap = { version = "4.0", features = ["derive", "env"] }
 displaydoc = "0.2"

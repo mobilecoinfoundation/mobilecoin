@@ -88,7 +88,7 @@ fn test_relayer_processing(logger: Logger) {
 
     let mut ledger = LedgerDB::open(&ledger_db_path).unwrap();
     let tx_source_urls: Vec<Url> = (0..5)
-        .filter_map(|idx| Url::parse(&format!("https://node{}.localhost", idx)).ok())
+        .filter_map(|idx| Url::parse(&format!("https://node{idx}.localhost")).ok())
         .collect();
 
     let watcher = WatcherDB::open_rw(&watcher_db_path, &tx_source_urls, logger.clone())
@@ -125,7 +125,7 @@ fn test_relayer_processing(logger: Logger) {
         ledger.clone(),
         watcher.clone(),
         sender.clone(),
-        verifier.clone(),
+        verifier,
         logger.clone(),
     );
 
@@ -165,7 +165,7 @@ fn test_relayer_processing(logger: Logger) {
             Some(block_metadata.clone()),
         );
 
-        let url = Url::from_str(&format!("https://node{}.localhost", idx)).unwrap();
+        let url = Url::from_str(&format!("https://node{idx}.localhost")).unwrap();
 
         watcher.add_block_data(&url, &block_data).unwrap();
     }
@@ -179,7 +179,7 @@ fn test_relayer_processing(logger: Logger) {
             if records.len() > 0 {
                 assert_eq!(records.len(), 1);
                 let burn_record = records[0].clone();
-                assert_eq!(burn_record.tx_outs, vec![burn_txo.clone()]);
+                assert_eq!(burn_record.tx_outs, vec![burn_txo]);
                 assert_eq!(burn_record.block.id, block.id);
                 assert_eq!(burn_record.block.contents_hash, block.contents_hash);
                 assert_eq!(burn_record.block_contents, block_contents);

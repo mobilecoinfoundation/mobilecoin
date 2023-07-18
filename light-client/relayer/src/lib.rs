@@ -2,12 +2,12 @@
 
 mod config;
 mod counters;
+mod error;
 mod relayer;
 mod sender;
 mod verifier;
-mod error;
 
 pub use config::Config;
-pub use relayer::{Relayer, RelayerSharedState, BurnTx};
-pub use sender::{TestSender, Sender};
+pub use relayer::{BurnTx, Relayer, RelayerSharedState};
+pub use sender::{Sender, TestSender};
 pub use verifier::{TestVerifier, Verifier};

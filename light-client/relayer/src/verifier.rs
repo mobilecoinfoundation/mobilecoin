@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
+use crate::BurnTx;
 use mc_common::logger::{log, Logger};
 use mc_light_client_verifier::Error;
-use crate::BurnTx;
 
 pub trait Verifier {
     fn verify_burned_tx(&mut self, burn_tx: BurnTx) -> Result<(), Error>;
