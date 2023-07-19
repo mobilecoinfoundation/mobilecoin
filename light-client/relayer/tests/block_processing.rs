@@ -4,13 +4,16 @@ use mc_account_keys::{burn_address, AccountKey, PublicAddress};
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockMetadata, BlockMetadataContents};
 use mc_common::{
     logger::{log, test_with_logger, Logger},
-    NodeID, ResponderId,
+    ResponderId,
 };
-use mc_consensus_scp_types::{test_utils::test_node_id_and_signer, QuorumSet, QuorumSetMember};
+use mc_consensus_scp_types::test_utils::test_node_id_and_signer;
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
 use mc_light_client_relayer::{Config, Relayer, TestSender};
-use mc_light_client_verifier::{LightClientVerifier, TrustedValidatorSet};
+use mc_light_client_verifier::{
+    HexKeyNodeID, LightClientVerifier, LightClientVerifierConfig, QuorumSet, QuorumSetMember,
+    TrustedValidatorSetConfig,
+};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage, tx::TxOut, Amount, BlockVersion,
 };
@@ -107,19 +110,32 @@ fn test_relayer_processing(logger: Logger) {
 
     // Make nodes and signer identities
     let mut signers: Vec<Ed25519Pair> = Vec::new();
-    let mut quorum_nodes: Vec<QuorumSetMember<NodeID>> = Vec::new();
+    let mut quorum_nodes: Vec<QuorumSetMember> = Vec::new();
     for idx in 0..5 {
         let (node_id, signer) = test_node_id_and_signer(idx);
         signers.push(signer);
-        quorum_nodes.push(QuorumSetMember::Node(node_id));
+        quorum_nodes.push(QuorumSetMember::Node(HexKeyNodeID {
+            responder_id: node_id.responder_id,
+            public_key: node_id.public_key,
+        }));
     }
 
     let config = Config {
         start_block_index: 1,
-        min_signatures: 4,
         ledger_db: ledger_db_path,
         watcher_db: watcher_db_path,
         admin_listen_uri: None,
+        verifier_config: LightClientVerifierConfig {
+            trusted_validator_set: TrustedValidatorSetConfig {
+                quorum_set: QuorumSet {
+                    threshold: 3,
+                    members: quorum_nodes.clone(),
+                },
+            },
+            trusted_validator_set_start_block: 1,
+            historical_validator_sets: Default::default(),
+            known_valid_block_ids: BTreeSet::default(),
+        },
     };
 
     log::info!(logger, "Starting relayer");
@@ -128,17 +144,7 @@ fn test_relayer_processing(logger: Logger) {
         sent: Default::default(),
     };
 
-    let known_valid_block_ids = BTreeSet::default();
-    let current_tvs = TrustedValidatorSet {
-        quorum_set: QuorumSet::new(config.min_signatures, quorum_nodes),
-    };
-
-    let verifier = LightClientVerifier {
-        trusted_validator_set: current_tvs,
-        trusted_validator_set_start_block: 1,
-        historical_validator_sets: Default::default(),
-        known_valid_block_ids,
-    };
+    let verifier = LightClientVerifier::from(config.verifier_config.clone());
 
     let mut relayer = Relayer::new(
         config,

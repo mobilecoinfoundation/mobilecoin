@@ -4,7 +4,8 @@
 
 use mc_common::{logger, sentry};
 use mc_ledger_db::LedgerDB;
-use mc_light_client_relayer::{Config, Relayer, TestSender, TestVerifier};
+use mc_light_client_relayer::{Config, Relayer, TestSender};
+use mc_light_client_verifier::LightClientVerifier;
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
@@ -39,6 +40,8 @@ fn main() {
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
+    let verifier = LightClientVerifier::from(config.verifier_config.clone());
+
     Relayer::new(
         config,
         ledger_db,
@@ -47,9 +50,7 @@ fn main() {
             logger: logger.clone(),
             sent: Default::default(),
         },
-        TestVerifier {
-            logger: logger.clone(),
-        },
+        verifier,
         logger,
     );
     // run forever, no stopping condition at the moment

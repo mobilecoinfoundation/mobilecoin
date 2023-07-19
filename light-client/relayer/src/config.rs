@@ -5,9 +5,10 @@
 
 use clap::Parser;
 use mc_blockchain_types::BlockIndex;
+use mc_light_client_verifier::LightClientVerifierConfig;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::{path::PathBuf, fs::File, io::BufReader};
 
 /// Configuration parameters for light client relayer
 #[derive(Debug, Parser, Serialize)]
@@ -34,11 +35,19 @@ pub struct Config {
     #[clap(long, default_value = "1", env = "MC_START_BLOCK_INDEX")]
     pub start_block_index: BlockIndex,
 
-    /// The minimum number of signatures a block must have for the relayer to
-    /// forward it
-    // Note, we could alternatively have a quorum set config here, or a light-client verifier
-    // config.
-    #[clap(long, env = "MC_MIN_SIGNATURES")]
-    pub min_signatures: u32,
-    // TODO: Remote API?
+    /// Path to light client verifier config.
+    #[clap(long, value_parser = parse_verifier_config_from_json, env = "MC_VERIFIER_CONFIG")]
+    pub verifier_config: LightClientVerifierConfig,
+}
+
+fn parse_verifier_config_from_json(path: &str) -> Result<LightClientVerifierConfig, String> {
+    let file = match File::open(path) {
+        Ok(file) => file,
+        Err(_) => return Err(format!("Failed to open verifier config file at {:?}", path)),
+    };
+    let reader = BufReader::new(file);
+    let config: LightClientVerifierConfig = serde_json::from_reader(reader)
+        .map_err(|err| format!("Error parsing verifier config {path}: {err:?}"))?;
+
+    Ok(config)
 }

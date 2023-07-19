@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use std::sync::{Arc, Mutex};
 use crate::RelayedBlock;
 use mc_common::logger::{log, Logger};
+use std::sync::{Arc, Mutex};
 
-/// The relayer finds blocks with burned TxOuts, and then uses the `Sender` to send the 
-/// found blocks to their intended destination. 
+/// The relayer finds blocks with burned TxOuts, and then uses the `Sender` to
+/// send the found blocks to their intended destination.
 pub trait Sender {
     fn send(&mut self, relayed_block: RelayedBlock);
 }
