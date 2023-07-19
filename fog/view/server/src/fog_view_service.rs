@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Shard (store) fog view service
+
 use crate::{server::DbPollSharedState, sharding_strategy::ShardingStrategy, SVC_COUNTERS};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;

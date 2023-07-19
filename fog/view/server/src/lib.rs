@@ -9,6 +9,7 @@ pub mod error;
 pub mod fog_view_router_server;
 pub mod fog_view_router_service;
 pub mod fog_view_service;
+pub mod fog_view_service_standalone;
 pub mod server;
 pub mod sharding_strategy;
 
