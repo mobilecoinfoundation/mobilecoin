@@ -6,7 +6,8 @@
 
 use crate::{
     block_tracker::BlockTracker, config::MobileAcctViewConfig, counters, db_fetcher::DbFetcher,
-    fog_view_service::FogViewService, sharding_strategy::ShardingStrategy,
+    fog_view_service::FogViewService, fog_view_service_standalone::StandaloneFogViewService,
+    sharding_strategy::ShardingStrategy,
 };
 use futures::executor::block_on;
 use mc_attest_net::RaClient;
@@ -113,15 +114,27 @@ where
         let uri = FogViewStoreUri::try_from_responder_id(responder_id, use_tls)
             .expect("Could not create uri from responder id");
 
-        let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
+        let recovery_db = Arc::new(recovery_db);
+
+        let store_fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
             enclave.clone(),
-            Arc::new(recovery_db),
+            recovery_db.clone(),
             db_poll_thread.get_shared_state(),
             uri,
-            client_authenticator,
+            client_authenticator.clone(),
             sharding_strategy,
             logger.clone(),
         ));
+
+        let standalone_fog_view_service =
+            view_grpc::create_fog_view_api(StandaloneFogViewService::new(
+                enclave.clone(),
+                recovery_db,
+                db_poll_thread.get_shared_state(),
+                config.chain_id.clone(),
+                client_authenticator,
+                logger.clone(),
+            ));
 
         // Package service into grpc server
         log::info!(
@@ -130,7 +143,8 @@ where
             config.client_listen_uri,
         );
         let server_builder = grpcio::ServerBuilder::new(env)
-            .register_service(fog_view_service)
+            .register_service(store_fog_view_service)
+            .register_service(standalone_fog_view_service)
             .register_service(health_service);
 
         let server = server_builder
