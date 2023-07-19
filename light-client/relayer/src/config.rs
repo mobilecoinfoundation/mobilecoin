@@ -8,7 +8,7 @@ use mc_blockchain_types::BlockIndex;
 use mc_light_client_verifier::LightClientVerifierConfig;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, fs::File, io::BufReader};
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 /// Configuration parameters for light client relayer
 #[derive(Debug, Parser, Serialize)]
@@ -43,7 +43,7 @@ pub struct Config {
 fn parse_verifier_config_from_json(path: &str) -> Result<LightClientVerifierConfig, String> {
     let file = match File::open(path) {
         Ok(file) => file,
-        Err(_) => return Err(format!("Failed to open verifier config file at {:?}", path)),
+        Err(_) => return Err(format!("Failed to open verifier config file at {path:?}")),
     };
     let reader = BufReader::new(file);
     let config: LightClientVerifierConfig = serde_json::from_reader(reader)
