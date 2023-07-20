@@ -8,6 +8,11 @@ use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier};
 use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_sgx_css::Signature;
 
+pub fn sigstruct() -> Signature {
+    Signature::try_from(&include_bytes!(env!("MCBUILD_ENCLAVE_CSS_PATH"))[..])
+        .expect("Could not read measurement signature")
+}
+
 pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"];
 
 pub const ADVISORIES: Advisories = Advisories::new(
