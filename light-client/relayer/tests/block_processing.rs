@@ -203,7 +203,7 @@ fn test_relayer_processing(logger: Logger) {
             let records = sender.sent.lock().unwrap();
             if records.len() > 0 {
                 assert_eq!(records.len(), 1);
-                let burn_record = records[0].clone();
+                let burn_record = &records[0];
                 assert_eq!(burn_record.burn_tx_outs, vec![burn_txo]);
                 assert_eq!(burn_record.block.id, block.id);
                 assert_eq!(burn_record.block.contents_hash, block.contents_hash);

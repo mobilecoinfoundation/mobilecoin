@@ -62,8 +62,6 @@ impl Relayer {
 
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = shared_state.clone();
-        let thread_sender = sender;
-        let thread_verifier = verifier;
 
         let join_handle = Some(
             ThreadBuilder::new()
@@ -73,8 +71,8 @@ impl Relayer {
                         config,
                         ledger_db,
                         watcher_db,
-                        thread_sender,
-                        thread_verifier,
+                        sender,
+                        verifier,
                         thread_stop_requested,
                         thread_shared_state,
                         logger,
@@ -200,22 +198,21 @@ where
                         cx.span().set_attribute(
                             TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64),
                         );
-                        match self.process_block(&block_data) {
-                            Ok(_) => {
-                                self.next_block_index += 1;
-                                Ok(())
-                            }
-                            Err(e) => Err(e),
-                        }
+                        self.process_block(&block_data)
                     });
-                    if let Err(err) = process_block_result {
-                        log::error!(
-                            self.logger,
-                            "When processing block {}: {:?}",
-                            self.next_block_index,
-                            err
-                        );
-                        std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
+                    match process_block_result {
+                        Ok(_) => {
+                            self.next_block_index += 1;
+                        }
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "When processing block {}: {:?}",
+                                self.next_block_index,
+                                e
+                            );
+                            std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
+                        }
                     }
                 }
             }
@@ -235,20 +232,16 @@ where
             signatures,
             burn_tx_outs: relevant_burns,
         };
-        match self.verifier.verify_burned_tx(burned.clone()) {
-            Ok(_) => {
-                self.sender.send(burned);
-                Ok(())
-            }
-            Err(e) => Err(e.into()),
-        }
+        self.verifier.verify_relayed_block(&burned)?;
+        self.sender.send(burned);
+        Ok(())
     }
 
     /// Function to match TXOs from a block into interesting vector of
     /// unspent UTXOs.
     fn check_for_relevant_burns(outputs: &[TxOut]) -> Vec<TxOut> {
         // Iterate over each output and filter the results using a parallel iterator.
-        let results: Vec<TxOut> = outputs
+        outputs
             .into_par_iter()
             .filter_map(|tx_out| {
                 // View key match against the burn address. If it returns ok, then it's a burn.
@@ -258,9 +251,7 @@ where
                     None
                 }
             })
-            .collect();
-
-        results
+            .collect()
     }
 
     fn get_block_signatures(

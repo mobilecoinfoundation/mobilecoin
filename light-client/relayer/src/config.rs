@@ -41,10 +41,8 @@ pub struct Config {
 }
 
 fn parse_verifier_config_from_json(path: &str) -> Result<LightClientVerifierConfig, String> {
-    let file = match File::open(path) {
-        Ok(file) => file,
-        Err(_) => return Err(format!("Failed to open verifier config file at {path:?}")),
-    };
+    let file = File::open(path)
+        .map_err(|e| format!("Failed to open verifier config file at {path}: {e}"))?;
     let reader = BufReader::new(file);
     let config: LightClientVerifierConfig = serde_json::from_reader(reader)
         .map_err(|err| format!("Error parsing verifier config {path}: {err:?}"))?;
