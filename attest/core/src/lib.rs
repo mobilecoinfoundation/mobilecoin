@@ -26,7 +26,7 @@ pub use crate::{
         EpidPseudonymError, IasQuoteError, IasQuoteResult, JsonError, NonceError, PibError,
         PseManifestError, PseManifestHashError, PseManifestResult, QuoteError, QuoteSignTypeError,
         QuoteVerifyError, ReportBodyVerifyError, ReportDetailsError, RevocationCause, SgxError,
-        SgxResult, SignatureError, TargetInfoError, VerifyError,
+        SgxResult, SignatureError, VerifyError,
     },
     ias::verify::{EpidPseudonym, VerificationReportData},
     nonce::{IasNonce, Nonce, QuoteNonce},
@@ -49,7 +49,6 @@ pub use crate::{
         report_body::ReportBody,
         report_data::{ReportData, ReportDataMask},
         spid::ProviderId,
-        target_info::TargetInfo,
         update_info::*,
         ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
     },
@@ -57,7 +56,7 @@ pub use crate::{
 
 pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 
-pub use mc_sgx_core_types::{MrEnclave, MrSigner};
+pub use mc_sgx_core_types::{MrEnclave, MrSigner, TargetInfo};
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;

@@ -13,8 +13,12 @@ sgx-sim = [
 ]
 
 [dependencies]
+displaydoc = { version = "0.2", default-features = false }
 mc-attest-core = { path = "../core", default-features = false }
 mc-attest-verifier = { path = "../verifier", default-features = false }
+mc-sgx-core-types = "0.7.2"
+mc-sgx-dcap-ql = "0.7.2"
+mc-sgx-dcap-types = "0.7.2"
 mc-sgx-types = { path = "../../sgx/types" }
 
 [build-dependencies]
