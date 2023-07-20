@@ -226,14 +226,14 @@ where
         }
 
         let signatures = self.get_block_signatures(self.next_block_index)?;
-        let burned = RelayedBlock {
+        let relayed_block = RelayedBlock {
             block: block_data.block().clone(),
             block_contents: block_data.contents().clone(),
             signatures,
             burn_tx_outs: relevant_burns,
         };
-        self.verifier.verify_relayed_block(&burned)?;
-        self.sender.send(burned);
+        self.verifier.verify_relayed_block(&relayed_block)?;
+        self.sender.send(relayed_block);
         Ok(())
     }
 
