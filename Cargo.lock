@@ -5020,6 +5020,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-light-client-relayer"
+version = "4.1.0-pre0"
+dependencies = [
+ "clap 4.1.14",
+ "displaydoc",
+ "lazy_static",
+ "mc-account-keys",
+ "mc-blockchain-types",
+ "mc-common",
+ "mc-consensus-scp-types",
+ "mc-crypto-keys",
+ "mc-ledger-db",
+ "mc-light-client-verifier",
+ "mc-transaction-core",
+ "mc-transaction-extra",
+ "mc-util-cli",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-metrics",
+ "mc-util-telemetry",
+ "mc-util-uri",
+ "mc-watcher",
+ "rand",
+ "rayon",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "mc-light-client-verifier"
 version = "4.1.0-pre0"
 dependencies = [

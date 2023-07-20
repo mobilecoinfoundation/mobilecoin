@@ -113,6 +113,7 @@ members = [
     "ledger/migration",
     "ledger/sync",
     "light-client/cli",
+    "light-client/relayer",
     "light-client/verifier",
     "mobilecoind",
     "mobilecoind-dev-faucet",
