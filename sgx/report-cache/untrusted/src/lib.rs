@@ -5,12 +5,12 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
-    PibError, ProviderId, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
-    VerificationReportData, VerifyError,
+    PibError, ProviderId, QuoteError, QuoteSignType, VerificationReport, VerificationReportData,
+    VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_attest_net::{Error as RaError, RaClient};
-use mc_attest_untrusted::QuotingEnclave;
+use mc_attest_untrusted::{QuotingEnclave, TargetInfoError};
 use mc_attest_verifier::Error as VerifierError;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};

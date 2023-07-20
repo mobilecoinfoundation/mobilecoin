@@ -73,7 +73,7 @@ jobs:
     - generate-metadata
     runs-on: [self-hosted, Linux, large-cd]
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.25
+      image: mobilecoin/rust-sgx-base:v0.0.27
 
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
