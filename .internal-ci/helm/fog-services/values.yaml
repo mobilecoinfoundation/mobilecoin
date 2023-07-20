@@ -136,6 +136,7 @@ fogView:
     requests:
       intel.com/sgx: 5000
       memory: 3Gi
+      cpu: 1.1
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -188,6 +189,7 @@ fogLedgerRouter:
     requests:
       intel.com/sgx: 5000
       memory: 1Gi
+      cpu: 1.1
 
   nodeSelector:
     sgx-enabled-node: 'true'
@@ -257,6 +259,7 @@ fogLedger:
     requests:
       intel.com/sgx: 5000
       memory: 3Gi
+      cpu: 1.1
 
   nodeSelector:
     sgx-enabled-node: 'true'
