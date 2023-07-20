@@ -1077,6 +1077,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-trusted",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-crypto-keys",
  "mc-rand",
