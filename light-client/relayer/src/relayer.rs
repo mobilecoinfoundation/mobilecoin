@@ -6,7 +6,7 @@ use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockMeta
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::tx::TxOut;
-use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span, Tracer};
+use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
 use mc_watcher::{error::WatcherDBError, watcher_db::WatcherDB};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -178,7 +178,13 @@ where
                 log::info!(self.logger, "Relayer thread stop requested.");
                 break;
             }
-            match self.ledger_db.get_block_data(self.next_block_index) {
+            let block_data = tracer!().in_span("get_block_data", |cx| {
+                cx.span()
+                    .set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
+                self.ledger_db.get_block_data(self.next_block_index)
+            });
+
+            match block_data {
                 Err(LedgerError::NotFound) => std::thread::sleep(Self::POLLING_FREQUENCY),
                 Err(e) => {
                     log::error!(
@@ -190,7 +196,19 @@ where
                     std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
                 }
                 Ok(block_data) => {
-                    if let Err(err) = self.process_block(&block_data) {
+                    let process_block_result = tracer!().in_span("process_block", |cx| {
+                        cx.span().set_attribute(
+                            TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64),
+                        );
+                        match self.process_block(&block_data) {
+                        Ok(_) =>  {
+                            self.next_block_index += 1;
+                            Ok(())
+                        }  
+                        Err(e) => Err(e)
+                        }
+                    });
+                    if let Err(err) = process_block_result {
                         log::error!(
                             self.logger,
                             "When processing block {}: {:?}",
@@ -198,8 +216,6 @@ where
                             err
                         );
                         std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                    } else {
-                        self.next_block_index += 1;
                     }
                 }
             }
@@ -207,47 +223,25 @@ where
     }
 
     fn process_block(&mut self, block_data: &BlockData) -> Result<(), Error> {
-        let tracer = tracer!();
-
-        let mut span =
-            block_span_builder(&tracer, "process_block", self.next_block_index).start(&tracer);
-
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
-
         let relevant_burns = Self::check_for_relevant_burns(&block_data.contents().outputs);
         if relevant_burns.is_empty() {
             return Ok(());
         }
 
-        // Try to get signatures from the watcher
-        tracer.in_span("loop_for_signatures", |_cx| loop {
-            if self.stop_requested.load(Ordering::SeqCst) {
-                log::info!(self.logger, "Relayer thread stop requested.");
-                return Ok(());
+        let signatures = self.get_block_signatures(self.next_block_index)?;
+        let burned = RelayedBlock {
+            block: block_data.block().clone(),
+            block_contents: block_data.contents().clone(),
+            signatures,
+            burn_tx_outs: relevant_burns,
+        };
+        match self.verifier.verify_burned_tx(burned.clone()) {
+            Ok(_) => {
+                self.sender.send(burned);
+                Ok(())
             }
-            let signatures = self.get_block_signatures(self.next_block_index)?;
-            let burned = RelayedBlock {
-                block: block_data.block().clone(),
-                block_contents: block_data.contents().clone(),
-                signatures,
-                burn_tx_outs: relevant_burns.clone(),
-            };
-            match self.verifier.verify_burned_tx(burned.clone()) {
-                Ok(_) => {
-                    self.sender.send(burned);
-                    return Ok(());
-                }
-                Err(e) => {
-                    log::info!(
-                        self.logger,
-                        "Did not find a quorum yet for block {}: {}",
-                        self.next_block_index,
-                        e,
-                    );
-                    std::thread::sleep(Self::POLLING_FREQUENCY);
-                }
-            }
-        })
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Function to match TXOs from a block into interesting vector of
