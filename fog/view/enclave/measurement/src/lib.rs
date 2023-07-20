@@ -15,11 +15,6 @@ pub fn sigstruct() -> Signature {
 
 pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"];
 
-pub const ADVISORIES: Advisories = Advisories::new(
-    ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
-    AdvisoryStatus::SWHardeningNeeded,
-);
-
 pub fn get_mr_signer_verifier(override_minimum_svn: Option<SecurityVersion>) -> MrSignerVerifier {
     let advisories: Advisories = Advisories::new(
         HARDENING_ADVISORIES,
