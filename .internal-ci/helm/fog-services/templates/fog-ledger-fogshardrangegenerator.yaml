@@ -1,10 +1,10 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- stacks := seq $.Values.fogLedgerShardRangeGenerator.count }}
+{{- $stacks := until (int .Values.fogLedgerShardRangeGenerator.count) }}
 {{- range $stacks }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" $ }}-fog-ledger
+  name: {{ include "fogServices.fullname" $ }}-fog-ledger-{{ . }}
   labels:
     {{- include "fogServices.labels" $ | nindent 4 }}
 spec:
@@ -274,12 +274,15 @@ spec:
           affinity:
             podAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpression:
-                  - key: stack
-                    operator: In
-                    values:
-                    - fog-ledger-{{ . }}
+              - podAffinityTerm:
+                  labelSelector:
+                    matchExpression:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-ledger-{{ . }}
+                  topologyKey: "kubernetes.io/hostname"
+                weight: 1
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
@@ -290,6 +293,7 @@ spec:
                     {{- range (without $stacks .) }}
                     - fog-ledger-{{ . }}
                     {{- end }}
+                topologyKey: "kubernetes.io/hostname"
           {{- end }}
           imagePullSecrets:
           {{- toYaml $.Values.imagePullSecrets | nindent 10 }}

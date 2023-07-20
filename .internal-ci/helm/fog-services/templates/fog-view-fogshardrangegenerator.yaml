@@ -1,10 +1,10 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- stacks := seq .Values.fogViewShardRangeGenerator.count }}
+{{- $stacks := until (int .Values.fogViewShardRangeGenerator.count) }}
 {{- range $stacks }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" $ }}-fog-view
+  name: {{ include "fogServices.fullname" $ }}-fog-view-{{ . }}
   labels:
     {{- include "fogServices.labels" $ | nindent 4 }}
 spec:
@@ -25,8 +25,8 @@ spec:
           matchLabels:
             app: fog-view-router
             stack: fog-view-{{ . }}
-            {{- include "fogServices.selectorLabels"$| nindent 12 }}
-        serviceName: {{ include "fogServices.fullname"$}}-fog-view-router
+            {{- include "fogServices.selectorLabels" $ | nindent 12 }}
+        serviceName: {{ include "fogServices.fullname" $ }}-fog-view-router
         template:
           metadata:
             annotations:
@@ -34,7 +34,7 @@ spec:
             labels:
               app: fog-view-router
               stack: fog-view-{{ . }}
-              {{- include "fogServices.labels"$| nindent 14 }}
+              {{- include "fogServices.labels" $ | nindent 14 }}
           spec:
             # Prevent endpoint creation until all shards for this router are ready
             readinessGates:
@@ -234,12 +234,15 @@ spec:
           affinity:
             podAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpression:
-                  - key: stack
-                    operator: In
-                    values:
-                    - fog-view-{{ . }}
+              - podAffinityTerm:
+                  labelSelector:
+                    matchExpression:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-view-{{ . }}
+                  topologyKey: "kubernetes.io/hostname"
+                weight: 1
             podAntiAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
@@ -250,6 +253,7 @@ spec:
                     {{- range (without $stacks .) }}
                     - fog-view-{{ . }}
                     {{- end }}
+                topologyKey: "kubernetes.io/hostname"
           {{- end }}
           imagePullSecrets:
           {{- toYaml $.Values.imagePullSecrets | nindent 10 }}
