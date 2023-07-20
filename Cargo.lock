@@ -2994,6 +2994,7 @@ dependencies = [
  "cargo-emit",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
