@@ -100,11 +100,10 @@ impl Config {
     ) -> ConnectionResult<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>> {
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-        mr_signer_verifier
-            .set_advisories(Advisories::new(
-                mc_consensus_enclave_measurement::HARDENING_ADVISORIES,
-                AdvisoryStatus::SWHardeningNeeded,
-            ));
+        mr_signer_verifier.set_advisories(Advisories::new(
+            mc_consensus_enclave_measurement::HARDENING_ADVISORIES,
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);

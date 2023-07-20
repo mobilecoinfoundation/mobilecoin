@@ -16,10 +16,8 @@ pub fn sigstruct() -> Signature {
 pub const HARDENING_ADVISORIES: &[&str] = &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"];
 
 pub fn get_mr_signer_verifier(override_minimum_svn: Option<SecurityVersion>) -> MrSignerVerifier {
-    let advisories: Advisories = Advisories::new(
-        HARDENING_ADVISORIES,
-        AdvisoryStatus::SWHardeningNeeded,
-    );
+    let advisories: Advisories =
+        Advisories::new(HARDENING_ADVISORIES, AdvisoryStatus::SWHardeningNeeded);
     let signature = sigstruct();
     let mut mr_signer_verifier = MrSignerVerifier::new(
         signature.mrsigner().into(),
@@ -31,10 +29,8 @@ pub fn get_mr_signer_verifier(override_minimum_svn: Option<SecurityVersion>) -> 
 }
 
 pub fn get_mr_enclave_verifier() -> MrEnclaveVerifier {
-    let advisories: Advisories = Advisories::new(
-        HARDENING_ADVISORIES,
-        AdvisoryStatus::SWHardeningNeeded,
-    );
+    let advisories: Advisories =
+        Advisories::new(HARDENING_ADVISORIES, AdvisoryStatus::SWHardeningNeeded);
     let mut mr_enclave_verifier = MrEnclaveVerifier::from(sigstruct());
     mr_enclave_verifier.set_advisories(advisories);
     mr_enclave_verifier

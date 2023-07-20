@@ -4971,6 +4971,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",

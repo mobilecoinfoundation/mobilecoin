@@ -19,33 +19,44 @@ use mc_attest_core::{
     IasQuoteError, IasQuoteResult, ProductId, SecurityVersion, VerificationReportData,
 };
 use mc_attest_verifier_config::TrustedMeasurement;
-use mc_attestation_verifier::{Advisories, AdvisoryStatus, AdvisoriesVerifier, TrustedMrEnclaveIdentity, TrustedMrSignerIdentity, Verifier};
+use mc_attestation_verifier::{
+    Advisories, AdvisoriesVerifier, AdvisoryStatus, TrustedMrEnclaveIdentity,
+    TrustedMrSignerIdentity, Verifier,
+};
 use mc_sgx_core_types::{MrEnclave, MrSigner};
 use mc_sgx_css::Signature;
 use serde::{Deserialize, Serialize};
 
 /// A helper function used to check exceptions to the quote error = fail rule.
 fn check_ids(quote_status: &IasQuoteResult, advisories: &Advisories) -> bool {
-    let verifier = AdvisoriesVerifier::new(advisories.to_owned());// TODO: this?
+    let verifier = AdvisoriesVerifier::new(advisories.to_owned()); // TODO: this?
     match quote_status {
         Ok(_) => true,
-        Err(IasQuoteError::ConfigurationNeeded { advisory_ids, .. }) => {
-            verifier.verify(&Advisories::new(
+        Err(IasQuoteError::ConfigurationNeeded { advisory_ids, .. }) => verifier
+            .verify(&Advisories::new(
                 advisory_ids,
                 AdvisoryStatus::ConfigurationNeeded,
-            )).is_success().into()
-        }
-        Err(IasQuoteError::SwHardeningNeeded { advisory_ids, .. }) => {
-            verifier.verify(&Advisories::new(
+            ))
+            .is_success()
+            .into(),
+        Err(IasQuoteError::SwHardeningNeeded { advisory_ids, .. }) => verifier
+            .verify(&Advisories::new(
                 advisory_ids,
                 AdvisoryStatus::SWHardeningNeeded,
-            )).is_success().into()
+            ))
+            .is_success()
+            .into(),
+        Err(IasQuoteError::ConfigurationAndSwHardeningNeeded { advisory_ids, .. }) =>
+        //advisory_ids
+        {
+            verifier
+                .verify(&Advisories::new(
+                    advisory_ids,
+                    AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+                ))
+                .is_success()
+                .into()
         }
-        Err(IasQuoteError::ConfigurationAndSwHardeningNeeded { advisory_ids, .. }) => //advisory_ids
-            verifier.verify(&Advisories::new(
-                advisory_ids,
-                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
-            )).is_success().into(),
         Err(_) => false,
     }
 }
@@ -67,7 +78,7 @@ impl Kind {
     /// software/build-time hardening for the given advisory IDs.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn set_advisories<'a>(&mut self, advisories: Advisories) -> &mut Self {
+    pub fn set_advisories(&mut self, advisories: Advisories) -> &mut Self {
         match self {
             Kind::Enclave(v) => {
                 v.set_advisories(advisories);
@@ -144,7 +155,7 @@ impl From<Signature> for MrEnclaveVerifier {
 
 impl From<&TrustedMrEnclaveIdentity> for MrEnclaveVerifier {
     fn from(mr_enclave_identity: &TrustedMrEnclaveIdentity) -> Self {
-        let mut verifier = Self::new(MrEnclave::from(mr_enclave_identity.mr_enclave()));
+        let mut verifier = Self::new(mr_enclave_identity.mr_enclave());
         verifier.set_advisories(mr_enclave_identity.advisories());
         verifier
     }
@@ -210,7 +221,7 @@ impl From<&Signature> for MrSignerVerifier {
 impl From<&TrustedMrSignerIdentity> for MrSignerVerifier {
     fn from(mr_signer_identity: &TrustedMrSignerIdentity) -> Self {
         let mut verifier = Self::new(
-            MrSigner::from(mr_signer_identity.mr_signer()),
+            mr_signer_identity.mr_signer(),
             mr_signer_identity.isv_product_id().into(),
             mr_signer_identity.isv_svn().into(),
         );
@@ -308,7 +319,10 @@ mod test {
     fn mrenclave_config_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned(), "INTEL-SA-00123".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned(), "INTEL-SA-00123".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -327,7 +341,10 @@ mod test {
     fn mrenclave_config_and_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123", "INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00123", "INTEL-SA-00239"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -346,7 +363,10 @@ mod test {
     fn mrenclave_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123".to_owned(), "INTEL-SA-00239".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00123".to_owned(), "INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -365,7 +385,10 @@ mod test {
     fn mrenclave_multi_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationNeeded)
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -384,7 +407,10 @@ mod test {
     fn mrenclave_sw_fail() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239", "INTEL-SA-00123"], AdvisoryStatus::SWHardeningNeeded)
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239", "INTEL-SA-00123"],
+                AdvisoryStatus::SWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -403,7 +429,10 @@ mod test {
     fn mrenclave_sw_empty_fail() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(vec!["INTEL-SA-00334"], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                vec!["INTEL-SA-00334"],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -422,7 +451,10 @@ mod test {
     fn mrenclave_multi_sw_empty_fail() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(vec!["INTEL-SA-00334"], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                vec!["INTEL-SA-00334"],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -460,7 +492,10 @@ mod test {
     fn mrenclave_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -479,7 +514,10 @@ mod test {
     fn mrenclave_multi_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -498,7 +536,10 @@ mod test {
     fn mrenclave_config_sw_pass_config() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239", "INTEL-SA-00123"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),// TODO: HERE!
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239", "INTEL-SA-00123"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ), // TODO: HERE!
         };
 
         let report = VerificationReport {
@@ -517,7 +558,10 @@ mod test {
     fn mrenclave_multi_config_sw_fail_no_config() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::SWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
+                AdvisoryStatus::SWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -536,7 +580,10 @@ mod test {
     fn mrenclave_multi_config_sw_fail_no_sw() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -555,7 +602,10 @@ mod test {
     fn mrenclave_multi_config_sw_fail_short_sw() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -574,7 +624,10 @@ mod test {
     fn mrenclave_multi_config_sw_fail_short_config() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -592,7 +645,10 @@ mod test {
     fn mrenclave_config_sw_fail_sw() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123", "INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00123", "INTEL-SA-00239"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -611,7 +667,10 @@ mod test {
     fn mrenclave_config_sw_fail_neither() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00123"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -631,7 +690,10 @@ mod test {
     fn mrenclave_multi_config_sw_fail_short() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -693,7 +755,7 @@ mod test {
             mr_signer: MrSigner::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::default()
+            advisories: Advisories::default(),
         };
 
         let report = VerificationReport {
@@ -755,7 +817,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239"], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239"],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -777,7 +842,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::SWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::SWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -799,7 +867,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::SWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::SWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -821,7 +892,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -843,7 +917,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -865,7 +942,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::SWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::SWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -887,7 +967,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -909,7 +992,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::ConfigurationNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -931,7 +1017,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::SWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::SWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -945,15 +1034,18 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRSIGNER, product, and minimum version passes, even if the advisory isn't
-    /// accounted for in BOTH config and sw.
+    /// MRSIGNER, product, and minimum version passes, even if the advisory
+    /// isn't accounted for in BOTH config and sw.
     #[test]
     fn mrsigner_pass_multi_config_sw_short_config() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -975,7 +1067,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -997,7 +1092,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -1019,7 +1117,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 1,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00239".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -1041,7 +1142,10 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 1,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(
+                &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            ),
         };
 
         let report = VerificationReport {
@@ -1062,13 +1166,19 @@ mod test {
             [] as [&str; 0],
         ));
         let mut verifier = Kind::from(&measurement);
-        verifier.set_advisories(Advisories::new(["one", "two", "three"], AdvisoryStatus::ConfigurationNeeded));
+        verifier.set_advisories(Advisories::new(
+            ["one", "two", "three"],
+            AdvisoryStatus::ConfigurationNeeded,
+        ));
 
         let Kind::Enclave(mr_enclave_verifier) = verifier
             else {
                 panic!("Should be a mr enclave verifier");
             };
-        assert_eq!(mr_enclave_verifier.advisories, Advisories::new(["one", "two", "three"], AdvisoryStatus::ConfigurationNeeded));
+        assert_eq!(
+            mr_enclave_verifier.advisories,
+            Advisories::new(["one", "two", "three"], AdvisoryStatus::ConfigurationNeeded)
+        );
     }
 
     #[test]
@@ -1079,13 +1189,19 @@ mod test {
             [] as [&str; 0],
         ));
         let mut verifier = Kind::from(&measurement);
-        verifier.set_advisories(Advisories::new(["for", "four", "fore"], AdvisoryStatus::SWHardeningNeeded));
+        verifier.set_advisories(Advisories::new(
+            ["for", "four", "fore"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         let Kind::Enclave(mr_enclave_verifier) = verifier
         else {
             panic!("Should be a mr enclave verifier");
         };
-        assert_eq!(mr_enclave_verifier.advisories, Advisories::new(["for", "four", "fore"], AdvisoryStatus::SWHardeningNeeded));
+        assert_eq!(
+            mr_enclave_verifier.advisories,
+            Advisories::new(["for", "four", "fore"], AdvisoryStatus::SWHardeningNeeded)
+        );
     }
 
     #[test]
@@ -1098,13 +1214,19 @@ mod test {
             [] as [&str; 0],
         ));
         let mut verifier = Kind::from(&measurement);
-        verifier.set_advisories(Advisories::new(["who", "what", "when"], AdvisoryStatus::ConfigurationNeeded));
+        verifier.set_advisories(Advisories::new(
+            ["who", "what", "when"],
+            AdvisoryStatus::ConfigurationNeeded,
+        ));
 
         let Kind::Signer(mr_signer_verifier) = verifier
             else {
                 panic!("Should be a mr signer verifier");
             };
-        assert_eq!(mr_signer_verifier.advisories, Advisories::new(["who", "what", "when"], AdvisoryStatus::ConfigurationNeeded));
+        assert_eq!(
+            mr_signer_verifier.advisories,
+            Advisories::new(["who", "what", "when"], AdvisoryStatus::ConfigurationNeeded)
+        );
     }
 
     #[test]
@@ -1117,13 +1239,22 @@ mod test {
             [] as [&str; 0],
         ));
         let mut verifier = Kind::from(&measurement);
-        verifier.set_advisories(Advisories::new(["past", "present", "future"], AdvisoryStatus::SWHardeningNeeded));
+        verifier.set_advisories(Advisories::new(
+            ["past", "present", "future"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         let Kind::Signer(mr_signer_verifier) = verifier
             else {
                 panic!("Should be a mr signer verifier");
             };
-        assert_eq!(mr_signer_verifier.advisories, Advisories::new(["past", "present", "future"], AdvisoryStatus::SWHardeningNeeded));
+        assert_eq!(
+            mr_signer_verifier.advisories,
+            Advisories::new(
+                ["past", "present", "future"],
+                AdvisoryStatus::SWHardeningNeeded
+            )
+        );
     }
     #[test]
     fn mr_signer_verifier_from_mr_signer_identity() {
@@ -1139,10 +1270,20 @@ mod test {
         assert_eq!(verifier.mr_signer, MrSigner::from(MR_SIGNER));
         assert_eq!(verifier.product_id, 1);
         assert_eq!(verifier.minimum_svn, 2);
-        assert_eq!(verifier.advisories, Advisories::new(
-            ["config_1", "config_2", "config_3", "hardening_1", "hardening_2", "hardening_3"],
-            AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
-        ));
+        assert_eq!(
+            verifier.advisories,
+            Advisories::new(
+                [
+                    "config_1",
+                    "config_2",
+                    "config_3",
+                    "hardening_1",
+                    "hardening_2",
+                    "hardening_3"
+                ],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            )
+        );
     }
 
     #[test]
@@ -1155,9 +1296,19 @@ mod test {
 
         let verifier = MrEnclaveVerifier::from(&mr_enclave_identity);
         assert_eq!(verifier.mr_enclave, MrEnclave::from(MR_ENCLAVE));
-        assert_eq!(verifier.advisories, Advisories::new(
-            ["e_config_1", "e_config_2", "e_config_3", "e_hardening_1", "e_hardening_2", "e_hardening_3"],
-            AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
-        ));
+        assert_eq!(
+            verifier.advisories,
+            Advisories::new(
+                [
+                    "e_config_1",
+                    "e_config_2",
+                    "e_config_3",
+                    "e_hardening_1",
+                    "e_hardening_2",
+                    "e_hardening_3"
+                ],
+                AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
+            )
+        );
     }
 }

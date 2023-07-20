@@ -16,6 +16,7 @@ required-features = ["mc-consensus-enclave-measurement"]
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-attest-verifier = { path = "../../attest/verifier" }
+mc-attestation-verifier = "0.1.0"
 mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
