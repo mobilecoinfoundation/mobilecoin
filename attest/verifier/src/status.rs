@@ -51,7 +51,7 @@ fn check_ids(quote_status: &IasQuoteResult, advisories: &Advisories) -> bool {
 }
 
 /// An enumeration of status verifier types
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Kind {
     /// A measurement-and-status verifier which will check for a MRENCLAVE
     /// value, and allow select non-OK quote-status results from IAS.
@@ -113,7 +113,7 @@ impl Verify<VerificationReportData> for Kind {
 /// A [`Verify<VerificationReportData>`] implementation that will check if the
 /// enclave in question has the given MrEnclave, and has no other IAS report
 /// status issues.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MrEnclaveVerifier {
     mr_enclave: MrEnclave,
     advisories: Advisories,
@@ -164,7 +164,7 @@ impl Verify<VerificationReportData> for MrEnclaveVerifier {
 /// A [`VerifyIasReportData`] implementation that will check if the enclave in
 /// question has the given MrSigner value, and has no other IAS report status
 /// issues.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MrSignerVerifier {
     mr_signer: MrSigner,
     product_id: ProductId,

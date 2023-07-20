@@ -89,4 +89,4 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
 # TODO: release patch and remove
-mc-attestation-verifier = { git = "https://github.com/mobilecoinfoundation/attestation.git", rev = "6e465b6243d6c770a74846e5beed81208e5bfee2" }
+mc-attestation-verifier = { git = "https://github.com/mobilecoinfoundation/attestation.git", rev = "c6c63a110c23b48215ec3741d3efadc80d86d4a2" }

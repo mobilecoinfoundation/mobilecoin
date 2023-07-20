@@ -2707,7 +2707,7 @@ dependencies = [
 [[package]]
 name = "mc-attestation-verifier"
 version = "0.1.0"
-source = "git+https://github.com/mobilecoinfoundation/attestation.git?rev=6e465b6243d6c770a74846e5beed81208e5bfee2#6e465b6243d6c770a74846e5beed81208e5bfee2"
+source = "git+https://github.com/mobilecoinfoundation/attestation.git?rev=c6c63a110c23b48215ec3741d3efadc80d86d4a2#c6c63a110c23b48215ec3741d3efadc80d86d4a2"
 dependencies = [
  "der",
  "displaydoc",
