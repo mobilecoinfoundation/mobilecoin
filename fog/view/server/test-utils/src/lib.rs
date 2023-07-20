@@ -5,6 +5,7 @@
 use grpcio::ChannelBuilder;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
@@ -179,7 +180,8 @@ impl RouterTestEnvironment {
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+        let advisories = Advisories::new(["INTEL-SA-00334"], AdvisoryStatus::SWHardeningNeeded);
+        mr_signer_verifier.set_advisories(advisories);
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 

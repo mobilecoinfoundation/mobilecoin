@@ -5,6 +5,7 @@
 use clap::Parser;
 use grpcio::EnvBuilder;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_common::logger::{o, Logger};
 use mc_connection::{
     HardcodedCredentialsProvider, Result as ConnectionResult, SyncConnection, ThickClient,
@@ -100,7 +101,10 @@ impl Config {
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
         mr_signer_verifier
-            .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
+            .set_advisories(Advisories::new(
+                mc_consensus_enclave_measurement::HARDENING_ADVISORIES,
+                AdvisoryStatus::SWHardeningNeeded,
+            ));
 
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
