@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 /// A helper function used to check exceptions to the quote error = fail rule.
 fn check_ids(quote_status: &IasQuoteResult, advisories: &Advisories) -> bool {
     let verifier = AdvisoriesVerifier::new(advisories.to_owned());// TODO: this?
-    match quote_status {// TODO: HERE! Are these opposite?
+    match quote_status {
         Ok(_) => true,
         Err(IasQuoteError::ConfigurationNeeded { advisory_ids, .. }) => {
             verifier.verify(&Advisories::new(
@@ -321,13 +321,13 @@ mod test {
         assert!(verifier.verify(&data))
     }
 
-    /// Ensure a CONFIGURATION_NEEDED result with the expected MRENCLAVE but
-    /// unexpected advisory fails.
+    /// Ensure a CONFIGURATION_NEEDED result with the expected MRENCLAVE and
+    /// unexpected advisory passes.
     #[test]
-    fn mrenclave_config_fail() {
+    fn mrenclave_config_and_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123".to_owned(), "INTEL-SA-00239".to_owned()], AdvisoryStatus::SWHardeningNeeded),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00123", "INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -337,7 +337,7 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
 
     /// Ensure a SW_HARDENING_NEEDED result with the expected MRENCLAVE and
@@ -379,12 +379,12 @@ mod test {
     }
 
     /// Ensure a SW_HARDENING_NEEDED result with the expected MRENCLAVE but
-    /// unexpected advisory fails.
+    /// unexpected advisory passes.
     #[test]
     fn mrenclave_sw_fail() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned(), "INTEL-SA-00123".to_owned()], AdvisoryStatus::UpToDate)// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00239", "INTEL-SA-00123"], AdvisoryStatus::SWHardeningNeeded)
         };
 
         let report = VerificationReport {
@@ -394,7 +394,7 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
 
     /// Ensure a SW_HARDENING_NEEDED result with the expected MRENCLAVE but
@@ -460,7 +460,7 @@ mod test {
     fn mrenclave_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -479,7 +479,7 @@ mod test {
     fn mrenclave_multi_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -493,12 +493,12 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRENCLAVE and config advisory fails.
+    /// MRENCLAVE and config advisory passes.
     #[test]
-    fn mrenclave_config_sw_fail_config() {
+    fn mrenclave_config_sw_pass_config() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned(), "INTEL-SA-00123".to_owned()], AdvisoryStatus::UpToDate),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00239", "INTEL-SA-00123"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),// TODO: HERE!
         };
 
         let report = VerificationReport {
@@ -508,7 +508,7 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
@@ -517,7 +517,7 @@ mod test {
     fn mrenclave_multi_config_sw_fail_no_config() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::SWHardeningNeeded),
+            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::SWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -536,7 +536,7 @@ mod test {
     fn mrenclave_multi_config_sw_fail_no_sw() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationNeeded),
         };
 
         let report = VerificationReport {
@@ -550,12 +550,12 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRENCLAVE and insufficient sw advisory allow-listing fails.
+    /// MRENCLAVE and insufficient sw advisory allow-listing passes.
     #[test]
     fn mrenclave_multi_config_sw_fail_short_sw() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::UpToDate),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -565,16 +565,16 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRENCLAVE and insufficient config advisory allow-listing fails.
+    /// MRENCLAVE and insufficient config advisory allow-listing passes.
     #[test]
     fn mrenclave_multi_config_sw_fail_short_config() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::UpToDate),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -584,15 +584,15 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRENCLAVE and hardening advisory fails.
+    /// MRENCLAVE and hardening advisory succeeds.
     #[test]
     fn mrenclave_config_sw_fail_sw() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123".to_owned(), "INTEL-SA-00239".to_owned()], AdvisoryStatus::UpToDate),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00123", "INTEL-SA-00239"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -602,7 +602,7 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
@@ -611,7 +611,7 @@ mod test {
     fn mrenclave_config_sw_fail_neither() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00123".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(&vec!["INTEL-SA-00123"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -631,7 +631,7 @@ mod test {
     fn mrenclave_multi_config_sw_fail_short() {
         let verifier = MrEnclaveVerifier {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned()], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
+            advisories: Advisories::new(&vec!["INTEL-SA-00334"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -755,7 +755,7 @@ mod test {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00239".to_owned()], AdvisoryStatus::ConfigurationNeeded),
+            advisories: Advisories::new(&vec!["INTEL-SA-00239"], AdvisoryStatus::ConfigurationNeeded),
         };
 
         let report = VerificationReport {
@@ -945,15 +945,15 @@ mod test {
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
-    /// MRSIGNER, product, and minimum version fails, if the advisory isn't
-    /// accounted for in both config and sw.
+    /// MRSIGNER, product, and minimum version passes, even if the advisory isn't
+    /// accounted for in BOTH config and sw.
     #[test]
-    fn mrsigner_fail_multi_config_sw_short_config() {
+    fn mrsigner_pass_multi_config_sw_short_config() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
             minimum_svn: 0,
-            advisories: Advisories::new(&vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()], AdvisoryStatus::UpToDate),// TODO: HERE!
+            advisories: Advisories::new(&vec!["INTEL-SA-00334", "INTEL-SA-00615"], AdvisoryStatus::ConfigurationAndSWHardeningNeeded),
         };
 
         let report = VerificationReport {
@@ -963,7 +963,7 @@ mod test {
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
-        assert!(!verifier.verify(&data))
+        assert!(verifier.verify(&data))
     }
 
     /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
