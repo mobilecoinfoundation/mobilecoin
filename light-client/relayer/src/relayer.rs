@@ -201,11 +201,11 @@ where
                             TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64),
                         );
                         match self.process_block(&block_data) {
-                        Ok(_) =>  {
-                            self.next_block_index += 1;
-                            Ok(())
-                        }  
-                        Err(e) => Err(e)
+                            Ok(_) => {
+                                self.next_block_index += 1;
+                                Ok(())
+                            }
+                            Err(e) => Err(e),
                         }
                     });
                     if let Err(err) = process_block_result {
