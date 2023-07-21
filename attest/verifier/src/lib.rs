@@ -72,7 +72,7 @@ use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
     Attributes, Basename, ConfigId, ConfigSvn, CpuSvn, EpidGroupId, ExtendedProductId, FamilyId,
-    IasNonce, IsvProductId, IsvSvn, MiscSelect, Quote, QuoteSignType, ReportDataMask,
+    IasNonce, IsvProductId, IsvSvn, MiscellaneousSelect, Quote, QuoteSignType, ReportDataMask,
     VerificationReport, VerificationReportData, VerifyError,
 };
 use mc_attestation_verifier::TrustedIdentity;
@@ -324,7 +324,7 @@ impl Verifier {
     }
 
     /// Verify the report body misc selection matches the given value.
-    pub fn misc_select(&mut self, misc_select: MiscSelect) -> &mut Self {
+    pub fn misc_select(&mut self, misc_select: MiscellaneousSelect) -> &mut Self {
         self.report_body_verifiers
             .push(MiscSelectVerifier::from(misc_select).into());
         self

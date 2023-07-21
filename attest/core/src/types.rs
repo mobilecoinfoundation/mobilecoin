@@ -15,5 +15,3 @@ pub mod report_body;
 pub mod report_data;
 pub mod spid;
 pub mod update_info;
-
-pub type MiscSelect = u32;

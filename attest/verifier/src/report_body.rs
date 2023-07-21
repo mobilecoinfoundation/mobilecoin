@@ -9,7 +9,7 @@ use crate::{
 };
 use mc_attest_core::{
     Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvProductId, IsvSvn,
-    MiscSelect, ReportBody, ReportDataMask,
+    MiscellaneousSelect, ReportBody, ReportDataMask,
 };
 use mc_sgx_core_types::AttributeFlags;
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ impl_kind_from_inner! {
 impl_kind_from_verifier! {
     ConfigVersionVerifier, ConfigVersion, ConfigSvn;
     DebugVerifier, Debug, bool;
-    MiscSelectVerifier, MiscSelect, MiscSelect;
+    MiscSelectVerifier, MiscSelect, MiscellaneousSelect;
     ProductIdVerifier, ProductId, IsvProductId;
     VersionVerifier, Version, IsvSvn;
 }
@@ -169,8 +169,8 @@ impl Verify<ReportBody> for FamilyIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// misc select value matches the one given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct MiscSelectVerifier(MiscSelect);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct MiscSelectVerifier(MiscellaneousSelect);
 
 impl Verify<ReportBody> for MiscSelectVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -460,7 +460,9 @@ mod test {
     #[test]
     fn misc_select_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(MiscSelectVerifier::from(REPORT_BODY_SRC.misc_select));
+        let verifier = Kind::from(MiscSelectVerifier::from(MiscellaneousSelect::from(
+            REPORT_BODY_SRC.misc_select,
+        )));
 
         assert!(verifier.verify(&report_body));
     }
@@ -469,7 +471,9 @@ mod test {
     #[test]
     fn misc_select_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(MiscSelectVerifier::from(REPORT_BODY_SRC.misc_select - 1));
+        let verifier = Kind::from(MiscSelectVerifier::from(MiscellaneousSelect::from(
+            REPORT_BODY_SRC.misc_select - 1,
+        )));
 
         assert!(!verifier.verify(&report_body));
     }

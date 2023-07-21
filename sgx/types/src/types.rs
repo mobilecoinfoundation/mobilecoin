@@ -31,13 +31,14 @@ use error::*;
 use marker::ContiguousMemory;
 
 extern crate mc_sgx_core_sys_types;
-pub use self::mc_sgx_core_sys_types::{sgx_target_info_t, sgx_report_data_t, sgx_attributes_t, sgx_isv_svn_t, sgx_config_svn_t, sgx_cpu_svn_t, sgx_prod_id_t};
+pub use self::mc_sgx_core_sys_types::{
+    sgx_target_info_t, sgx_report_data_t, sgx_attributes_t, sgx_isv_svn_t, sgx_config_svn_t,
+    sgx_cpu_svn_t, sgx_prod_id_t, sgx_misc_select_t
+};
 
 //
 // sgx_attributes.h
 //
-
-pub type sgx_misc_select_t = ::uint32_t;
 
 // Enclave Flags Bit Masks
 pub const SGX_FLAGS_INITTED: ::uint64_t         = 0x0000_0000_0000_0001;    //If set, then the enclave is initialized
