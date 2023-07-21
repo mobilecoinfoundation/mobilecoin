@@ -183,7 +183,7 @@ exclude = [
 ]
 
 [workspace.package]
-rust-version = "1.68.0"
+rust-version = "1.67.0"
 
 [profile.dev]
 opt-level = 0
