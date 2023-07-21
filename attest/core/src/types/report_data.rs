@@ -2,24 +2,11 @@
 
 //! The report data structure
 
-use crate::impl_sgx_newtype_for_bytestruct;
-use mc_sgx_types::{sgx_report_data_t, SGX_REPORT_DATA_SIZE};
-use mc_util_encodings::{Error as EncodingError, IntelLayout};
-use serde::{Deserialize, Serialize};
+use crate::ReportData;
+use mc_util_encodings::Error as EncodingError;
 use subtle::ConstantTimeEq;
 
-/// A data structure used for the user data in a report.
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct ReportData(sgx_report_data_t);
-
-impl_sgx_newtype_for_bytestruct! {
-    ReportData, sgx_report_data_t, SGX_REPORT_DATA_SIZE, d;
-}
-
-#[derive(
-    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
-)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ReportDataMask {
     data: ReportData,
     mask: ReportData,
@@ -27,12 +14,14 @@ pub struct ReportDataMask {
 
 impl ReportDataMask {
     pub fn new_with_mask(data: &[u8], mask: &[u8]) -> Result<Self, EncodingError> {
-        if data.len() > ReportData::X86_64_CSIZE || mask.len() > ReportData::X86_64_CSIZE {
+        if data.len() > ReportData::SIZE || mask.len() > ReportData::SIZE {
             Err(EncodingError::InvalidInputLength)
         } else {
             let mut retval = ReportDataMask::default();
-            retval.data.0.d[..data.len()].copy_from_slice(data);
-            retval.mask.0.d[..mask.len()].copy_from_slice(mask);
+            let r_data: &mut [u8] = retval.data.as_mut();
+            r_data[..data.len()].copy_from_slice(data);
+            let r_mask: &mut [u8] = retval.mask.as_mut();
+            r_mask[..mask.len()].copy_from_slice(mask);
             Ok(retval)
         }
     }
@@ -42,13 +31,15 @@ impl<'src> TryFrom<&'src [u8]> for ReportDataMask {
     type Error = EncodingError;
 
     fn try_from(src: &[u8]) -> Result<Self, EncodingError> {
-        if src.len() > ReportData::X86_64_CSIZE {
+        if src.len() > ReportData::SIZE {
             Err(EncodingError::InvalidInputLength)
         } else {
             let mut retval = ReportDataMask::default();
-            retval.data.0.d[..src.len()].copy_from_slice(src);
-            for i in 0..src.len() {
-                retval.mask.0.d[i] = 0xff;
+            let data: &mut [u8] = retval.data.as_mut();
+            data[..src.len()].copy_from_slice(src);
+            let mask: &mut [u8] = retval.mask.as_mut();
+            for byte in mask.iter_mut().take(src.len()) {
+                *byte = 0xff;
             }
             Ok(retval)
         }
@@ -57,22 +48,18 @@ impl<'src> TryFrom<&'src [u8]> for ReportDataMask {
 
 impl PartialEq<ReportData> for ReportDataMask {
     fn eq(&self, rhs: &ReportData) -> bool {
-        let mut self_data = [0u8; ReportData::X86_64_CSIZE];
-        let mut rhs_data = [0u8; ReportData::X86_64_CSIZE];
+        let data = &self.data & &self.mask;
+        let masked_rhs = rhs & &self.mask;
 
-        for i in 0..self.mask.0.d.len() {
-            self_data[i] = self.data.0.d[i] & self.mask.0.d[i];
-            rhs_data[i] = rhs.0.d[i] & self.mask.0.d[i];
-        }
-
-        self_data[..].ct_eq(&rhs_data[..]).unwrap_u8() == 1
+        let data_ref: &[u8] = data.as_ref();
+        data_ref.ct_eq(masked_rhs.as_ref()).unwrap_u8() == 1
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_util_serial::{deserialize, serialize};
+    use mc_sgx_types::sgx_report_data_t;
 
     const REPORT_DATA_TEST: sgx_report_data_t = sgx_report_data_t {
         d: [
@@ -81,15 +68,6 @@ mod test {
             47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
         ],
     };
-
-    #[test]
-    fn test_serde() {
-        let data: ReportData = REPORT_DATA_TEST.into();
-        let serialized = serialize(&data).expect("Could not serialize report_data");
-        let data2: ReportData =
-            deserialize(&serialized).expect("Could not deserialize report_data");
-        assert_eq!(data, data2);
-    }
 
     #[test]
     fn test_mask() {
