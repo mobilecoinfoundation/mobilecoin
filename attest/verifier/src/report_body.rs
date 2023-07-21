@@ -8,8 +8,8 @@ use crate::{
     Verify,
 };
 use mc_attest_core::{
-    Attributes, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, ExtendedProductId, FamilyId,
-    IsvSvn, MiscSelect, ProductId, ReportBody, ReportDataMask,
+    Attributes, ConfigId, ConfigSvn, CpuSecurityVersion, ExtendedProductId, FamilyId, IsvSvn,
+    MiscSelect, ProductId, ReportBody, ReportDataMask,
 };
 use mc_sgx_core_types::AttributeFlags;
 use serde::{Deserialize, Serialize};
@@ -52,7 +52,7 @@ impl_kind_from_inner! {
 
 // FIXME: Type aliases should be removed so this can be simplified
 impl_kind_from_verifier! {
-    ConfigVersionVerifier, ConfigVersion, ConfigSecurityVersion;
+    ConfigVersionVerifier, ConfigVersion, ConfigSvn;
     DebugVerifier, Debug, bool;
     MiscSelectVerifier, MiscSelect, MiscSelect;
     ProductIdVerifier, ProductId, ProductId;
@@ -101,12 +101,12 @@ impl Verify<ReportBody> for ConfigIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave
 /// configuration version is at least the version specified.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ConfigVersionVerifier(ConfigSecurityVersion);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ConfigVersionVerifier(ConfigSvn);
 
 impl Verify<ReportBody> for ConfigVersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 <= report_body.config_security_version()
+        self.0.as_ref() <= report_body.config_security_version().as_ref()
     }
 }
 
@@ -301,7 +301,9 @@ mod test {
     #[test]
     fn config_version_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn));
+        let verifier = Kind::from(ConfigVersionVerifier::from(ConfigSvn::from(
+            REPORT_BODY_SRC.config_svn,
+        )));
 
         assert!(verifier.verify(&report_body));
     }
@@ -310,7 +312,9 @@ mod test {
     #[test]
     fn config_version_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn - 1));
+        let verifier = Kind::from(ConfigVersionVerifier::from(ConfigSvn::from(
+            REPORT_BODY_SRC.config_svn - 1,
+        )));
 
         assert!(verifier.verify(&report_body));
     }
@@ -319,7 +323,9 @@ mod test {
     #[test]
     fn config_version_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn + 1));
+        let verifier = Kind::from(ConfigVersionVerifier::from(ConfigSvn::from(
+            REPORT_BODY_SRC.config_svn + 1,
+        )));
 
         assert!(!verifier.verify(&report_body));
     }

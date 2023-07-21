@@ -17,6 +17,5 @@ pub mod report_data;
 pub mod spid;
 pub mod update_info;
 
-pub type ConfigSecurityVersion = u16;
 pub type MiscSelect = u32;
 pub type ProductId = u16;
