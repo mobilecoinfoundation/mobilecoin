@@ -20,7 +20,7 @@ pickleshare==0.7.5
 prompt-toolkit==3.0.30
 protobuf==3.19.5
 ptyprocess==0.6.0
-Pygments==2.7.4
+Pygments==2.15.0
 python-dateutil==2.8.2
 requests==2.31.0
 s3transfer==0.5.2

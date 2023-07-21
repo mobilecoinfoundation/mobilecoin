@@ -17,7 +17,6 @@ pub mod pib;
 pub mod report_body;
 pub mod report_data;
 pub mod spid;
-pub mod target_info;
 pub mod update_info;
 
 pub type ConfigSecurityVersion = u16;

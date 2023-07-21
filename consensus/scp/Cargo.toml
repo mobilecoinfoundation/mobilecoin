@@ -21,7 +21,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
 maplit = "1.0.2"
-mockall = "0.11.3"
+mockall = "0.11.4"
 primitive-types = "0.12.1"
 rand = "0.8"
 rand_hc = "0.3"
@@ -35,7 +35,7 @@ mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
-serial_test = "1.0"
+serial_test = "2.0"
 tempfile = "3.5"
 
 [[test]]

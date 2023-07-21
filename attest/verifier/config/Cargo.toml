@@ -16,4 +16,4 @@ serde_json = { version = "1.0.103", default-features = false, features = ["alloc
 
 [dev-dependencies]
 assert_matches = "1.5"
-hex-literal = "0.3.4"
+hex-literal = "0.4.1"

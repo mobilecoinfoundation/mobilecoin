@@ -2,12 +2,16 @@
 
 //! Untrusted attestation support
 
+use displaydoc::Display;
 use mc_attest_core::{
     EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote, QuoteError, QuoteNonce,
-    QuoteSignType, Report, SgxError, SigRL, TargetInfo, TargetInfoError, UpdateInfo,
+    QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
 };
+#[cfg(not(feature = "sgx-sim"))]
+use mc_sgx_dcap_ql::QeTargetInfo;
+use mc_sgx_dcap_types::QlError;
 use mc_sgx_types::{
-    sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote, sgx_init_quote,
+    sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote,
     sgx_report_attestation_status, sgx_status_t,
 };
 
@@ -55,12 +59,18 @@ impl QuotingEnclave {
     }
 
     pub fn target_info() -> Result<(TargetInfo, EpidGroupId), TargetInfoError> {
-        let mut qe_info = TargetInfo::default();
-        let mut gid = EpidGroupId::default();
-        match unsafe { sgx_init_quote(qe_info.as_mut(), gid.as_mut()) } {
-            sgx_status_t::SGX_SUCCESS => Ok((qe_info, gid)),
-            sgx_status_t::SGX_ERROR_BUSY => Err(TargetInfoError::QeBusy),
-            other_status => Err(TargetInfoError::Sgx(other_status.into())),
+        let gid = Self::epid_group_id()?;
+        #[cfg(feature = "sgx-sim")]
+        {
+            // The Intel QE and PCE provided with `libsgx-dcap-ql` only work on SGX
+            // hardware. For EPID there is a simulator implementation of
+            // [sgx_init_quote()](https://github.com/intel/linux-sgx/blob/1efe23c20e37f868498f8287921eedfbcecdc216/sdk/simulation/uae_service_sim/quoting_sim.cpp#L138)
+            // Unfortunately there doesn't seem to be a DCAP equivalent.
+            Ok((TargetInfo::default(), gid))
+        }
+        #[cfg(not(feature = "sgx-sim"))]
+        {
+            Ok((TargetInfo::for_quoting_enclave()?, gid))
         }
     }
 
@@ -82,10 +92,35 @@ impl QuotingEnclave {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum TargetInfoError {
+    /// SGX error: {0}
+    Sgx(SgxError),
+    /// Quote library error: {0}
+    Ql(mc_sgx_dcap_ql::Error),
+    /// Quoting enclave busy
+    QeBusy,
+    /// Error retrying: {0}
+    Retry(String),
+}
+
+impl From<mc_sgx_dcap_ql::Error> for TargetInfoError {
+    fn from(src: mc_sgx_dcap_ql::Error) -> Self {
+        match src {
+            mc_sgx_dcap_ql::Error::QuoteLibrary(QlError::Busy) => TargetInfoError::QeBusy,
+            e => TargetInfoError::Ql(e),
+        }
+    }
+}
+
+impl From<SgxError> for TargetInfoError {
+    fn from(src: SgxError) -> Self {
+        TargetInfoError::Sgx(src)
+    }
+}
+
+impl From<sgx_status_t> for TargetInfoError {
+    fn from(src: sgx_status_t) -> TargetInfoError {
+        TargetInfoError::Sgx(src.into())
     }
 }

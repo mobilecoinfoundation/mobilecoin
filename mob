@@ -288,8 +288,9 @@ if args.image == 'builder-install':
     # set SGX_MODE options
     if args.hw:
         docker_run.append('--env=SGX_MODE=HW')
-        if pathlib.Path("/dev/isgx").is_char_device():
-            docker_run.append("--device=/dev/isgx")
+        for dev in ("/dev/isgx", "/dev/sgx_enclave", "/dev/sgx_provision"):
+            if pathlib.Path(dev).is_char_device():
+                docker_run.append(f"--device={dev}")
     else:
         docker_run.append('--env=SGX_MODE=SW')
 
