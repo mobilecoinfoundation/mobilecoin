@@ -7,11 +7,11 @@ use crate::{
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
     types::{
-        attributes::Attributes, config_id::ConfigId, cpu_svn::CpuSecurityVersion,
-        ext_prod_id::ExtendedProductId, family_id::FamilyId, measurement::Measurement,
-        report_data::ReportDataMask, ConfigSecurityVersion, MiscSelect, ProductId,
+        config_id::ConfigId, cpu_svn::CpuSecurityVersion, ext_prod_id::ExtendedProductId,
+        family_id::FamilyId, measurement::Measurement, report_data::ReportDataMask,
+        ConfigSecurityVersion, MiscSelect, ProductId,
     },
-    IsvSvn, ReportData,
+    Attributes, IsvSvn, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -20,8 +20,8 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
-use mc_sgx_core_types::{MrEnclave, MrSigner};
-use mc_sgx_types::{sgx_measurement_t, sgx_report_body_t, SGX_FLAGS_DEBUG};
+use mc_sgx_core_types::{AttributeFlags, MrEnclave, MrSigner};
+use mc_sgx_types::{sgx_attributes_t, sgx_measurement_t, sgx_report_body_t};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
@@ -35,7 +35,11 @@ const RB_EXTPRODID_START: usize = RB_RESERVED1_END;
 const RB_EXTPRODID_END: usize =
     RB_EXTPRODID_START + <ExtendedProductId as IntelLayout>::X86_64_CSIZE;
 const RB_ATTRIBUTES_START: usize = RB_EXTPRODID_END;
-const RB_ATTRIBUTES_END: usize = RB_ATTRIBUTES_START + <Attributes as IntelLayout>::X86_64_CSIZE;
+const RB_ATTRIBUTES_FLAGS_START: usize = RB_ATTRIBUTES_START;
+const RB_ATTRIBUTES_FLAGS_END: usize = RB_ATTRIBUTES_FLAGS_START + 8;
+const RB_ATTRIBUTES_XFRM_START: usize = RB_ATTRIBUTES_FLAGS_END;
+const RB_ATTRIBUTES_XFRM_END: usize = RB_ATTRIBUTES_XFRM_START + 8;
+const RB_ATTRIBUTES_END: usize = RB_ATTRIBUTES_XFRM_END;
 const RB_MRENCLAVE_START: usize = RB_ATTRIBUTES_END;
 const RB_MRENCLAVE_END: usize = RB_MRENCLAVE_START + MrEnclave::SIZE;
 const RB_RESERVED2_START: usize = RB_MRENCLAVE_END;
@@ -145,8 +149,11 @@ impl ReportBody {
         expected_data: &ReportDataMask,
     ) -> Result<(), ReportBodyVerifyError> {
         // Check debug
-        if !allow_debug && (self.attributes().flags() & SGX_FLAGS_DEBUG != 0) {
-            return Err(ReportBodyVerifyError::DebugNotAllowed);
+        if !allow_debug {
+            let debug_flag = Attributes::default().set_flags(AttributeFlags::DEBUG);
+            if debug_flag & self.attributes() != Attributes::default() {
+                return Err(ReportBodyVerifyError::DebugNotAllowed);
+            }
         }
 
         // Check if we're even using the right product ID
@@ -217,8 +224,7 @@ impl Ord for ReportBody {
     /// Create an arbitrary sort order for report body types
     ///
     /// We sort by Family ID, ProdID, Extended ProdID, SVN, MrSigner, MrEnclave,
-    /// Attributes, Misc Select, ConfigId, ConfigSVN, CPU SVN, and
-    /// ReportData, in that order
+    /// Misc Select, ConfigId, ConfigSVN, CPU SVN, and ReportData, in that order
     fn cmp(&self, other: &Self) -> Ordering {
         match self.0.isv_family_id[..].cmp(&other.0.isv_family_id[..]) {
             Ordering::Equal => match self.0.isv_prod_id.cmp(&other.0.isv_prod_id) {
@@ -226,16 +232,12 @@ impl Ord for ReportBody {
                     Ordering::Equal => match self.0.isv_svn.cmp(&other.0.isv_svn) {
                         Ordering::Equal => match self.mr_signer().cmp(&other.mr_signer()) {
                             Ordering::Equal => match self.mr_enclave().cmp(&other.mr_enclave()) {
-                                Ordering::Equal => match self.attributes().cmp(&other.attributes())
-                                {
-                                    Ordering::Equal => {
-                                        match self.0.misc_select.cmp(&other.0.misc_select) {
-                                            Ordering::Equal => {
-                                                match self.config_id().cmp(&other.config_id()) {
-                                                    Ordering::Equal => match self
-                                                        .0
-                                                        .config_svn
-                                                        .cmp(&other.0.config_svn)
+                                Ordering::Equal => {
+                                    match self.0.misc_select.cmp(&other.0.misc_select) {
+                                        Ordering::Equal => {
+                                            match self.config_id().cmp(&other.config_id()) {
+                                                Ordering::Equal => {
+                                                    match self.0.config_svn.cmp(&other.0.config_svn)
                                                     {
                                                         Ordering::Equal => match self
                                                             .cpu_security_version()
@@ -247,15 +249,14 @@ impl Ord for ReportBody {
                                                             ordering => ordering,
                                                         },
                                                         ordering => ordering,
-                                                    },
-                                                    ordering => ordering,
+                                                    }
                                                 }
+                                                ordering => ordering,
                                             }
-                                            ordering => ordering,
                                         }
+                                        ordering => ordering,
                                     }
-                                    ordering => ordering,
-                                },
+                                }
                                 ordering => ordering,
                             },
                             ordering => ordering,
@@ -302,10 +303,10 @@ impl SgxWrapperType<sgx_report_body_t> for ReportBody {
             &src.isv_ext_prod_id,
             &mut dest[RB_EXTPRODID_START..RB_EXTPRODID_END],
         )?;
-        Attributes::write_ffi_bytes(
-            &src.attributes,
-            &mut dest[RB_ATTRIBUTES_START..RB_ATTRIBUTES_END],
-        )?;
+        dest[RB_ATTRIBUTES_FLAGS_START..RB_ATTRIBUTES_FLAGS_END]
+            .copy_from_slice(&src.attributes.flags.to_le_bytes());
+        dest[RB_ATTRIBUTES_XFRM_START..RB_ATTRIBUTES_XFRM_END]
+            .copy_from_slice(&src.attributes.xfrm.to_le_bytes());
         if MrEnclave::SIZE != dest[RB_MRENCLAVE_START..RB_MRENCLAVE_END].len() {
             return Err(EncodingError::InvalidOutputLength);
         }
@@ -353,7 +354,18 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
                 &src[RB_EXTPRODID_START..RB_EXTPRODID_END],
             )?
             .into(),
-            attributes: Attributes::try_from(&src[RB_ATTRIBUTES_START..RB_ATTRIBUTES_END])?.into(),
+            attributes: sgx_attributes_t {
+                flags: u64::from_le_bytes(
+                    src[RB_ATTRIBUTES_FLAGS_START..RB_ATTRIBUTES_FLAGS_END]
+                        .try_into()
+                        .unwrap(),
+                ),
+                xfrm: u64::from_le_bytes(
+                    src[RB_ATTRIBUTES_XFRM_START..RB_ATTRIBUTES_XFRM_END]
+                        .try_into()
+                        .unwrap(),
+                ),
+            },
             mr_enclave: sgx_measurement_t {
                 m: src[RB_MRENCLAVE_START..RB_MRENCLAVE_END]
                     .try_into()
@@ -481,18 +493,6 @@ mod test {
         body2.0.isv_ext_prod_id[0] = 255;
         assert!(body1 < body2);
         body2.0.isv_ext_prod_id[0] = orig_value;
-        assert_eq!(body1, body2);
-
-        let orig_value = body2.0.attributes.flags;
-        body2.0.attributes.flags += 1;
-        assert!(body1 < body2);
-        body2.0.attributes.flags = orig_value;
-        assert_eq!(body1, body2);
-
-        let orig_value = body2.0.attributes.xfrm;
-        body2.0.attributes.xfrm += 1;
-        assert!(body1 < body2);
-        body2.0.attributes.xfrm = orig_value;
         assert_eq!(body1, body2);
 
         let orig_value = body2.0.mr_enclave.m[0];

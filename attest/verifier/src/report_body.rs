@@ -11,7 +11,7 @@ use mc_attest_core::{
     Attributes, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, ExtendedProductId, FamilyId,
     IsvSvn, MiscSelect, ProductId, ReportBody, ReportDataMask,
 };
-use mc_sgx_types::SGX_FLAGS_DEBUG;
+use mc_sgx_core_types::AttributeFlags;
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of known report body verifier types.
@@ -79,7 +79,7 @@ impl Verify<ReportBody> for Kind {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave flags
 /// match the given attributes.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct AttributesVerifier(Attributes);
 
 impl Verify<ReportBody> for AttributesVerifier {
@@ -128,7 +128,9 @@ pub struct DebugVerifier(bool);
 
 impl Verify<ReportBody> for DebugVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 || (report_body.attributes().flags() & SGX_FLAGS_DEBUG == 0)
+        self.0
+            || (Attributes::default().set_flags(AttributeFlags::DEBUG) & report_body.attributes()
+                == Attributes::default())
     }
 }
 
@@ -203,6 +205,7 @@ mod test {
     use super::*;
     use mc_sgx_types::{
         sgx_attributes_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t, sgx_report_data_t,
+        SGX_FLAGS_DEBUG,
     };
 
     const ONES: [u8; 64] = [0xffu8; 64];
