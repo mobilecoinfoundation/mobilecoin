@@ -15,9 +15,7 @@
 
 use crate::Verify;
 use alloc::borrow::ToOwned;
-use mc_attest_core::{
-    IasQuoteError, IasQuoteResult, ProductId, SecurityVersion, VerificationReportData,
-};
+use mc_attest_core::{IasQuoteError, IasQuoteResult, IsvSvn, ProductId, VerificationReportData};
 use mc_attest_verifier_config::TrustedMeasurement;
 use mc_attestation_verifier::{
     Advisories, AdvisoriesVerifier, AdvisoryStatus, TrustedMrEnclaveIdentity,
@@ -62,7 +60,7 @@ fn check_ids(quote_status: &IasQuoteResult, advisories: &Advisories) -> bool {
 }
 
 /// An enumeration of status verifier types
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Kind {
     /// A measurement-and-status verifier which will check for a MRENCLAVE
     /// value, and allow select non-OK quote-status results from IAS.
@@ -176,11 +174,11 @@ impl Verify<VerificationReportData> for MrEnclaveVerifier {
 /// A [`VerifyIasReportData`] implementation that will check if the enclave in
 /// question has the given MrSigner value, and has no other IAS report status
 /// issues.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MrSignerVerifier {
     mr_signer: MrSigner,
     product_id: ProductId,
-    minimum_svn: SecurityVersion,
+    minimum_svn: IsvSvn,
     advisories: Advisories,
 }
 
@@ -190,7 +188,7 @@ impl MrSignerVerifier {
     pub fn new(
         mr_signer: MrSigner,
         product_id: ProductId,
-        minimum_svn: SecurityVersion,
+        minimum_svn: IsvSvn,
     ) -> MrSignerVerifier {
         Self {
             mr_signer,
@@ -226,7 +224,7 @@ impl From<&TrustedMrSignerIdentity> for MrSignerVerifier {
         let mut verifier = Self::new(
             mr_signer_identity.mr_signer(),
             mr_signer_identity.isv_product_id().into(),
-            mr_signer_identity.isv_svn().into(),
+            mr_signer_identity.isv_svn(),
         );
         verifier.set_advisories(mr_signer_identity.advisories());
         verifier
@@ -238,7 +236,7 @@ impl Verify<VerificationReportData> for MrSignerVerifier {
         if let Ok(report_body) = data.quote.report_body() {
             self.mr_signer == report_body.mr_signer()
                 && report_body.product_id() == self.product_id
-                && report_body.security_version() >= self.minimum_svn
+                && report_body.security_version().as_ref() >= self.minimum_svn.as_ref()
                 && check_ids(&data.quote_status, &self.advisories)
         } else {
             false
@@ -716,7 +714,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
 
@@ -737,7 +735,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
 
@@ -757,7 +755,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
 
@@ -777,7 +775,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
 
@@ -797,7 +795,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 1,
+            minimum_svn: 1.into(),
             advisories: Advisories::default(),
         };
 
@@ -819,7 +817,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239"],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -844,7 +842,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -869,7 +867,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -894,7 +892,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -919,7 +917,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -944,7 +942,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -969,7 +967,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -994,7 +992,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -1019,7 +1017,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -1044,7 +1042,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -1069,7 +1067,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -1094,7 +1092,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 1,
-            minimum_svn: 0,
+            minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -1119,7 +1117,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 1,
+            minimum_svn: 1.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -1144,7 +1142,7 @@ mod test {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
             product_id: 0,
-            minimum_svn: 1,
+            minimum_svn: 1.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -1272,7 +1270,7 @@ mod test {
         let verifier = MrSignerVerifier::from(&mr_signer_identity);
         assert_eq!(verifier.mr_signer, MrSigner::from(MR_SIGNER));
         assert_eq!(verifier.product_id, 1);
-        assert_eq!(verifier.minimum_svn, 2);
+        assert_eq!(verifier.minimum_svn, 2.into());
         assert_eq!(
             verifier.advisories,
             Advisories::new(

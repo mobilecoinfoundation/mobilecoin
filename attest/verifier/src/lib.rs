@@ -72,8 +72,8 @@ use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
     Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
-    ExtendedProductId, FamilyId, IasNonce, MiscSelect, ProductId, Quote, QuoteSignType,
-    ReportDataMask, SecurityVersion, VerificationReport, VerificationReportData, VerifyError,
+    ExtendedProductId, FamilyId, IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType,
+    ReportDataMask, VerificationReport, VerificationReportData, VerifyError,
 };
 use mc_attest_verifier_config::TrustedMeasurement;
 use serde::{Deserialize, Serialize};
@@ -152,7 +152,7 @@ impl From<VerifyError> for Error {
 
 /// A builder structure used to construct a report verifier based on the
 /// criteria specified.
-#[derive(Clone, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, PartialEq)]
 pub struct Verifier {
     /// A list of DER-encoded trust anchor certificates.
     trust_anchors: Vec<Vec<u8>>,
@@ -249,14 +249,14 @@ impl Verifier {
 
     /// Verify that the quoting enclave's security version is at least the given
     /// version.
-    pub fn qe_security_version(&mut self, qe_svn: SecurityVersion) -> &mut Self {
+    pub fn qe_security_version(&mut self, qe_svn: IsvSvn) -> &mut Self {
         self.quote_verifiers.push(QuoteKind::QeSvn(qe_svn.into()));
         self
     }
 
     /// Verify that the quoting enclave's security version is at least the given
     /// version.
-    pub fn pce_security_version(&mut self, pce_svn: SecurityVersion) -> &mut Self {
+    pub fn pce_security_version(&mut self, pce_svn: IsvSvn) -> &mut Self {
         self.quote_verifiers.push(QuoteKind::PceSvn(pce_svn.into()));
         self
     }
@@ -338,7 +338,7 @@ impl Verifier {
     }
 
     /// Verify the report body (enclave) version is at least the given value.
-    pub fn version(&mut self, version: SecurityVersion) -> &mut Self {
+    pub fn version(&mut self, version: IsvSvn) -> &mut Self {
         self.report_body_verifiers
             .push(VersionVerifier::from(version).into());
         self
@@ -499,7 +499,7 @@ mod test {
                 84, 121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
             ]),
             10,
-            10,
+            10.into(),
         );
         mr_signer1.set_advisories(Advisories::new(
             ["INTEL-SA-00334", "INTEL-SA-00615"],
@@ -511,7 +511,7 @@ mod test {
                 84, 121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
             ]),
             1,
-            1,
+            1.into(),
         );
         mr_signer2.set_advisories(Advisories::new(
             ["INTEL-SA-00334", "INTEL-SA-00615"],

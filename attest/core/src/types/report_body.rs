@@ -14,8 +14,9 @@ use crate::{
         family_id::FamilyId,
         measurement::Measurement,
         report_data::{ReportData, ReportDataMask},
-        ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
+        ConfigSecurityVersion, MiscSelect, ProductId,
     },
+    IsvSvn,
 };
 use alloc::vec::Vec;
 use core::{
@@ -134,8 +135,8 @@ impl ReportBody {
     }
 
     /// Retrieve the security version of the enclave
-    pub fn security_version(&self) -> SecurityVersion {
-        self.0.isv_svn
+    pub fn security_version(&self) -> IsvSvn {
+        self.0.isv_svn.into()
     }
 
     /// Verify the contents of a report body are acceptable based on the
@@ -145,7 +146,7 @@ impl ReportBody {
         allow_debug: bool,
         expected_measurements: &[Measurement],
         expected_product_id: ProductId,
-        minimum_security_version: SecurityVersion,
+        minimum_security_version: IsvSvn,
         expected_data: &ReportDataMask,
     ) -> Result<(), ReportBodyVerifyError> {
         // Check debug
@@ -164,9 +165,9 @@ impl ReportBody {
 
         // Check if the security version is high enough
         let svn = self.security_version();
-        if minimum_security_version > svn {
+        if minimum_security_version.as_ref() > svn.as_ref() {
             return Err(ReportBodyVerifyError::SecurityVersion(
-                minimum_security_version,
+                minimum_security_version.into(),
             ));
         }
 

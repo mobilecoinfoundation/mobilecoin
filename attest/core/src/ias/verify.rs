@@ -14,7 +14,7 @@ use crate::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
     },
-    VerificationReport, BASE64_ENGINE,
+    IsvSvn, VerificationReport, BASE64_ENGINE,
 };
 use alloc::{
     string::{String, ToString},
@@ -198,7 +198,7 @@ impl VerificationReportData {
         allow_debug: bool,
         expected_measurements: &[Measurement],
         expected_product_id: u16,
-        minimum_security_version: u16,
+        minimum_security_version: IsvSvn,
         expected_data: &ReportDataMask,
     ) -> Result<(), VerifyError> {
         self.verify_data(

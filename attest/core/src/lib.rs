@@ -50,13 +50,13 @@ pub use crate::{
         report_data::{ReportData, ReportDataMask},
         spid::ProviderId,
         update_info::*,
-        ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
+        ConfigSecurityVersion, MiscSelect, ProductId,
     },
 };
 
 pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 
-pub use mc_sgx_core_types::{MrEnclave, MrSigner, TargetInfo};
+pub use mc_sgx_core_types::{IsvSvn, MrEnclave, MrSigner, TargetInfo};
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;
