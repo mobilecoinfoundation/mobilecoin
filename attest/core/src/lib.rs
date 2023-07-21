@@ -35,17 +35,19 @@ pub use crate::{
     seal::{IntelSealed, IntelSealingError, ParseSealedError, Sealed},
     sigrl::SigRL,
     types::{
-        basename::Basename, config_id::ConfigId, cpu_svn::CpuSecurityVersion,
-        epid_group_id::EpidGroupId, ext_prod_id::ExtendedProductId, family_id::FamilyId,
-        key_id::KeyId, mac::Mac, measurement::Measurement, pib::PlatformInfoBlob,
-        report_body::ReportBody, report_data::ReportDataMask, spid::ProviderId, update_info::*,
-        ConfigSecurityVersion, MiscSelect, ProductId,
+        basename::Basename, cpu_svn::CpuSecurityVersion, epid_group_id::EpidGroupId,
+        ext_prod_id::ExtendedProductId, family_id::FamilyId, key_id::KeyId, mac::Mac,
+        measurement::Measurement, pib::PlatformInfoBlob, report_body::ReportBody,
+        report_data::ReportDataMask, spid::ProviderId, update_info::*, ConfigSecurityVersion,
+        MiscSelect, ProductId,
     },
 };
 
 pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 
-pub use mc_sgx_core_types::{Attributes, IsvSvn, MrEnclave, MrSigner, ReportData, TargetInfo};
+pub use mc_sgx_core_types::{
+    Attributes, ConfigId, IsvSvn, MrEnclave, MrSigner, ReportData, TargetInfo,
+};
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;

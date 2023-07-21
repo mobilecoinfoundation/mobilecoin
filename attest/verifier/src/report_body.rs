@@ -90,7 +90,7 @@ impl Verify<ReportBody> for AttributesVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave
 /// configuration ID matches the given value
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ConfigIdVerifier(ConfigId);
 
 impl Verify<ReportBody> for ConfigIdVerifier {
