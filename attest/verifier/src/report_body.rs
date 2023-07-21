@@ -158,7 +158,7 @@ impl Verify<ReportBody> for ExtendedProductIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// family ID matches the one given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FamilyIdVerifier(FamilyId);
 
 impl Verify<ReportBody> for FamilyIdVerifier {
