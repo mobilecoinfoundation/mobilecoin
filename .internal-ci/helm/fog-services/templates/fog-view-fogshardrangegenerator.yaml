@@ -56,22 +56,27 @@ spec:
               {{- toYaml $.Values.fogViewRouter.nodeSelector | nindent 14 }}
             tolerations:
               {{- toYaml $.Values.fogViewRouter.tolerations | nindent 14 }}
+            {{- if $.Values.fogViewRouter.affinityEnabled }}
             affinity:
-              {{- toYaml $.Values.fogViewRouter.affinity | nindent 14 }}
-            {{- if $.Values.fogViewRouter.topologySpreadConstraintsEnabled }}
-            topologySpreadConstraints:
-            - topologyKey: topology.kubernetes.io/zone
-              maxSkew: 1
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app: fog-view-router
-            - topologyKey: kubernetes.io/hostname
-              maxSkew: 1
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app: fog-view-router
+              podAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-view-{{ . }}
+                  topologyKey: topology.kubernetes.io/zone
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: stack
+                        operator: In
+                        values:
+                        - fog-view-{{ . }}
+                    topologyKey: "kubernetes.io/hostname"
+                  weight: 1
             {{- end }}
             imagePullSecrets:
             {{- toYaml $.Values.imagePullSecrets | nindent 12 }}
@@ -230,30 +235,36 @@ spec:
             stack: fog-view-{{ . }}
             {{- include "fogServices.labels" $ | nindent 12 }}
         spec:
+          {{- if $.Values.fogView.topologySpreadConstraintsEnabled }}
+          topologySpreadConstraints:
+          - topologyKey: topology.kubernetes.io/zone
+            maxSkew: 1
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app: fog-view-store
+          {{- end }}
           {{- if $.Values.fogView.affinityEnabled }}
           affinity:
             podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: stack
+                    operator: In
+                    values:
+                    - fog-view-{{ . }}
+                topologyKey: topology.kubernetes.io/zone
               preferredDuringSchedulingIgnoredDuringExecution:
               - podAffinityTerm:
                   labelSelector:
-                    matchExpression:
+                    matchExpressions:
                     - key: stack
                       operator: In
                       values:
                       - fog-view-{{ . }}
                   topologyKey: "kubernetes.io/hostname"
                 weight: 1
-            podAntiAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpression:
-                  - key: stack
-                    operator: In
-                    values:
-                    {{- range (without $stacks .) }}
-                    - fog-view-{{ . }}
-                    {{- end }}
-                topologyKey: "kubernetes.io/hostname"
           {{- end }}
           imagePullSecrets:
           {{- toYaml $.Values.imagePullSecrets | nindent 10 }}

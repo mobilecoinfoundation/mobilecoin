@@ -52,7 +52,7 @@ fogViewStores:
     shardOverlap: 400_000
 
 fogViewShardRangeGenerator:
-  count: 2
+  count: 4
 
 fogViewRouter:
   podManagementPolicy: Parallel
@@ -76,8 +76,9 @@ fogViewRouter:
     value: 'true'
     effect: NoSchedule
 
+  # disable affinity rules for single node testing
+  affinityEnabled: true
   topologySpreadConstraintsEnabled: true
-  affinity: {}
 
   rust:
     backtrace: full
@@ -128,6 +129,7 @@ fogView:
 
   # disable affinity rules for single node testing
   affinityEnabled: true
+  topologySpreadConstraintsEnabled: true
 
   ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
   resources:
@@ -161,14 +163,14 @@ fogLedgerStores:
     shardOverlap: 400_000
 
 fogLedgerShardRangeGenerator:
-  count: 2
+  count: 4
 
 fogLedgerRouter:
   replicaCount: 1
   podManagementPolicy: Parallel
 
+  affinityEnabled: true
   topologySpreadConstraintsEnabled: true
-  affinity: {}
 
   podAnnotations:
     fluentbit.io/include: 'true' # collect logs with fluentbit
@@ -210,6 +212,7 @@ fogLedger:
 
   # disable affinity rules for single node testing
   affinityEnabled: true
+  topologySpreadConstraintsEnabled: true
 
   podManagementPolicy: Parallel
 

@@ -42,22 +42,27 @@ spec:
             readinessGates:
             - conditionType: mobilecoin.com/shards-ready
             # Try to balance pods across zones
-            {{- if $.Values.fogViewRouter.topologySpreadConstraintsEnabled }}
-            topologySpreadConstraints:
-            - topologyKey: topology.kubernetes.io/zone
-              maxSkew: 1
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app: fog-ledger-router
-                  {{- include "fogServices.selectorLabels" $ | nindent 16 }}
-            - topologyKey: kubernetes.io/hostname
-              maxSkew: 1
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app: fog-ledger-router
-                  {{- include "fogServices.selectorLabels" $ | nindent 16 }}
+            {{- if $.Values.fogLedgerRouter.affinityEnabled }}
+            affinity:
+              podAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-ledger-{{ . }}
+                  topologyKey: topology.kubernetes.io/zone
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: stack
+                        operator: In
+                        values:
+                        - fog-ledger-{{ . }}
+                    topologyKey: "kubernetes.io/hostname"
+                  weight: 1
             {{- end }}
             imagePullSecrets:
             {{- toYaml $.Values.imagePullSecrets | nindent 12 }}
@@ -216,8 +221,6 @@ spec:
               {{- toYaml $.Values.fogLedgerRouter.nodeSelector | nindent 14 }}
             tolerations:
               {{- toYaml $.Values.fogLedgerRouter.tolerations | nindent 14 }}
-            affinity:
-              {{- toYaml $.Values.fogLedgerRouter.affinity | nindent 14 }}
             volumes:
             {{- if eq $.Values.fogLedger.persistence.enabled false }}
             - name: fog-data
@@ -270,30 +273,36 @@ spec:
             stack: fog-ledger-{{ . }}
             {{- include "fogServices.labels" $ | nindent 12 }}
         spec:
+          {{- if $.Values.fogLedger.topologySpreadConstraintsEnabled }}
+          topologySpreadConstraints:
+          - topologyKey: topology.kubernetes.io/zone
+            maxSkew: 1
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app: fog-ledger-store
+          {{- end }}
           {{- if $.Values.fogLedger.affinityEnabled }}
           affinity:
             podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: stack
+                    operator: In
+                    values:
+                    - fog-ledger-{{ . }}
+                topologyKey: topology.kubernetes.io/zone
               preferredDuringSchedulingIgnoredDuringExecution:
               - podAffinityTerm:
                   labelSelector:
-                    matchExpression:
+                    matchExpressions:
                     - key: stack
                       operator: In
                       values:
                       - fog-ledger-{{ . }}
                   topologyKey: "kubernetes.io/hostname"
                 weight: 1
-            podAntiAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpression:
-                  - key: stack
-                    operator: In
-                    values:
-                    {{- range (without $stacks .) }}
-                    - fog-ledger-{{ . }}
-                    {{- end }}
-                topologyKey: "kubernetes.io/hostname"
           {{- end }}
           imagePullSecrets:
           {{- toYaml $.Values.imagePullSecrets | nindent 10 }}
