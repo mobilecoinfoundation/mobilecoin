@@ -9,7 +9,6 @@ pub mod key_id;
 pub mod mac;
 pub mod measurement;
 pub mod pib;
-pub mod report_body;
 pub mod report_data;
 pub mod spid;
 pub mod update_info;

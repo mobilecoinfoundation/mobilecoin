@@ -33,7 +33,7 @@ use marker::ContiguousMemory;
 extern crate mc_sgx_core_sys_types;
 pub use self::mc_sgx_core_sys_types::{
     sgx_target_info_t, sgx_report_data_t, sgx_attributes_t, sgx_isv_svn_t, sgx_config_svn_t,
-    sgx_cpu_svn_t, sgx_prod_id_t, sgx_misc_select_t
+    sgx_cpu_svn_t, sgx_prod_id_t, sgx_misc_select_t, sgx_report_body_t, sgx_report_t, sgx_measurement_t
 };
 
 //
@@ -384,56 +384,7 @@ pub const SGX_ISV_FAMILY_ID_SIZE: ::size_t  = 16;
 pub type sgx_isvext_prod_id_t = [::uint8_t; SGX_ISVEXT_PROD_ID_SIZE];
 pub type sgx_isvfamily_id_t = [::uint8_t; SGX_ISV_FAMILY_ID_SIZE];
 
-impl_struct! {
-
-    pub struct sgx_measurement_t {
-        pub m: [::uint8_t; SGX_HASH_SIZE],
-    }
-}
-
 pub type sgx_mac_t = [::uint8_t; SGX_MAC_SIZE];
-
-pub const SGX_TARGET_INFO_RESERVED1_BYTES: ::size_t = 2;
-pub const SGX_TARGET_INFO_RESERVED2_BYTES: ::size_t = 8;
-pub const SGX_TARGET_INFO_RESERVED3_BYTES: ::size_t = 384;
-
-impl_copy_clone! {
-
-    pub struct sgx_report_body_t {
-        pub cpu_svn: sgx_cpu_svn_t,
-        pub misc_select: sgx_misc_select_t,
-        pub reserved1: [::uint8_t; 12],
-        pub isv_ext_prod_id: sgx_isvext_prod_id_t,
-        pub attributes: sgx_attributes_t,
-        pub mr_enclave: sgx_measurement_t,
-        pub reserved2: [::uint8_t; 32],
-        pub mr_signer: sgx_measurement_t,
-        pub reserved3: [::uint8_t; 32],
-        pub config_id: sgx_config_id_t,
-        pub isv_prod_id: sgx_prod_id_t,
-        pub isv_svn: sgx_isv_svn_t,
-        pub config_svn: sgx_config_svn_t,
-        pub reserved4: [::uint8_t; 42],
-        pub isv_family_id: sgx_isvfamily_id_t,
-        pub report_data: sgx_report_data_t,
-    }
-
-    pub struct sgx_report_t {
-        pub body: sgx_report_body_t,
-        pub key_id: sgx_key_id_t,
-        pub mac: sgx_mac_t,
-    }
-}
-
-impl_struct_default! {
-    sgx_report_body_t, 384;
-    sgx_report_t, 432;
-}
-
-impl_struct_ContiguousMemory! {
-    sgx_report_body_t;
-    sgx_report_t;
-}
 
 //
 // sgx_spinlock.h

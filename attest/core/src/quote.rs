@@ -7,21 +7,22 @@ use alloc::vec;
 
 use crate::{
     error::{QuoteError, QuoteSignTypeError, QuoteVerifyError},
-    report::Report,
     types::{
         basename::Basename, epid_group_id::EpidGroupId, measurement::Measurement,
-        report_body::ReportBody, report_data::ReportDataMask,
+        report_data::ReportDataMask,
     },
-    IsvProductId, IsvSvn, BASE64_ENGINE,
+    IsvProductId, IsvSvn, Report, ReportBody, ReportBodyVerifyError, BASE64_ENGINE,
 };
 use alloc::vec::Vec;
 use base64::Engine;
 use core::{
     cmp::{max, min},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
+    mem,
     ops::Range,
 };
 use hex_fmt::HexFmt;
+use mc_sgx_core_types::{AttributeFlags, Attributes};
 use mc_sgx_types::{sgx_quote_sign_type_t, sgx_quote_t};
 use mc_util_encodings::{
     base64_buffer_size, Error as EncodingError, FromBase64, IntelLayout, ToBase64, ToX64,
@@ -44,8 +45,7 @@ const QUOTE_XEID_END: usize = QUOTE_XEID_START + INTEL_U32_SIZE;
 const QUOTE_BASENAME_START: usize = QUOTE_XEID_END;
 const QUOTE_BASENAME_END: usize = QUOTE_BASENAME_START + <Basename as IntelLayout>::X86_64_CSIZE;
 const QUOTE_REPORTBODY_START: usize = QUOTE_BASENAME_END;
-const QUOTE_REPORTBODY_END: usize =
-    QUOTE_REPORTBODY_START + <ReportBody as IntelLayout>::X86_64_CSIZE;
+const QUOTE_REPORTBODY_END: usize = QUOTE_REPORTBODY_START + mem::size_of::<ReportBody>();
 const QUOTE_SIGLEN_START: usize = QUOTE_REPORTBODY_END;
 const QUOTE_SIGLEN_END: usize = QUOTE_SIGLEN_START + INTEL_U32_SIZE;
 const QUOTE_SIGNATURE_START: usize = QUOTE_SIGLEN_END;
@@ -224,8 +224,8 @@ impl Quote {
 
     /// Read the report body from the quote
     pub fn report_body(&self) -> Result<ReportBody, EncodingError> {
-        self.try_get_slice(QUOTE_REPORTBODY_START..QUOTE_REPORTBODY_END)
-            .and_then(ReportBody::try_from)
+        let slice = self.try_get_slice(QUOTE_REPORTBODY_START..QUOTE_REPORTBODY_END)?;
+        ReportBody::try_from(slice).map_err(|_| EncodingError::InvalidInputLength)
     }
 
     /// Read the signature length from the quote (may be zero)
@@ -287,7 +287,7 @@ impl Quote {
         quoted_report: &Report,
     ) -> Result<(), QuoteError> {
         let qe_body = qe_report.body();
-        if self.qe_security_version()? != qe_body.security_version() {
+        if self.qe_security_version()? != qe_body.isv_svn() {
             return Err(QuoteVerifyError::QeVersionMismatch.into());
         }
 
@@ -322,14 +322,68 @@ impl Quote {
             return Err(QuoteSignTypeError::Mismatch(expected_type, sign_type).into());
         }
 
-        // Check report body
-        self.report_body()?.verify(
+        self.verify_report_body(
             allow_debug,
             expected_measurements,
             expected_product_id,
             minimum_security_version,
             expected_data,
         )?;
+
+        Ok(())
+    }
+
+    fn verify_report_body(
+        &self,
+        allow_debug: bool,
+        expected_measurements: &[Measurement],
+        expected_product_id: IsvProductId,
+        minimum_security_version: IsvSvn,
+        expected_data: &ReportDataMask,
+    ) -> Result<(), QuoteError> {
+        let report_body = self.report_body()?;
+
+        if !allow_debug {
+            let debug_flag = Attributes::default().set_flags(AttributeFlags::DEBUG);
+            if debug_flag & report_body.attributes() != Attributes::default() {
+                return Err(ReportBodyVerifyError::DebugNotAllowed.into());
+            }
+        }
+
+        let product_id = report_body.isv_product_id();
+        if expected_product_id != product_id {
+            return Err(ReportBodyVerifyError::ProductId(
+                expected_product_id.into(),
+                product_id.into(),
+            )
+            .into());
+        }
+
+        let svn = report_body.isv_svn();
+        if minimum_security_version.as_ref() > svn.as_ref() {
+            return Err(
+                ReportBodyVerifyError::SecurityVersion(minimum_security_version.into()).into(),
+            );
+        }
+
+        // Any match of expected mr_signers or mr_enclaves passes verification.
+        let mr_signer = report_body.mr_signer();
+        let mr_enclave = report_body.mr_enclave();
+        if !expected_measurements
+            .iter()
+            .any(|m| m == &mr_signer || m == &mr_enclave)
+        {
+            return Err(ReportBodyVerifyError::MrMismatch(
+                expected_measurements.to_vec(),
+                mr_enclave,
+                mr_signer,
+            )
+            .into());
+        }
+
+        if expected_data != &report_body.report_data() {
+            return Err(ReportBodyVerifyError::DataMismatch.into());
+        }
 
         Ok(())
     }
