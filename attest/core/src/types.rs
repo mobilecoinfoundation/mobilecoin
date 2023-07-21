@@ -17,4 +17,3 @@ pub mod spid;
 pub mod update_info;
 
 pub type MiscSelect = u32;
-pub type ProductId = u16;

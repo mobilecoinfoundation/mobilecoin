@@ -8,8 +8,8 @@ use crate::{
     Verify,
 };
 use mc_attest_core::{
-    Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvSvn, MiscSelect,
-    ProductId, ReportBody, ReportDataMask,
+    Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvProductId, IsvSvn,
+    MiscSelect, ReportBody, ReportDataMask,
 };
 use mc_sgx_core_types::AttributeFlags;
 use serde::{Deserialize, Serialize};
@@ -55,7 +55,7 @@ impl_kind_from_verifier! {
     ConfigVersionVerifier, ConfigVersion, ConfigSvn;
     DebugVerifier, Debug, bool;
     MiscSelectVerifier, MiscSelect, MiscSelect;
-    ProductIdVerifier, ProductId, ProductId;
+    ProductIdVerifier, ProductId, IsvProductId;
     VersionVerifier, Version, IsvSvn;
 }
 
@@ -180,8 +180,8 @@ impl Verify<ReportBody> for MiscSelectVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// product ID matches the one given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ProductIdVerifier(ProductId);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ProductIdVerifier(IsvProductId);
 
 impl Verify<ReportBody> for ProductIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -478,7 +478,9 @@ mod test {
     #[test]
     fn product_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(ProductIdVerifier::from(REPORT_BODY_SRC.isv_prod_id));
+        let verifier = Kind::from(ProductIdVerifier::from(IsvProductId::from(
+            REPORT_BODY_SRC.isv_prod_id,
+        )));
 
         assert!(verifier.verify(&report_body));
     }
@@ -487,7 +489,9 @@ mod test {
     #[test]
     fn product_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(ProductIdVerifier::from(REPORT_BODY_SRC.isv_prod_id - 1));
+        let verifier = Kind::from(ProductIdVerifier::from(IsvProductId::from(
+            REPORT_BODY_SRC.isv_prod_id - 1,
+        )));
 
         assert!(!verifier.verify(&report_body));
     }

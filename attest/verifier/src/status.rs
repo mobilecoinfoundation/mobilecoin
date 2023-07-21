@@ -15,7 +15,7 @@
 
 use crate::Verify;
 use alloc::borrow::ToOwned;
-use mc_attest_core::{IasQuoteError, IasQuoteResult, IsvSvn, ProductId, VerificationReportData};
+use mc_attest_core::{IasQuoteError, IasQuoteResult, IsvProductId, IsvSvn, VerificationReportData};
 use mc_attestation_verifier::{
     Advisories, AdvisoriesVerifier, AdvisoryStatus, TrustedIdentity, TrustedMrEnclaveIdentity,
     TrustedMrSignerIdentity, Verifier,
@@ -176,7 +176,7 @@ impl Verify<VerificationReportData> for MrEnclaveVerifier {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MrSignerVerifier {
     mr_signer: MrSigner,
-    product_id: ProductId,
+    product_id: IsvProductId,
     minimum_svn: IsvSvn,
     advisories: Advisories,
 }
@@ -186,7 +186,7 @@ impl MrSignerVerifier {
     /// given MrSigner.
     pub fn new(
         mr_signer: MrSigner,
-        product_id: ProductId,
+        product_id: IsvProductId,
         minimum_svn: IsvSvn,
     ) -> MrSignerVerifier {
         Self {
@@ -222,7 +222,7 @@ impl From<&TrustedMrSignerIdentity> for MrSignerVerifier {
     fn from(mr_signer_identity: &TrustedMrSignerIdentity) -> Self {
         let mut verifier = Self::new(
             mr_signer_identity.mr_signer(),
-            mr_signer_identity.isv_product_id().into(),
+            mr_signer_identity.isv_product_id(),
             mr_signer_identity.isv_svn(),
         );
         verifier.set_advisories(mr_signer_identity.advisories());
@@ -712,7 +712,7 @@ mod test {
     fn mrsigner_ok() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
@@ -733,7 +733,7 @@ mod test {
     fn mrsigner_fail_notok() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
@@ -753,7 +753,7 @@ mod test {
     fn mrsigner_fail_mrsigner() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
@@ -773,7 +773,7 @@ mod test {
     fn mrsigner_fail_product_id() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 1,
+            product_id: 1.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
         };
@@ -793,7 +793,7 @@ mod test {
     fn mrsigner_fail_version() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 1.into(),
             advisories: Advisories::default(),
         };
@@ -815,7 +815,7 @@ mod test {
     fn mrsigner_pass_config() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239"],
@@ -840,7 +840,7 @@ mod test {
     fn mrsigner_pass_sw() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
@@ -865,7 +865,7 @@ mod test {
     fn mrsigner_pass_multi_sw() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -890,7 +890,7 @@ mod test {
     fn mrsigner_pass_config_sw() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
@@ -915,7 +915,7 @@ mod test {
     fn mrsigner_fail_config_sw_no_sw() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
@@ -940,7 +940,7 @@ mod test {
     fn mrsigner_fail_config_sw_no_config() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
@@ -965,7 +965,7 @@ mod test {
     fn mrsigner_fail_multi_config_sw_no_sw() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -990,7 +990,7 @@ mod test {
     fn mrsigner_fail_multi_config_sw_short_sw() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00615".to_owned()],
@@ -1015,7 +1015,7 @@ mod test {
     fn mrsigner_fail_multi_config_sw_no_config() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -1040,7 +1040,7 @@ mod test {
     fn mrsigner_pass_multi_config_sw_short_config() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
@@ -1065,7 +1065,7 @@ mod test {
     fn mrsigner_fail_sw_config_sw_for_product() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 1,
+            product_id: 1.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
@@ -1090,7 +1090,7 @@ mod test {
     fn mrsigner_fail_multi_sw_config_sw_for_product() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 1,
+            product_id: 1.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -1115,7 +1115,7 @@ mod test {
     fn mrsigner_fail_config_sw_for_version() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 1.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned()],
@@ -1140,7 +1140,7 @@ mod test {
     fn mrsigner_fail_multi_config_sw_for_version() {
         let verifier = MrSignerVerifier {
             mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
-            product_id: 0,
+            product_id: 0.into(),
             minimum_svn: 1.into(),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
@@ -1268,7 +1268,7 @@ mod test {
 
         let verifier = MrSignerVerifier::from(&mr_signer_identity);
         assert_eq!(verifier.mr_signer, MrSigner::from(MR_SIGNER));
-        assert_eq!(verifier.product_id, 1);
+        assert_eq!(verifier.product_id, 1.into());
         assert_eq!(verifier.minimum_svn, 2.into());
         assert_eq!(
             verifier.advisories,

@@ -80,7 +80,7 @@ mod test {
 
         let mr_signer = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             report_body.mr_signer(),
-            report_body.product_id().into(),
+            report_body.product_id(),
             report_body.security_version(),
             [] as [&str; 0],
             [] as [&str; 0],

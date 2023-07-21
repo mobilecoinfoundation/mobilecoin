@@ -12,7 +12,7 @@ use crate::{
         basename::Basename, epid_group_id::EpidGroupId, measurement::Measurement,
         report_body::ReportBody, report_data::ReportDataMask,
     },
-    IsvSvn, ProductId, BASE64_ENGINE,
+    IsvProductId, IsvSvn, BASE64_ENGINE,
 };
 use alloc::vec::Vec;
 use base64::Engine;
@@ -305,7 +305,7 @@ impl Quote {
         expected_type: QuoteSignType,
         allow_debug: bool,
         expected_measurements: &[Measurement],
-        expected_product_id: ProductId,
+        expected_product_id: IsvProductId,
         minimum_security_version: IsvSvn,
         expected_data: &ReportDataMask,
     ) -> Result<(), QuoteError> {
