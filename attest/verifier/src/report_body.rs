@@ -8,8 +8,8 @@ use crate::{
     Verify,
 };
 use mc_attest_core::{
-    Attributes, ConfigId, ConfigSvn, CpuSecurityVersion, ExtendedProductId, FamilyId, IsvSvn,
-    MiscSelect, ProductId, ReportBody, ReportDataMask,
+    Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvSvn, MiscSelect,
+    ProductId, ReportBody, ReportDataMask,
 };
 use mc_sgx_core_types::AttributeFlags;
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,7 @@ pub enum Kind {
 impl_kind_from_inner! {
     AttributesVerifier, Attributes, Attributes;
     ConfigIdVerifier, ConfigId, ConfigId;
-    CpuVersionVerifier, CpuVersion, CpuSecurityVersion;
+    CpuVersionVerifier, CpuVersion, CpuSvn;
     DataVerifier, Data, ReportDataMask;
     ExtendedProductIdVerifier, ExtendedProductId, ExtendedProductId;
     FamilyIdVerifier, FamilyId, FamilyId;
@@ -112,8 +112,8 @@ impl Verify<ReportBody> for ConfigVersionVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the cpu version
 /// is at least the version specified.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct CpuVersionVerifier(CpuSecurityVersion);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct CpuVersionVerifier(CpuSvn);
 
 impl Verify<ReportBody> for CpuVersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -334,7 +334,7 @@ mod test {
     #[test]
     fn cpu_svn_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(CpuSecurityVersion::from(REPORT_BODY_SRC.cpu_svn));
+        let verifier = Kind::from(CpuSvn::from(REPORT_BODY_SRC.cpu_svn));
 
         assert!(verifier.verify(&report_body));
     }
@@ -345,7 +345,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut cpu_svn = REPORT_BODY_SRC.cpu_svn;
         cpu_svn.svn[0] = 0;
-        let verifier = Kind::from(CpuSecurityVersion::from(cpu_svn));
+        let verifier = Kind::from(CpuSvn::from(cpu_svn));
 
         assert!(verifier.verify(&report_body));
     }
@@ -356,7 +356,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut cpu_svn = REPORT_BODY_SRC.cpu_svn;
         cpu_svn.svn[0] = 0xff;
-        let verifier = Kind::from(CpuSecurityVersion::from(cpu_svn));
+        let verifier = Kind::from(CpuSvn::from(cpu_svn));
 
         assert!(!verifier.verify(&report_body));
     }
