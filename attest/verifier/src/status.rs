@@ -139,7 +139,9 @@ impl MrEnclaveVerifier {
         }
     }
 
-    /// TODO: Doc
+    /// Advisories an enclave is allowed to have.
+    ///
+    /// This method should only be used when advised by an enclave author.
     pub fn set_advisories(&mut self, advisories: Advisories) -> &mut Self {
         self.advisories = advisories;
         self
@@ -198,7 +200,9 @@ impl MrSignerVerifier {
         }
     }
 
-    /// TODO: Doc
+    /// Advisories an enclave is allowed to have.
+    ///
+    /// This method should only be used when advised by an enclave author.
     pub fn set_advisories(&mut self, advisories: Advisories) -> &mut Self {
         self.advisories = advisories;
         self
@@ -386,7 +390,7 @@ mod test {
             mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
-                AdvisoryStatus::ConfigurationNeeded,
+                AdvisoryStatus::SWHardeningNeeded,
             ),
         };
 
