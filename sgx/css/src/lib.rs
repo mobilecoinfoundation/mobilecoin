@@ -10,6 +10,7 @@ use core::{
     result::Result as StdResult,
 };
 use displaydoc::Display;
+use mc_sgx_core_types::IsvSvn;
 use sha2::{Digest, Sha256};
 
 type Result = StdResult<Signature, Error>;
@@ -219,8 +220,8 @@ impl Signature {
     }
 
     /// Retrieve the product version
-    pub fn version(&self) -> u16 {
-        u16::from_le_bytes(self.isvsvn)
+    pub fn version(&self) -> IsvSvn {
+        u16::from_le_bytes(self.isvsvn).into()
     }
 
     /// Retrieve a reference to the signature's "Q1" bytes
@@ -514,6 +515,6 @@ mod tests {
             sig.mrsigner()
         );
         assert_eq!(1, sig.product_id());
-        assert_eq!(1, sig.version());
+        assert_eq!(&1, sig.version().as_ref());
     }
 }

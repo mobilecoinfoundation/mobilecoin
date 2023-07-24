@@ -18,7 +18,6 @@ use mc_attest_verifier::Verifier;
 use mc_fog_report_types::{FogReportResponses, ReportResponse};
 use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_util_uri::{FogUri, UriParseError};
-use serde::{Deserialize, Serialize};
 
 /// A collection of unvalidated fog reports, together with an IAS verifier.
 /// This object is passed to the TransactionBuilder object.
@@ -28,7 +27,7 @@ use serde::{Deserialize, Serialize};
 /// hints for transactions, without talking to the internet, and so is
 /// compatible with offline transactions to fog recipients. Only getting the
 /// FogReportResponses requires an online connection.
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug)]
 pub struct FogResolver {
     responses: FogReportResponses,
     verifier: IngestReportVerifier,

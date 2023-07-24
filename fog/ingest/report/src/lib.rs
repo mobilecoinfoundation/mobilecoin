@@ -6,14 +6,13 @@ use mc_attest_core::{VerificationReport, VerifyError};
 use mc_attest_verifier::{Error as VerifierError, Verifier};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_util_encodings::Error as EncodingError;
-use serde::{Deserialize, Serialize};
 
 /// A structure that can validate ingest enclave reports and measurements at
 /// runtime.
 ///
 /// This is expected to take the verification report and produce the
 /// ias-validated and decompressed RistrettoPublic key.
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug)]
 pub struct IngestReportVerifier {
     verifier: Verifier,
 }

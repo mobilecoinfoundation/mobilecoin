@@ -12,7 +12,7 @@ use crate::{
         basename::Basename, epid_group_id::EpidGroupId, measurement::Measurement,
         report_body::ReportBody, report_data::ReportDataMask,
     },
-    ProductId, SecurityVersion, BASE64_ENGINE,
+    IsvSvn, ProductId, BASE64_ENGINE,
 };
 use alloc::vec::Vec;
 use base64::Engine;
@@ -199,15 +199,15 @@ impl Quote {
     }
 
     /// Read the SVN of the enclave which generated the quote
-    pub fn qe_security_version(&self) -> Result<SecurityVersion, EncodingError> {
+    pub fn qe_security_version(&self) -> Result<IsvSvn, EncodingError> {
         self.try_get_slice(QUOTE_QESVN_START..QUOTE_QESVN_END)
-            .map(|bytes| SecurityVersion::from_le_bytes(bytes.try_into().unwrap()))
+            .map(|bytes| <u16>::from_le_bytes(bytes.try_into().unwrap()).into())
     }
 
     /// Read the SVN of the provisioning certificate enclave
-    pub fn pce_security_version(&self) -> Result<SecurityVersion, EncodingError> {
+    pub fn pce_security_version(&self) -> Result<IsvSvn, EncodingError> {
         self.try_get_slice(QUOTE_PCESVN_START..QUOTE_PCESVN_END)
-            .map(|bytes| SecurityVersion::from_le_bytes(bytes.try_into().unwrap()))
+            .map(|bytes| <u16>::from_le_bytes(bytes.try_into().unwrap()).into())
     }
 
     /// Read the extended EPID Group ID
@@ -306,7 +306,7 @@ impl Quote {
         allow_debug: bool,
         expected_measurements: &[Measurement],
         expected_product_id: ProductId,
-        minimum_security_version: SecurityVersion,
+        minimum_security_version: IsvSvn,
         expected_data: &ReportDataMask,
     ) -> Result<(), QuoteError> {
         if let Some(expected) = expected_gid {

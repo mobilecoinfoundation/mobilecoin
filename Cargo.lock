@@ -5441,6 +5441,7 @@ name = "mc-sgx-css"
 version = "4.1.0-pre0"
 dependencies = [
  "displaydoc",
+ "mc-sgx-core-types",
  "sha2 0.10.6",
 ]
 

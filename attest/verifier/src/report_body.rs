@@ -9,13 +9,13 @@ use crate::{
 };
 use mc_attest_core::{
     Attributes, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, ExtendedProductId, FamilyId,
-    MiscSelect, ProductId, ReportBody, ReportDataMask, SecurityVersion,
+    IsvSvn, MiscSelect, ProductId, ReportBody, ReportDataMask,
 };
 use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of known report body verifier types.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Kind {
     /// Verify the attributes matches the one specified.
     Attributes(AttributesVerifier),
@@ -56,7 +56,7 @@ impl_kind_from_verifier! {
     DebugVerifier, Debug, bool;
     MiscSelectVerifier, MiscSelect, MiscSelect;
     ProductIdVerifier, ProductId, ProductId;
-    VersionVerifier, Version, SecurityVersion;
+    VersionVerifier, Version, IsvSvn;
 }
 
 impl Verify<ReportBody> for Kind {
@@ -189,12 +189,12 @@ impl Verify<ReportBody> for ProductIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// security version is at least the one given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct VersionVerifier(SecurityVersion);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct VersionVerifier(IsvSvn);
 
 impl Verify<ReportBody> for VersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 <= report_body.security_version()
+        self.0.as_ref() <= report_body.security_version().as_ref()
     }
 }
 
@@ -487,7 +487,7 @@ mod test {
     #[test]
     fn version_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(VersionVerifier::from(REPORT_BODY_SRC.isv_svn));
+        let verifier = Kind::from(VersionVerifier::from(IsvSvn::from(REPORT_BODY_SRC.isv_svn)));
 
         assert!(verifier.verify(&report_body));
     }
@@ -496,7 +496,9 @@ mod test {
     #[test]
     fn version_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(VersionVerifier::from(REPORT_BODY_SRC.isv_svn - 1));
+        let verifier = Kind::from(VersionVerifier::from(IsvSvn::from(
+            REPORT_BODY_SRC.isv_svn - 1,
+        )));
 
         assert!(verifier.verify(&report_body));
     }
@@ -505,7 +507,9 @@ mod test {
     #[test]
     fn version_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(VersionVerifier::from(REPORT_BODY_SRC.isv_svn + 1));
+        let verifier = Kind::from(VersionVerifier::from(IsvSvn::from(
+            REPORT_BODY_SRC.isv_svn + 1,
+        )));
 
         assert!(!verifier.verify(&report_body));
     }
