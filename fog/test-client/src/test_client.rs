@@ -101,7 +101,7 @@ impl Default for TestClientPolicy {
             tx_submit_deadline: Duration::from_secs(10),
             tx_receive_deadline: Duration::from_secs(10),
             double_spend_wait: Duration::from_secs(10),
-            polling_wait: Duration::from_millis(50),
+            polling_wait: Duration::from_millis(200),
             transfer_amount: Mob::MINIMUM_FEE,
             token_ids: vec![Mob::ID],
             test_rth_memos: false,

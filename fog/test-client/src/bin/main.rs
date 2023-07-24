@@ -42,6 +42,7 @@ fn main() {
         double_spend_wait: config.ledger_sync_wait,
         transfer_amount: config.transfer_amount,
         token_ids: config.token_ids.clone(),
+        polling_wait: config.balance_polling_wait,
         ..Default::default()
     };
 

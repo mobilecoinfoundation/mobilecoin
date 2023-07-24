@@ -277,7 +277,7 @@ spec:
           topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
-            whenUnsatisfiable: DoNotSchedule
+            whenUnsatisfiable: ScheduleAnyway
             labelSelector:
               matchLabels:
                 app: fog-ledger-store
