@@ -15,6 +15,7 @@ path = "src/bin/main.rs"
 mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
 mc-attest-verifier = { path = "../attest/verifier" }
+mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../common", features = ["loggers"] }
 mc-connection = { path = "../connection" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }

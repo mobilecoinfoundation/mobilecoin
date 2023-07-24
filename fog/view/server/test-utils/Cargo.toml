@@ -9,6 +9,7 @@ license = "GPL-3.0"
 # MC
 mc-attest-net = { path = "../../../../attest/net" }
 mc-attest-verifier = { path = "../../../../attest/verifier" }
+mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["log"] }
 mc-transaction-core = { path = "../../../../transaction/core" }

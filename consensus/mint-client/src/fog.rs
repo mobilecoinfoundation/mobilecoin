@@ -5,6 +5,7 @@
 use grpcio::Environment;
 use mc_account_keys::PublicAddress;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_common::logger::Logger;
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_resolver::FogResolver;
@@ -89,11 +90,11 @@ fn get_fog_ingest_verifier(signature: Signature) -> Verifier {
             signature.product_id(),
             signature.version(),
         );
-        mr_signer_verifier.allow_hardening_advisories(&[
-            "INTEL-SA-00334",
-            "INTEL-SA-00615",
-            "INTEL-SA-00657",
-        ]);
+        let advisories = Advisories::new(
+            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+            AdvisoryStatus::SWHardeningNeeded,
+        );
+        mr_signer_verifier.set_advisories(advisories);
         mr_signer_verifier
     };
 

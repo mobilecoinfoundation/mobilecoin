@@ -8,6 +8,7 @@ use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -164,9 +165,11 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             // Make ledger enclave client
             let mut mr_signer_verifier =
                 MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            mr_signer_verifier.allow_hardening_advisories(
+            let advisories = Advisories::new(
                 mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
+                AdvisoryStatus::SWHardeningNeeded,
             );
+            mr_signer_verifier.set_advisories(advisories);
 
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -443,9 +446,11 @@ fn fog_ledger_key_images_test(logger: Logger) {
             // Make ledger enclave client
             let mut mr_signer_verifier =
                 MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            mr_signer_verifier.allow_hardening_advisories(
+            let advisories = Advisories::new(
                 mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
+                AdvisoryStatus::SWHardeningNeeded,
             );
+            mr_signer_verifier.set_advisories(advisories);
 
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -1023,9 +1028,11 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             // Make ledger enclave client
             let mut mr_signer_verifier =
                 MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            mr_signer_verifier.allow_hardening_advisories(
+            let advisories = Advisories::new(
                 mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
+                AdvisoryStatus::SWHardeningNeeded,
             );
+            mr_signer_verifier.set_advisories(advisories);
 
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);

@@ -6,6 +6,7 @@
 use clap::Parser;
 use displaydoc::Display;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
@@ -174,11 +175,11 @@ impl Config {
                     signature.product_id(),
                     signature.version(),
                 );
-                mr_signer_verifier.allow_hardening_advisories(&[
-                    "INTEL-SA-00334",
-                    "INTEL-SA-00615",
-                    "INTEL-SA-00657",
-                ]);
+                let advisories = Advisories::new(
+                    ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+                    AdvisoryStatus::SWHardeningNeeded,
+                );
+                mr_signer_verifier.set_advisories(advisories);
                 mr_signer_verifier
             };
 

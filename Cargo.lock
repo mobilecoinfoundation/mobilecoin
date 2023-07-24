@@ -393,7 +393,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.16",
+ "syn 2.0.26",
  "which",
 ]
 
@@ -740,7 +740,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -1073,7 +1073,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim 0.10.0",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -1084,7 +1084,7 @@ checksum = "836a9bbc7ad63342d6d6e7b815ccab164bc77a2d95d84bc3117a8c0d5c98e2d5"
 dependencies = [
  "darling_core",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -1131,7 +1131,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -1191,7 +1191,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -1635,7 +1635,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -2694,6 +2694,7 @@ dependencies = [
  "mbedtls-sys-auto",
  "mc-attest-core",
  "mc-attest-verifier-config",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-sgx-core-types",
  "mc-sgx-css",
@@ -2715,6 +2716,8 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex-literal",
+ "mc-attestation-verifier",
+ "mc-sgx-core-types",
  "serde",
  "serde_json",
 ]
@@ -2731,6 +2734,25 @@ dependencies = [
  "mc-util-encodings",
  "prost",
  "serde",
+]
+
+[[package]]
+name = "mc-attestation-verifier"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "726b479ab41e7ae8b147fd2e69b4d8000f5a908210641a2662867111025c83c5"
+dependencies = [
+ "der",
+ "displaydoc",
+ "hex",
+ "mc-sgx-core-sys-types",
+ "mc-sgx-core-types",
+ "mc-sgx-dcap-types",
+ "p256",
+ "serde",
+ "serde_json",
+ "subtle",
+ "x509-cert",
 ]
 
 [[package]]
@@ -3005,6 +3027,7 @@ dependencies = [
  "cargo-emit",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -3045,6 +3068,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-consensus-api",
  "mc-consensus-enclave-api",
@@ -3291,6 +3315,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-trusted",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-crypto-keys",
  "mc-rand",
@@ -3610,6 +3635,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-connection",
  "mc-consensus-enclave-measurement",
@@ -3793,6 +3819,7 @@ dependencies = [
  "cargo-emit",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -4026,6 +4053,7 @@ dependencies = [
  "cargo-emit",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -4051,6 +4079,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -4405,6 +4434,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-blockchain-types",
  "mc-common",
  "mc-connection",
@@ -4756,6 +4786,7 @@ dependencies = [
  "cargo-emit",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -4866,6 +4897,7 @@ dependencies = [
  "grpcio",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-blockchain-types",
  "mc-common",
  "mc-fog-api",
@@ -4972,6 +5004,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -5086,6 +5119,7 @@ dependencies = [
  "mc-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -5169,6 +5203,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-connection",
  "mc-consensus-enclave-measurement",
@@ -5486,7 +5521,9 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0623b0d7a1f947f7cc1f4269a22a8251cf010d5cbff8b2ee605a289dc9386dc"
 dependencies = [
+ "const-oid",
  "displaydoc",
+ "hex",
  "mc-sgx-core-types",
  "mc-sgx-dcap-sys-types",
  "mc-sgx-util",
@@ -6082,7 +6119,7 @@ version = "4.1.0-pre0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -6988,7 +7025,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b69d39aab54d069e7f2fe8cb970493e7834601ca2d8c65fd7bbd183578080d1"
 dependencies = [
  "proc-macro2",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -7986,9 +8023,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.164"
+version = "1.0.171"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
+checksum = "30e27d1e4fd7659406c492fd6cfaf2066ba8773de45ca75e855590f856dc34a9"
 dependencies = [
  "serde_derive",
 ]
@@ -8014,20 +8051,20 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.164"
+version = "1.0.171"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9735b638ccc51c28bf6914d90a2e9725b377144fc612c49a611fddd1b631d68"
+checksum = "389894603bd18c46fa56231694f8d827779c0951a667087194cf9de94ed24682"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.94"
+version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c533a59c9d8a93a09c6ab31f0fd5e5f4dd1b8fc9434804029839884765d04ea"
+checksum = "d03b412469450d4404fe8499a268edd7f8b79fecb074b0d812ad64ca21f4031b"
 dependencies = [
  "itoa 1.0.1",
  "ryu",
@@ -8079,7 +8116,7 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -8104,7 +8141,7 @@ checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.16",
+ "syn 2.0.26",
 ]
 
 [[package]]
@@ -8422,9 +8459,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.16"
+version = "2.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6f671d4b5ffdb8eadec19c0ae67fe2639df8684bd7bc4b83d986b8db549cf01"
+checksum = "45c3457aacde3c65315de5031ec191ce46604304d2446e803d71ade03308d970"
 dependencies = [
  "proc-macro2",
  "quote",

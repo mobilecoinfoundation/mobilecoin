@@ -22,6 +22,7 @@ use mc_attest_enclave_api::{
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_rand::McRng;
@@ -170,11 +171,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // enclave are aligned to an 8-byte boundary, and performed in multiples
         // of 8 bytes. In our codebase, this happens within the sgx_edger8r code-gen, so
         // building against SGX 2.17.1 is sufficient hardening for now.
-        mr_enclave_verifier.allow_hardening_advisories(&[
-            "INTEL-SA-00334",
-            "INTEL-SA-00615",
-            "INTEL-SA-00657",
-        ]);
+        mr_enclave_verifier.set_advisories(Advisories::new(
+            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         verifier
             .mr_enclave(mr_enclave_verifier)
