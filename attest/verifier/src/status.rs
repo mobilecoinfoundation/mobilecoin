@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 
 /// A helper function used to check exceptions to the quote error = fail rule.
 fn check_ids(quote_status: &IasQuoteResult, advisories: &Advisories) -> bool {
-    let verifier = AdvisoriesVerifier::new(advisories.to_owned()); // TODO: this?
+    let verifier = AdvisoriesVerifier::new(advisories.to_owned());
     match quote_status {
         Ok(_) => true,
         Err(IasQuoteError::ConfigurationNeeded { advisory_ids, .. }) => verifier
@@ -74,8 +74,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    /// Assume an enclave with the specified measurement has the appropriate
-    /// software/build-time hardening for the given advisory IDs.
+    /// Advisories an enclave is allowed to have.
     ///
     /// This method should only be used when advised by an enclave author.
     pub fn set_advisories(&mut self, advisories: Advisories) -> &mut Self {
@@ -539,7 +538,7 @@ mod test {
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239", "INTEL-SA-00123"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
-            ), // TODO: HERE!
+            ),
         };
 
         let report = VerificationReport {
