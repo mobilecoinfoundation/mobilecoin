@@ -4,15 +4,16 @@
 
 use displaydoc::Display;
 use mc_sgx_dcap_types::Quote3;
+use mc_sgx_dcap_ql::TryFromReport;
 use mc_attest_core::{
-    EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote, QuoteError, QuoteNonce,
+    EpidGroupId, PibError, PlatformInfoBlob, QuoteError, QuoteNonce,
     QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
 };
 #[cfg(not(feature = "sgx-sim"))]
 use mc_sgx_dcap_ql::QeTargetInfo;
 use mc_sgx_dcap_types::QlError;
 use mc_sgx_types::{
-    sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote,
+    sgx_get_extended_epid_group_id,
     sgx_report_attestation_status, sgx_status_t,
 };
 
@@ -28,40 +29,22 @@ impl QuotingEnclave {
     pub fn quote_report(
         report: &Report,
     ) -> Result<(Quote3<Vec<u8>>, Report), QuoteError> {
-        let quote = Quote3::try_From_report(report.clone())?;
+        let quote = Quote3::try_from_report(report.clone())?;
         Ok((quote, report.clone()))
     }
 
-    pub fn target_info() -> Result<(TargetInfo, EpidGroupId), TargetInfoError> {
-        let gid = Self::epid_group_id()?;
+    pub fn target_info() -> Result<TargetInfo, TargetInfoError> {
         #[cfg(feature = "sgx-sim")]
         {
             // The Intel QE and PCE provided with `libsgx-dcap-ql` only work on SGX
             // hardware. For EPID there is a simulator implementation of
             // [sgx_init_quote()](https://github.com/intel/linux-sgx/blob/1efe23c20e37f868498f8287921eedfbcecdc216/sdk/simulation/uae_service_sim/quoting_sim.cpp#L138)
             // Unfortunately there doesn't seem to be a DCAP equivalent.
-            Ok((TargetInfo::default(), gid))
+            Ok(TargetInfo::default())
         }
         #[cfg(not(feature = "sgx-sim"))]
         {
-            Ok((TargetInfo::for_quoting_enclave()?, gid))
-        }
-    }
-
-    pub fn epid_group_id() -> Result<EpidGroupId, SgxError> {
-        let mut value: u32 = 0;
-        match unsafe { sgx_get_extended_epid_group_id(&mut value) } {
-            sgx_status_t::SGX_SUCCESS => Ok(EpidGroupId::from(value)),
-            status => Err(status.into()),
-        }
-    }
-
-    pub fn update_tcb(pib: &PlatformInfoBlob) -> Result<(), PibError> {
-        let mut update_info = UpdateInfo::default();
-        match unsafe { sgx_report_attestation_status(pib.as_ref(), 1, update_info.as_mut()) } {
-            sgx_status_t::SGX_SUCCESS => Ok(()),
-            sgx_status_t::SGX_ERROR_UPDATE_NEEDED => Err(update_info.into()),
-            status => Err(status.into()),
+            Ok(TargetInfo::for_quoting_enclave()?)
         }
     }
 }
