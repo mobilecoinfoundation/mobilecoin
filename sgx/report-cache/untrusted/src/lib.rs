@@ -134,7 +134,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             retry(
                 Fibonacci::from_millis(1000).take(7),
                 || match QuotingEnclave::target_info() {
-                    Ok((qe_info, gid)) => OperationResult::Ok((qe_info, gid)),
+                    Ok(qe_info) => OperationResult::Ok(qe_info),
                     Err(ti_err) => match ti_err {
                         TargetInfoError::QeBusy => OperationResult::Retry(TargetInfoError::QeBusy),
                         other => OperationResult::Err(other),
