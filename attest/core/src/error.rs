@@ -237,13 +237,15 @@ pub enum QuoteError {
     InvalidSize(u32),
     /// The base64 encoder did not output valid UTF-8 data
     InvalidUtf8,
-    /// Error from DCAP quote library {0}
-    DcapQuoteLibrary(DcapQuoteLibraryError),
+    /// Error from DCAP quote library
+    DcapQuoteLibrary,
+    // Hack for now due to the serialization restrictions
+    // DcapQuoteLibrary(DcapQuoteLibraryError),
 }
 
 impl From<DcapQuoteLibraryError> for QuoteError {
-    fn from(src: DcapQuoteLibraryError) -> Self {
-        QuoteError::DcapQuoteLibrary(src)
+    fn from(_src: DcapQuoteLibraryError) -> Self {
+        QuoteError::DcapQuoteLibrary
     }
 }
 
