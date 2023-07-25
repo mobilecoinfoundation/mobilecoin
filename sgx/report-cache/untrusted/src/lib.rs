@@ -5,7 +5,7 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
-    PibError, ProviderId, QuoteError, QuoteSignType, VerificationReport, VerificationReportData,
+    PibError, ProviderId, QuoteError, Evidence, VerificationReportData,
     VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
@@ -125,7 +125,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         }
     }
 
-    pub fn start_report_cache(&self) -> Result<VerificationReport, Error> {
+    pub fn start_report_cache(&self) -> Result<Evidence, Error> {
         log::debug!(
             self.logger,
             "Starting remote attestation report process, getting QE enclave targeting info..."
@@ -160,26 +160,22 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         let ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;
         log::debug!(
             self.logger,
-            "Verifying quote with remote attestation service..."
+            "Getting quote collateral..."
         );
-        let retval = self.ra_client.verify_quote(&quote, Some(ias_nonce))?;
+        let collateral = self.quote.collateral()?;
         log::debug!(
             self.logger,
-            "Quote verified by remote attestation service: {}",
-            retval,
+            "Retrieved quote collateral: {}",
+            collateral,
         );
-        let report_body = VerificationReportData::try_from(&retval)
-            .expect("Could not get verification report data from verification report")
-            .quote
-            .report_body()
-            .expect("Could not get report_body from verification report data");
+        let report_body = quote.app_report_body();
         log::info!(
             self.logger,
             "Measurements: MrEnclave: {} MrSigner: {}",
             report_body.mr_enclave(),
             report_body.mr_signer()
         );
-        Ok(retval)
+        Ok(Evidence{ quote, collateral })
     }
 
     /// Update the IAS report cached within the enclave.

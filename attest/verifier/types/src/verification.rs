@@ -7,6 +7,8 @@ use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
+use mc_sgx_core_types::Quote3;
+use mc_sgx_quoteverify_types::Collateral;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
@@ -52,6 +54,13 @@ impl Display for VerificationReport {
             .finish()
     }
 }
+
+/// HACK to be the hackiest
+pub struct Evidence {
+    pub quote: Quote3<Vec<u8>>,
+    pub collateral: Collateral,
+}
+
 
 /// A type containing the bytes of the VerificationReport signature
 #[derive(
