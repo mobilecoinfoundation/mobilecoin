@@ -155,10 +155,6 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         log::debug!(self.logger, "Quoting report...");
         let (quote, qe_report) = QuotingEnclave::quote_report(
             &report,
-            QuoteSignType::Linkable,
-            &self.ias_spid,
-            &quote_nonce,
-            &sigrl,
         )?;
         log::debug!(self.logger, "Double-checking quoted report with enclave...");
         let ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;

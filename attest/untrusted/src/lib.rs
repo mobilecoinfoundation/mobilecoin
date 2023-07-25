@@ -3,6 +3,7 @@
 //! Untrusted attestation support
 
 use displaydoc::Display;
+use mc_sgx_dcap_types::Quote3;
 use mc_attest_core::{
     EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote, QuoteError, QuoteNonce,
     QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
@@ -26,36 +27,9 @@ impl QuotingEnclave {
     /// enclave's own Report.
     pub fn quote_report(
         report: &Report,
-        quote_sign_type: QuoteSignType,
-        spid: &ProviderId,
-        nonce: &QuoteNonce,
-        sigrl: &SigRL,
-    ) -> Result<(Quote, Report), QuoteError> {
-        let mut quote_size: u32 = 0;
-        let mut quote =
-            match unsafe { sgx_calc_quote_size(sigrl.as_ptr(), sigrl.size(), &mut quote_size) } {
-                sgx_status_t::SGX_SUCCESS => Quote::with_capacity(quote_size),
-                status => Err(status.into()),
-            }?;
-
-        let mut qe_report = Report::default();
-
-        match unsafe {
-            sgx_get_quote(
-                report.as_ref(),
-                quote_sign_type.into(),
-                spid.as_ref(),
-                nonce.as_ref(),
-                sigrl.as_ptr(),
-                sigrl.size(),
-                qe_report.as_mut(),
-                quote.as_mut_ptr(),
-                quote_size,
-            )
-        } {
-            sgx_status_t::SGX_SUCCESS => Ok((quote, qe_report)),
-            status => Err(status.into()),
-        }
+    ) -> Result<(Quote3<Vec<u8>>, Report), QuoteError> {
+        let quote = Quote3::try_From_report(report.clone())?;
+        Ok((quote, report.clone()))
     }
 
     pub fn target_info() -> Result<(TargetInfo, EpidGroupId), TargetInfoError> {
