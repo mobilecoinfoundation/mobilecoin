@@ -71,9 +71,9 @@ use displaydoc::Display;
 use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
-    Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
-    ExtendedProductId, FamilyId, IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType,
-    ReportDataMask, VerificationReport, VerificationReportData, VerifyError,
+    Attributes, Basename, ConfigId, ConfigSvn, CpuSecurityVersion, EpidGroupId, ExtendedProductId,
+    FamilyId, IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType, ReportDataMask,
+    VerificationReport, VerificationReportData, VerifyError,
 };
 use mc_attestation_verifier::TrustedIdentity;
 use serde::{Deserialize, Serialize};
@@ -286,7 +286,7 @@ impl Verifier {
     }
 
     /// Verify the report body config version is at least the given value.
-    pub fn config_version(&mut self, config_svn: ConfigSecurityVersion) -> &mut Self {
+    pub fn config_version(&mut self, config_svn: ConfigSvn) -> &mut Self {
         self.report_body_verifiers
             .push(ConfigVersionVerifier::from(config_svn).into());
         self

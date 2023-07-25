@@ -8,10 +8,9 @@ use crate::{
     traits::SgxWrapperType,
     types::{
         cpu_svn::CpuSecurityVersion, ext_prod_id::ExtendedProductId, family_id::FamilyId,
-        measurement::Measurement, report_data::ReportDataMask, ConfigSecurityVersion, MiscSelect,
-        ProductId,
+        measurement::Measurement, report_data::ReportDataMask, MiscSelect, ProductId,
     },
-    Attributes, ConfigId, IsvSvn, ReportData,
+    Attributes, ConfigId, ConfigSvn, IsvSvn, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -87,8 +86,8 @@ impl ReportBody {
     }
 
     /// Retrieve the security version of the enclave's XML configuration
-    pub fn config_security_version(&self) -> ConfigSecurityVersion {
-        self.0.config_svn
+    pub fn config_security_version(&self) -> ConfigSvn {
+        self.0.config_svn.into()
     }
 
     /// Retrieve the security version of the CPU the report was generated
