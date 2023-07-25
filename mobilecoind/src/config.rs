@@ -170,7 +170,7 @@ impl Config {
         self.fog_ingest_enclave_css.as_ref().map(|signature| {
             let mr_signer_identity = TrustedMrSignerIdentity::new(
                 signature.mrsigner().into(),
-                signature.product_id().into(),
+                signature.product_id(),
                 signature.version(),
                 [] as [&str; 0],
                 ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],

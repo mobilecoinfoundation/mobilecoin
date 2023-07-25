@@ -260,7 +260,7 @@ impl ClientBuilder {
         if let Some(signature) = self.consensus_sigstruct.as_ref() {
             let mr_signer_identity = TrustedMrSignerIdentity::new(
                 signature.mrsigner().into(),
-                signature.product_id().into(),
+                signature.product_id(),
                 signature.version(),
                 [] as [&str; 0],
                 mc_consensus_enclave_measurement::HARDENING_ADVISORIES,
@@ -276,7 +276,7 @@ impl ClientBuilder {
         if let Some(signature) = self.fog_ingest_sigstruct.as_ref() {
             let mr_signer_identity = TrustedMrSignerIdentity::new(
                 signature.mrsigner().into(),
-                signature.product_id().into(),
+                signature.product_id(),
                 signature.version(),
                 [] as [&str; 0],
                 mc_fog_ingest_enclave_measurement::HARDENING_ADVISORIES,
@@ -292,7 +292,7 @@ impl ClientBuilder {
         if let Some(signature) = self.fog_ledger_sigstruct.as_ref() {
             let mr_signer_identity = TrustedMrSignerIdentity::new(
                 signature.mrsigner().into(),
-                signature.product_id().into(),
+                signature.product_id(),
                 signature.version(),
                 [] as [&str; 0],
                 mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
@@ -308,7 +308,7 @@ impl ClientBuilder {
         if let Some(signature) = self.fog_view_sigstruct.as_ref() {
             let mr_signer_identity = TrustedMrSignerIdentity::new(
                 signature.mrsigner().into(),
-                signature.product_id().into(),
+                signature.product_id(),
                 signature.version(),
                 [] as [&str; 0],
                 mc_fog_view_enclave_measurement::HARDENING_ADVISORIES,

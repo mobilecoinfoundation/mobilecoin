@@ -72,7 +72,7 @@ use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
     Attributes, Basename, ConfigId, ConfigSvn, CpuSvn, EpidGroupId, ExtendedProductId, FamilyId,
-    IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType, ReportDataMask,
+    IasNonce, IsvProductId, IsvSvn, MiscSelect, Quote, QuoteSignType, ReportDataMask,
     VerificationReport, VerificationReportData, VerifyError,
 };
 use mc_attestation_verifier::TrustedIdentity;
@@ -331,7 +331,7 @@ impl Verifier {
     }
 
     /// Verify the report body product ID matches the given value.
-    pub fn product_id(&mut self, product_id: ProductId) -> &mut Self {
+    pub fn product_id(&mut self, product_id: IsvProductId) -> &mut Self {
         self.report_body_verifiers
             .push(ProductIdVerifier::from(product_id).into());
         self
@@ -497,7 +497,7 @@ mod test {
                 209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198,
                 84, 121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
             ]),
-            10,
+            10.into(),
             10.into(),
         );
         mr_signer1.set_advisories(Advisories::new(
@@ -509,7 +509,7 @@ mod test {
                 209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198,
                 84, 121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
             ]),
-            1,
+            1.into(),
             1.into(),
         );
         mr_signer2.set_advisories(Advisories::new(

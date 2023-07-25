@@ -31,7 +31,7 @@ use error::*;
 use marker::ContiguousMemory;
 
 extern crate mc_sgx_core_sys_types;
-pub use self::mc_sgx_core_sys_types::{sgx_target_info_t, sgx_report_data_t, sgx_attributes_t, sgx_isv_svn_t, sgx_config_svn_t, sgx_cpu_svn_t};
+pub use self::mc_sgx_core_sys_types::{sgx_target_info_t, sgx_report_data_t, sgx_attributes_t, sgx_isv_svn_t, sgx_config_svn_t, sgx_cpu_svn_t, sgx_prod_id_t};
 
 //
 // sgx_attributes.h
@@ -391,8 +391,6 @@ impl_struct! {
 }
 
 pub type sgx_mac_t = [::uint8_t; SGX_MAC_SIZE];
-
-pub type sgx_prod_id_t = ::uint16_t;
 
 pub const SGX_TARGET_INFO_RESERVED1_BYTES: ::size_t = 2;
 pub const SGX_TARGET_INFO_RESERVED2_BYTES: ::size_t = 8;

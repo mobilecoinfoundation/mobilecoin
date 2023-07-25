@@ -19,7 +19,7 @@ pub fn mr_signer_identity(override_minimum_svn: Option<IsvSvn>) -> TrustedIdenti
 
     let mr_signer = TrustedMrSignerIdentity::new(
         signature.mrsigner().into(),
-        signature.product_id().into(),
+        signature.product_id(),
         override_minimum_svn.unwrap_or_else(|| signature.version()),
         [] as [&str; 0],
         HARDENING_ADVISORIES,

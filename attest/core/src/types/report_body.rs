@@ -8,9 +8,9 @@ use crate::{
     traits::SgxWrapperType,
     types::{
         ext_prod_id::ExtendedProductId, family_id::FamilyId, measurement::Measurement,
-        report_data::ReportDataMask, MiscSelect, ProductId,
+        report_data::ReportDataMask, MiscSelect,
     },
-    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvSvn, ReportData,
+    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvProductId, IsvSvn, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -125,8 +125,8 @@ impl ReportBody {
     }
 
     /// Retrieve the product ID of the enclave
-    pub fn product_id(&self) -> ProductId {
-        self.0.isv_prod_id
+    pub fn product_id(&self) -> IsvProductId {
+        self.0.isv_prod_id.into()
     }
 
     /// Retrieve the user data provided when the report was created
@@ -145,7 +145,7 @@ impl ReportBody {
         &self,
         allow_debug: bool,
         expected_measurements: &[Measurement],
-        expected_product_id: ProductId,
+        expected_product_id: IsvProductId,
         minimum_security_version: IsvSvn,
         expected_data: &ReportDataMask,
     ) -> Result<(), ReportBodyVerifyError> {
@@ -161,8 +161,8 @@ impl ReportBody {
         let product_id = self.product_id();
         if expected_product_id != product_id {
             return Err(ReportBodyVerifyError::ProductId(
-                expected_product_id,
-                product_id,
+                expected_product_id.into(),
+                product_id.into(),
             ));
         }
 

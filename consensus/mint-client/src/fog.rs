@@ -85,7 +85,7 @@ impl FogContext {
 fn fog_ingest_identity(signature: Signature) -> TrustedIdentity {
     let mr_signer_identity = TrustedMrSignerIdentity::new(
         signature.mrsigner().into(),
-        signature.product_id().into(),
+        signature.product_id(),
         signature.version(),
         [] as [&str; 0],
         &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
