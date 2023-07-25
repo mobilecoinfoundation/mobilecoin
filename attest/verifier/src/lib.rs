@@ -307,7 +307,7 @@ impl Verifier {
 
     /// Verify the report data matches the data mask given
     pub fn report_data(&mut self, report_data: &ReportDataMask) -> &mut Self {
-        self.report_body_verifiers.push((*report_data).into());
+        self.report_body_verifiers.push(report_data.clone().into());
         self
     }
 

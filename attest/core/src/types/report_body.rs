@@ -7,16 +7,11 @@ use crate::{
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
     types::{
-        attributes::Attributes,
-        config_id::ConfigId,
-        cpu_svn::CpuSecurityVersion,
-        ext_prod_id::ExtendedProductId,
-        family_id::FamilyId,
-        measurement::Measurement,
-        report_data::{ReportData, ReportDataMask},
-        ConfigSecurityVersion, MiscSelect, ProductId,
+        attributes::Attributes, config_id::ConfigId, cpu_svn::CpuSecurityVersion,
+        ext_prod_id::ExtendedProductId, family_id::FamilyId, measurement::Measurement,
+        report_data::ReportDataMask, ConfigSecurityVersion, MiscSelect, ProductId,
     },
-    IsvSvn,
+    IsvSvn, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -62,7 +57,7 @@ const RB_RESERVED4_END: usize = RB_RESERVED4_START + 42;
 const RB_ISVFAMILYID_START: usize = RB_RESERVED4_END;
 const RB_ISVFAMILYID_END: usize = RB_ISVFAMILYID_START + <FamilyId as IntelLayout>::X86_64_CSIZE;
 const RB_REPORTDATA_START: usize = RB_ISVFAMILYID_END;
-const RB_REPORTDATA_END: usize = RB_REPORTDATA_START + <ReportData as IntelLayout>::X86_64_CSIZE;
+const RB_REPORTDATA_END: usize = RB_REPORTDATA_START + ReportData::SIZE;
 
 const REPORT_BODY_SIZE: usize = RB_REPORTDATA_END;
 // const REPORT_SIZE: usize = 432; // taken from sgx_types
@@ -330,10 +325,7 @@ impl SgxWrapperType<sgx_report_body_t> for ReportBody {
             &src.isv_family_id,
             &mut dest[RB_ISVFAMILYID_START..RB_ISVFAMILYID_END],
         )?;
-        ReportData::write_ffi_bytes(
-            &src.report_data,
-            &mut dest[RB_REPORTDATA_START..RB_REPORTDATA_END],
-        )?;
+        dest[RB_REPORTDATA_START..RB_REPORTDATA_END].copy_from_slice(&src.report_data.d);
         Ok(REPORT_BODY_SIZE)
     }
 }
@@ -391,7 +383,9 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
             reserved4,
             isv_family_id: FamilyId::try_from(&src[RB_ISVFAMILYID_START..RB_ISVFAMILYID_END])?
                 .into(),
-            report_data: ReportData::try_from(&src[RB_REPORTDATA_START..RB_REPORTDATA_END])?.into(),
+            report_data: ReportData::try_from(&src[RB_REPORTDATA_START..RB_REPORTDATA_END])
+                .map_err(|_| EncodingError::InvalidInputLength)?
+                .into(),
         }))
     }
 }

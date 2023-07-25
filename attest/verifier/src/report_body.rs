@@ -134,7 +134,7 @@ impl Verify<ReportBody> for DebugVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// report data matches the mask given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct DataVerifier(ReportDataMask);
 
 impl Verify<ReportBody> for DataVerifier {
