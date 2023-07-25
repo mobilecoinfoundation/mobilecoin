@@ -7,11 +7,11 @@ use crate::{
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
     types::{
-        config_id::ConfigId, cpu_svn::CpuSecurityVersion, ext_prod_id::ExtendedProductId,
-        family_id::FamilyId, measurement::Measurement, report_data::ReportDataMask,
-        ConfigSecurityVersion, MiscSelect, ProductId,
+        cpu_svn::CpuSecurityVersion, ext_prod_id::ExtendedProductId, family_id::FamilyId,
+        measurement::Measurement, report_data::ReportDataMask, ConfigSecurityVersion, MiscSelect,
+        ProductId,
     },
-    Attributes, IsvSvn, ReportData,
+    Attributes, ConfigId, IsvSvn, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -21,7 +21,7 @@ use core::{
     mem::size_of,
 };
 use mc_sgx_core_types::{AttributeFlags, MrEnclave, MrSigner};
-use mc_sgx_types::{sgx_attributes_t, sgx_measurement_t, sgx_report_body_t};
+use mc_sgx_types::{sgx_attributes_t, sgx_measurement_t, sgx_report_body_t, SGX_CONFIGID_SIZE};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
@@ -49,7 +49,7 @@ const RB_MRSIGNER_END: usize = RB_MRSIGNER_START + MrSigner::SIZE;
 const RB_RESERVED3_START: usize = RB_MRSIGNER_END;
 const RB_RESERVED3_END: usize = RB_RESERVED3_START + 32;
 const RB_CONFIGID_START: usize = RB_RESERVED3_END;
-const RB_CONFIGID_END: usize = RB_CONFIGID_START + <ConfigId as IntelLayout>::X86_64_CSIZE;
+const RB_CONFIGID_END: usize = RB_CONFIGID_START + SGX_CONFIGID_SIZE;
 const RB_ISVPRODID_START: usize = RB_CONFIGID_END;
 const RB_ISVPRODID_END: usize = RB_ISVPRODID_START + size_of::<u16>();
 const RB_ISVSVN_START: usize = RB_ISVPRODID_END;
@@ -235,22 +235,16 @@ impl Ord for ReportBody {
                                 Ordering::Equal => {
                                     match self.0.misc_select.cmp(&other.0.misc_select) {
                                         Ordering::Equal => {
-                                            match self.config_id().cmp(&other.config_id()) {
-                                                Ordering::Equal => {
-                                                    match self.0.config_svn.cmp(&other.0.config_svn)
-                                                    {
-                                                        Ordering::Equal => match self
-                                                            .cpu_security_version()
-                                                            .cmp(&other.cpu_security_version())
-                                                        {
-                                                            Ordering::Equal => self
-                                                                .report_data()
-                                                                .cmp(&other.report_data()),
-                                                            ordering => ordering,
-                                                        },
-                                                        ordering => ordering,
+                                            match self.0.config_svn.cmp(&other.0.config_svn) {
+                                                Ordering::Equal => match self
+                                                    .cpu_security_version()
+                                                    .cmp(&other.cpu_security_version())
+                                                {
+                                                    Ordering::Equal => {
+                                                        self.report_data().cmp(&other.report_data())
                                                     }
-                                                }
+                                                    ordering => ordering,
+                                                },
                                                 ordering => ordering,
                                             }
                                         }
@@ -315,10 +309,7 @@ impl SgxWrapperType<sgx_report_body_t> for ReportBody {
             return Err(EncodingError::InvalidOutputLength);
         }
         dest[RB_MRSIGNER_START..RB_MRSIGNER_END].copy_from_slice(&src.mr_signer.m);
-        ConfigId::write_ffi_bytes(
-            &src.config_id,
-            &mut dest[RB_CONFIGID_START..RB_CONFIGID_END],
-        )?;
+        dest[RB_CONFIGID_START..RB_CONFIGID_END].copy_from_slice(&src.config_id);
         dest[RB_ISVPRODID_START..RB_ISVPRODID_END].copy_from_slice(&src.isv_prod_id.to_le_bytes());
         dest[RB_ISVSVN_START..RB_ISVSVN_END].copy_from_slice(&src.isv_svn.to_le_bytes());
         dest[RB_CONFIGSVN_START..RB_CONFIGSVN_END].copy_from_slice(&src.config_svn.to_le_bytes());
@@ -380,7 +371,7 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
             reserved3: (&src[RB_RESERVED3_START..RB_RESERVED3_END])
                 .try_into()
                 .map_err(|_e| EncodingError::InvalidInput)?,
-            config_id: ConfigId::try_from(&src[RB_CONFIGID_START..RB_CONFIGID_END])?.into(),
+            config_id: ConfigId::from(&src[RB_CONFIGID_START..RB_CONFIGID_END].try_into()?).into(),
             isv_prod_id: u16::from_le_bytes(
                 (&src[RB_ISVPRODID_START..RB_ISVPRODID_END])
                     .try_into()
@@ -505,12 +496,6 @@ mod test {
         body2.0.mr_signer.m[0] = 255;
         assert!(body1 < body2);
         body2.0.mr_signer.m[0] = orig_value;
-        assert_eq!(body1, body2);
-
-        let orig_value = body2.0.config_id[0];
-        body2.0.config_id[0] = 255;
-        assert!(body1 < body2);
-        body2.0.config_id[0] = orig_value;
         assert_eq!(body1, body2);
 
         let orig_value = body2.0.isv_prod_id;

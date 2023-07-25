@@ -281,7 +281,7 @@ impl Verifier {
 
     /// Verify the report body config ID matches the given value.
     pub fn config_id(&mut self, config_id: &ConfigId) -> &mut Self {
-        self.report_body_verifiers.push((*config_id).into());
+        self.report_body_verifiers.push(config_id.clone().into());
         self
     }
 

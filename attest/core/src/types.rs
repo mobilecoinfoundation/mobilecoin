@@ -4,7 +4,6 @@
 //! or in multiple places.
 
 pub mod basename;
-pub mod config_id;
 pub mod cpu_svn;
 pub mod epid_group_id;
 pub mod ext_prod_id;
