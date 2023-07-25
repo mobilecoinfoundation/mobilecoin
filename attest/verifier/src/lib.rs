@@ -71,8 +71,8 @@ use displaydoc::Display;
 use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
-    Attributes, Basename, ConfigId, ConfigSvn, CpuSecurityVersion, EpidGroupId, ExtendedProductId,
-    FamilyId, IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType, ReportDataMask,
+    Attributes, Basename, ConfigId, ConfigSvn, CpuSvn, EpidGroupId, ExtendedProductId, FamilyId,
+    IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType, ReportDataMask,
     VerificationReport, VerificationReportData, VerifyError,
 };
 use mc_attestation_verifier::TrustedIdentity;
@@ -293,8 +293,8 @@ impl Verifier {
     }
 
     /// Verify the report body CPU version is at least the given value.
-    pub fn cpu_version(&mut self, cpu_svn: &CpuSecurityVersion) -> &mut Self {
-        self.report_body_verifiers.push((*cpu_svn).into());
+    pub fn cpu_version(&mut self, cpu_svn: &CpuSvn) -> &mut Self {
+        self.report_body_verifiers.push(cpu_svn.clone().into());
         self
     }
 

@@ -7,10 +7,10 @@ use crate::{
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
     types::{
-        cpu_svn::CpuSecurityVersion, ext_prod_id::ExtendedProductId, family_id::FamilyId,
-        measurement::Measurement, report_data::ReportDataMask, MiscSelect, ProductId,
+        ext_prod_id::ExtendedProductId, family_id::FamilyId, measurement::Measurement,
+        report_data::ReportDataMask, MiscSelect, ProductId,
     },
-    Attributes, ConfigId, ConfigSvn, IsvSvn, ReportData,
+    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvSvn, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -20,12 +20,14 @@ use core::{
     mem::size_of,
 };
 use mc_sgx_core_types::{AttributeFlags, MrEnclave, MrSigner};
-use mc_sgx_types::{sgx_attributes_t, sgx_measurement_t, sgx_report_body_t, SGX_CONFIGID_SIZE};
+use mc_sgx_types::{
+    sgx_attributes_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t, SGX_CONFIGID_SIZE,
+};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
 const RB_CPUSVN_START: usize = 0;
-const RB_CPUSVN_END: usize = RB_CPUSVN_START + <CpuSecurityVersion as IntelLayout>::X86_64_CSIZE;
+const RB_CPUSVN_END: usize = RB_CPUSVN_START + CpuSvn::SIZE;
 const RB_SELECT_START: usize = RB_CPUSVN_END;
 const RB_SELECT_END: usize = RB_SELECT_START + size_of::<u32>();
 const RB_RESERVED1_START: usize = RB_SELECT_END;
@@ -92,7 +94,7 @@ impl ReportBody {
 
     /// Retrieve the security version of the CPU the report was generated
     /// on
-    pub fn cpu_security_version(&self) -> CpuSecurityVersion {
+    pub fn cpu_security_version(&self) -> CpuSvn {
         self.0.cpu_svn.into()
     }
 
@@ -287,10 +289,7 @@ impl SgxWrapperType<sgx_report_body_t> for ReportBody {
             return Err(EncodingError::InvalidOutputLength);
         }
 
-        CpuSecurityVersion::write_ffi_bytes(
-            &src.cpu_svn,
-            &mut dest[RB_CPUSVN_START..RB_CPUSVN_END],
-        )?;
+        dest[RB_CPUSVN_START..RB_CPUSVN_END].copy_from_slice(src.cpu_svn.svn.as_ref());
         dest[RB_SELECT_START..RB_SELECT_END].copy_from_slice(&src.misc_select.to_le_bytes());
         ExtendedProductId::write_ffi_bytes(
             &src.isv_ext_prod_id,
@@ -333,7 +332,9 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
         reserved4[..].copy_from_slice(&src[RB_RESERVED4_START..RB_RESERVED4_END]);
 
         Ok(Self(sgx_report_body_t {
-            cpu_svn: CpuSecurityVersion::try_from(&src[RB_CPUSVN_START..RB_CPUSVN_END])?.into(),
+            cpu_svn: sgx_cpu_svn_t {
+                svn: src[RB_CPUSVN_START..RB_CPUSVN_END].try_into().unwrap(),
+            },
             misc_select: u32::from_le_bytes(
                 (&src[RB_SELECT_START..RB_SELECT_END]).try_into().unwrap(),
             ),
