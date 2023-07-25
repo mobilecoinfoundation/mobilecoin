@@ -11,8 +11,9 @@ use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    IasNonce, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
+use mc_sgx_dcap_types::Quote3;
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_util_serial::{decode::Error as RmpDecodeError, encode::Error as RmpEncodeError};
 use serde::{Deserialize, Serialize};

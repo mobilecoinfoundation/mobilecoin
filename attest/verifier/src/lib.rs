@@ -76,7 +76,6 @@ use mc_attest_core::{
     VerificationReport, VerificationReportData, VerifyError,
 };
 use mc_attestation_verifier::TrustedIdentity;
-use serde::{Deserialize, Serialize};
 
 /// Private macros used inside this crate.
 mod macros {
@@ -121,7 +120,7 @@ trait Verify<T>: Clone {
 }
 
 /// An enumeration of errors which a [`Verifier`] can produce.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Display, PartialEq, PartialOrd)]
 pub enum Error {
     /**
      * The user-provided array of trust anchor PEM contains an invalid

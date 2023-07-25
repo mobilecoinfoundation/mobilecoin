@@ -6,16 +6,11 @@ use displaydoc::Display;
 use mc_sgx_dcap_types::Quote3;
 use mc_sgx_dcap_ql::TryFromReport;
 use mc_attest_core::{
-    EpidGroupId, PibError, PlatformInfoBlob, QuoteError, QuoteNonce,
-    QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
+    QuoteError, Report, SgxError, TargetInfo,
 };
 #[cfg(not(feature = "sgx-sim"))]
 use mc_sgx_dcap_ql::QeTargetInfo;
 use mc_sgx_dcap_types::QlError;
-use mc_sgx_types::{
-    sgx_get_extended_epid_group_id,
-    sgx_report_attestation_status, sgx_status_t,
-};
 
 pub struct QuotingEnclave;
 
@@ -73,11 +68,5 @@ impl From<mc_sgx_dcap_ql::Error> for TargetInfoError {
 impl From<SgxError> for TargetInfoError {
     fn from(src: SgxError) -> Self {
         TargetInfoError::Sgx(src)
-    }
-}
-
-impl From<sgx_status_t> for TargetInfoError {
-    fn from(src: sgx_status_t) -> TargetInfoError {
-        TargetInfoError::Sgx(src.into())
     }
 }

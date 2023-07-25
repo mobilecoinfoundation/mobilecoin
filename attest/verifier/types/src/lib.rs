@@ -6,4 +6,4 @@ extern crate alloc;
 
 mod verification;
 
-pub use crate::verification::{VerificationReport, VerificationSignature};
+pub use crate::verification::{VerificationReport, VerificationSignature, Evidence};

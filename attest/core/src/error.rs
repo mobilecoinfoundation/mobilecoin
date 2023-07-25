@@ -18,6 +18,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_sgx_core_types::{MrEnclave, MrSigner};
+use mc_sgx_dcap_ql::Error as DcapQuoteLibraryError;
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
@@ -236,6 +237,14 @@ pub enum QuoteError {
     InvalidSize(u32),
     /// The base64 encoder did not output valid UTF-8 data
     InvalidUtf8,
+    /// Error from DCAP quote library {0}
+    DcapQuoteLibrary(DcapQuoteLibraryError),
+}
+
+impl From<DcapQuoteLibraryError> for QuoteError {
+    fn from(src: DcapQuoteLibraryError) -> Self {
+        QuoteError::DcapQuoteLibrary(src)
+    }
 }
 
 impl From<DecodeError> for QuoteError {
