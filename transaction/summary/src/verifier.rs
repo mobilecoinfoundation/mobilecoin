@@ -149,9 +149,8 @@ impl TxSummaryStreamingVerifierCtx {
                         .output_add(TransactionEntity::OurAddress(address_hash.clone()), amount)?;
                 }
             } else {
-                // TODO: If we _don't_ have address information but it's to our own address...
-                // what then? is this even possible??!
-                panic!("what's the right thing to do here..?");
+                // If we _don't_ have address information but it's to our own address...
+                return Err(Error::MissingOutputAddress);
             }
 
         // If we didn't match the output, and we have address information, this

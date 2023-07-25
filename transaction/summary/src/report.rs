@@ -26,7 +26,7 @@ pub enum TransactionEntity {
     /// Outputs to other accounts (hash {0})
     OtherAddress(ShortAddressHash),
 
-    /// Swap counterparty
+    /// Outputs to swap counterparty
     Swap,
 }
 
@@ -117,10 +117,12 @@ pub struct TxSummaryUnblindingReport<
     /// Total balance change for our account for each type of token in the
     /// transaction.
     ///
-    /// totals = our inputs - sum(change outputs)
+    /// totals = inputs - sum(change outputs)
     ///
-    /// Note that swap inputs are elided as these are not inputs
-    /// owned by us (ie. are not spent from our account)
+    /// Note that owned and swap inputs are split as most
+    /// applications are concerned only with the _cost_ of
+    /// the transaction to the user.
+    /// See [elide_swap_totals] for more detail.
     pub totals: Vec<(TokenId, TotalKind, i64), TOTALS>,
 
     /// The network fee that we pay to execute the transaction
@@ -132,9 +134,10 @@ pub struct TxSummaryUnblindingReport<
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum TotalKind {
-    /// Input owned by our account
+    /// Input owned by our account (less change), outgoing from our account
     Ours,
-    /// Input owned by SCI counterparty
+    /// Input owned by SCI counterparty (less change for partial swaps) incoming
+    /// to our account
     Sci,
 }
 
@@ -323,11 +326,32 @@ impl<const RECORDS: usize, const TOTALS: usize> TxSummaryUnblindingReport<RECORD
     pub fn sort(&mut self) {
         // TODO: should we remove zeroed balances / totals?
 
-        self.outputs[..].sort_by_key(|(_, t, _)| *t);
-        self.outputs[..].sort_by_key(|(e, _, _)| e.clone());
+        self.outputs[..].sort_by_key(|(e, t, _)| (e.clone(), *t));
+        self.totals[..].sort_by_key(|(t, k, _)| (*k, *t));
+    }
 
-        self.totals[..].sort_by_key(|(t, _, _)| *t);
-        self.totals[..].sort_by_key(|(_, k, _)| *k);
+    /// Elide SCI inputs and change outputs from a finalised report
+    ///
+    /// This transforms the report to only include outputs from _our_
+    /// account in the totals for display to users.
+    pub fn elide_swap_totals(&mut self) {
+        // Find SCI inputs in totals
+        for (token_id, kind, _) in &self.totals[..] {
+            if *kind != TotalKind::Sci {
+                continue;
+            }
+
+            // Remove corresponding change outputs for partial swap
+            // (change outputs are in the same token type as the swap,
+            // where the outputs to fulfil the swap are not)
+            self.outputs.retain(|(entity, token, _amount)| {
+                *entity != TransactionEntity::Swap || token != token_id
+            });
+        }
+
+        // Remove SCI inputs from totals
+        self.totals
+            .retain(|(_token_id, kind, _)| *kind != TotalKind::Sci)
     }
 }
 
@@ -441,6 +465,67 @@ mod tests {
                 (addrs[1].clone(), TokenId::from(2), 120),
                 (TransactionEntity::Swap, TokenId::from(2), 200),
             ]
+        );
+    }
+
+    #[test]
+    fn test_flatten_sci() {
+        let mut report = TxSummaryUnblindingReport::<16>::new();
+
+        let addr = TransactionEntity::OurAddress(ShortAddressHash::from(random::<[u8; 16]>()));
+
+        // Add SCI outputs
+        report
+            .output_add(TransactionEntity::Swap, Amount::new(10, TokenId::from(1)))
+            .unwrap();
+        report
+            .output_add(TransactionEntity::Swap, Amount::new(50, TokenId::from(2)))
+            .unwrap();
+
+        // Add output to us
+        report
+            .output_add(addr.clone(), Amount::new(50, TokenId::from(2)))
+            .unwrap();
+
+        // Add input from SCI
+        report.sci_add(Amount::new(100, TokenId::from(2))).unwrap();
+
+        // Add owned input
+        report.input_add(Amount::new(10, TokenId::from(1))).unwrap();
+
+        // Finalise report
+        report.finalize().unwrap();
+
+        // Check full outputs / totals
+        assert_eq!(
+            &report.outputs[..],
+            &[
+                (addr.clone(), TokenId::from(2), 50),
+                (TransactionEntity::Swap, TokenId::from(1), 10),
+                (TransactionEntity::Swap, TokenId::from(2), 50),
+            ]
+        );
+        assert_eq!(
+            &report.totals[..],
+            &[
+                (TokenId::from(1), TotalKind::Ours, 10),
+                (TokenId::from(2), TotalKind::Sci, 50),
+            ]
+        );
+
+        // Trim swap information (removes swap partial returns and totals)
+        report.elide_swap_totals();
+
+        assert_eq!(
+            &report.outputs[..],
+            &[
+                (addr.clone(), TokenId::from(2), 50),
+                (TransactionEntity::Swap, TokenId::from(1), 10),
+            ]
+        );
+        assert_eq!(
+            &report.totals[..],
+            &[(TokenId::from(1), TotalKind::Ours, 10),]
         );
     }
 }
