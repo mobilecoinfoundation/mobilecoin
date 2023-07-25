@@ -17,7 +17,6 @@
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
@@ -134,16 +133,10 @@ fn get_validated_pubkey(
     pub_addr: PublicAddress,
     logger: &Logger,
 ) -> FullyValidatedFogPubkey {
-    let mut verifier = Verifier::default();
+    let identity = mc_fog_ingest_enclave_measurement::mr_signer_identity(None);
+    log::debug!(logger, "Ingest MRSIGNER identity: {:?}", &identity);
 
-    {
-        let mr_signer_verifier = mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
-        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-    }
-
-    log::debug!(logger, "IAS verifier: {:?}", &verifier);
-
-    let resolver = FogResolver::new(responses, &verifier);
+    let resolver = FogResolver::new(responses, [&identity]);
     resolver
         .expect("Could not get FogPubkey resolved")
         .get_fog_pubkey(&pub_addr)

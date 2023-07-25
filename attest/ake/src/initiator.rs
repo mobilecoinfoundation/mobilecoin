@@ -8,6 +8,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use mc_attest_core::{ReportDataMask, VerificationReport};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
@@ -162,7 +163,9 @@ where
                 let remote_report = VerificationReport::decode(output.payload.as_slice())
                     .map_err(|_e| Error::ReportDeserialization)?;
 
-                let mut verifier = input.verifier;
+                let identities = input.identities;
+                let mut verifier = Verifier::default();
+                verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
                 // We are not returning the report data and instead returning the raw report
                 // since that also includes the signature and certificate chain.

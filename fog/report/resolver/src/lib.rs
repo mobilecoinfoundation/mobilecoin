@@ -14,7 +14,8 @@ use mc_fog_ingest_report::IngestReportVerifier;
 use alloc::string::{String, ToString};
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
-use mc_attest_verifier::Verifier;
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::TrustedIdentity;
 use mc_fog_report_types::{FogReportResponses, ReportResponse};
 use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_util_uri::{FogUri, UriParseError};
@@ -36,8 +37,11 @@ pub struct FogResolver {
 impl FogResolver {
     /// Create a new FogResolver object, given serialized (unverified)
     /// fog report server responses,
-    /// and an attestation verifier for fog ingest measurements.
-    pub fn new(responses: FogReportResponses, verifier: &Verifier) -> Result<Self, UriParseError> {
+    /// and fog ingest identities for attestation.
+    pub fn new<'a>(
+        responses: FogReportResponses,
+        identities: impl IntoIterator<Item = &'a TrustedIdentity>,
+    ) -> Result<Self, UriParseError> {
         // Normalize URI strings
         let responses: FogReportResponses = responses
             .into_iter()
@@ -48,9 +52,11 @@ impl FogResolver {
                 },
             )
             .collect::<Result<_, UriParseError>>()?;
+        let mut verifier = Verifier::default();
+        verifier.identities(identities).debug(DEBUG_ENCLAVE);
         Ok(Self {
             responses,
-            verifier: IngestReportVerifier::from(verifier),
+            verifier: IngestReportVerifier::from(&verifier),
         })
     }
 }

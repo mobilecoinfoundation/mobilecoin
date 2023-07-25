@@ -9,7 +9,7 @@ use crate::{
 };
 use core::{result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_connection::{
@@ -59,7 +59,7 @@ pub struct Client {
     fog_key_image: FogKeyImageGrpcClient,
     fog_block: FogBlockGrpcClient,
     fog_report_conn: GrpcFogReportConnection,
-    fog_verifier: Verifier,
+    fog_identities: Vec<TrustedIdentity>,
     fog_untrusted: FogUntrustedLedgerGrpcClient,
     ring_size: usize,
     account_key: AccountKey,
@@ -83,7 +83,7 @@ impl Client {
         fog_key_image: FogKeyImageGrpcClient,
         fog_block: FogBlockGrpcClient,
         fog_report_conn: GrpcFogReportConnection,
-        fog_verifier: Verifier,
+        fog_identities: impl Into<Vec<TrustedIdentity>>,
         fog_untrusted: FogUntrustedLedgerGrpcClient,
         ring_size: usize,
         account_key: AccountKey,
@@ -99,7 +99,7 @@ impl Client {
             fog_key_image,
             fog_block,
             fog_report_conn,
-            fog_verifier,
+            fog_identities: fog_identities.into(),
             fog_untrusted,
             ring_size,
             account_key,
@@ -377,7 +377,7 @@ impl Client {
         let fog_responses = self
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
-        let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
+        let fog_resolver = FogResolver::new(fog_responses, &self.fog_identities)?;
 
         let ring_signer = LocalRingSigner::from(&self.account_key);
 
@@ -450,7 +450,7 @@ impl Client {
         let fog_responses = self
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
-        let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
+        let fog_resolver = FogResolver::new(fog_responses, &self.fog_identities)?;
 
         let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) =
             ring.into_iter().unzip();
@@ -589,7 +589,7 @@ impl Client {
         let fog_responses = self
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
-        let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
+        let fog_resolver = FogResolver::new(fog_responses, &self.fog_identities)?;
 
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 

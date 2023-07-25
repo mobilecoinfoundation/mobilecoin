@@ -18,7 +18,6 @@ grpcio = "0.12.1"
 rand = "0.8"
 
 # mobilecoin
-mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-util-cli = { path = "../../../util/cli" }
 mc-util-from-random = { path = "../../../util/from-random" }

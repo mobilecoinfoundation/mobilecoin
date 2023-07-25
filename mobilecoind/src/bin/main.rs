@@ -4,8 +4,6 @@
 //! mobilecoind daemon entry point
 
 use clap::Parser;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
@@ -32,21 +30,18 @@ fn main() {
     let _tracer =
         setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer");
 
-    let mut mr_signer_verifier =
-        MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-    let advisories = Advisories::new(
-        mc_consensus_enclave_measurement::HARDENING_ADVISORIES,
-        AdvisoryStatus::SWHardeningNeeded,
+    let mr_signer_identity = mc_consensus_enclave_measurement::mr_signer_identity(None);
+
+    log::debug!(
+        logger,
+        "Consensus MRSIGNER identity: {:?}",
+        mr_signer_identity
     );
-    mr_signer_verifier.set_advisories(advisories);
-
-    let mut verifier = Verifier::default();
-    verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-
-    log::debug!(logger, "Verifier: {:?}", verifier);
 
     // Create peer manager.
-    let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);
+    let peer_manager = config
+        .peers_config
+        .create_peer_manager(mr_signer_identity, &logger);
 
     // Create network state, transactions fetcher and ledger sync.
     let network_state = Arc::new(RwLock::new(PollingNetworkState::new(

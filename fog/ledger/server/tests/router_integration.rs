@@ -3,8 +3,6 @@
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Advisories, AdvisoryStatus};
 use mc_blockchain_types::BlockVersion;
 use mc_common::{
     logger,
@@ -251,17 +249,8 @@ fn create_router_client(
     let uri = FogLedgerUri::from_str(&format!("insecure-fog-ledger://{}", config.router_address))
         .unwrap();
 
-    let mut mr_signer_verifier =
-        MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-    let advisories = Advisories::new(
-        mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-        AdvisoryStatus::SWHardeningNeeded,
-    );
-    mr_signer_verifier.set_advisories(advisories);
-    let mut verifier = Verifier::default();
-    verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-
-    LedgerGrpcClient::new(uri, verifier, grpc_env, logger)
+    let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
+    LedgerGrpcClient::new(uri, [identity], grpc_env, logger)
 }
 
 fn create_env(

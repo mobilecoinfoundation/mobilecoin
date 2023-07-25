@@ -8,8 +8,6 @@ license = "GPL-3.0"
 [dependencies]
 # MC
 mc-attest-net = { path = "../../../../attest/net" }
-mc-attest-verifier = { path = "../../../../attest/verifier" }
-mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["log"] }
 mc-transaction-core = { path = "../../../../transaction/core" }
@@ -32,4 +30,5 @@ mc-fog-view-server = { path = "../." }
 
 # Third-party
 grpcio = "0.12.0"
+mc-attestation-verifier = "0.2.0"
 portpicker = "0.1.1"

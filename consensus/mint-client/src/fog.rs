@@ -4,8 +4,7 @@
 
 use grpcio::Environment;
 use mc_account_keys::PublicAddress;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Advisories, AdvisoryStatus};
+use mc_attestation_verifier::{TrustedIdentity, TrustedMrSignerIdentity};
 use mc_common::logger::Logger;
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_resolver::FogResolver;
@@ -74,8 +73,8 @@ impl FogContext {
             .fetch_fog_reports([fog_uri].into_iter())
             .map_err(|err| format!("Error fetching fog reports: {err}"))?;
 
-        let verifier = get_fog_ingest_verifier(self.css_signature.clone());
-        let resolver = FogResolver::new(responses, &verifier)
+        let identity = fog_ingest_identity(self.css_signature.clone());
+        let resolver = FogResolver::new(responses, [&identity])
             .map_err(|err| format!("Error building FogResolver: {err}"))?;
         resolver
             .get_fog_pubkey(public_address)
@@ -83,22 +82,13 @@ impl FogContext {
     }
 }
 
-fn get_fog_ingest_verifier(signature: Signature) -> Verifier {
-    let mr_signer_verifier = {
-        let mut mr_signer_verifier = MrSignerVerifier::new(
-            signature.mrsigner().into(),
-            signature.product_id(),
-            signature.version(),
-        );
-        let advisories = Advisories::new(
-            ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
-            AdvisoryStatus::SWHardeningNeeded,
-        );
-        mr_signer_verifier.set_advisories(advisories);
-        mr_signer_verifier
-    };
-
-    let mut verifier = Verifier::default();
-    verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-    verifier
+fn fog_ingest_identity(signature: Signature) -> TrustedIdentity {
+    let mr_signer_identity = TrustedMrSignerIdentity::new(
+        signature.mrsigner().into(),
+        signature.product_id().into(),
+        signature.version(),
+        [] as [&str; 0],
+        &["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+    );
+    mr_signer_identity.into()
 }

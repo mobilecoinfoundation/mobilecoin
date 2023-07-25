@@ -11,7 +11,6 @@ rust-version = { workspace = true }
 mc-attest-ake = { path = "../../attest/ake" }
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
-mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-connection = { path = "../../connection" }
 mc-crypto-keys = { path = "../../crypto/keys" }
@@ -25,5 +24,6 @@ aes-gcm = "0.10.2"
 cookie = "0.17"
 displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.12.1"
+mc-attestation-verifier = "0.2.0"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

@@ -12,7 +12,7 @@ use grpcio::{CallOption, Metadata, MetadataBuilder, Result as GrpcResult};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, Logger},
     trace_time,
@@ -60,8 +60,8 @@ pub struct EnclaveConnection<U: ConnectionUri, G: EnclaveGrpcChannel> {
     grpc: G,
     /// The AKE state machine object, if one is available.
     attest_cipher: Option<Ready<Aes256Gcm>>,
-    /// An object which can verify a fog node's provided IAS report
-    verifier: Verifier,
+    /// The identities that a fog node's IAS report must match, one of
+    identities: Vec<TrustedIdentity>,
     /// Credentials to use for all GRPC calls (this allows authentication
     /// username/password to go through, if provided).
     creds: BasicCredentials,
@@ -118,7 +118,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
 
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
         let (initiator, verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
@@ -140,7 +140,13 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
 }
 
 impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
-    pub fn new(chain_id: String, uri: U, grpc: G, verifier: Verifier, logger: Logger) -> Self {
+    pub fn new(
+        chain_id: String,
+        uri: U,
+        grpc: G,
+        identities: impl Into<Vec<TrustedIdentity>>,
+        logger: Logger,
+    ) -> Self {
         let creds = BasicCredentials::new(&uri.username(), &uri.password());
         let cookies = CookieJar::default();
 
@@ -149,7 +155,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
             uri,
             grpc,
             attest_cipher: None,
-            verifier,
+            identities: identities.into(),
             creds,
             cookies,
             logger,

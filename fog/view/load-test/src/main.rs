@@ -4,7 +4,6 @@
 //! A utility to load-test a fog-view server.
 
 use grpcio::EnvBuilder;
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
 use mc_fog_uri::FogViewUri;
@@ -215,15 +214,9 @@ fn build_fog_view_conn(
             .build(),
     );
 
-    let verifier = {
-        let mr_signer_verifier = mc_fog_view_enclave_measurement::get_mr_signer_verifier(None);
+    let identity = mc_fog_view_enclave_measurement::mr_signer_identity(None);
 
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-        verifier
-    };
-
-    log::debug!(logger, "Fog view attestation verifier: {:?}", verifier);
+    log::debug!(logger, "Fog view attestation identity: {:?}", identity);
 
     let client_uri = FogViewUri::from_str(uri)
         .unwrap_or_else(|e| panic!("Could not parse client uri: {uri}: {e:?}"));
@@ -233,7 +226,7 @@ fn build_fog_view_conn(
         String::default(),
         client_uri,
         grpc_retry_config,
-        verifier,
+        [identity],
         grpc_env,
         logger.clone(),
     )

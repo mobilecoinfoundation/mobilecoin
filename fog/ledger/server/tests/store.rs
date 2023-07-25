@@ -11,7 +11,6 @@ use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
 use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::Verifier;
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -242,7 +241,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // AuthResponseOutput
     let auth_message = attest::AuthMessage::from(client_auth_response);
     // Initiator accepts responder's message.
-    let auth_response_event = AuthResponseInput::new(auth_message.into(), Verifier::default());
+    let auth_response_event = AuthResponseInput::new(auth_message.into(), []);
     // Should be a valid noise connection at this point.
     let (mut noise_connection, _verification_report) = initiator
         .try_next(&mut rng, auth_response_event)

@@ -7,7 +7,7 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AttestAkeError, Ready, Start, Transition,
 };
 use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
@@ -34,8 +34,8 @@ pub struct LedgerGrpcClient {
     /// The URI of the router to communicate with
     uri: FogLedgerUri,
 
-    /// An object which can verify a fog node's provided IAS report
-    verifier: Verifier,
+    /// The identities that a fog node's IAS report must match one of
+    identities: Vec<TrustedIdentity>,
 
     /// The AKE state machine object, if one is available.
     attest_cipher: Option<Ready<Aes256Gcm>>,
@@ -56,12 +56,12 @@ impl LedgerGrpcClient {
     ///
     /// Arguments:
     /// * uri: The Uri to connect to
-    /// * verifier: The attestation verifier
+    /// * identities: The identities that are allowed for attestation
     /// * env: A grpc environment (thread pool) to use for this connection
     /// * logger: For logging
     pub fn new(
         uri: FogLedgerUri,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Self {
@@ -80,7 +80,7 @@ impl LedgerGrpcClient {
             request_sender,
             response_receiver,
             uri,
-            verifier,
+            identities: identities.into(),
         }
     }
 
@@ -115,7 +115,7 @@ impl LedgerGrpcClient {
 
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
         let (initiator, verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 

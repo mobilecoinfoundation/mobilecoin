@@ -75,7 +75,7 @@ use mc_attest_core::{
     ExtendedProductId, FamilyId, IasNonce, IsvSvn, MiscSelect, ProductId, Quote, QuoteSignType,
     ReportDataMask, VerificationReport, VerificationReportData, VerifyError,
 };
-use mc_attest_verifier_config::TrustedMeasurement;
+use mc_attestation_verifier::TrustedIdentity;
 use serde::{Deserialize, Serialize};
 
 /// Private macros used inside this crate.
@@ -364,19 +364,18 @@ impl Verifier {
         self
     }
 
-    /// Add a measurement as a potential status verifier
+    /// Add identities as a potential status verifier
     ///
-    /// For MRENCLAVE and MRSIGNER measurements, only one of them needs to
+    /// For MRENCLAVE and MRSIGNER identities, only one of them needs to
     /// match.
     /// This allows for one to support multiple versions of an enclave for
     /// things like enclave update periods.
-    pub fn measurements<'a>(
+    pub fn identities<'a>(
         &mut self,
-        measurements: impl IntoIterator<Item = &'a TrustedMeasurement>,
+        identities: impl IntoIterator<Item = &'a TrustedIdentity>,
     ) -> &mut Self {
-        for measurement in measurements {
-            self.status_verifiers
-                .push(StatusVerifier::from(measurement));
+        for identity in identities {
+            self.status_verifiers.push(StatusVerifier::from(identity));
         }
         self
     }

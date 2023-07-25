@@ -19,8 +19,6 @@ path = "src/bin/sample_paykit_remote_wallet.rs"
 # mobilecoin
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
-mc-attest-verifier = { path = "../../attest/verifier" }
-mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
@@ -59,6 +57,7 @@ displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.1"
 link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
+mc-attestation-verifier = "0.2.0"
 protobuf = "2.27.1"
 rand = "0.8"
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
