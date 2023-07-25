@@ -18,7 +18,6 @@ use core::{
 };
 use displaydoc::Display;
 use mc_sgx_core_types::{MrEnclave, MrSigner};
-use mc_sgx_dcap_ql::Error as DcapQuoteLibraryError;
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
@@ -241,12 +240,6 @@ pub enum QuoteError {
     DcapQuoteLibrary,
     // Hack for now due to the serialization restrictions
     // DcapQuoteLibrary(DcapQuoteLibraryError),
-}
-
-impl From<DcapQuoteLibraryError> for QuoteError {
-    fn from(_src: DcapQuoteLibraryError) -> Self {
-        QuoteError::DcapQuoteLibrary
-    }
 }
 
 impl From<DecodeError> for QuoteError {

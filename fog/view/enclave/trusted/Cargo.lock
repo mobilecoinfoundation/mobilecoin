@@ -929,7 +929,6 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-sgx-core-types",
  "mc-sgx-css",
- "mc-sgx-dcap-ql",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -1610,57 +1609,6 @@ dependencies = [
  "displaydoc",
  "mc-sgx-core-types",
  "sha2",
-]
-
-[[package]]
-name = "mc-sgx-dcap-ql"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ab86d3f73869d67ea28f9d029d6d52405fe73d931627b2831c67bf9184e0282"
-dependencies = [
- "displaydoc",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
- "mc-sgx-dcap-ql-sys",
- "mc-sgx-dcap-ql-types",
- "mc-sgx-dcap-types",
- "mc-sgx-util",
- "once_cell",
-]
-
-[[package]]
-name = "mc-sgx-dcap-ql-sys"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd6866e092adde8d6d4ff3fa9386a2a1a4278a8b72787330d278150fee636581"
-dependencies = [
- "bindgen 0.66.1",
- "cargo-emit",
- "mc-sgx-core-build",
- "mc-sgx-core-sys-types",
- "mc-sgx-dcap-ql-sys-types",
- "mc-sgx-dcap-sys-types",
-]
-
-[[package]]
-name = "mc-sgx-dcap-ql-sys-types"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c08a8690a40eceeb938131dd5437793567a81dee84b16665354709da40a7531"
-dependencies = [
- "bindgen 0.66.1",
- "cargo-emit",
- "mc-sgx-core-build",
-]
-
-[[package]]
-name = "mc-sgx-dcap-ql-types"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7633e29a8b03dda8e18224a35eee4b2a6656ef04ffc41f8b58eea3783f683c46"
-dependencies = [
- "mc-sgx-core-types",
- "mc-sgx-dcap-ql-sys-types",
 ]
 
 [[package]]

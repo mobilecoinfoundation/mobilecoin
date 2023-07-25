@@ -29,7 +29,6 @@ mc-attest-verifier-types = { path = "../verifier/types" }
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-sgx-core-types = "0.7.2"
-mc-sgx-dcap-ql = "0.7.2"
 mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
