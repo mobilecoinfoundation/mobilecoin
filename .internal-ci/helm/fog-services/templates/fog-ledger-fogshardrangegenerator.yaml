@@ -222,7 +222,7 @@ spec:
             tolerations:
               {{- toYaml $.Values.fogLedgerRouter.tolerations | nindent 14 }}
             volumes:
-            {{- if eq $.Values.fogLedger.persistence.enabled false }}
+            {{- if eq $.Values.fogLedgerRouter.persistence.enabled false }}
             - name: fog-data
               emptyDir: {}
             {{- end }}
@@ -243,12 +243,12 @@ spec:
                     name: {{ include "fogServices.fullname" $ }}-supervisord-fog-ledger-router
                 - configMap:
                     name: {{ include "fogServices.fullname" $ }}-supervisord-admin
-        {{- if $.Values.fogLedger.persistence.enabled }}
+        {{- if $.Values.fogLedgerRouter.persistence.enabled }}
         volumeClaimTemplates:
         - metadata:
             name: fog-data
           spec:
-            {{- toYaml $.Values.fogLedger.persistence.spec | nindent 12 }}
+            {{- toYaml $.Values.fogLedgerRouter.persistence.spec | nindent 12 }}
         {{- end }}
 
   store:

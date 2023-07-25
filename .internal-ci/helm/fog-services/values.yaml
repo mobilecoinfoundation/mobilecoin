@@ -52,7 +52,7 @@ fogViewStores:
     shardOverlap: 400_000
 
 fogViewShardRangeGenerator:
-  count: 4
+  count: 3
 
 fogViewRouter:
   podManagementPolicy: Parallel
@@ -163,7 +163,7 @@ fogLedgerStores:
     shardOverlap: 400_000
 
 fogLedgerShardRangeGenerator:
-  count: 4
+  count: 3
 
 fogLedgerRouter:
   replicaCount: 1
@@ -185,13 +185,23 @@ fogLedgerRouter:
     backtrace: full
     log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
 
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+        - 'ReadWriteOnce'
+      resources:
+        requests:
+          storage: 512Gi
+
   resources:
     limits:
       intel.com/sgx: 5000
-      memory: 1Gi
+      memory: 3Gi
     requests:
       intel.com/sgx: 5000
-      memory: 1Gi
+      memory: 3Gi
       cpu: 1100m
 
   nodeSelector:
@@ -229,6 +239,9 @@ fogLedger:
       resources:
         requests:
           storage: 512Gi
+      persistentVolumeClaimRetentionPolicy:
+        whenDeleted: Delete
+        whenScaled: Retain
 
   ingress:
     common:
