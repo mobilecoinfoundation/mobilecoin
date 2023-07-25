@@ -24,7 +24,7 @@ impl QuotingEnclave {
     pub fn quote_report(
         report: &Report,
     ) -> Result<(Quote3<Vec<u8>>, Report), QuoteError> {
-        let quote = Quote3::try_from_report(report.clone())?;
+        let quote = Quote3::try_from_report(report.clone()).map_err(|_| QuoteError::DcapQuoteLibrary)?;
         Ok((quote, report.clone()))
     }
 
