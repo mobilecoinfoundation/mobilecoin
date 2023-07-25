@@ -24,7 +24,6 @@ mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-net = { path = "../../../attest/net" }
-mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
@@ -58,6 +57,7 @@ futures = "0.3"
 grpcio = "0.12.1"
 itertools = "0.10"
 lazy_static = "1.4"
+mc-attestation-verifier = "0.2.0"
 rand = "0.8"
 retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

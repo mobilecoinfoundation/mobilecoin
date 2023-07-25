@@ -134,7 +134,7 @@ fn get_validated_pubkey(
     logger: &Logger,
 ) -> FullyValidatedFogPubkey {
     let identity = mc_fog_ingest_enclave_measurement::mr_signer_identity(None);
-    log::debug!(logger, "IAS identity: {:?}", &identity);
+    log::debug!(logger, "Ingest MRSIGNER identity: {:?}", &identity);
 
     let resolver = FogResolver::new(responses, [&identity]);
     resolver

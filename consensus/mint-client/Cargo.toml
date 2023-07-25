@@ -17,7 +17,6 @@ path = "src/bin/main.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-attest-verifier = { path = "../../attest/verifier" }
-mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
@@ -40,6 +39,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.12.1"
 hex = { version = "0.4", features = ["serde"] }
+mc-attestation-verifier = "0.2.0"
 pem = "2.0"
 protobuf = "2.27.1"
 rand = "0.8"

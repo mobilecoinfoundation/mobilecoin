@@ -32,7 +32,11 @@ fn main() {
 
     let mr_signer_identity = mc_consensus_enclave_measurement::mr_signer_identity(None);
 
-    log::debug!(logger, "MRSIGNER identity: {:?}", mr_signer_identity);
+    log::debug!(
+        logger,
+        "Consensus MRSIGNER identity: {:?}",
+        mr_signer_identity
+    );
 
     // Create peer manager.
     let peer_manager = config

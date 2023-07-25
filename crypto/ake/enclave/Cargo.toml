@@ -12,7 +12,6 @@ mc-attest-ake = { path = "../../../attest/ake", default-features = false }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
 mc-attest-trusted = { path = "../../../attest/trusted", default-features = false }
 mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
-mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../../../common", default-features = false }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-rand = "1.0"
@@ -22,6 +21,7 @@ mc-sgx-compat = { path = "../../../sgx/compat", default-features = false }
 
 aes-gcm = "0.10.1"
 digest = "0.10"
+mc-attestation-verifier = "0.2.0"
 sha2 = { version = "0.10", default-features = false }
 
 [build-dependencies]

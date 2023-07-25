@@ -13,7 +13,6 @@ rust-version = { workspace = true }
 mc-attest-ake = { path = "../../../attest/ake" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
-mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-noise = { path = "../../../crypto/noise" }
@@ -34,5 +33,6 @@ mc-fog-view-protocol = { path = "../protocol" }
 aes-gcm = "0.10.2"
 futures = "0.3"
 grpcio = "0.12.1"
+mc-attestation-verifier = "0.2.0"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

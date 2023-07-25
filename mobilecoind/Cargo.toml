@@ -20,7 +20,6 @@ bypass-ip-check = []
 mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
-mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
@@ -62,6 +61,7 @@ displaydoc = "0.2"
 grpcio = "0.12.1"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
+mc-attestation-verifier = "0.2.0"
 num_cpus = "1.16"
 prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 protobuf = "2.27.1"

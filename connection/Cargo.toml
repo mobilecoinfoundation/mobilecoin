@@ -13,7 +13,6 @@ mc-attest-ake = { path = "../attest/ake" }
 mc-attest-api = { path = "../attest/api" }
 mc-attest-core = { path = "../attest/core" }
 mc-attest-verifier = { path = "../attest/verifier" }
-mc-attestation-verifier = "0.2.0"
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common" }
 mc-consensus-api = { path = "../consensus/api" }
@@ -28,6 +27,7 @@ aes-gcm = "0.10.2"
 cookie = "0.17"
 displaydoc = "0.2"
 grpcio = "0.12.1"
+mc-attestation-verifier = "0.2.0"
 mc-rand = "1"
 retry = "2.0"
 secrecy = "0.8"

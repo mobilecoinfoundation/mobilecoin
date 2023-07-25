@@ -14,7 +14,6 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
-mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../common", features = ["loggers"] }
 mc-connection = { path = "../connection" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
@@ -33,6 +32,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.12.1"
 hex = "0.4"
+mc-attestation-verifier = "0.2.0"
 rand = "0.8"
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = "1.0"

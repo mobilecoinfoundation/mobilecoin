@@ -14,7 +14,6 @@ path = "src/main.rs"
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-attest-core = { path = "../../attest/core" }
-mc-attestation-verifier = "0.2.0"
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
@@ -34,6 +33,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 grpcio = "0.12.1"
 lazy_static = "1.4"
+mc-attestation-verifier = "0.2.0"
 rand = "0.8"
 rayon = "1.7"
 retry = "2.0"
