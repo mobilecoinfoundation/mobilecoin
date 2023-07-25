@@ -31,7 +31,7 @@ use error::*;
 use marker::ContiguousMemory;
 
 extern crate mc_sgx_core_sys_types;
-pub use self::mc_sgx_core_sys_types::{sgx_target_info_t, sgx_report_data_t};
+pub use self::mc_sgx_core_sys_types::{sgx_target_info_t, sgx_report_data_t, sgx_attributes_t};
 
 //
 // sgx_attributes.h
@@ -62,11 +62,6 @@ pub const SGX_XFRM_MPX: ::uint64_t              = 0x0000_0000_0000_0018;  // MPX
 pub const SGX_XFRM_RESERVED: ::uint64_t         = !(SGX_XFRM_LEGACY | SGX_XFRM_AVX);
 
 impl_struct! {
-    pub struct sgx_attributes_t {
-        pub flags: ::uint64_t,
-        pub xfrm: ::uint64_t,
-    }
-
     pub struct sgx_misc_attribute_t {
         pub secs_attr: sgx_attributes_t,
         pub misc_select: sgx_misc_select_t,

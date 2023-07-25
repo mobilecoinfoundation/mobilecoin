@@ -3,7 +3,6 @@
 //! This module contains FFI wrapper types which are used for multiple purposes,
 //! or in multiple places.
 
-pub mod attributes;
 pub mod basename;
 pub mod config_id;
 pub mod cpu_svn;
