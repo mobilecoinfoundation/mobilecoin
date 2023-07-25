@@ -43,7 +43,6 @@ fn main() {
         transfer_amount: config.transfer_amount,
         token_ids: config.token_ids.clone(),
         polling_wait: config.balance_polling_wait,
-        ..Default::default()
     };
 
     let account_keys = config.load_accounts(&logger);
