@@ -8,9 +8,9 @@ use crate::{
     traits::SgxWrapperType,
     types::{
         ext_prod_id::ExtendedProductId, family_id::FamilyId, measurement::Measurement,
-        report_data::ReportDataMask, MiscSelect,
+        report_data::ReportDataMask,
     },
-    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvProductId, IsvSvn, ReportData,
+    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvProductId, IsvSvn, MiscellaneousSelect, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -115,8 +115,8 @@ impl ReportBody {
 
     /// Retrieve whether the extended SSA frame feature was requested (source
     /// from the enclave XML)
-    pub fn misc_select(&self) -> MiscSelect {
-        self.0.misc_select
+    pub fn misc_select(&self) -> MiscellaneousSelect {
+        self.0.misc_select.into()
     }
 
     /// Retrieve the enclave signer measurement

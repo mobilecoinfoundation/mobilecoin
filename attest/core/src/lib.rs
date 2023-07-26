@@ -38,15 +38,15 @@ pub use crate::{
         basename::Basename, epid_group_id::EpidGroupId, ext_prod_id::ExtendedProductId,
         family_id::FamilyId, key_id::KeyId, mac::Mac, measurement::Measurement,
         pib::PlatformInfoBlob, report_body::ReportBody, report_data::ReportDataMask,
-        spid::ProviderId, update_info::*, MiscSelect,
+        spid::ProviderId, update_info::*,
     },
 };
 
 pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 
 pub use mc_sgx_core_types::{
-    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvProductId, IsvSvn, MrEnclave, MrSigner, ReportData,
-    TargetInfo,
+    Attributes, ConfigId, ConfigSvn, CpuSvn, IsvProductId, IsvSvn, MiscellaneousSelect, MrEnclave,
+    MrSigner, ReportData, TargetInfo,
 };
 
 /// The IAS version we support
