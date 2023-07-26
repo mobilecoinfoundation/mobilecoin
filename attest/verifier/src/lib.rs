@@ -319,7 +319,7 @@ impl Verifier {
 
     /// Verify the report body family ID matches the given value.
     pub fn family_id(&mut self, family_id: &FamilyId) -> &mut Self {
-        self.report_body_verifiers.push((*family_id).into());
+        self.report_body_verifiers.push(family_id.clone().into());
         self
     }
 
