@@ -13,7 +13,7 @@ pub use mc_fog_ingest_enclave_api::{
 
 use displaydoc::Display;
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    IasNonce, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_verifier::DEBUG_ENCLAVE;
@@ -28,6 +28,7 @@ use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::ETxOutRecord;
 use mc_fog_types::ingest::TxsForIngest;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
+use mc_sgx_dcap_types::Quote3;
 use mc_sgx_types::{
     sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t, sgx_status_t,
 };
@@ -146,7 +147,7 @@ impl ReportableEnclave for IngestSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+    fn verify_quote(&self, quote: Quote3<Vec<u8>>, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

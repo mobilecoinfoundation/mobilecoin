@@ -34,6 +34,7 @@ mc-sgx-compat = { path = "../../../sgx/compat" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
+mc-sgx-dcap-types = "0.7.2"
 
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }

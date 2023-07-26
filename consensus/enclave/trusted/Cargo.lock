@@ -1058,6 +1058,7 @@ dependencies = [
  "mc-crypto-message-cipher",
  "mc-crypto-multisig",
  "mc-sgx-compat",
+ "mc-sgx-dcap-types",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-serial",

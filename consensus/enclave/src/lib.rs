@@ -10,7 +10,7 @@ pub use mc_consensus_enclave_api::{
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    IasNonce, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -23,6 +23,7 @@ use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
+use mc_sgx_dcap_types::Quote3;
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipProof},
@@ -99,7 +100,7 @@ impl ReportableEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+    fn verify_quote(&self, quote: Quote3<Vec<u8>>, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

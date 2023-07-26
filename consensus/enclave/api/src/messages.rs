@@ -7,7 +7,7 @@ use crate::{
     WellFormedEncryptedTx,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,
@@ -17,6 +17,7 @@ use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipProof},
     TokenId,
 };
+use mc_sgx_dcap_types::Quote3;
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of API calls and their arguments for use across serialization
@@ -91,7 +92,7 @@ pub enum EnclaveCall {
     /// * Verifies that the Quoting Enclave is sane,
     /// * Verifies that the Quote matches the previously generated report.
     /// * Caches the quote.
-    VerifyQuote(Quote, Report),
+    VerifyQuote(Quote3<Vec<u8>>, Report),
 
     /// The [ConsensusEnclave::verify_ias_report()] method.
     ///

@@ -5,13 +5,15 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
-    PibError, ProviderId, QuoteError, Evidence, VerificationReportData,
+    PibError, ProviderId, QuoteError, VerificationReportData,
     VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_attest_net::{Error as RaError, RaClient};
 use mc_attest_untrusted::{QuotingEnclave, TargetInfoError};
 use mc_attest_verifier::Error as VerifierError;
+use mc_attest_verifier_types::Evidence;
+use mc_sgx_dcap_quoteverify::Collateral;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
 use mc_util_metrics::IntGauge;
@@ -130,7 +132,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             self.logger,
             "Starting remote attestation report process, getting QE enclave targeting info..."
         );
-        let (qe_info, gid) =
+        let qe_info =
             retry(
                 Fibonacci::from_millis(1000).take(7),
                 || match QuotingEnclave::target_info() {
@@ -150,8 +152,6 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             })?;
         log::debug!(self.logger, "Getting EREPORT from node enclave...");
         let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;
-        log::debug!(self.logger, "Downloading SigRL for GID '{}'...", &gid);
-        let sigrl = self.ra_client.get_sigrl(gid)?;
         log::debug!(self.logger, "Quoting report...");
         let (quote, qe_report) = QuotingEnclave::quote_report(
             &report,
