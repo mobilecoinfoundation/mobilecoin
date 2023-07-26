@@ -1126,6 +1126,7 @@ dependencies = [
  "mc-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
+ "mc-sgx-dcap-types",
  "mc-util-from-random",
  "mc-util-serial",
  "sha2",
@@ -1554,8 +1555,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-build"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b189eada1191cd6bdc23bcd4d209ec2a28e0d28a7591202af23cf7040402f31"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -1564,8 +1564,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-sys-types"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fee0f6d6dfb4d091ebe1e92302d7ce26f95530ed5a551103e816afa18963af5"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -1577,8 +1576,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-types"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35eb0c445919e921473fd3187e5265c19741546a2d08094ce9c1b7b9250f112d"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
 dependencies = [
  "bitflags 2.3.3",
  "displaydoc",
@@ -1603,8 +1601,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-sys-types"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2401911a5367dee2b103e0ffec71b8c17979e34dd2fa9ded9792110482244e5"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
 dependencies = [
  "bindgen 0.66.1",
  "mc-sgx-core-build",
@@ -1614,8 +1611,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-types"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0623b0d7a1f947f7cc1f4269a22a8251cf010d5cbff8b2ee605a289dc9386dc"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
 dependencies = [
  "const-oid",
  "displaydoc",
@@ -1716,8 +1712,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-util"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7881cff3a13cb6719d3233f65d6a460481a4faabe948ad7e5e406ea1ade0999"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
 
 [[package]]
 name = "mc-transaction-core"
@@ -2683,3 +2678,13 @@ dependencies = [
  "syn 1.0.109",
  "synstructure",
 ]
+
+[[patch.unused]]
+name = "mc-sgx-dcap-ql"
+version = "0.7.2"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+
+[[patch.unused]]
+name = "mc-sgx-dcap-quoteverify"
+version = "0.7.2"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"

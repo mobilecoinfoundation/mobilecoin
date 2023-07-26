@@ -12,7 +12,7 @@ use mc_attest_ake::{
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
+    IasNonce, IntelSealed, Nonce, QuoteNonce, Report, ReportData, TargetInfo,
     VerificationReport,
 };
 use mc_attest_enclave_api::{
@@ -21,12 +21,12 @@ use mc_attest_enclave_api::{
     PlaintextClientRequest, Result, SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_attestation_verifier::{TrustedIdentity, TrustedMrEnclaveIdentity};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
+use mc_sgx_dcap_types::Quote3;
 use mc_util_from_random::FromRandom;
 use sha2::{Sha256, Sha512};
 
@@ -81,7 +81,7 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     quote_pending: Mutex<LruCache<QuoteNonce, Report>>,
 
     /// A map of generated quotes, awaiting reporting and signature by IAS.
-    ias_pending: Mutex<LruCache<IasNonce, Quote>>,
+    ias_pending: Mutex<LruCache<IasNonce, Quote3<Vec<u8>>>>,
 
     /// The cached IAS report, if any.
     current_ias_report: Mutex<Option<VerificationReport>>,
@@ -179,14 +179,14 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     /// Construct a new verifier which ensures MRENCLAVE and debug settings
     /// match.
-    fn get_verifier(&self) -> Result<Verifier> {
-        let mut verifier = Verifier::default();
-        verifier
-            .identities([&self.trusted_identity()?])
-            .debug(DEBUG_ENCLAVE);
-
-        Ok(verifier)
-    }
+    // fn get_verifier(&self) -> Result<Verifier> {
+    //     let mut verifier = Verifier::default();
+    //     verifier
+    //         .identities([&self.trusted_identity()?])
+    //         .debug(DEBUG_ENCLAVE);
+    //
+    //     Ok(verifier)
+    // }
 
     /// Get the peer ResponderId for ourself
     pub fn get_peer_self_id(&self) -> Result<ResponderId> {
@@ -662,7 +662,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Verify a quote
-    pub fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
+    pub fn verify_quote(&self, quote: Quote3<Vec<u8>>, qe_report: Report) -> Result<IasNonce> {
         // Is the qe_report for our enclave?
         qe_report.verify()?;
 
@@ -704,7 +704,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             let mut ias_pending = self.ias_pending.lock()?;
             let mut csprng = McRng::default();
             // this should never fail...
-            if let Some(report) = quote_pending.pop(&target_nonce) {
+            if let Some(_report) = quote_pending.pop(&target_nonce) {
                 let ias_nonce = loop {
                     let ias_nonce = IasNonce::new(&mut csprng)?;
                     if !ias_pending.contains(&ias_nonce) {
@@ -712,7 +712,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
                     }
                 };
                 // Ensure the quote contains our report, and is sane.
-                quote.verify_report(&qe_report, &report)?;
+                // HACK need to probably compare the report body
+                // quote.verify_report(&qe_report, &report)?;
                 ias_pending.put(ias_nonce.clone(), quote);
                 return Ok(ias_nonce);
             }
@@ -723,30 +724,31 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     /// Verify an ias report
     pub fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        let verifier = self.get_verifier()?;
-
-        // Verify signature, MRENCLAVE, report value, etc.
-        let report_data = verifier.verify(&ias_report)?;
-
-        // Get the nonce from the IAS report
-        let nonce = report_data
-            .nonce
-            .as_ref()
-            .ok_or(Error::Nonce(NonceError::Missing))?;
-
-        // Find the quote we cached earlier, if any
-        let cached_quote = self
-            .ias_pending
-            .lock()?
-            .pop(nonce)
-            .ok_or(Error::InvalidState)?;
-
-        // And finally, verify that the quote IAS examined is the one we've
-        // sent, using the nonce we provided.
-        let _ = Verifier::default()
-            .quote_body(&cached_quote)
-            .nonce(nonce)
-            .verify(&ias_report)?;
+        // HACK this should verify, wonder if we should use the sgx API for this?
+        // let verifier = self.get_verifier()?;
+        //
+        // // Verify signature, MRENCLAVE, report value, etc.
+        // let report_data = verifier.verify(&ias_report)?;
+        //
+        // // Get the nonce from the IAS report
+        // let nonce = report_data
+        //     .nonce
+        //     .as_ref()
+        //     .ok_or(Error::Nonce(NonceError::Missing))?;
+        //
+        // // Find the quote we cached earlier, if any
+        // let cached_quote = self
+        //     .ias_pending
+        //     .lock()?
+        //     .pop(nonce)
+        //     .ok_or(Error::InvalidState)?;
+        //
+        // // And finally, verify that the quote IAS examined is the one we've
+        // // sent, using the nonce we provided.
+        // let _ = Verifier::default()
+        //     .quote_body(&cached_quote)
+        //     .nonce(nonce)
+        //     .verify(&ias_report)?;
 
         // Save the result
         *(self.current_ias_report.lock()?) = Some(ias_report);

@@ -14,7 +14,7 @@ mod types;
 use crate::types::get_block_data;
 use alloc::vec::Vec;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
-use mc_attest_core::{IasNonce, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{IasNonce, QuoteNonce, Report, TargetInfo, Evidence};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession, SealedClientMessage,
@@ -139,12 +139,12 @@ where
         Ok(self.ake.verify_quote(quote, qe_report)?)
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_ias_report(&self, ias_report: Evidence) -> ReportableEnclaveResult<()> {
         self.ake.verify_ias_report(ias_report)?;
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_ias_report(&self) -> ReportableEnclaveResult<Evidence> {
         Ok(self.ake.get_ias_report()?)
     }
 }

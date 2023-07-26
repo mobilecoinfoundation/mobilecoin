@@ -5,14 +5,12 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
-    PibError, ProviderId, QuoteError, VerificationReportData,
+    PibError, QuoteError, Evidence,
     VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
-use mc_attest_net::{Error as RaError, RaClient};
 use mc_attest_untrusted::{QuotingEnclave, TargetInfoError};
 use mc_attest_verifier::Error as VerifierError;
-use mc_attest_verifier_types::Evidence;
 use mc_sgx_dcap_quoteverify::Collateral;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
@@ -27,6 +25,7 @@ use std::{
     thread::{sleep, Builder as ThreadBuilder, JoinHandle},
     time::{Duration, Instant},
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// How long to wait between report refreshes.
 pub const REPORT_REFRESH_INTERVAL: Duration = Duration::from_secs(18 * 60 * 60); // 18 hours.
@@ -36,9 +35,6 @@ pub const REPORT_REFRESH_INTERVAL: Duration = Duration::from_secs(18 * 60 * 60);
 pub enum Error {
     /// Error getting quoting enclave target info: {0}
     TargetInfo(TargetInfoError),
-
-    /// Failed to communicate with IAS: {0}
-    RaClient(RaError),
 
     /// DCAP Quote verification library error: {0}
     DcapQuoteVerifyLibrary(mc_sgx_dcap_quoteverify::Error),
@@ -65,12 +61,6 @@ pub enum Error {
 impl From<TargetInfoError> for Error {
     fn from(src: TargetInfoError) -> Self {
         Self::TargetInfo(src)
-    }
-}
-
-impl From<RaError> for Error {
-    fn from(src: RaError) -> Self {
-        Self::RaClient(src)
     }
 }
 
@@ -110,27 +100,21 @@ impl From<mc_sgx_dcap_quoteverify::Error> for Error {
     }
 }
 
-pub struct ReportCache<E: ReportableEnclave, R: RaClient> {
+pub struct ReportCache<E: ReportableEnclave> {
     enclave: E,
-    ra_client: R,
-    ias_spid: ProviderId,
     report_timestamp_gauge: &'static IntGauge,
     logger: Logger,
 }
 
-impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
+impl<E: ReportableEnclave> ReportCache<E> {
     pub fn new(
         enclave: E,
-        ra_client: R,
-        ias_spid: ProviderId,
         report_timestamp_gauge: &'static IntGauge,
 
         logger: Logger,
     ) -> Self {
         Self {
             enclave,
-            ra_client,
-            ias_spid,
             report_timestamp_gauge,
             logger,
         }
@@ -160,13 +144,13 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                 other_ti_err => other_ti_err,
             })?;
         log::debug!(self.logger, "Getting EREPORT from node enclave...");
-        let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;
+        let (report, _quote_nonce) = self.enclave.new_ereport(qe_info)?;
         log::debug!(self.logger, "Quoting report...");
         let (quote, qe_report) = QuotingEnclave::quote_report(
             &report,
         )?;
         log::debug!(self.logger, "Double-checking quoted report with enclave...");
-        let ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;
+        let _ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;
         log::debug!(
             self.logger,
             "Getting quote collateral..."
@@ -205,17 +189,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                 VerifierError::Verification(report_data),
             ))) => {
                 // A verifier failed...
-                if let Some(platform_info_blob) = report_data.platform_info_blob.as_ref() {
-                    // IAS gave us a PIB
-                    log::debug!(
-                        self.logger,
-                        "IAS requested TCB update, attempting to update..."
-                    );
-                    QuotingEnclave::update_tcb(platform_info_blob)?;
-                    log::debug!(
-                        self.logger,
-                        "TCB update complete, restarting reporting process"
-                    );
+                if let Some(_platform_info_blob) = report_data.platform_info_blob.as_ref() {
                     ias_report = self.start_report_cache()?;
                     log::debug!(self.logger, "Verifying IAS report with enclave (again)...");
                     self.enclave.verify_ias_report(ias_report.clone())?;
@@ -233,10 +207,9 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         };
 
         if retval.is_ok() {
-            let ias_report_data = VerificationReportData::try_from(&ias_report)?;
-            let timestamp = ias_report_data.parse_timestamp()?;
-
-            self.report_timestamp_gauge.set(timestamp.timestamp());
+            //HACK not sure thisis the best way to go
+            let timestamp = SystemTime::now();
+            self.report_timestamp_gauge.set(timestamp.duration_since(UNIX_EPOCH).unwrap().as_secs() as i64);
 
             log::info!(
                 self.logger,
@@ -258,10 +231,8 @@ pub struct ReportCacheThread {
 }
 
 impl ReportCacheThread {
-    pub fn start<E: ReportableEnclave + Send + 'static, R: RaClient + 'static>(
+    pub fn start<E: ReportableEnclave + Send + 'static>(
         enclave: E,
-        ra_client: R,
-        ias_spid: ProviderId,
         report_timestamp_gauge: &'static IntGauge,
         logger: Logger,
     ) -> Result<Self, Error> {
@@ -269,8 +240,6 @@ impl ReportCacheThread {
 
         let report_cache = ReportCache::new(
             enclave,
-            ra_client,
-            ias_spid,
             report_timestamp_gauge,
             logger.clone(),
         );
@@ -302,8 +271,8 @@ impl ReportCacheThread {
         Ok(())
     }
 
-    fn thread_entrypoint<E: ReportableEnclave, R: RaClient>(
-        report_cache: ReportCache<E, R>,
+    fn thread_entrypoint<E: ReportableEnclave>(
+        report_cache: ReportCache<E>,
         stop_requested: Arc<AtomicBool>,
         logger: Logger,
     ) {
