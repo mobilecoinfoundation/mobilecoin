@@ -80,8 +80,8 @@ mod test {
 
         let mr_signer = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             report_body.mr_signer(),
-            report_body.product_id(),
-            report_body.security_version(),
+            report_body.isv_product_id(),
+            report_body.isv_svn(),
             [] as [&str; 0],
             [] as [&str; 0],
         ));

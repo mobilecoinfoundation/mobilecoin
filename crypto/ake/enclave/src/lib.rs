@@ -656,7 +656,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Actually get the EREPORT
         let report = Report::new(Some(&qe_info), Some(&report_data))?;
-        quote_pending.put(quote_nonce, report);
+        quote_pending.put(quote_nonce, report.clone());
 
         Ok((report, quote_nonce))
     }

@@ -234,8 +234,8 @@ impl Verify<VerificationReportData> for MrSignerVerifier {
     fn verify(&self, data: &VerificationReportData) -> bool {
         if let Ok(report_body) = data.quote.report_body() {
             self.mr_signer == report_body.mr_signer()
-                && report_body.product_id() == self.product_id
-                && report_body.security_version().as_ref() >= self.minimum_svn.as_ref()
+                && report_body.isv_product_id() == self.product_id
+                && report_body.isv_svn().as_ref() >= self.minimum_svn.as_ref()
                 && check_ids(&data.quote_status, &self.advisories)
         } else {
             false

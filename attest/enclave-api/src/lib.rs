@@ -103,7 +103,7 @@ pub struct PlaintextClientRequest {
 /// The response to a request for a new report. The enclave will expect the
 /// QuoteNonce to be used when the report is quoted, and both the quote and
 /// report to be returned to the enclave during the verify_quote() phase.
-#[derive(Clone, Debug, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 pub struct NewEReportResponse {
     pub report: Report,
     pub quote_nonce: QuoteNonce,

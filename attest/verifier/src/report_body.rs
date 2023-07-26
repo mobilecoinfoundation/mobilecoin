@@ -106,7 +106,7 @@ pub struct ConfigVersionVerifier(ConfigSvn);
 
 impl Verify<ReportBody> for ConfigVersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0.as_ref() <= report_body.config_security_version().as_ref()
+        self.0.as_ref() <= report_body.config_svn().as_ref()
     }
 }
 
@@ -117,7 +117,7 @@ pub struct CpuVersionVerifier(CpuSvn);
 
 impl Verify<ReportBody> for CpuVersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 <= report_body.cpu_security_version()
+        self.0 <= report_body.cpu_svn()
     }
 }
 
@@ -152,7 +152,7 @@ pub struct ExtendedProductIdVerifier(ExtendedProductId);
 
 impl Verify<ReportBody> for ExtendedProductIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 == report_body.extended_product_id()
+        self.0 == report_body.isv_extended_product_id()
     }
 }
 
@@ -163,7 +163,7 @@ pub struct FamilyIdVerifier(FamilyId);
 
 impl Verify<ReportBody> for FamilyIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 == report_body.family_id()
+        self.0 == report_body.isv_family_id()
     }
 }
 
@@ -174,7 +174,7 @@ pub struct MiscSelectVerifier(MiscellaneousSelect);
 
 impl Verify<ReportBody> for MiscSelectVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 == report_body.misc_select()
+        self.0 == report_body.miscellaneous_select()
     }
 }
 
@@ -185,7 +185,7 @@ pub struct ProductIdVerifier(IsvProductId);
 
 impl Verify<ReportBody> for ProductIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0 == report_body.product_id()
+        self.0 == report_body.isv_product_id()
     }
 }
 
@@ -196,7 +196,7 @@ pub struct VersionVerifier(IsvSvn);
 
 impl Verify<ReportBody> for VersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
-        self.0.as_ref() <= report_body.security_version().as_ref()
+        self.0.as_ref() <= report_body.isv_svn().as_ref()
     }
 }
 
