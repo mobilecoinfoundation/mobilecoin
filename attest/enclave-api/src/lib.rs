@@ -13,7 +13,7 @@ pub use error::{Error, Result};
 
 use alloc::vec::Vec;
 use core::hash::{Hash, Hasher};
-use mc_attest_core::{IntelSealed, QuoteNonce, Report};
+use mc_attest_core::IntelSealed;
 use serde::{Deserialize, Serialize};
 
 macro_rules! impl_newtype_vec_inout {
@@ -98,15 +98,6 @@ pub struct PlaintextClientRequest {
     /// will never be 0, this struct will never serialize into an empty byte
     /// array.
     pub channel_id: ClientSession,
-}
-
-/// The response to a request for a new report. The enclave will expect the
-/// QuoteNonce to be used when the report is quoted, and both the quote and
-/// report to be returned to the enclave during the verify_quote() phase.
-#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
-pub struct NewEReportResponse {
-    pub report: Report,
-    pub quote_nonce: QuoteNonce,
 }
 
 /// A helper trait to aid in generic implementation of enclave methods
