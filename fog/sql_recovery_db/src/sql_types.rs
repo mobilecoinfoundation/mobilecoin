@@ -49,7 +49,7 @@ impl fmt::Display for SqlCompressedRistrettoPublic {
 
 impl FromSql<diesel::sql_types::Binary, Pg> for SqlCompressedRistrettoPublic {
     fn from_sql(value: PgValue) -> deserialize::Result<Self> {
-        let vec = <Vec<u8>>::from_sql(value)?;
+        let vec = <Vec<u8> as FromSql<diesel::sql_types::Binary, Pg>>::from_sql(value)?;
         if vec.len() != 32 {
             return Err("SqlCompressedRistrettoPublic: Invalid array
         length"
