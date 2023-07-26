@@ -147,7 +147,7 @@ impl Verify<ReportBody> for DataVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// extended product ID matches the one given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ExtendedProductIdVerifier(ExtendedProductId);
 
 impl Verify<ReportBody> for ExtendedProductIdVerifier {

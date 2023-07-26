@@ -5,7 +5,6 @@
 
 pub mod basename;
 pub mod epid_group_id;
-pub mod ext_prod_id;
 pub mod key_id;
 pub mod mac;
 pub mod measurement;

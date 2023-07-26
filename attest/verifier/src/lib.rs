@@ -313,7 +313,7 @@ impl Verifier {
 
     /// Verify the report body extended product ID matches the given value.
     pub fn extended_product_id(&mut self, ext_prod_id: &ExtendedProductId) -> &mut Self {
-        self.report_body_verifiers.push((*ext_prod_id).into());
+        self.report_body_verifiers.push(ext_prod_id.clone().into());
         self
     }
 

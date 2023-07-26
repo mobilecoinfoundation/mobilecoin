@@ -6,11 +6,9 @@ use crate::{
     error::ReportBodyVerifyError,
     impl_sgx_wrapper_reqs,
     traits::SgxWrapperType,
-    types::{
-        ext_prod_id::ExtendedProductId, measurement::Measurement, report_data::ReportDataMask,
-    },
-    Attributes, ConfigId, ConfigSvn, CpuSvn, FamilyId, IsvProductId, IsvSvn, MiscellaneousSelect,
-    ReportData,
+    types::{measurement::Measurement, report_data::ReportDataMask},
+    Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvProductId, IsvSvn,
+    MiscellaneousSelect, ReportData,
 };
 use alloc::vec::Vec;
 use core::{
@@ -22,7 +20,7 @@ use core::{
 use mc_sgx_core_types::{AttributeFlags, MrEnclave, MrSigner};
 use mc_sgx_types::{
     sgx_attributes_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t, SGX_CONFIGID_SIZE,
-    SGX_ISV_FAMILY_ID_SIZE,
+    SGX_ISVEXT_PROD_ID_SIZE, SGX_ISV_FAMILY_ID_SIZE,
 };
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
@@ -34,8 +32,7 @@ const RB_SELECT_END: usize = RB_SELECT_START + size_of::<u32>();
 const RB_RESERVED1_START: usize = RB_SELECT_END;
 const RB_RESERVED1_END: usize = RB_RESERVED1_START + 12;
 const RB_EXTPRODID_START: usize = RB_RESERVED1_END;
-const RB_EXTPRODID_END: usize =
-    RB_EXTPRODID_START + <ExtendedProductId as IntelLayout>::X86_64_CSIZE;
+const RB_EXTPRODID_END: usize = RB_EXTPRODID_START + SGX_ISVEXT_PROD_ID_SIZE;
 const RB_ATTRIBUTES_START: usize = RB_EXTPRODID_END;
 const RB_ATTRIBUTES_FLAGS_START: usize = RB_ATTRIBUTES_START;
 const RB_ATTRIBUTES_FLAGS_END: usize = RB_ATTRIBUTES_FLAGS_START + 8;
@@ -292,10 +289,7 @@ impl SgxWrapperType<sgx_report_body_t> for ReportBody {
 
         dest[RB_CPUSVN_START..RB_CPUSVN_END].copy_from_slice(src.cpu_svn.svn.as_ref());
         dest[RB_SELECT_START..RB_SELECT_END].copy_from_slice(&src.misc_select.to_le_bytes());
-        ExtendedProductId::write_ffi_bytes(
-            &src.isv_ext_prod_id,
-            &mut dest[RB_EXTPRODID_START..RB_EXTPRODID_END],
-        )?;
+        dest[RB_EXTPRODID_START..RB_EXTPRODID_END].copy_from_slice(&src.isv_ext_prod_id);
         dest[RB_ATTRIBUTES_FLAGS_START..RB_ATTRIBUTES_FLAGS_END]
             .copy_from_slice(&src.attributes.flags.to_le_bytes());
         dest[RB_ATTRIBUTES_XFRM_START..RB_ATTRIBUTES_XFRM_END]
@@ -339,9 +333,11 @@ impl<'src> TryFrom<&'src [u8]> for ReportBody {
             reserved1: (&src[RB_RESERVED1_START..RB_RESERVED1_END])
                 .try_into()
                 .map_err(|_e| EncodingError::InvalidInput)?,
-            isv_ext_prod_id: ExtendedProductId::try_from(
-                &src[RB_EXTPRODID_START..RB_EXTPRODID_END],
-            )?
+            isv_ext_prod_id: ExtendedProductId::from(
+                &src[RB_EXTPRODID_START..RB_EXTPRODID_END]
+                    .try_into()
+                    .unwrap(),
+            )
             .into(),
             attributes: sgx_attributes_t {
                 flags: u64::from_le_bytes(
