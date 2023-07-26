@@ -22,6 +22,7 @@ mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../../transaction/core" }
 mc-util-serial = { path = "../../../../util/serial" }
 mc-watcher-api = { path = "../../../../watcher/api" }
+mc-sgx-dcap-types = "0.7.2"
 
 # mc-oblivious
 aligned-cmov = "2.3"

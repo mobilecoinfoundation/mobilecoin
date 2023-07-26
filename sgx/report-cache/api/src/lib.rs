@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{
-    IasNonce, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    IasNonce, QuoteNonce, Report, SgxError, TargetInfo, Evidence,
 };
 use mc_sgx_dcap_types::Quote3;
 use mc_attest_enclave_api::Error as AttestEnclaveError;
@@ -90,8 +90,8 @@ pub trait ReportableEnclave {
     /// After that check has been performed, the enclave will use the
     /// verification report for all requests until another verfication report
     /// has been successfully loaded in it's place.
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()>;
+    fn verify_ias_report(&self, ias_report: Evidence) -> Result<()>;
 
     /// Retrieve a copy of the cached verification report.
-    fn get_ias_report(&self) -> Result<VerificationReport>;
+    fn get_ias_report(&self) -> Result<Evidence>;
 }

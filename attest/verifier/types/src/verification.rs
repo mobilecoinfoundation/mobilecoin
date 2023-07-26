@@ -55,6 +55,7 @@ impl Display for VerificationReport {
 }
 
 /// HACK to be the hackiest
+#[derive(Debug, Clone)]
 pub struct Evidence {
     pub quote: Quote3<Vec<u8>>,
     pub collateral: Collateral,

@@ -1309,6 +1309,7 @@ dependencies = [
  "mc-fog-kex-rng",
  "mc-fog-types",
  "mc-sgx-compat",
+ "mc-sgx-dcap-types",
  "mc-sgx-report-cache-api",
  "mc-util-serial",
  "serde",

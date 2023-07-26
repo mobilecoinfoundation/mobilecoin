@@ -15,6 +15,7 @@ mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-sgx-compat = { path = "../../../../sgx/compat", default-features = false }
 mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
 mc-util-serial = { path = "../../../../util/serial", default-features = false }
+mc-sgx-dcap-types = "0.7.2"
 
 # fog
 mc-fog-kex-rng = { path = "../../../kex_rng" }

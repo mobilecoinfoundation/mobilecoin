@@ -40,6 +40,9 @@ pub enum Error {
     /// Failed to communicate with IAS: {0}
     RaClient(RaError),
 
+    /// DCAP Quote verification library error: {0}
+    DcapQuoteVerifyLibrary(mc_sgx_dcap_quoteverify::Error),
+
     /// Quoting enclave failure: {0}
     Quote(QuoteError),
 
@@ -98,6 +101,12 @@ impl From<ReportableEnclaveError> for Error {
 impl From<IOError> for Error {
     fn from(src: IOError) -> Self {
         Self::IO(src)
+    }
+}
+
+impl From<mc_sgx_dcap_quoteverify::Error> for Error {
+    fn from(src: mc_sgx_dcap_quoteverify::Error) -> Self {
+        Self::DcapQuoteVerifyLibrary(src)
     }
 }
 
@@ -162,10 +171,10 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             self.logger,
             "Getting quote collateral..."
         );
-        let collateral = self.quote.collateral()?;
+        let collateral = quote.collateral()?;
         log::debug!(
             self.logger,
-            "Retrieved quote collateral: {}",
+            "Retrieved quote collateral: {:?}",
             collateral,
         );
         let report_body = quote.app_report_body();

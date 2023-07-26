@@ -1421,6 +1421,7 @@ dependencies = [
  "mc-oblivious-traits",
  "mc-rand",
  "mc-sgx-compat",
+ "mc-sgx-dcap-types",
  "mc-sgx-report-cache-api",
  "mc-util-serial",
  "static_assertions",
