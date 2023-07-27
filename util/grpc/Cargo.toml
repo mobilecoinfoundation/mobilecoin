@@ -43,6 +43,6 @@ mc-util-build-grpc = { path = "../build/grpc" }
 
 [dev-dependencies]
 libc = "0.2"
-tempfile = "3.5"
+tempfile = "3.7"
 
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
