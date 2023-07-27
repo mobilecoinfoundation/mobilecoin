@@ -2,7 +2,7 @@
 
 //! Attestation Verification Report type.
 
-use alloc::{string::String, vec::Vec};
+use alloc::{string::String, vec, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
@@ -62,19 +62,22 @@ pub struct Evidence {
 }
 
 impl Message for Evidence {
-    fn encode_raw<B>(&self, _buf: &mut B) where B: BufMut, Self: Sized {
-        todo!()
+    fn encode_raw<B>(&self, buf: &mut B) where B: BufMut, Self: Sized {
+        encoding::bytes::encode(1, &self.quote.as_ref(), buf);
     }
 
-    fn merge_field<B>(&mut self, _tag: u32, _wire_type: WireType, _buf: &mut B, _ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf, Self: Sized {
-        todo!()
+    fn merge_field<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf, Self: Sized {
+        if tag == 1 {
+            encoding::bytes::merge(wire_type, &mut vec![], buf, ctx)
+        } else {
+            encoding::skip_field(wire_type, tag, buf, ctx)
+        }
     }
     fn encoded_len(&self) -> usize {
-        todo!()
+        encoding::bytes::encoded_len(1, &self.quote.as_ref())
     }
 
     fn clear(&mut self) {
-        todo!()
     }
 }
 
