@@ -27,7 +27,7 @@ pub use crate::{
     error::ConvertError,
 };
 
-pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature, Evidence};
+pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature, Evidence, EvidenceWrapper};
 pub use mc_common::NodeID;
 pub use mc_consensus_scp_types::{QuorumSet, QuorumSetMember, QuorumSetMemberWrapper};
 pub use mc_transaction_types::{BlockVersion, BlockVersionError, BlockVersionIterator};

@@ -12,7 +12,7 @@ impl From<&BlockMetadataContents> for blockchain::BlockMetadataContents {
         let mut proto = Self::new();
         proto.set_block_id(src.block_id().into());
         proto.set_quorum_set(src.quorum_set().into());
-        proto.set_verification_report(src.verification_report().into());
+        // proto.set_verification_report(src.verification_report().into());
         proto.set_responder_id(src.responder_id().to_string());
         proto
     }
@@ -24,13 +24,13 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
     fn try_from(src: &blockchain::BlockMetadataContents) -> Result<Self, Self::Error> {
         let block_id = src.get_block_id().try_into()?;
         let quorum_set = src.get_quorum_set().try_into()?;
-        let report = src.get_verification_report().try_into()?;
+        // let report = src.get_verification_report().try_into()?;
         let responder_id = ResponderId::from_str(&src.responder_id)
             .map_err(|_| ConversionError::InvalidContents)?;
         Ok(BlockMetadataContents::new(
             block_id,
             quorum_set,
-            report,
+            Default::default(),
             responder_id,
         ))
     }

@@ -61,6 +61,9 @@ pub struct Evidence {
     pub collateral: Collateral,
 }
 
+#[derive(Debug, Default, Clone, Deserialize, Serialize, Digestible, Eq, PartialEq)]
+pub struct EvidenceWrapper(pub Option<Evidence>);
+
 impl Message for Evidence {
     fn encode_raw<B>(&self, buf: &mut B) where B: BufMut, Self: Sized {
         let foo = self.quote.as_ref().to_vec();
@@ -83,9 +86,9 @@ impl Message for Evidence {
     }
 }
 
-impl Message for Option<Evidence> {
+impl Message for EvidenceWrapper {
     fn encode_raw<B>(&self, buf: &mut B) where B: BufMut, Self: Sized {
-        let foo = self.quote.as_ref().to_vec();
+        let foo = self.0.as_ref().unwrap().quote.as_ref().to_vec();
         encoding::bytes::encode(1, &foo, buf);
     }
 
@@ -97,7 +100,7 @@ impl Message for Option<Evidence> {
         }
     }
     fn encoded_len(&self) -> usize {
-        let foo = self.quote.as_ref().to_vec();
+        let foo = self.0.as_ref().unwrap().quote.as_ref().to_vec();
         encoding::bytes::encoded_len(1, &foo)
     }
 
