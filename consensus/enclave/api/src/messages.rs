@@ -7,7 +7,7 @@ use crate::{
     WellFormedEncryptedTx,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{Report, TargetInfo, VerificationReport};
+use mc_attest_core::{Report, TargetInfo, Evidence};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,
@@ -100,7 +100,7 @@ pub enum EnclaveCall {
     ///   quote,
     /// * Caches the signed report. This cached report may be overwritten by
     ///   later calls.
-    VerifyReport(VerificationReport),
+    VerifyReport(Evidence),
 
     /// The [ConsensusEnclave::get_ias_report()] method.
     ///

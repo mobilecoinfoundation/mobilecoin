@@ -13,7 +13,7 @@ use mc_attest_ake::{
 };
 use mc_attest_core::{
     IasNonce, IntelSealed, Nonce, QuoteNonce, Report, ReportData, TargetInfo,
-    VerificationReport,
+    Evidence,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -84,7 +84,7 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     ias_pending: Mutex<LruCache<IasNonce, Quote3<Vec<u8>>>>,
 
     /// The cached IAS report, if any.
-    current_ias_report: Mutex<Option<VerificationReport>>,
+    current_ias_report: Mutex<Option<Evidence>>,
 
     /// A map of responder-ID to incomplete, outbound, AKE state.
     initiator_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
@@ -437,7 +437,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, Evidence)> {
         // Find our state machine
         let initiator = self
             .initiator_auth_pending
@@ -625,7 +625,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     //
 
     /// Get the cached IAS report if available
-    pub fn get_ias_report(&self) -> Result<VerificationReport> {
+    pub fn get_ias_report(&self) -> Result<Evidence> {
         (*self.current_ias_report.lock()?)
             .clone()
             .ok_or(Error::NoReportAvailable)
@@ -723,7 +723,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Verify an ias report
-    pub fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
+    pub fn verify_ias_report(&self, ias_report: Evidence) -> Result<()> {
         // HACK this should verify, wonder if we should use the sgx API for this?
         // let verifier = self.get_verifier()?;
         //
