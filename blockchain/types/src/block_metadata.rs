@@ -23,8 +23,8 @@ pub struct BlockMetadataContents {
     quorum_set: QuorumSet,
 
     /// IAS report for the enclave which generated the signature.
-    #[prost(message, required, tag = 3)]
-    verification_report: Evidence,
+    #[prost(message, required, tags = "3")]
+    verification_report: Option<Evidence>,
 
     /// Responder ID of the consensus node that externalized this block.
     #[prost(message, required, tag = 4)]
@@ -42,7 +42,7 @@ impl BlockMetadataContents {
         Self {
             block_id,
             quorum_set,
-            verification_report,
+            verification_report: Some(verification_report),
             responder_id,
         }
     }
@@ -59,7 +59,7 @@ impl BlockMetadataContents {
 
     /// Get the Attested [Evidence].
     pub fn verification_report(&self) -> &Evidence {
-        &self.verification_report
+        &self.verification_report.unwrap()
     }
 
     /// Get the [ResponderId].

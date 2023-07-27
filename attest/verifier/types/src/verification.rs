@@ -6,7 +6,7 @@ use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, DigestTranscript};
 use mc_sgx_dcap_types::{Quote3, Collateral};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
@@ -59,6 +59,32 @@ impl Display for VerificationReport {
 pub struct Evidence {
     pub quote: Quote3<Vec<u8>>,
     pub collateral: Collateral,
+}
+
+impl Message for Evidence {
+    fn encode_raw<B>(&self, _buf: &mut B) where B: BufMut, Self: Sized {
+        todo!()
+    }
+
+    fn merge_field<B>(&mut self, _tag: u32, _wire_type: WireType, _buf: &mut B, _ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf, Self: Sized {
+        todo!()
+    }
+    fn encoded_len(&self) -> usize {
+        todo!()
+    }
+
+    fn clear(&mut self) {
+        todo!()
+    }
+}
+
+impl Digestible for Evidence {
+    fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+        transcript.append_agg_header(context, "Evidence".as_bytes());
+        transcript.append_bytes(b"quote", &self.quote.as_ref());
+        // HAck skipping collateral for now
+        transcript.append_agg_closer(context, "Evidence".as_bytes());
+    }
 }
 
 
