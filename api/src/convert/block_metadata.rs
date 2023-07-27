@@ -30,7 +30,7 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
         Ok(BlockMetadataContents::new(
             block_id,
             quorum_set,
-            Default::default(),
+            None,
             responder_id,
         ))
     }

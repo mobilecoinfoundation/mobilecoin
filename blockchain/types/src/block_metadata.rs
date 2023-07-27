@@ -36,13 +36,13 @@ impl BlockMetadataContents {
     pub fn new(
         block_id: BlockID,
         quorum_set: QuorumSet,
-        verification_report: Evidence,
+        verification_report: Some(Evidence),
         responder_id: ResponderId,
     ) -> Self {
         Self {
             block_id,
             quorum_set,
-            verification_report: EvidenceWrapper(Some(verification_report)),
+            verification_report: EvidenceWrapper(verification_report),
             responder_id,
         }
     }

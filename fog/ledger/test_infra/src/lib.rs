@@ -8,7 +8,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Client, Request, Response, Server,
 };
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, Evidence};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession,
@@ -46,12 +46,12 @@ impl ReportableEnclave for MockEnclave {
         Ok(IasNonce::default())
     }
 
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_ias_report(&self, _ias_report: Evidence) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+    fn get_ias_report(&self) -> ReportableEnclaveResult<Evidence> {
+        Err(mc_sgx_report_cache_api::Error::Serialization)
     }
 }
 
