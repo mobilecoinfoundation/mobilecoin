@@ -83,6 +83,28 @@ impl Message for Evidence {
     }
 }
 
+impl Message for Option<Evidence> {
+    fn encode_raw<B>(&self, buf: &mut B) where B: BufMut, Self: Sized {
+        let foo = self.quote.as_ref().to_vec();
+        encoding::bytes::encode(1, &foo, buf);
+    }
+
+    fn merge_field<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf, Self: Sized {
+        if tag == 1 {
+            encoding::bytes::merge(wire_type, &mut vec![], buf, ctx)
+        } else {
+            encoding::skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+    fn encoded_len(&self) -> usize {
+        let foo = self.quote.as_ref().to_vec();
+        encoding::bytes::encoded_len(1, &foo)
+    }
+
+    fn clear(&mut self) {
+    }
+}
+
 impl Digestible for Evidence {
     fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
         transcript.append_agg_header(context, "Evidence".as_bytes());
