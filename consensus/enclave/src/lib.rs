@@ -30,6 +30,7 @@ use mc_transaction_core::{
     TokenId,
 };
 use std::{path, result::Result as StdResult, sync::Arc};
+// use mc_common::logger::log::warn;
 
 /// The default filename of the consensus service's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
@@ -203,7 +204,8 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, Evidence)> {
+        //HACk should be Evidence
+    ) -> Result<(PeerSession, ())> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

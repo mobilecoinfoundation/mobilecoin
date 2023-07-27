@@ -33,9 +33,8 @@ use constant_time_token_map::CtTokenMap;
 use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
-use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
-};
+use mc_attest_core::{Evidence, IasNonce, IntelSealed, QuoteNonce, Report, TargetInfo};
+use mc_sgx_dcap_types::Quote3;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
@@ -433,16 +432,16 @@ impl ReportableEnclave for SgxConsensusEnclave {
         Ok(self.ake.new_ereport(qe_info)?)
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+    fn verify_quote(&self, quote: Quote3<Vec<u8>>, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
         Ok(self.ake.verify_quote(quote, qe_report)?)
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_ias_report(&self, ias_report: Evidence) -> ReportableEnclaveResult<()> {
         self.ake.verify_ias_report(ias_report)?;
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_ias_report(&self) -> ReportableEnclaveResult<Evidence> {
         Ok(self.ake.get_ias_report()?)
     }
 }
@@ -574,7 +573,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+        //Hack for now using ()
+    ) -> Result<(PeerSession, ())> {
         // Inject the blockchain config hash before passing off to the AKE
         let peer_id = self
             .blockchain_config

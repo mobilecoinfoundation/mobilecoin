@@ -12,11 +12,12 @@ pub use mc_consensus_enclave_api::{
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 use mc_account_keys::PublicAddress;
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{IasNonce, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
+use mc_sgx_dcap_types::Quote3;
 use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Private, X25519Public};
@@ -94,7 +95,7 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
         Ok((Report::default(), QuoteNonce::default()))
     }
 
-    fn verify_quote(&self, _quote: Quote, _qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+    fn verify_quote(&self, _quote: Quote3<Vec<u8>>, _qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
         Ok(IasNonce::default())
     }
 

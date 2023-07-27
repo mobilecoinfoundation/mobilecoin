@@ -1093,6 +1093,7 @@ dependencies = [
  "mc-crypto-message-cipher",
  "mc-rand",
  "mc-sgx-compat",
+ "mc-sgx-dcap-types",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-build-script",

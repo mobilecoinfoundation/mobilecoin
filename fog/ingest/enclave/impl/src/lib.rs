@@ -20,11 +20,12 @@ pub use rng_store::{RngStore, StorageDataSize, StorageMetaSize};
 use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    IasNonce, IntelSealed, QuoteNonce, Report, TargetInfo, Evidence,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
+use mc_sgx_dcap_types::Quote3;
 use mc_attest_trusted::SealAlgo;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_ake_enclave::AkeEnclaveState;
@@ -180,16 +181,16 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ReportableEnclav
         Ok(self.ake.new_ereport(qe_info)?)
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+    fn verify_quote(&self, quote: Quote3<Vec<u8>>, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
         Ok(self.ake.verify_quote(quote, qe_report)?)
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_ias_report(&self, ias_report: Evidence) -> ReportableEnclaveResult<()> {
         self.ake.verify_ias_report(ias_report)?;
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_ias_report(&self) -> ReportableEnclaveResult<Evidence> {
         Ok(self.ake.get_ias_report()?)
     }
 }
@@ -374,7 +375,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, ())> {
         Ok(self.ake.peer_connect(peer_id, msg)?)
     }
 

@@ -27,7 +27,6 @@ pub use crate::{
 
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
-use mc_attest_core::Evidence;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
@@ -300,7 +299,8 @@ pub trait ConsensusEnclave: ReportableEnclave {
         &self,
         peer_id: &ResponderId,
         res: PeerAuthResponse,
-    ) -> Result<(PeerSession, Evidence)>;
+        //Hack using ()
+    ) -> Result<(PeerSession, ())>;
 
     /// Destroy a peer association
     fn peer_close(&self, channel_id: &PeerSession) -> Result<()>;

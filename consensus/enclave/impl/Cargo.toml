@@ -41,6 +41,7 @@ mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
 mc-rand = "1.0"
 mc-sgx-compat = { path = "../../../sgx/compat" }
+mc-sgx-dcap-types = "0.7.2"
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-from-random = { path = "../../../util/from-random" }

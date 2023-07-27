@@ -3,7 +3,7 @@
 //! The message types used by the ingest_enclave_api.
 
 use alloc::vec::Vec;
-use mc_attest_core::{Report, TargetInfo, VerificationReport};
+use mc_attest_core::{Report, TargetInfo, Evidence};
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_fog_types::ingest::TxsForIngest;
 use mc_sgx_dcap_types::Quote3;
@@ -93,7 +93,7 @@ pub enum EnclaveCall {
     ///   quote,
     /// * Caches the signed report. This cached report may be overwritten by
     ///   later calls.
-    VerifyReport(VerificationReport),
+    VerifyReport(Evidence),
 
     /// The [IngestEnclave::get_ias_report()] method.
     ///
