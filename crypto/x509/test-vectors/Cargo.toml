@@ -23,5 +23,5 @@ mc-util-build-script = { path = "../../../util/build/script" }
 mc-crypto-keys = { path = "../../keys" }
 
 clap = { version = "4.1", features = ["derive", "env"] }
-pem = "2.0"
+pem = "3.0"
 x509-signature = "0.5"

@@ -54,5 +54,5 @@ mc-fog-test-infra = { path = "../test_infra" }
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-pem = "2.0"
+pem = "3.0"
 rand = "0.8"
