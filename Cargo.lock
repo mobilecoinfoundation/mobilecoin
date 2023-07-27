@@ -5410,7 +5410,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-build"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5419,7 +5419,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-sys-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5431,7 +5431,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-core-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bitflags 2.3.3",
  "displaydoc",
@@ -5465,7 +5465,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-ql"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "displaydoc",
  "mc-sgx-core-sys-types",
@@ -5480,7 +5480,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-ql-sys"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5493,7 +5493,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-ql-sys-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5503,7 +5503,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-ql-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "mc-sgx-core-types",
  "mc-sgx-dcap-ql-sys-types",
@@ -5512,7 +5512,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-quoteverify"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "displaydoc",
  "mc-sgx-dcap-quoteverify-sys",
@@ -5527,7 +5527,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-quoteverify-sys"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5539,7 +5539,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-quoteverify-sys-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5550,7 +5550,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-quoteverify-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "mc-sgx-core-types",
  "mc-sgx-dcap-quoteverify-sys-types",
@@ -5559,7 +5559,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-sys-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "bindgen 0.66.1",
  "mc-sgx-core-build",
@@ -5569,7 +5569,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-dcap-types"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 dependencies = [
  "const-oid",
  "displaydoc",
@@ -5668,7 +5668,7 @@ dependencies = [
 [[package]]
 name = "mc-sgx-util"
 version = "0.7.2"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41#01529e8fb0b7e3ec1916b2549d3145d2c5c2ce41"
+source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=76506f615927cd87f8d2e53a056a791a84df5b6d#76506f615927cd87f8d2e53a056a791a84df5b6d"
 
 [[package]]
 name = "mc-test-vectors-account-keys"

@@ -5,7 +5,7 @@
 use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use mc_attest_core::VerificationReport;
+use mc_attest_core::Evidence;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
@@ -23,7 +23,7 @@ where
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
     /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    pub(crate) _ias_report: Evidence,
 
     _kex: PhantomData<KexAlgo>,
     _cipher: PhantomData<Cipher>,
@@ -37,10 +37,10 @@ where
     DigestAlgo: NoiseDigest,
 {
     /// Create a new input event to initiate a node-to-node channel.
-    pub fn new(local_identity: KexAlgo::Private, ias_report: VerificationReport) -> Self {
+    pub fn new(local_identity: KexAlgo::Private, ias_report: Evidence) -> Self {
         Self {
             local_identity,
-            ias_report,
+            _ias_report: ias_report,
             _kex: PhantomData,
             _cipher: PhantomData,
             _digest: PhantomData,
@@ -175,7 +175,7 @@ where
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
     /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    pub(crate) ias_report: Evidence,
 
     /// The auth request input, including payload, if any
     pub(crate) data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
@@ -198,7 +198,7 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        ias_report: VerificationReport,
+        ias_report: Evidence,
     ) -> Self {
         Self {
             local_identity,
@@ -222,9 +222,9 @@ where
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
     /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    pub(crate) ias_report: Evidence,
     /// The identities that the initiator's IAS report must conform to
-    pub(crate) identities: Vec<TrustedIdentity>,
+    pub(crate) _identities: Vec<TrustedIdentity>,
 
     /// The auth request input, including payload, if any
     pub(crate) data: AuthRequestOutput<HandshakeIX, KexAlgo, Cipher, DigestAlgo>,
@@ -247,13 +247,13 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeIX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        ias_report: VerificationReport,
+        ias_report: Evidence,
         identities: impl Into<Vec<TrustedIdentity>>,
     ) -> Self {
         Self {
             local_identity,
             ias_report,
-            identities: identities.into(),
+            _identities: identities.into(),
             data,
         }
     }
@@ -287,14 +287,14 @@ impl MealyOutput for AuthResponseOutput {}
 /// The authentication response is combined with a verifier for the initiator.
 pub struct AuthResponseInput {
     pub(crate) data: Vec<u8>,
-    pub(crate) identities: Vec<TrustedIdentity>,
+    pub(crate) _identities: Vec<TrustedIdentity>,
 }
 
 impl AuthResponseInput {
     pub fn new(data: AuthResponseOutput, identity: impl Into<Vec<TrustedIdentity>>) -> Self {
         Self {
             data: data.0,
-            identities: identity.into(),
+            _identities: identity.into(),
         }
     }
 }
@@ -315,7 +315,9 @@ impl From<AuthResponseInput> for Vec<u8> {
 impl MealyInput for AuthResponseInput {}
 
 /// The IAS report is the final output when authentication succeeds.
-impl MealyOutput for VerificationReport {}
+impl MealyOutput for Evidence {}
+// Hacks
+impl MealyOutput for () {}
 
 /// A type similar to aead::Payload used to distinguish writer inputs from
 /// outputs.

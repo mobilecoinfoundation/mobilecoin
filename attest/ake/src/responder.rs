@@ -8,14 +8,12 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use mc_attest_core::{ReportDataMask, VerificationReport};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
-use mc_crypto_keys::{Kex, ReprBytes};
+use mc_attest_core::Evidence;
+use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
     NoiseDigest, ProtocolName,
 };
-use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
 /// A trait containing default implementations, used to tack repeatable chunks
@@ -36,7 +34,7 @@ trait ResponderTransitionMixin {
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
-        ias_report: VerificationReport,
+        ias_report: Evidence,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
@@ -82,19 +80,20 @@ impl ResponderTransitionMixin for Start {
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
-        ias_report: VerificationReport,
+        _ias_report: Evidence,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
         Cipher: NoiseCipher,
         DigestAlgo: NoiseDigest,
     {
+        // HACK generating some report bytes to make things work for now
+        let report_bytes = [0u8; 32];
         // Encrypt the local report for output
-        let mut report_bytes = Vec::with_capacity(ias_report.encoded_len());
-        ias_report
-            .encode(&mut report_bytes)
-            .expect("Invariant failure, encoded_len insufficient to encode IAS report");
-
+        // let mut report_bytes = Vec::with_capacity(ias_report.encoded_len());
+        // ias_report
+        //     .encode(&mut report_bytes)
+        //     .expect("Invariant failure, encoded_len insufficient to encode IAS report");
         let output = handshake_state
             .write_message(csprng, &report_bytes)
             .map_err(Error::HandshakeWrite)?;
@@ -134,31 +133,31 @@ where
         input: NodeAuthRequestInput<KexAlgo, Cipher, DigestAlgo>,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error> {
         // Read the request and return the payload and state
-        let (handshake_state, payload) = self
+        let (handshake_state, _payload) = self
             .handle_request::<HandshakeIX, KexAlgo, Cipher, DigestAlgo>(
                 &input.data.data,
                 input.local_identity,
             )?;
 
-        let identities = input.identities;
-        let mut verifier = Verifier::default();
-        verifier.identities(&identities).debug(DEBUG_ENCLAVE);
-
-        // Parse the received IAS report
-        let remote_report = VerificationReport::decode(payload.as_slice())
-            .map_err(|_| Error::ReportDeserialization)?;
-        // Verify using given verifier, and ensure the first 32B of the report data are
-        // the identity pubkey.
-        verifier
-            .report_data(
-                &handshake_state
-                    .remote_identity()
-                    .ok_or(Error::MissingRemoteIdentity)?
-                    .map_bytes(|bytes| {
-                        ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
-                    })?,
-            )
-            .verify(&remote_report)?;
+        // let identities = input.identities;
+        // let mut verifier = Verifier::default();
+        // verifier.identities(&identities).debug(DEBUG_ENCLAVE);
+        //
+        // // Parse the received IAS report
+        // let remote_report = VerificationReport::decode(payload.as_slice())
+        //     .map_err(|_| Error::ReportDeserialization)?;
+        // // Verify using given verifier, and ensure the first 32B of the report data are
+        // // the identity pubkey.
+        // verifier
+        //     .report_data(
+        //         &handshake_state
+        //             .remote_identity()
+        //             .ok_or(Error::MissingRemoteIdentity)?
+        //             .map_bytes(|bytes| {
+        //                 ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
+        //             })?,
+        //     )
+        //     .verify(&remote_report)?;
 
         Self::handle_response(csprng, handshake_state, input.ias_report)
     }

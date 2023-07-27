@@ -437,7 +437,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, Evidence)> {
+        // Hack for now using ()
+    ) -> Result<(PeerSession, ())> {
         // Find our state machine
         let initiator = self
             .initiator_auth_pending
