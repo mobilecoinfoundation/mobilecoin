@@ -63,7 +63,8 @@ pub struct Evidence {
 
 impl Message for Evidence {
     fn encode_raw<B>(&self, buf: &mut B) where B: BufMut, Self: Sized {
-        encoding::bytes::encode(1, &self.quote.as_ref(), buf);
+        let foo = self.quote.as_ref().to_vec();
+        encoding::bytes::encode(1, &foo, buf);
     }
 
     fn merge_field<B>(&mut self, tag: u32, wire_type: WireType, buf: &mut B, ctx: DecodeContext) -> Result<(), DecodeError> where B: Buf, Self: Sized {
@@ -74,7 +75,8 @@ impl Message for Evidence {
         }
     }
     fn encoded_len(&self) -> usize {
-        encoding::bytes::encoded_len(1, &self.quote.as_ref())
+        let foo = self.quote.as_ref().to_vec();
+        encoding::bytes::encoded_len(1, &foo)
     }
 
     fn clear(&mut self) {

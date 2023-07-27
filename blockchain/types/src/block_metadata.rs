@@ -23,7 +23,7 @@ pub struct BlockMetadataContents {
     quorum_set: QuorumSet,
 
     /// IAS report for the enclave which generated the signature.
-    #[prost(message, required, tags = "3")]
+    #[prost(message, required, tag = 3)]
     verification_report: Option<Evidence>,
 
     /// Responder ID of the consensus node that externalized this block.
