@@ -33,9 +33,7 @@ impl FromStr for PemEd25519Public {
 impl fmt::Display for PemEd25519Public {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let pem = pem::Pem::new("PUBLIC KEY".to_string(), self.0.to_der());
-        let encoding = EncodeConfig {
-            line_ending: LineEnding::LF,
-        };
+        let encoding = EncodeConfig::new().set_line_ending(LineEnding::LF);
         write!(f, "{}", pem::encode_config(&pem, encoding))
     }
 }
