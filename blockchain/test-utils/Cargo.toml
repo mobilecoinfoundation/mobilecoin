@@ -7,6 +7,7 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
+mc-attest-core = { path = "../../attest/core" }
 mc-blockchain-types = { path = "../types" }
 mc-common = { path = "../../common", default-features = false }
 mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }
@@ -15,3 +16,5 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-test-helper = { path = "../../util/test-helper" }
+mc-sgx-dcap-types = "0.7.2"
+mc-sgx-dcap-sys-types = "0.7.2"

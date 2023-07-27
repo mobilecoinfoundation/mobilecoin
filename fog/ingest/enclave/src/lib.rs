@@ -253,7 +253,8 @@ impl IngestEnclave for IngestSgxEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, Evidence)> {
+        //Hack should be Evidence instead of ()
+    ) -> Result<(PeerSession, ())> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

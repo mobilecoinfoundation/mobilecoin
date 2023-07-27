@@ -7,13 +7,16 @@ pub use mc_consensus_scp_types::test_utils::test_node_id;
 
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockID, BlockMetadata, BlockMetadataContents, BlockSignature,
-    BlockVersion, QuorumSet, VerificationReport,
+    BlockVersion, QuorumSet
 };
+use mc_attest_core::Evidence;
 use mc_common::ResponderId;
 use mc_crypto_keys::Ed25519Pair;
 use mc_transaction_core_test_utils::{get_outputs, Amount, KeyImage};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{random_bytes_vec, AccountKey, CryptoRng, PublicAddress, Rng, RngCore};
+use mc_sgx_dcap_types::{Quote3, Collateral};
+use mc_sgx_dcap_sys_types::sgx_ql_qve_collateral_t;
 use std::str::FromStr;
 
 /// Get blocks with custom contents to simulate conditions seen in production.
@@ -149,16 +152,14 @@ pub fn make_quorum_set(rng: &mut (impl RngCore + CryptoRng)) -> QuorumSet {
 }
 
 /// Generate a [VerificationReport] from random bytes.
-pub fn make_verification_report(rng: &mut (impl RngCore + CryptoRng)) -> VerificationReport {
-    let sig = random_bytes_vec(42, rng).into();
-    let chain_len = rng.gen_range(2..42);
-    let chain = (1..=chain_len)
-        .map(|n| random_bytes_vec(n as usize, rng))
-        .collect();
-    VerificationReport {
-        sig,
-        chain,
-        http_body: "testing".to_owned(),
+pub fn make_verification_report(rng: &mut (impl RngCore + CryptoRng)) -> Evidence {
+    let sig = random_bytes_vec(42, rng);
+    let quote = Quote3::try_from(sig).unwrap();
+    let sgx_collateral = sgx_ql_qve_collateral_t::default();
+    let collateral = Collateral::try_from(&sgx_collateral).unwrap();
+    Evidence {
+        quote,
+        collateral,
     }
 }
 

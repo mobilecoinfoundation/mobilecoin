@@ -2,7 +2,7 @@
 
 use crate::{
     crypto::metadata::{MetadataSigner, MetadataVerifier},
-    BlockID, QuorumSet, VerificationReport,
+    BlockID, QuorumSet, Evidence,
 };
 use displaydoc::Display;
 use mc_common::ResponderId;
@@ -24,7 +24,7 @@ pub struct BlockMetadataContents {
 
     /// IAS report for the enclave which generated the signature.
     #[prost(message, required, tag = 3)]
-    verification_report: VerificationReport,
+    verification_report: Evidence,
 
     /// Responder ID of the consensus node that externalized this block.
     #[prost(message, required, tag = 4)]
@@ -36,7 +36,7 @@ impl BlockMetadataContents {
     pub fn new(
         block_id: BlockID,
         quorum_set: QuorumSet,
-        verification_report: VerificationReport,
+        verification_report: Evidence,
         responder_id: ResponderId,
     ) -> Self {
         Self {
@@ -57,8 +57,8 @@ impl BlockMetadataContents {
         &self.quorum_set
     }
 
-    /// Get the Attested [VerificationReport].
-    pub fn verification_report(&self) -> &VerificationReport {
+    /// Get the Attested [Evidence].
+    pub fn verification_report(&self) -> &Evidence {
         &self.verification_report
     }
 

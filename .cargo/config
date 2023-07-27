@@ -26,6 +26,7 @@ email = ""
 [patch.crates-io]
 
 mc-sgx-dcap-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "76506f615927cd87f8d2e53a056a791a84df5b6d" }
+mc-sgx-dcap-sys-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "76506f615927cd87f8d2e53a056a791a84df5b6d" }
 mc-sgx-dcap-quoteverify = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "76506f615927cd87f8d2e53a056a791a84df5b6d" }
 mc-sgx-dcap-ql = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "76506f615927cd87f8d2e53a056a791a84df5b6d" }
 mc-sgx-core-sys-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "76506f615927cd87f8d2e53a056a791a84df5b6d" }

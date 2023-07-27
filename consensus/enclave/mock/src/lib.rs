@@ -12,7 +12,7 @@ pub use mc_consensus_enclave_api::{
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 use mc_account_keys::PublicAddress;
-use mc_attest_core::{IasNonce, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{Evidence, IasNonce, QuoteNonce, Report, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
@@ -43,7 +43,7 @@ pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
-    pub verification_report: VerificationReport,
+    pub verification_report: Evidence,
     pub identity: X25519Private,
 }
 
@@ -99,11 +99,11 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
         Ok(IasNonce::default())
     }
 
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_ias_report(&self, _ias_report: Evidence) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_ias_report(&self) -> ReportableEnclaveResult<Evidence> {
         Ok(self.verification_report.clone())
     }
 }
@@ -190,8 +190,8 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         _node_id: &ResponderId,
         _msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
-        Ok((vec![].into(), VerificationReport::default()))
+    ) -> Result<(PeerSession, ())> {
+        Ok((vec![].into(), ()))
     }
 
     fn peer_close(&self, _msg: &PeerSession) -> Result<()> {

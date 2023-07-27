@@ -2774,10 +2774,13 @@ dependencies = [
 name = "mc-blockchain-test-utils"
 version = "4.1.0-pre0"
 dependencies = [
+ "mc-attest-core",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-scp-types",
  "mc-crypto-keys",
+ "mc-sgx-dcap-sys-types",
+ "mc-sgx-dcap-types",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
