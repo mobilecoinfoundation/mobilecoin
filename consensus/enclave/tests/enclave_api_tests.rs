@@ -3,7 +3,6 @@
 use aes_gcm::Aes256Gcm;
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_net::{Client, RaClient};
 use mc_common::{
     logger::{test_with_logger, Logger},
     ResponderId,
@@ -53,15 +52,8 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
         blockchain_config,
     );
 
-    // Update enclave report cache, using SIM or HW-mode RA client as appropriate
-    let ias_spid = Default::default();
-    let ias_api_key = core::str::from_utf8(&[0u8; 64]).unwrap();
-    let ias_client = Client::new(ias_api_key).expect("Could not create IAS client");
-
     let report_cache = ReportCache::new(
         enclave.clone(),
-        ias_client,
-        ias_spid,
         &DUMMY_INT_GAUGE,
         logger,
     );
