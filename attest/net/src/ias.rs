@@ -6,7 +6,7 @@
 use crate::traits::{Error, RaClient, Result};
 use cfg_if::cfg_if;
 use mc_attest_core::{
-    EpidGroupId, IasNonce, Quote, SigRL, VerificationReport, VerificationSignature,
+    EpidGroupId, IasNonce, Quote3, SigRL, VerificationReport, VerificationSignature,
 };
 use mc_common::logger::global_log;
 use mc_util_encodings::{FromBase64, ToBase64};
@@ -75,7 +75,7 @@ impl RaClient for IasClient {
     /// VerificationReport.
     fn verify_quote(
         &self,
-        quote: &Quote,
+        quote: &Quote3<Vec<u8>>,
         ias_nonce: Option<IasNonce>,
     ) -> Result<VerificationReport> {
         let quote_base64 = quote.to_base64_owned();

@@ -10,7 +10,7 @@ use mbedtls::{
     rng::{CtrDrbg, OsEntropy},
 };
 use mc_attest_core::{
-    EpidGroupId, IasNonce, Quote, QuoteSignType, SigRL, VerificationReport, VerificationSignature,
+    EpidGroupId, IasNonce, Quote3, QuoteSignType, SigRL, VerificationReport, VerificationSignature,
 };
 use mc_attest_verifier::{IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY};
 use mc_util_encodings::ToBase64;
@@ -35,7 +35,7 @@ impl RaClient for SimClient {
     /// signing authority created at build-time in the attest crate.
     fn verify_quote(
         &self,
-        quote: &Quote,
+        quote: &Quote3<Vec<u8>>,
         ias_nonce: Option<IasNonce>,
     ) -> Result<VerificationReport> {
         // FIXME: This is wrong, we should be signing/returning a report, not a request.
@@ -121,16 +121,15 @@ impl RaClient for SimClient {
 mod test {
     use super::*;
     use mc_attest_verifier::{Verifier, IAS_SIM_ROOT_ANCHORS};
-    use mc_util_encodings::FromBase64;
 
-    const QUOTE_TEST: &str = include_str!("../data/quote_out_of_date.txt");
+    const QUOTE_TEST: &[u8] = include_bytes!("../data/quote_out_of_date.txt");
 
     #[test]
     fn test_sign() {
         let client = SimClient::new("").expect("Could not create SimClient");
-        let quote = Quote::from_base64(QUOTE_TEST).expect("Could not parse quote");
+        let quote = Quote3::try_from(QUOTE_TEST).expect("Could not parse quote");
         let report = client
-            .verify_quote(&quote, None)
+            .verify_quote(&quote.into(), None)
             .expect("Could not generate IAS report");
 
         Verifier::new(&[IAS_SIM_ROOT_ANCHORS])

@@ -172,7 +172,7 @@ pub fn make_block_metadata_contents(
     BlockMetadataContents::new(
         block_id,
         make_quorum_set(rng),
-        make_verification_report(rng),
+        Some(make_verification_report(rng)),
         ResponderId::from_str("test.mobilecoin.com:443").unwrap(),
     )
 }

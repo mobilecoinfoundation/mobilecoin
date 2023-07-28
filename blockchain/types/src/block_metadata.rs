@@ -36,7 +36,7 @@ impl BlockMetadataContents {
     pub fn new(
         block_id: BlockID,
         quorum_set: QuorumSet,
-        verification_report: Some(Evidence),
+        verification_report: Option<Evidence>,
         responder_id: ResponderId,
     ) -> Self {
         Self {

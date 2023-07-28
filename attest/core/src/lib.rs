@@ -46,6 +46,8 @@ pub use mc_sgx_core_types::{
     MiscellaneousSelect, MrEnclave, MrSigner, Report, ReportBody, ReportData, TargetInfo,
 };
 
+pub use mc_sgx_dcap_types::Quote3;
+
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;
 

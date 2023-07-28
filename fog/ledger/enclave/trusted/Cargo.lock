@@ -923,6 +923,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-sgx-core-types",
  "mc-sgx-css",
+ "mc-sgx-dcap-types",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
