@@ -185,12 +185,12 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> AttestedConnection
         self.deattest();
         let req = self.enclave.peer_init(&self.remote_responder_id())?;
         let res = self.attested_api_client.auth(&req.into())?;
-        let (peer_session, verification_report) = self
+        let (peer_session, _verification_report) = self
             .enclave
             .peer_connect(&self.remote_responder_id(), res.into())?;
         self.channel_id = Some(peer_session);
 
-        Ok(verification_report)
+        Ok(VerificationReport::default())
     }
 
     fn deattest(&mut self) {
