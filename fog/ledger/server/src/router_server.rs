@@ -7,7 +7,6 @@ use std::{
 
 use futures::executor::block_on;
 use grpcio::ChannelBuilder;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -29,10 +28,9 @@ use crate::{
     router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
 
-pub struct LedgerRouterServer<E, RC>
+pub struct LedgerRouterServer<E>
 where
     E: LedgerEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     router_server: grpcio::Server,
     admin_server: grpcio::Server,
@@ -40,24 +38,21 @@ where
     admin_listen_uri: AdminUri,
     config: LedgerRouterConfig,
     enclave: E,
-    ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
     logger: Logger,
 }
 
-impl<E, RC> LedgerRouterServer<E, RC>
+impl<E> LedgerRouterServer<E>
 where
     E: LedgerEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     pub fn new(
         config: LedgerRouterConfig,
         enclave: E,
-        ra_client: RC,
         ledger: LedgerDB,
         watcher: WatcherDB,
         logger: Logger,
-    ) -> LedgerRouterServer<E, RC> {
+    ) -> LedgerRouterServer<E> {
         let mut ledger_store_grpc_clients = HashMap::new();
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
@@ -210,10 +205,9 @@ where
     }
 }
 
-impl<E, RC> Drop for LedgerRouterServer<E, RC>
+impl<E> Drop for LedgerRouterServer<E>
 where
     E: LedgerEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         self.stop();
