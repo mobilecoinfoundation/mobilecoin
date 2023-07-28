@@ -20,7 +20,6 @@ use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-use mc_attest_core::{VerificationReport, VerificationReportData, VerifyError};
+use mc_attest_core::{Evidence, VerifyError};
 use mc_crypto_keys::{CompressedRistrettoPublic, KeyError};
 use mc_util_encodings::Error as EncodingError;
 
@@ -17,12 +17,11 @@ use mc_util_encodings::Error as EncodingError;
 /// FogPubkeyResolver infra, because this function does not produce a
 /// FullyValidatedFogPubkey.
 pub fn try_extract_unvalidated_ingress_pubkey_from_fog_report(
-    report: &VerificationReport,
+    report: &Evidence,
 ) -> Result<CompressedRistrettoPublic, ReportParseError> {
-    let verification_report_data = VerificationReportData::try_from(report)?;
     // This extracts the user-data attached to the report, which is a thin wrapper
     // around [u8; 64]
-    let report_data = verification_report_data.quote.report_body()?.report_data();
+    let report_data = report.quote.app_report_body().report_data();
     // The second half of this is the data we care about, per the fog-ingest-enclave
     // identity implementation. These 32 bytes should be Ristretto.
     let report_data_bytes: &[u8] = report_data.as_ref();

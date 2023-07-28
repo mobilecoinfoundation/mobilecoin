@@ -247,7 +247,7 @@ where
         let health_service =
             mc_util_grpc::HealthService::new(None, self.logger.clone()).into_service();
 
-        let attested_service = create_attested_api(AttestedApiService::<R, DB>::new(
+        let attested_service = create_attested_api(AttestedApiService::<DB>::new(
             self.controller.clone(),
             self.logger.clone(),
         ));
@@ -391,7 +391,7 @@ where
 
 impl<
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > Drop for IngestServer<R, DB>
+    > Drop for IngestServer<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {

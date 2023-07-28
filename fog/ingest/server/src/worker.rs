@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{controller::IngestController, error::IngestServiceError};
-use mc_attest_net::RaClient;
 use mc_blockchain_types::BlockIndex;
 use mc_common::logger::{log, Logger};
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
@@ -55,10 +54,9 @@ impl IngestWorker {
     ///
     /// Returns a freshly started IngestWorker thread handle
     pub fn new<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     >(
-        controller: Arc<IngestController<R, DB>>,
+        controller: Arc<IngestController<DB>>,
         db: LedgerDB,
         watcher: WatcherDB,
         watcher_timeout: Duration,
@@ -212,10 +210,9 @@ impl PeerCheckupWorker {
     ///
     /// Returns a freshly started PeerCheckupWorker thread handle
     pub fn new<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     >(
-        controller: Arc<IngestController<R, DB>>,
+        controller: Arc<IngestController<DB>>,
         peer_checkup_period: Duration,
         logger: Logger,
     ) -> Self
@@ -276,10 +273,9 @@ impl ReportCacheWorker {
     ///
     /// Returns a freshly started ReportCacheWorker thread handle
     pub fn new<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     >(
-        controller: Arc<IngestController<R, DB>>,
+        controller: Arc<IngestController<DB>>,
         logger: Logger,
     ) -> Self
     where

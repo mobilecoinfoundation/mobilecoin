@@ -9,7 +9,6 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_api::external;
-use mc_attest_net::RaClient;
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
@@ -32,27 +31,25 @@ use std::{str::FromStr, sync::Arc};
 /// Implements the ingest grpc api
 #[derive(Clone)]
 pub struct IngestService<
-    R: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
 > where
     Error: From<<DB as RecoveryDb>::Error>,
 {
-    controller: Arc<IngestController<R, DB>>,
+    controller: Arc<IngestController<DB>>,
     ledger_db: LedgerDB,
     logger: Logger,
 }
 
 impl<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestService<R, DB>
+    > IngestService<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Creates a new ingest node (but does not create sockets and start it
     /// etc.)
     pub fn new(
-        controller: Arc<IngestController<R, DB>>,
+        controller: Arc<IngestController<DB>>,
         ledger_db: LedgerDB,
         logger: Logger,
     ) -> Self {
@@ -269,9 +266,8 @@ where
 }
 
 impl<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<R, DB>
+    > mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
