@@ -36,7 +36,6 @@ where
     admin_server: grpcio::Server,
     client_listen_uri: FogLedgerUri,
     admin_listen_uri: AdminUri,
-    config: LedgerRouterConfig,
     enclave: E,
     report_cache_thread: Option<ReportCacheThread>,
     logger: Logger,
@@ -164,7 +163,6 @@ where
             admin_listen_uri: config.admin_listen_uri.clone(),
             config,
             enclave,
-            ra_client,
             report_cache_thread: None,
             logger,
         }
@@ -175,8 +173,6 @@ where
         self.report_cache_thread = Some(
             ReportCacheThread::start(
                 self.enclave.clone(),
-                self.ra_client.clone(),
-                self.config.ias_spid,
                 &counters::ENCLAVE_REPORT_TIMESTAMP,
                 self.logger.clone(),
             )

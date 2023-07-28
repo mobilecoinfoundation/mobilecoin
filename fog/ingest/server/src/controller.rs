@@ -10,7 +10,6 @@ use crate::{
     server::IngestServerConfig,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
-use mc_attest_net::RaClient;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
@@ -1194,7 +1193,7 @@ where
         state: &mut MutexGuard<IngestControllerState>,
     ) -> Result<IngressPublicKeyStatus, Error> {
         // Get a report and check that it makes sense with what we think is happening
-        let report = {
+        let _report = {
             let report = self.enclave.get_ias_report()?;
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
@@ -1239,7 +1238,9 @@ where
 
         let report_data = ReportData {
             ingest_invocation_id: state.get_ingest_invocation_id(),
-            report,
+            // HACK what to do here?
+            // report,
+            report: Default::default(),
             pubkey_expiry: state.get_next_block_index() + state.get_pubkey_expiry_window(),
         };
         let report_id = self.config.fog_report_id.as_ref();
