@@ -3,7 +3,6 @@
 use std::env;
 
 use clap::Parser;
-use mc_attest_net::{Client, RaClient};
 use mc_common::logger::log;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{LedgerRouterConfig, LedgerRouterServer};
@@ -52,9 +51,8 @@ fn main() {
     let watcher_db =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server =
-        LedgerRouterServer::new(config, enclave, ias_client, ledger_db, watcher_db, logger);
+        LedgerRouterServer::new(config, enclave, ledger_db, watcher_db, logger);
     router_server.start();
 
     loop {

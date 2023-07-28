@@ -2,7 +2,6 @@
 
 use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
-use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy};
@@ -41,13 +40,10 @@ fn main() {
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-
     let mut store_server = match config.sharding_strategy.clone() {
         ShardingStrategy::Epoch(sharding_strategy) => KeyImageStoreServer::new_from_config(
             config.clone(),
             enclave,
-            ias_client,
             db,
             watcher,
             sharding_strategy,

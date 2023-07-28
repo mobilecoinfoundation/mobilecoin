@@ -161,7 +161,6 @@ where
             admin_server,
             client_listen_uri: config.client_listen_uri.clone(),
             admin_listen_uri: config.admin_listen_uri.clone(),
-            config,
             enclave,
             report_cache_thread: None,
             logger,
