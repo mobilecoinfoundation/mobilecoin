@@ -160,7 +160,7 @@ fn get_unvalidated_pubkey(
         .expect("Didn't find report with the right report id");
     let pubkey_expiry = rep.pubkey_expiry;
     // This parses the fog report and extracts the ingress key
-    let ingress_pubkey = try_extract_unvalidated_ingress_pubkey_from_fog_report(&rep.report)
+    let ingress_pubkey = try_extract_unvalidated_ingress_pubkey_from_fog_report(rep.report.0.as_ref().unwrap())
         .expect("Could not parse report");
     let pubkey =
         RistrettoPublic::try_from(&ingress_pubkey).expect("report didn't contain a valid key");

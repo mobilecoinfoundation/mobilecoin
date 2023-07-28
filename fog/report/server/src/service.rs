@@ -18,6 +18,7 @@ use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_logger, send_result,
 };
 use prost::DecodeError;
+use mc_attest_core::EvidenceWrapper;
 
 #[derive(Clone)]
 pub struct Service<R: ReportDb + Clone + Send + Sync> {
@@ -95,7 +96,9 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
             .map(|(fog_report_id, report_data)| {
                 Ok(Report {
                     fog_report_id,
-                    report: report_data.report,
+                    // Hack
+                    // report: report_data.report,
+                    report: EvidenceWrapper(None),
                     pubkey_expiry: report_data.pubkey_expiry,
                 })
             })

@@ -23,7 +23,7 @@ use crate::{
     sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
 };
 
-pub struct KeyImageStoreServer<E, SS, RC>
+pub struct KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
