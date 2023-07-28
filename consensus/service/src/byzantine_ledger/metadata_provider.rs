@@ -39,7 +39,7 @@ impl<E: ReportableEnclave> BlockMetadataProvider for ConsensusMetadataProvider<E
         let contents = BlockMetadataContents::new(
             block_data.block().id.clone(),
             self.quorum_set.clone(),
-            verification_report,
+            Some(verification_report),
             self.responder_id.clone(),
         );
         Some(

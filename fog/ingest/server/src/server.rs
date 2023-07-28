@@ -14,7 +14,6 @@ use crate::{
 use futures::executor::block_on;
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_core::ProviderId;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -100,7 +99,6 @@ pub struct IngestServerConfig {
 /// All of the state and grpcio objects and threads associated to the ingest
 /// server
 pub struct IngestServer<
-    R: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
 > where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
@@ -108,7 +106,7 @@ pub struct IngestServer<
     config: IngestServerConfig,
     ledger_db: LedgerDB,
     watcher: WatcherDB,
-    controller: Arc<IngestController<R, DB>>,
+    controller: Arc<IngestController<DB>>,
     server: Option<grpcio::Server>,
     peer_server: Option<grpcio::Server>,
     ingest_worker: Option<IngestWorker>,
@@ -118,9 +116,8 @@ pub struct IngestServer<
 }
 
 impl<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestServer<R, DB>
+    > IngestServer<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
@@ -128,7 +125,6 @@ where
     /// db's
     pub fn new(
         config: IngestServerConfig,
-        ra_client: R,
         recovery_db: DB,
         watcher: WatcherDB,
         ledger_db: LedgerDB,
@@ -155,7 +151,6 @@ where
 
         let controller = Arc::new(IngestController::new(
             config.clone(),
-            ra_client,
             recovery_db,
             logger.clone(),
         ));
@@ -395,7 +390,6 @@ where
 }
 
 impl<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     > Drop for IngestServer<R, DB>
 where

@@ -886,7 +886,7 @@ impl<
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
-            verification_report,
+            Some(verification_report),
             self.scp_node.node_id().responder_id,
         );
 

@@ -60,7 +60,6 @@ use std::{
 /// IngestWorker is external to it, and all the grpcio threads are also external
 /// to it, and talk to Arc<IngestController> to accomplish their tasks.
 pub struct IngestController<
-    R: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
 > where
     Error: From<<DB as RecoveryDb>::Error>,
@@ -74,7 +73,7 @@ pub struct IngestController<
     /// The recovery db that we write rng records and txout records to
     recovery_db: DB,
     /// The cache for reports from this enclave
-    report_cache: Arc<Mutex<ReportCache<IngestSgxEnclave, R>>>,
+    report_cache: Arc<Mutex<ReportCache<IngestSgxEnclave>>>,
     /// grpc environment (thread pool) for grpc connections to our peers
     /// Note: we only make synchronous grpc calls in igp connection object,
     /// and this env isn't used to recieve any connections,
@@ -88,14 +87,13 @@ pub struct IngestController<
 }
 
 impl<
-        R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestController<R, DB>
+    > IngestController<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Create a new ingest controller
-    pub fn new(config: IngestServerConfig, ra_client: R, recovery_db: DB, logger: Logger) -> Self {
+    pub fn new(config: IngestServerConfig, recovery_db: DB, logger: Logger) -> Self {
         let controller_state = Arc::new(Mutex::new(IngestControllerState::new(
             &config,
             logger.clone(),
@@ -183,8 +181,6 @@ where
         // Initialize report cache
         let report_cache = Arc::new(Mutex::new(ReportCache::new(
             enclave.clone(),
-            ra_client,
-            config.ias_spid,
             &counters::ENCLAVE_REPORT_TIMESTAMP,
             logger.clone(),
         )));

@@ -116,12 +116,12 @@ impl LedgerGrpcClient {
         // Process server response, check if key exchange is successful
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
+        let (initiator, _verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(VerificationReport::default())
     }
 
     fn deattest(&mut self) {
