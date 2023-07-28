@@ -3,7 +3,7 @@
 //! A collection of generic traits for remote attestation providers
 
 use displaydoc::Display;
-use mc_attest_core::{EpidGroupId, IasNonce, Quote3, QuoteError, SigRL, VerificationReport};
+use mc_attest_core::{EpidGroupId, QuoteError, SigRL};
 use mc_util_encodings::Error as EncodingError;
 use pem::PemError;
 use reqwest::{header::ToStrError, Error as ReqwestError};
@@ -91,12 +91,4 @@ pub trait RaClient: Clone + Send + Sized + Sync {
 
     /// Retrieve the SigRL for the given EPID Group ID.
     fn get_sigrl(&self, gid: EpidGroupId) -> Result<SigRL>;
-
-    /// Submit the given quote to IAS and parse the response into a
-    /// VerificationReport.
-    fn verify_quote(
-        &self,
-        quote: &Quote3<Vec<u8>>,
-        ias_nonce: Option<IasNonce>,
-    ) -> Result<VerificationReport>;
 }
