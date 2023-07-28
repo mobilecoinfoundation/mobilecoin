@@ -9,7 +9,7 @@ extern crate mc_fog_ocall_oram_storage_untrusted;
 use std::{path, result::Result as StdResult, sync::Arc};
 
 use mc_attest_core::{
-    IasNonce, Quote3, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    IasNonce, Quote3, QuoteNonce, Report, SgxError, TargetInfo, Evidence,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -126,13 +126,13 @@ impl ReportableEnclave for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_ias_report(&self, ias_report: Evidence) -> ReportableEnclaveResult<()> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::VerifyIasReport(ias_report))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_ias_report(&self) -> ReportableEnclaveResult<Evidence> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::GetIasReport)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

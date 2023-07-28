@@ -16,6 +16,7 @@ use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_attestation_verifier::TrustedIdentity;
+use mc_attest_core::VerificationReport;
 use mc_fog_report_types::{FogReportResponses, ReportResponse};
 use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_util_uri::{FogUri, UriParseError};
@@ -80,7 +81,8 @@ impl FogPubkeyResolver for FogResolver {
                 if report_id == report.fog_report_id {
                     let pubkey = self
                         .verifier
-                        .validate_ingest_ias_report(report.report.clone())
+                        // .validate_ingest_ias_report(report.report.clone())
+                        .validate_ingest_ias_report(VerificationReport::default())
                         .map_err(|e| FogPubkeyError::IngestReport(e.to_string()))?;
                     return Ok(FullyValidatedFogPubkey {
                         pubkey,

@@ -3,7 +3,7 @@
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::{collections::BTreeMap, vec::Vec};
-use mc_attest_core::{Quote3, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{Quote3, Report, TargetInfo, Evidence};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
     NonceSession, SealedClientMessage,
@@ -75,7 +75,7 @@ pub enum EnclaveCall {
     ///   quote,
     /// * Caches the signed report. This cached report may be overwritten by
     ///   later calls.
-    VerifyReport(VerificationReport),
+    VerifyReport(Evidence),
 
     /// The [LedgerEnclave::get_ias_report()] method.
     ///

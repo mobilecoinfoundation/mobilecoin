@@ -10,7 +10,7 @@
 extern crate alloc;
 
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceWrapper;
 use mc_crypto_digestible::Digestible;
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub struct Report {
     pub fog_report_id: String,
     /// The bytes of the verification report
     #[prost(message, required, tag = "2")]
-    pub report: VerificationReport,
+    pub report: EvidenceWrapper,
     /// The pubkey expiry value (a block index)
     #[prost(fixed64, tag = "3")]
     pub pubkey_expiry: u64,
