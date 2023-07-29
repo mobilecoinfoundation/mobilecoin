@@ -45,10 +45,18 @@ pub fn process_shard_responses(
     let mut view_store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
-    for (shard, response) in shards_and_responses {
+    log::debug!(
+        logger,
+        "process_shard_responses called on {} shards_and_responses",
+        shards_and_responses.len()
+    );
+
+    for (i, (shard, response)) in shards_and_responses.into_iter().enumerate() {
         if response.block_range != shard.block_range {
             return Err(RouterServerError::ViewStoreError(format!("The shard response's block range {} does not match the shard's configured block range {}.", response.block_range, shard.block_range)));
         }
+        log::debug!(logger, "Shard {} status: {:?}", i, response.status);
+
         match response.status {
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
                 log::error!(
