@@ -164,7 +164,11 @@ pub fn process_shard_responses(
             }
             // This call will be retried as part of the larger retry logic
             MultiKeyImageStoreResponseStatus::NOT_READY => {
-                log::debug!(logger, "Shard {} status NotReady", shard_client);
+                log::debug!(
+                    logger,
+                    "Shard {} status NotReady",
+                    KeyImageStoreUri::from_str(&response.store_uri)?
+                );
             }
             // This is a Protobuf decode error - we should never see this
             MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT => {
