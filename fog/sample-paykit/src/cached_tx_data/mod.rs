@@ -176,6 +176,15 @@ impl CachedTxData {
             .map(|block_range| BlockCount::from(block_range.start_block + 1))
             .min()
             .unwrap_or(BlockCount::MAX);
+
+        log::debug!(
+            self.logger,
+            "get_num_blocks {} {} {}",
+            self.rng_set.get_highest_processed_block_count(),
+            self.key_image_data_completeness,
+            missing_block_limit
+        );
+
         *[
             self.rng_set.get_highest_processed_block_count(),
             self.key_image_data_completeness,
