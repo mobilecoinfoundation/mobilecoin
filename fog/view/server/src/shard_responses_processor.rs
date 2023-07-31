@@ -55,7 +55,6 @@ pub fn process_shard_responses(
         if response.block_range != shard.block_range {
             return Err(RouterServerError::ViewStoreError(format!("The shard response's block range {} does not match the shard's configured block range {}.", response.block_range, shard.block_range)));
         }
-        log::debug!(logger, "Shard {} status: {:?}", i, response.status);
 
         match response.status {
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
@@ -80,7 +79,9 @@ pub fn process_shard_responses(
             }
             // Don't do anything if the Fog View Store isn't ready. It's already authenticated,
             // hasn't returned a new query response, and shouldn't be retried yet.
-            mc_fog_types::view::MultiViewStoreQueryResponseStatus::NotReady => (),
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::NotReady => {
+                log::debug!(logger, "Shard {} status NotReady", i);
+            }
         }
     }
 
