@@ -30,6 +30,7 @@ mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-sgx-core-types = "0.7.4"
 mc-sgx-css = { path = "../../sgx/css" }
+mc-sgx-dcap-types = "0.7.3"
 mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", features = ["hex_fmt"] }

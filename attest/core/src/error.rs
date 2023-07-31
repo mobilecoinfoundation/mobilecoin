@@ -18,6 +18,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_sgx_core_types::{MrEnclave, MrSigner};
+use mc_sgx_dcap_types::{QlError, Quote3Error};
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
@@ -236,6 +237,22 @@ pub enum QuoteError {
     InvalidSize(u32),
     /// The base64 encoder did not output valid UTF-8 data
     InvalidUtf8,
+    /// Error converting to Quote3: {0}
+    Quote3(Quote3Error),
+    /// Error converting from Quote Library API: {0}
+    QlError(QlError),
+}
+
+impl From<QlError> for QuoteError {
+    fn from(src: QlError) -> Self {
+        QuoteError::QlError(src)
+    }
+}
+
+impl From<Quote3Error> for QuoteError {
+    fn from(src: Quote3Error) -> Self {
+        QuoteError::Quote3(src)
+    }
 }
 
 impl From<DecodeError> for QuoteError {

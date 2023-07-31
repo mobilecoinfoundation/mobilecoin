@@ -13,13 +13,17 @@ sgx-sim = [
 ]
 
 [dependencies]
+cfg-if = "1.0"
 displaydoc = { version = "0.2", default-features = false }
 mc-attest-core = { path = "../core", default-features = false }
 mc-attest-verifier = { path = "../verifier", default-features = false }
+mc-rand = "1.1.0"
 mc-sgx-core-types = "0.7.4"
 mc-sgx-dcap-ql = "0.7.4"
+mc-sgx-dcap-sys-types = "0.7.4"
 mc-sgx-dcap-types = "0.7.4"
 mc-sgx-types = { path = "../../sgx/types" }
+p256 = { version = "0.13.0", default-features = false, features = ["ecdsa", "pem"] }
 
 [build-dependencies]
 mc-sgx-build = { path = "../../sgx/build" }
