@@ -51,7 +51,7 @@ pub fn process_shard_responses(
         shards_and_responses.len()
     );
 
-    for (_i, (shard, response)) in shards_and_responses.into_iter().enumerate() {
+    for (shard, response) in shards_and_responses {
         if response.block_range != shard.block_range {
             return Err(RouterServerError::ViewStoreError(format!("The shard response's block range {} does not match the shard's configured block range {}.", response.block_range, shard.block_range)));
         }
