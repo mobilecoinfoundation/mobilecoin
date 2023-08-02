@@ -23,8 +23,8 @@ use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
 use prometheus::{
-    histogram_opts, register_histogram, register_histogram_vec, register_int_counter,
-    register_int_gauge, Histogram, HistogramVec, IntCounter, IntGauge,
+    histogram_opts, register_histogram, register_histogram_vec, register_int_counter, Histogram,
+    HistogramVec, IntCounter,
 };
 use std::{sync::Arc, time::Instant};
 const RETRY_COUNT: usize = 3;
@@ -44,7 +44,6 @@ where
 {
     while let Some(request) = requests.try_next().await? {
         let _timer = SVC_COUNTERS.req_impl(&method_name);
-        CONNECTED_CLIENTS.inc();
         let result = handle_request(request, shards.clone(), enclave.clone(), logger.clone()).await;
 
         // Perform prometheus logic before the match statement to ensure that
@@ -57,19 +56,14 @@ where
             Ok(response) => responses.send((response, WriteFlags::default())).await?,
             Err(rpc_status) => {
                 log::error!(logger, "error handling request: {}", &method_name);
-                CONNECTED_CLIENTS.dec();
                 return responses.fail(rpc_status).await;
             }
         }
     }
     match responses.close().await {
-        Ok(value) => {
-            CONNECTED_CLIENTS.dec();
-            Ok(value)
-        }
+        Ok(value) => Ok(value),
         Err(err) => {
             log::error!(logger, "error closing response");
-            CONNECTED_CLIENTS.dec();
             Err(err)
         }
     }
@@ -381,8 +375,5 @@ lazy_static! {
     .expect("metric cannot be created");
     pub static ref AUTH_CLIENT_REQUESTS: IntCounter =
         register_int_counter!("fog_view_auth_client_requests", "Auth requests to stores")
-            .expect("metric cannot be created");
-    pub static ref CONNECTED_CLIENTS: IntGauge =
-        register_int_gauge!("fog_view_connected_clients", "Connected Clients")
             .expect("metric cannot be created");
 }
