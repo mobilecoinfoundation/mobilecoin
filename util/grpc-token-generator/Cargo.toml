@@ -16,4 +16,4 @@ mc-util-grpc = { path = "../grpc" }
 mc-util-parse = { path = "../parse" }
 
 clap = { version = "4.3", features = ["derive", "env"] }
-percent-encoding = "2.2.0"
+percent-encoding = "2.3.0"
