@@ -13,7 +13,6 @@ use mc_fog_view_server::{
     sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
-use mc_util_grpc::{AdminServer, ConnectionUriGrpcioChannel};
 use prometheus::{Encoder, TextEncoder};
 use std::{
     env,
@@ -83,21 +82,6 @@ async fn main() {
         logger.clone(),
     );
     router_server.start();
-
-    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
-    let get_config_json = Arc::new(move || Ok(config_json.clone()));
-    let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
-        AdminServer::start(
-            None,
-            admin_listen_uri,
-            "Fog View".to_owned(),
-            config.client_responder_id.to_string(),
-            Some(get_config_json),
-            vec![],
-            logger,
-        )
-        .expect("Failed starting fog-view admin server")
-    });
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
