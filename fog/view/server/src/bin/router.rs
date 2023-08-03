@@ -85,13 +85,20 @@ async fn main() {
     );
     router_server.start();
 
-    if config.enable_metrics_server {
-        let metrics_path = warp::path(config.metric_path.clone()).and_then(metrics_handler);
-        log::info!(logger.clone(), "Starting metrics endpoint");
-        warp::serve(metrics_path)
-            .run(([0, 0, 0, 0], config.metric_port))
-            .await;
-    }
+    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
+    let get_config_json = Arc::new(move || Ok(config_json.clone()));
+    let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
+        AdminServer::start(
+            None,
+            admin_listen_uri,
+            "Fog View".to_owned(),
+            config.client_responder_id.to_string(),
+            Some(get_config_json),
+            vec![],
+            logger,
+        )
+        .expect("Failed starting fog-view admin server")
+    });
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
