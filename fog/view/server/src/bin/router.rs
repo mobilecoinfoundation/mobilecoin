@@ -19,7 +19,6 @@ use std::{
     env,
     sync::{Arc, RwLock},
 };
-use warp::Filter;
 
 #[tokio::main]
 async fn main() {
