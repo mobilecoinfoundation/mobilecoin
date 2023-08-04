@@ -33,7 +33,7 @@ where
     RC: RaClient + Send + Sync + 'static,
 {
     router_server: grpcio::Server,
-    admin_server: FogViewRouterAdminService,
+    admin_service: FogViewRouterAdminService,
     enclave: E,
     config: FogViewRouterConfig,
     logger: Logger,
@@ -102,7 +102,7 @@ where
                 Arc::new(AnonymousAuthenticator::default())
             };
 
-        let admin_server = FogViewRouterAdminService::new(shards.clone(), logger.clone());
+        let admin_service = FogViewRouterAdminService::new(shards.clone(), logger.clone());
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
 
         // Health check service
@@ -156,7 +156,7 @@ where
 
         Self {
             router_server,
-            admin_server,
+            admin_service,
             enclave,
             config,
             logger,
@@ -197,7 +197,7 @@ where
         let config_json =
             serde_json::to_string(&self.config).expect("failed to serialize config to JSON");
         let get_config_json = Arc::new(move || Ok(config_json.clone()));
-        let admin_service = view_grpc::create_fog_view_router_admin_api(self.admin_server.clone());
+        let admin_service = view_grpc::create_fog_view_router_admin_api(self.admin_service.clone());
         let _admin_server = AdminServer::start(
             None,
             &self.config.admin_listen_uri,
@@ -221,8 +221,6 @@ where
             thread.stop().expect("Could not stop report cache thread");
         }
         block_on(self.router_server.shutdown()).expect("Could not stop router grpc server");
-        // block_on(self.admin_server.shutdown()).expect("Could not stop admin
-        // router server");
     }
 }
 
