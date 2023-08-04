@@ -180,6 +180,12 @@ async fn get_query_responses<E>(
 where
     E: ViewEnclaveProxy,
 {
+    log::debug!(
+        logger,
+        "get_query_responses called with {} shards",
+        shards.len()
+    );
+
     let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
     let _timer = BULK_QUERY_REQUESTS.start_timer();
@@ -244,6 +250,12 @@ where
             remaining_tries -= 1;
         }
     }
+
+    log::debug!(
+        logger,
+        "get_query_responses returning {} responses",
+        query_responses.len()
+    );
 
     if remaining_tries == 0 {
         return Err(router_server_err_to_rpc_status(

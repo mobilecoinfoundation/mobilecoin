@@ -72,11 +72,17 @@ impl EpochShardingStrategy {
             return true;
         }
 
-        let epoch_block_range_length =
-            self.epoch_block_range.end_block - self.epoch_block_range.start_block;
-        let minimum_processed_block_count = epoch_block_range_length / 2;
+        // Original logic requires/assumes a 50% overlap.
+        // This doesn't really work if the we try a minimal overlap to optimize
+        // for cost. We should revisit at some point and create
+        // alternative strategies. This logic should drive the health
+        // check endpoint that k8s can consume more than a response to
+        // the router.
+        // let epoch_block_range_length =
+        //     self.epoch_block_range.end_block - self.epoch_block_range.start_block;
+        // let minimum_processed_block_count = epoch_block_range_length / 2;
 
-        u64::from(processed_block_count) >= minimum_processed_block_count
+        u64::from(processed_block_count) >= 1
     }
 
     fn is_first_epoch(&self) -> bool {
@@ -205,8 +211,7 @@ mod epoch_sharding_strategy_tests {
     fn is_ready_not_first_shard_prevents_less_than_minimum() {
         const START_BLOCK: BlockIndex = 100;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 111;
-        let epoch_block_range_length = END_BLOCK_EXCLUSIVE - START_BLOCK;
-        let minimum_processed_block_count = epoch_block_range_length / 2;
+        let minimum_processed_block_count = 1;
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
@@ -219,8 +224,7 @@ mod epoch_sharding_strategy_tests {
     fn is_ready_not_first_shard_allows_minimum() {
         const START_BLOCK: BlockIndex = 100;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 111;
-        let epoch_block_range_length = END_BLOCK_EXCLUSIVE - START_BLOCK;
-        let minimum_processed_block_count = epoch_block_range_length / 2;
+        let minimum_processed_block_count = 1;
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
@@ -233,8 +237,7 @@ mod epoch_sharding_strategy_tests {
     fn is_ready_not_first_shard_allows_over_minimum() {
         const START_BLOCK: BlockIndex = 100;
         const END_BLOCK_EXCLUSIVE: BlockIndex = 110;
-        let epoch_block_range_length = END_BLOCK_EXCLUSIVE - START_BLOCK;
-        let minimum_processed_block_count = epoch_block_range_length / 2;
+        let minimum_processed_block_count = 1;
         let epoch_block_range = BlockRange::new(START_BLOCK, END_BLOCK_EXCLUSIVE);
         let epoch_sharding_strategy = EpochShardingStrategy::new(epoch_block_range);
 
