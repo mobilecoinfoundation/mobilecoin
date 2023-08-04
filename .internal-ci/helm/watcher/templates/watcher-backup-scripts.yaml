@@ -11,14 +11,15 @@ data:
     #!/bin/bash
     set -e
 
+    # Year, Month and Day are probably safe, but we could get inconsistent values
+    # if we hit a hour/min/sec boundary
     YEAR=$(date '+%Y')
     MONTH=$(date '+%m')
     DAY=$(date '+%d')
-    HOUR=$(date '+%H')
-    MINUTE=$(date '+%M')
-    SECOND=$(date '+%S')
 
-    BACKUP_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/${YEAR}/${MONTH}/${DAY}/backup-${YEAR}${MONTH}${DAY}${HOUR}${MINUTE}${SECOND}-data.mdb"
+    TIMESTAMP=$(date '+%Y%m%d%H%M%S')
+
+    BACKUP_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/${YEAR}/${MONTH}/${DAY}/backup-${TIMESTAMP}-data.mdb"
     LATEST_FILEPATH="watcher/db-backup/${WATCHER_NETWORK}/${WATCHER_REGION_ID}/${WATCHER_INSTANCE_NAME}/latest-backup-data.mdb"
 
     AWS="aws"
@@ -26,7 +27,7 @@ data:
       AWS="aws --endpoint-url ${AWS_ENDPOINT_URL}"
     fi
 
-    # Don't compete with an alredy-running backup
+    # Don't compete with an already running backup
     PIDFILE="/var/run/watcherdb-backup.pid"
     if [ -f ${PIDFILE} ]; then
       echo "Current backup already running. Exiting."
@@ -42,19 +43,37 @@ data:
     trap "rm -f ${PIDFILE}" EXIT
 
     # Create pidfile for lock
-    echo $$ > ${PIDFILE}    
+    echo $$ > ${PIDFILE}
     echo "$(date) S3 backup storage path: s3://${AWS_BUCKET}/${BACKUP_FILEPATH}"
     echo "$(date) S3 latest storage path: s3://${AWS_BUCKET}/${LATEST_FILEPATH}"
 
     # Set sha256 signing
     ${AWS} configure set default payload_signing_enabled=true
 
-    # Copy the db file for stable upload
-    cp /watcher/data.mdb /tmp/data.mdb
+    mkdir -p /backups/watcher
+
+    # Do a lmdb tools copy on the db so we get a clean copy.
+    echo "mdb_copy /watcher /backups/watcher - this will take a while"
+    mdb_copy /watcher /backups/watcher
+
+    # ehh just in case, this really uses system memory for caching :)
+    sync
+
+    # test did we get a clean backup?
+    ls -al /backups/watcher
+    echo "Can we list the DB contents?"
+    mdb_dump -l /backups/watcher
 
     # Copy to S3
-    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
-    ${AWS} s3 cp /tmp/data.mdb s3://${AWS_BUCKET}/${LATEST_FILEPATH}
+    echo "copy data to s3"
+    ${AWS} s3 cp /backups/watcher/data.mdb s3://${AWS_BUCKET}/${BACKUP_FILEPATH}
+
+    # Do an s3 -> s3 copy on the uploaded file to "latest" path.
+    echo "s3 -> s3 copy to create latest"
+    ${AWS} s3 cp s3://${AWS_BUCKET}/${BACKUP_FILEPATH} s3://${AWS_BUCKET}/${LATEST_FILEPATH}
+
+    # clean up backup
+    rm -rf /backups/watcher
 
   restore.sh: |
     #!/bin/bash

@@ -8,7 +8,7 @@ use mc_common::logger::{log, Logger};
 use mc_fog_sample_paykit::{AccountKey, TokenId};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_grpc::GrpcRetryConfig;
-use mc_util_parse::parse_duration_in_seconds;
+use mc_util_parse::{parse_duration_in_millis, parse_duration_in_seconds};
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
@@ -84,6 +84,12 @@ pub struct TestClientConfig {
     /// deadline.
     #[clap(long, default_value = "5", value_parser = parse_duration_in_seconds, env = "MC_CONSENSUS_WAIT")]
     pub consensus_wait: Duration,
+
+    /// ms to wait between balance polling intervals
+    /// Note that the Prometheus buckets for confirm time start at 1s
+    /// and increase at 1s intervals.
+    #[clap(long, default_value = "990", value_parser = parse_duration_in_millis, env = "MC_BALANCE_POLLING_WAIT")]
+    pub balance_polling_wait: Duration,
 
     /// Seconds to wait for ledger sync on fog
     /// This affects the double-spend test but not the continuous mode of
