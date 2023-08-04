@@ -19,8 +19,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     mc_common::setup_panic_handler();
@@ -86,19 +85,4 @@ async fn main() {
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
-}
-
-async fn metrics_handler() -> Result<impl warp::Reply, warp::Rejection> {
-    let encoder = TextEncoder::new();
-    let mut buffer = Vec::new();
-    let metrics_families = prometheus::gather();
-    encoder
-        .encode(&metrics_families, &mut buffer)
-        .expect("could not encode prometheus metrics");
-
-    let response = String::from_utf8(buffer.clone()).expect("unable to format utf8");
-    Ok(warp::reply::with_status(
-        response,
-        warp::http::StatusCode::OK,
-    ))
 }
