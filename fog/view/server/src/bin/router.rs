@@ -13,7 +13,6 @@ use mc_fog_view_server::{
     sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
-use prometheus::{Encoder, TextEncoder};
 use std::{
     env,
     sync::{Arc, RwLock},
