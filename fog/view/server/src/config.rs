@@ -149,7 +149,7 @@ pub struct FogViewRouterConfig {
 
     /// Router admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
-    pub admin_listen_uri: Option<AdminUri>,
+    pub admin_listen_uri: AdminUri,
 
     /// The chain id of the network we are a part of
     #[clap(long, env = "MC_CHAIN_ID")]

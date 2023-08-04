@@ -156,23 +156,16 @@ where
             }
         };
 
-        // let admin_server = grpcio::ServerBuilder::new(env)
-        //     .register_service(fog_view_router_admin_service)
-        //     .build_using_uri(&config.admin_listen_uri, logger.clone())
-        //     .expect("Unable to build Fog View Router admin server");
-
-        let admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
-            AdminServer::start(
-                None,
-                admin_listen_uri,
-                "Fog View".to_owned(),
-                config.client_responder_id.to_string(),
-                Some(get_config_json),
-                vec![fog_view_router_admin_service],
-                logger,
-            )
-            .expect("Failed starting fog-view admin server")
-        });
+        let admin_server = AdminServer::start(
+            None,
+            &config.admin_listen_uri,
+            "Fog View".to_owned(),
+            config.client_responder_id.to_string(),
+            Some(get_config_json),
+            vec![fog_view_router_admin_service],
+            logger,
+        )
+        .expect("Failed starting fog-view admin server");
         Self {
             router_server,
             admin_server,
