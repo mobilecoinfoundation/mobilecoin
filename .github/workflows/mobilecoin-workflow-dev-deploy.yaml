@@ -141,6 +141,18 @@ jobs:
           org: ${{ inputs.docker_image_org }}
         global:
           certManagerClusterIssuer: google-public-ca
+        fogLedgerShardRangeGenerator:
+          count: 2
+        fogViewShardRangeGenerator:
+          count: 2
+        fogLedgerRouter:
+          resources:
+            limits:
+              intel.com/sgx: 2000
+            requests:
+              intel.com/sgx: 2000
+          persistence:
+            enabled: false
         fogLedger:
           resources:
             limits:
@@ -149,6 +161,12 @@ jobs:
               intel.com/sgx: 2000
           persistence:
             enabled: false
+        fogViewRouter:
+          resources:
+            limits:
+              intel.com/sgx: 2000
+            requests:
+              intel.com/sgx: 2000
         fogView:
           resources:
             limits:

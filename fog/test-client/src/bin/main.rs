@@ -42,7 +42,7 @@ fn main() {
         double_spend_wait: config.ledger_sync_wait,
         transfer_amount: config.transfer_amount,
         token_ids: config.token_ids.clone(),
-        ..Default::default()
+        polling_wait: config.balance_polling_wait,
     };
 
     let account_keys = config.load_accounts(&logger);

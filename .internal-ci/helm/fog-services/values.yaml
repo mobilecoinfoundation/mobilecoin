@@ -13,35 +13,6 @@ mcCoreCommonConfig:
 fogServicesConfig:
   enabled: false
 
-fogViewRouter:
-  podManagementPolicy: Parallel
-  replicaCount: 2
-  resources:
-    limits:
-      intel.com/sgx: 5000
-      memory: 3Gi
-    requests:
-      intel.com/sgx: 5000
-      memory: 3Gi
-  nodeSelector:
-    sgx-enabled-node: 'true'
-  tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
-  affinity: {}
-  rust:
-    backtrace: full
-    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
-  podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
-  image:
-    org: ''
-    name: fogview
-    pullPolicy: Always
-
 # Used to retrieve block height for fog view & ledger stores
 blockHeighRetrieval:
   # .Network is retreived from mobilecoin-network configmap
@@ -51,26 +22,6 @@ blockHeighRetrieval:
   queryInterval: 5m
   requestBody: '{"method": "get_network_status", "jsonrpc": "2.0", "id": 1}'
   responseJQ: .result.network_status.network_block_height
-
-fogViewStores:
-  main:
-    shardSize: 400_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 200_000
-  test:
-    shardSize: 800_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 400_000
-
-fogLedgerStores:
-  main:
-    shardSize: 400_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 200_000
-  test:
-    shardSize: 800_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 400_000
 
 imagePullSecrets:
 - name: docker-credentials
@@ -88,6 +39,253 @@ global:
 
 ingress:
   enabled: true
+
+#### Fog View
+fogViewStores:
+  main:
+    shardSize: 400_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 200_000
+  test:
+    shardSize: 800_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 400_000
+
+fogViewShardRangeGenerator:
+  count: 3
+
+fogViewRouter:
+  podManagementPolicy: Parallel
+  replicaCount: 1
+
+  resources:
+    limits:
+      intel.com/sgx: 5000
+      memory: 3Gi
+    requests:
+      intel.com/sgx: 5000
+      memory: 3Gi
+      cpu: 1100m
+
+  nodeSelector:
+    sgx-enabled-node: 'true'
+
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+  # disable affinity rules for single node testing
+  affinityEnabled: true
+  topologySpreadConstraintsEnabled: true
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+  image:
+    org: ''
+    name: fogview
+    pullPolicy: Always
+
+fogView:
+  replicaCount: 1
+  image:
+    org: ''
+    name: fogview
+    pullPolicy: Always
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+  ingress:
+    common:
+      annotations: |-
+        haproxy.org/server-ssl: "false"             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: "true"
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+          dynamic-cookie-key {{ include "fogServices.fogViewGRPCCookieSalt" . }}
+          cookie VIEW insert indirect nocache dynamic
+
+    grpc:
+      annotations: |-
+        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+
+    http:
+      annotations: |-
+        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+  # disable affinity rules for single node testing
+  affinityEnabled: true
+  topologySpreadConstraintsEnabled: true
+
+  ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
+  resources:
+    limits:
+      intel.com/sgx: 5000
+      memory: 3Gi
+    requests:
+      intel.com/sgx: 5000
+      memory: 3Gi
+      cpu: 1100m
+
+  nodeSelector:
+    sgx-enabled-node: 'true'
+
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+
+#### Fog Ledger
+fogLedgerStores:
+  main:
+    shardSize: 400_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 200_000
+  test:
+    shardSize: 800_000
+    exceedBlockHeightBy: 200_000
+    shardOverlap: 400_000
+
+fogLedgerShardRangeGenerator:
+  count: 3
+
+fogLedgerRouter:
+  replicaCount: 1
+  podManagementPolicy: Parallel
+
+  affinityEnabled: true
+  topologySpreadConstraintsEnabled: true
+
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+  image:
+    org: ''
+    name: fog-ledger
+    pullPolicy: Always
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+        - 'ReadWriteOnce'
+      resources:
+        requests:
+          storage: 512Gi
+
+  resources:
+    limits:
+      intel.com/sgx: 5000
+      memory: 3Gi
+    requests:
+      intel.com/sgx: 5000
+      memory: 3Gi
+      cpu: 1100m
+
+  nodeSelector:
+    sgx-enabled-node: 'true'
+
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+fogLedger:
+  replicaCount: 1
+  image:
+    org: ''
+    name: fog-ledger
+    pullPolicy: Always
+
+  # disable affinity rules for single node testing
+  affinityEnabled: true
+  topologySpreadConstraintsEnabled: true
+
+  podManagementPolicy: Parallel
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+        - 'ReadWriteOnce'
+      resources:
+        requests:
+          storage: 512Gi
+      persistentVolumeClaimRetentionPolicy:
+        whenDeleted: Delete
+        whenScaled: Retain
+
+  ingress:
+    common:
+      annotations: |-
+        haproxy.org/server-ssl: "false"             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: "true"
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+          dynamic-cookie-key {{ include "fogServices.fogLedgerGRPCCookieSalt" . }}
+          cookie "LEDGER" insert indirect nocache dynamic
+
+    grpc:
+      annotations: |-
+        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+
+    http:
+      annotations: |-
+        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+  ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
+  resources:
+    limits:
+      intel.com/sgx: 5000
+      memory: 3Gi
+    requests:
+      intel.com/sgx: 5000
+      memory: 3Gi
+      cpu: 1100m
+
+  nodeSelector:
+    sgx-enabled-node: 'true'
+
+  tolerations:
+  - key: sgx
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
 
 ### Fog Report Service
 fogReport:
@@ -148,159 +346,7 @@ fogReport:
       POSTGRES_CONNECTION_TIMEOUT: '5'
       POSTGRES_MAX_CONNECTIONS: '3'
 
-fogView:
-  replicaCount: 2
-  image:
-    org: ''
-    name: fogview
-    pullPolicy: Always
 
-  rust:
-    backtrace: full
-    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
-
-  ingress:
-    common:
-      annotations: |-
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-          dynamic-cookie-key {{ include "fogServices.fogViewGRPCCookieSalt" . }}
-          cookie VIEW insert indirect nocache dynamic
-
-    grpc:
-      annotations: |-
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
-
-    http:
-      annotations: |-
-        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
-
-  podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
-
-  ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
-  resources:
-    limits:
-      intel.com/sgx: 5000
-      memory: 3Gi
-    requests:
-      intel.com/sgx: 5000
-      memory: 3Gi
-
-  nodeSelector:
-    sgx-enabled-node: 'true'
-
-  tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
-
-fogLedgerRouter:
-  replicaCount: 2
-  podManagementPolicy: Parallel
-
-  podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
-
-  image:
-    org: ''
-    name: fog-ledger
-    pullPolicy: Always
-
-  rust:
-    backtrace: full
-    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
-
-  resources:
-    limits:
-      intel.com/sgx: 5000
-      memory: 1Gi
-    requests:
-      intel.com/sgx: 5000
-      memory: 1Gi
-
-  nodeSelector:
-    sgx-enabled-node: 'true'
-
-  tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
-
-fogLedger:
-  replicaCount: 2
-  image:
-    org: ''
-    name: fog-ledger
-    pullPolicy: Always
-
-  podManagementPolicy: Parallel
-
-  rust:
-    backtrace: full
-    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
-
-  persistence:
-    enabled: true
-    spec:
-      storageClassName: fast
-      accessModes:
-        - 'ReadWriteOnce'
-      resources:
-        requests:
-          storage: 512Gi
-
-  ingress:
-    common:
-      annotations: |-
-        haproxy.org/server-ssl: "false"             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-        haproxy.org/timeout-server: 239s
-        haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: "true"
-        haproxy.org/backend-config-snippet: |-
-          http-reuse aggressive
-          dynamic-cookie-key {{ include "fogServices.fogLedgerGRPCCookieSalt" . }}
-          cookie "LEDGER" insert indirect nocache dynamic
-
-    grpc:
-      annotations: |-
-        haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
-
-    http:
-      annotations: |-
-        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
-
-  podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
-
-  ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
-  resources:
-    limits:
-      intel.com/sgx: 5000
-      memory: 3Gi
-    requests:
-      intel.com/sgx: 5000
-      memory: 3Gi
-
-  nodeSelector:
-    sgx-enabled-node: 'true'
-
-  tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
 
 grpcGateway:
   image:

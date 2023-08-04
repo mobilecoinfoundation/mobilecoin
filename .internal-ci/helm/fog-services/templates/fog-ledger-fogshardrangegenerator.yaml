@@ -1,14 +1,16 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- $stacks := until (int .Values.fogLedgerShardRangeGenerator.count) }}
+{{- range $stacks }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-ledger
+  name: {{ include "fogServices.fullname" $ }}-fog-ledger-{{ . }}
   labels:
-    {{- include "fogServices.labels" . | nindent 4 }}
+    {{- include "fogServices.labels" $ | nindent 4 }}
 spec:
-  {{- include "fogServices.fogLedgerStores" . | nindent 2 }}
-  blockCountURL: {{ include "fogServices.blockHeightURL" . | quote }}
-  {{- with .Values.blockHeighRetrieval }}
+  {{- include "fogServices.fogLedgerStores" $ | nindent 2 }}
+  blockCountURL: {{ include "fogServices.blockHeightURL" $ | quote }}
+  {{- with $.Values.blockHeighRetrieval }}
   blockCountQueryInterval: {{ .queryInterval | quote }}
   blockCountResponseJQ: {{ .responseJQ | quote }}
   blockCountReqBody: {{ .requestBody | quote }}
@@ -19,42 +21,51 @@ spec:
     template:
       containerName: fog-ledger-router
       spec:
-        podManagementPolicy: {{ .Values.fogLedgerRouter.podManagementPolicy }}
-        replicas: {{ .Values.fogLedgerRouter.replicaCount }}
+        podManagementPolicy: {{ $.Values.fogLedgerRouter.podManagementPolicy }}
+        replicas: {{ $.Values.fogLedgerRouter.replicaCount }}
         selector:
           matchLabels:
             app: fog-ledger-router
-            {{- include "fogServices.selectorLabels" . | nindent 12 }}
-        serviceName: {{ include "fogServices.fullname" . }}-fog-ledger
+            stack: fog-ledger-{{ . }}
+            {{- include "fogServices.selectorLabels" $ | nindent 12 }}
+        serviceName: {{ include "fogServices.fullname" $ }}-fog-ledger
         template:
           metadata:
             annotations:
-              {{- toYaml .Values.fogLedgerRouter.podAnnotations | nindent 14 }}
+              {{- toYaml $.Values.fogLedgerRouter.podAnnotations | nindent 14 }}
             labels:
               app: fog-ledger-router
-              {{- include "fogServices.labels" . | nindent 14 }}
+              stack: fog-ledger-{{ . }}
+              {{- include "fogServices.labels" $ | nindent 14 }}
           spec:
             # Prevent endpoint creation until all shards for this router are ready
             readinessGates:
             - conditionType: mobilecoin.com/shards-ready
             # Try to balance pods across zones
-            topologySpreadConstraints:
-            - topologyKey: topology.kubernetes.io/zone
-              maxSkew: 1
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app: fog-ledger-router
-                  {{- include "fogServices.selectorLabels" . | nindent 16 }}
-            - topologyKey: kubernetes.io/hostname
-              maxSkew: 1
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app: fog-ledger-router
-                  {{- include "fogServices.selectorLabels" . | nindent 16 }}
+            {{- if $.Values.fogLedgerRouter.affinityEnabled }}
+            affinity:
+              podAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-ledger-{{ . }}
+                  topologyKey: topology.kubernetes.io/zone
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: stack
+                        operator: In
+                        values:
+                        - fog-ledger-{{ . }}
+                    topologyKey: "kubernetes.io/hostname"
+                  weight: 1
+            {{- end }}
             imagePullSecrets:
-            {{- toYaml .Values.imagePullSecrets | nindent 12 }}
+            {{- toYaml $.Values.imagePullSecrets | nindent 12 }}
             terminationGracePeriodSeconds: 30
             dnsConfig:
               options:
@@ -74,8 +85,8 @@ spec:
                 runAsNonRoot: False
             containers:
             - name: fog-ledger-router
-              image: "{{ .Values.fogLedgerRouter.image.org | default .Values.image.org }}/{{ .Values.fogLedgerRouter.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-              imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
+              image: "{{ $.Values.fogLedgerRouter.image.org | default $.Values.image.org }}/{{ $.Values.fogLedgerRouter.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+              imagePullPolicy: {{ $.Values.fogLedger.image.pullPolicy }}
               args: [ "/usr/bin/supervisord" ]
               ports:
               - name: ledger-grpc
@@ -95,7 +106,7 @@ spec:
               - name: MC_LEDGER_DB_MIGRATE
                 value: "true"
               - name: RUST_BACKTRACE
-                value: {{ .Values.fogLedgerRouter.rust.backtrace | quote }}
+                value: {{ $.Values.fogLedgerRouter.rust.backtrace | quote }}
               - name: RUST_LOG
                 value: {{ .Values.fogLedgerRouter.rust.log | quote }}
               {{- if eq .Values.jaegerTracing.enabled true }}
@@ -125,7 +136,7 @@ spec:
                     key: token
                     optional: true
               - name: CLIENT_RESPONDER_ID
-                value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
+                value: "{{ include "fogServices.fogPublicFQDN" $ }}:443"
               startupProbe:
                 grpc:
                   port: 3228
@@ -159,9 +170,9 @@ spec:
               - name: tmp
                 mountPath: /tmp
               resources:
-                {{- toYaml .Values.fogLedgerRouter.resources | nindent 16 }}
+                {{- toYaml $.Values.fogLedgerRouter.resources | nindent 16 }}
             - name: grpc-gateway
-              image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              image: "{{ $.Values.grpcGateway.image.org | default $.Values.image.org }}/{{ $.Values.grpcGateway.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
               imagePullPolicy: Always
               command:
               - /usr/bin/go-grpc-gateway
@@ -173,8 +184,8 @@ spec:
                 - name: ledger-http
                   containerPort: 8228
               resources:
-                {{- toYaml .Values.grpcGateway.resources | nindent 16 }}
-            {{- if eq .Values.jaegerTracing.enabled true }}
+                {{- toYaml $.Values.grpcGateway.resources | nindent 16 }}
+            {{- if eq $.Values.jaegerTracing.enabled true }}
             - name: jaeger-agent
               image: jaegertracing/jaeger-agent:latest
               imagePullPolicy: IfNotPresent
@@ -206,18 +217,16 @@ spec:
                       apiVersion: v1
                       fieldPath: status.hostIP
               args:
-                - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+                - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
                 - --reporter.type=grpc
-                - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+                - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fogServices.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
             {{- end }}
             nodeSelector:
-              {{- toYaml .Values.fogLedgerRouter.nodeSelector | nindent 14 }}
+              {{- toYaml $.Values.fogLedgerRouter.nodeSelector | nindent 14 }}
             tolerations:
-              {{- toYaml .Values.fogLedgerRouter.tolerations | nindent 14 }}
-            affinity:
-              {{- toYaml .Values.fogLedgerRouter.affinity | nindent 14 }}
+              {{- toYaml $.Values.fogLedgerRouter.tolerations | nindent 14 }}
             volumes:
-            {{- if eq .Values.fogLedger.persistence.enabled false }}
+            {{- if eq $.Values.fogLedgerRouter.persistence.enabled false }}
             - name: fog-data
               emptyDir: {}
             {{- end }}
@@ -229,21 +238,21 @@ spec:
               projected:
                 sources:
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-sgx
+                    name: {{ include "fogServices.fullname" $ }}-supervisord-sgx
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-daemon
+                    name: {{ include "fogServices.fullname" $ }}-supervisord-daemon
                 - configMap:
                     name: fog-supervisord-mobilecoind
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger-router
+                    name: {{ include "fogServices.fullname" $ }}-supervisord-fog-ledger-router
                 - configMap:
-                    name: {{ include "fogServices.fullname" . }}-supervisord-admin
-        {{- if .Values.fogLedger.persistence.enabled }}
+                    name: {{ include "fogServices.fullname" $ }}-supervisord-admin
+        {{- if $.Values.fogLedgerRouter.persistence.enabled }}
         volumeClaimTemplates:
         - metadata:
             name: fog-data
           spec:
-            {{- toYaml .Values.fogLedger.persistence.spec | nindent 12 }}
+            {{- toYaml $.Values.fogLedgerRouter.persistence.spec | nindent 12 }}
         {{- end }}
 
   store:
@@ -251,49 +260,56 @@ spec:
     servicePort: 80
     targetPort: ledger-grpc
     spec:
-      podManagementPolicy: {{ .Values.fogLedger.podManagementPolicy }}
-      replicas: {{ .Values.fogLedger.replicaCount }}
+      podManagementPolicy: {{ $.Values.fogLedger.podManagementPolicy }}
+      replicas: {{ $.Values.fogLedger.replicaCount }}
       selector:
         matchLabels:
           app: fog-ledger-store
-          {{- include "fogServices.selectorLabels" . | nindent 10 }}
-      serviceName: {{ include "fogServices.fullname" . }}-fog-ledger-store
+          stack: fog-ledger-{{ . }}
+          {{- include "fogServices.selectorLabels" $ | nindent 10 }}
+      serviceName: {{ include "fogServices.fullname" $ }}-fog-ledger-store
       template:
         metadata:
           annotations:
-            {{- toYaml .Values.fogLedger.podAnnotations | nindent 12 }}
+            {{- toYaml $.Values.fogLedger.podAnnotations | nindent 12 }}
           labels:
             app: fog-ledger-store
-            {{- include "fogServices.labels" . | nindent 12 }}
+            stack: fog-ledger-{{ . }}
+            {{- include "fogServices.labels" $ | nindent 12 }}
         spec:
+          {{- if $.Values.fogLedger.topologySpreadConstraintsEnabled }}
           topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
-            whenUnsatisfiable: DoNotSchedule
+            whenUnsatisfiable: ScheduleAnyway
             labelSelector:
               matchLabels:
                 app: fog-ledger-store
-                {{- include "fogServices.selectorLabels" . | nindent 14 }}
-            matchLabelKeys:
-            - statefulset
-          - topologyKey: kubernetes.io/hostname
-            maxSkew: 1
-            whenUnsatisfiable: DoNotSchedule
-            labelSelector:
-              matchLabels:
-                app: fog-ledger-store
-                {{- include "fogServices.selectorLabels" . | nindent 14 }}
-            matchLabelKeys:
-            - statefulset
+          {{- end }}
+          {{- if $.Values.fogLedger.affinityEnabled }}
           affinity:
-            podAntiAffinity:
+            podAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
-              - topologyKey: kubernetes.io/hostname
-                labelSelector:
-                  app: fog-ledger-store
-                  {{- include "fogServices.selectorLabels" . | nindent 16 }}
+              - labelSelector:
+                  matchExpressions:
+                  - key: stack
+                    operator: In
+                    values:
+                    - fog-ledger-{{ . }}
+                topologyKey: topology.kubernetes.io/zone
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-ledger-{{ . }}
+                  topologyKey: "kubernetes.io/hostname"
+                weight: 1
+          {{- end }}
           imagePullSecrets:
-          {{- toYaml .Values.imagePullSecrets | nindent 10 }}
+          {{- toYaml $.Values.imagePullSecrets | nindent 10 }}
           terminationGracePeriodSeconds: 30
           dnsConfig:
             options:
@@ -313,8 +329,8 @@ spec:
               runAsNonRoot: False
           containers:
           - name: fog-ledger-store
-            image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-            imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
+            image: "{{ $.Values.fogLedger.image.org | default $.Values.image.org }}/{{ $.Values.fogLedger.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+            imagePullPolicy: {{ $.Values.fogLedger.image.pullPolicy }}
             args: [ "/usr/bin/supervisord" ]
             ports:
             - name: ledger-grpc
@@ -338,9 +354,9 @@ spec:
             - name: MC_LEDGER_DB_MIGRATE
               value: "true"
             - name: RUST_BACKTRACE
-              value: {{ .Values.fogLedger.rust.backtrace | quote }}
+              value: {{ $.Values.fogLedger.rust.backtrace | quote }}
             - name: RUST_LOG
-              value: {{ .Values.fogLedger.rust.log | quote }}
+              value: {{ $.Values.fogLedger.rust.log | quote }}
             - name: FOG_LEDGER_SENTRY_DSN
               valueFrom:
                 configMapKeyRef:
@@ -392,8 +408,8 @@ spec:
             - name: tmp
               mountPath: /tmp
             resources:
-              {{- toYaml .Values.fogLedger.resources | nindent 14 }}
-          {{- if eq .Values.jaegerTracing.enabled true }}
+              {{- toYaml $.Values.fogLedger.resources | nindent 14 }}
+          {{- if eq $.Values.jaegerTracing.enabled true }}
           - name: jaeger-agent
             image: jaegertracing/jaeger-agent:latest
             imagePullPolicy: IfNotPresent
@@ -425,18 +441,16 @@ spec:
                     apiVersion: v1
                     fieldPath: status.hostIP
             args:
-              - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
               - --reporter.type=grpc
-              - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+              - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fogServices.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
           {{- end }}
           nodeSelector:
-            {{- toYaml .Values.fogLedger.nodeSelector | nindent 12 }}
+            {{- toYaml $.Values.fogLedger.nodeSelector | nindent 12 }}
           tolerations:
-            {{- toYaml .Values.fogLedger.tolerations | nindent 12 }}
-          affinity:
-            {{- toYaml .Values.fogLedger.affinity | nindent 12 }}
+            {{- toYaml $.Values.fogLedger.tolerations | nindent 12 }}
           volumes:
-          {{- if eq .Values.fogLedger.persistence.enabled false }}
+          {{- if eq $.Values.fogLedger.persistence.enabled false }}
           - name: fog-data
             emptyDir: {}
           {{- end }}
@@ -448,20 +462,21 @@ spec:
             projected:
               sources:
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-sgx
+                  name: {{ include "fogServices.fullname" $ }}-supervisord-sgx
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-daemon
+                  name: {{ include "fogServices.fullname" $ }}-supervisord-daemon
               - configMap:
                   name: fog-supervisord-mobilecoind
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger-store
+                  name: {{ include "fogServices.fullname" $ }}-supervisord-fog-ledger-store
               - configMap:
-                  name: {{ include "fogServices.fullname" . }}-supervisord-admin
-      {{- if .Values.fogLedger.persistence.enabled }}
+                  name: {{ include "fogServices.fullname" $ }}-supervisord-admin
+      {{- if $.Values.fogLedger.persistence.enabled }}
       volumeClaimTemplates:
       - metadata:
           name: fog-data
         spec:
-          {{- toYaml .Values.fogLedger.persistence.spec | nindent 10 }}
+          {{- toYaml $.Values.fogLedger.persistence.spec | nindent 10 }}
       {{- end }}
-
+---
+{{- end }}
