@@ -40,7 +40,7 @@ mc-fog-test-infra = { path = "../../test_infra" }
 mc-rand = "1.0"
 mc-util-from-random = { path = "../../../util/from-random" }
 
-criterion = "0.4"
+criterion = "0.5"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
