@@ -1,0 +1,7 @@
+network:
+  name: test
+  partner: main
+
+fogServicesConfig:
+  fogPublicFQDN:
+    domainname: fog.test.mobilecoin.com

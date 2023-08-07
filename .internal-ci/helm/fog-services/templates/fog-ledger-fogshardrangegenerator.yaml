@@ -108,8 +108,8 @@ spec:
               - name: RUST_BACKTRACE
                 value: {{ $.Values.fogLedgerRouter.rust.backtrace | quote }}
               - name: RUST_LOG
-                value: {{ .Values.fogLedgerRouter.rust.log | quote }}
-              {{- if eq .Values.jaegerTracing.enabled true }}
+                value: {{ $.Values.fogLedgerRouter.rust.log | quote }}
+              {{- if eq $.Values.jaegerTracing.enabled true }}
               - name: MC_TELEMETRY
                 value: "true"
               {{- end }}

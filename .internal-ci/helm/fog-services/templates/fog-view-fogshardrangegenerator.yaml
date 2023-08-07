@@ -133,10 +133,10 @@ spec:
                 timeoutSeconds: 1
               env:
               - name: RUST_BACKTRACE
-                value: {{ .Values.fogViewRouter.rust.backtrace | quote }}
+                value: {{ $.Values.fogViewRouter.rust.backtrace | quote }}
               - name: MC_METRIC_SERVER
                 value: "true"
-              {{- if eq .Values.jaegerTracing.enabled true }}
+              {{- if eq $.Values.jaegerTracing.enabled true }}
               - name: MC_TELEMETRY
                 value: "true"
               {{- end }}
