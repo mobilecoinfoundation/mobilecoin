@@ -347,7 +347,7 @@ spec:
                 name: ipinfo
                 optional: true
             env:
-            {{- if eq .Values.jaegerTracing.enabled true }}
+            {{- if eq $.Values.jaegerTracing.enabled true }}
             - name: MC_TELEMETRY
               value: "true"
             {{- end }}
