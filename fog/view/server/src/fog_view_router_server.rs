@@ -125,7 +125,7 @@ where
                     streaming_uri.addr(),
                 );
 
-                grpcio::ServerBuilder::new(env.clone())
+                grpcio::ServerBuilder::new(env)
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
                     .build_using_uri(streaming_uri, logger.clone())
