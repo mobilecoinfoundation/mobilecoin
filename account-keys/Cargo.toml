@@ -38,7 +38,7 @@ mc-util-repr-bytes = { path = "../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../util/serial", optional = true }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 
 mc-test-vectors-account-keys = { path = "../test-vectors/account-keys" }
 mc-util-test-helper = { path = "../util/test-helper" }
