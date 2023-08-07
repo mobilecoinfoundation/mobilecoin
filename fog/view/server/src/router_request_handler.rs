@@ -299,17 +299,17 @@ async fn query_shard(
     let client_unary_receiver = shard
         .grpc_client
         .multi_view_store_query_async(request)
-        .or_else(|err| {
-            let histogram = QUERY_REQUESTS.with_label_values(&[&subdomain, &err.to_string()]);
+        .map_err(|err| {
+            let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, &err.to_string()]);
             histogram.observe(start_time.elapsed().as_secs_f64());
-            Err(err)
+            err
         })?;
-    let response = client_unary_receiver.await.or_else(|err| {
-        let histogram = QUERY_REQUESTS.with_label_values(&[&subdomain, &err.to_string()]);
+    let response = client_unary_receiver.await.map_err(|err| {
+        let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, &err.to_string()]);
         histogram.observe(start_time.elapsed().as_secs_f64());
-        Err(err)
+        err
     })?;
-    let histogram = QUERY_REQUESTS.with_label_values(&[&subdomain, "ok"]);
+    let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, "ok"]);
     histogram.observe(start_time.elapsed().as_secs_f64());
     Ok((shard, response.try_into()?))
 }

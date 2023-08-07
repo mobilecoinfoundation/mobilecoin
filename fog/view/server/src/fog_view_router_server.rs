@@ -146,7 +146,7 @@ where
                     "Starting Fog View Router unary server on {}",
                     unary_uri.addr(),
                 );
-                grpcio::ServerBuilder::new(env.clone())
+                grpcio::ServerBuilder::new(env)
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
                     .build_using_uri(unary_uri, logger.clone())
