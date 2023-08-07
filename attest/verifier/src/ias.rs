@@ -104,7 +104,7 @@ impl IasReportVerifier {
         // will support
         let profile = Profile::new(
             vec![HashType::Sha256, HashType::Sha384, HashType::Sha512],
-            vec![PkType::Rsa, PkType::Ecdsa],
+            vec![PkType::Rsa, PkType::Eckey, PkType::Ecdsa],
             vec![
                 EcGroupId::Curve25519,
                 EcGroupId::SecP256K1,
