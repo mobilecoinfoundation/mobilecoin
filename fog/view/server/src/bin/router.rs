@@ -73,12 +73,12 @@ fn main() {
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = FogViewRouterServer::new(
-        config.clone(),
+        config,
         sgx_enclave,
         ias_client,
         shards,
         SystemTimeProvider::default(),
-        logger.clone(),
+        logger,
     );
     router_server.start();
 
