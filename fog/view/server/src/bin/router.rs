@@ -13,6 +13,7 @@ use mc_fog_view_server::{
     sharding_strategy::{EpochShardingStrategy, ShardingStrategy},
 };
 use mc_util_cli::ParserWithBuildInfo;
+use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{
     env,
     sync::{Arc, RwLock},
