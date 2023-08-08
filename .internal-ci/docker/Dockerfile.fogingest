@@ -18,8 +18,8 @@ COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
 
 # Entrypoint
-# COPY docker/entrypoints/fogingest.sh /usr/bin/entrypoint.sh
-# ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+COPY .internal-ci/docker/entrypoints/fogingest.sh /usr/bin/entrypoint.sh
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 # Rust defaults
 ENV RUST_BACKTRACE="1"

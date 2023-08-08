@@ -9,7 +9,7 @@ use futures::{future::try_join_all, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::SealedClientMessage;
-use mc_common::logger::Logger;
+use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
     view_grpc::FogViewStoreApiClient,
@@ -160,6 +160,12 @@ async fn get_query_responses<E>(
 where
     E: ViewEnclaveProxy,
 {
+    log::debug!(
+        logger,
+        "get_query_responses called with {} shards",
+        shards.len()
+    );
+
     let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
     while remaining_tries > 0 {
@@ -220,6 +226,12 @@ where
             remaining_tries -= 1;
         }
     }
+
+    log::debug!(
+        logger,
+        "get_query_responses returning {} responses",
+        query_responses.len()
+    );
 
     if remaining_tries == 0 {
         return Err(router_server_err_to_rpc_status(
@@ -289,7 +301,9 @@ async fn authenticate_view_store<E: ViewEnclaveProxy>(
             .build(),
     );
     let view_store_client = FogViewStoreApiClient::new(
-        ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&view_store_url, &logger),
+        ChannelBuilder::default_channel_builder(grpc_env)
+            .keepalive_permit_without_calls(false)
+            .connect_to_uri(&view_store_url, &logger),
     );
 
     let auth_unary_receiver = view_store_client.auth_async(&nonce_auth_request.into())?;

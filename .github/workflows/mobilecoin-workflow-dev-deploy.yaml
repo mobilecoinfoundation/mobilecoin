@@ -141,8 +141,11 @@ jobs:
           org: ${{ inputs.docker_image_org }}
         global:
           certManagerClusterIssuer: google-public-ca
-        fogLedger:
-          replicaCount: 2
+        fogLedgerShardRangeGenerator:
+          count: 2
+        fogViewShardRangeGenerator:
+          count: 2
+        fogLedgerRouter:
           resources:
             limits:
               intel.com/sgx: 2000
@@ -150,23 +153,38 @@ jobs:
               intel.com/sgx: 2000
           persistence:
             enabled: false
+        fogLedger:
+          resources:
+            limits:
+              intel.com/sgx: 2000
+            requests:
+              intel.com/sgx: 2000
+          persistence:
+            enabled: false
+        fogViewRouter:
+          resources:
+            limits:
+              intel.com/sgx: 2000
+            requests:
+              intel.com/sgx: 2000
         fogView:
-          replicaCount: 2
           resources:
             limits:
               intel.com/sgx: 2000
             requests:
               intel.com/sgx: 2000
         blockHeighRetrieval:
-          url: 'https://node1.alpha.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
+          url: 'https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
           responseJQ: '.index'
           requestBody: ' '
           queryInterval: 5m
-        fogViewStores: &stores
-          shardSize: 100_000
-          exceedBlockHeightBy: 5_000
-          shardOverlap: 0
-        fogLedgerStores: *stores
+        fogViewStores:
+          override: &stores
+            shardSize: 100_000
+            exceedBlockHeightBy: 5_000
+            shardOverlap: 0
+        fogLedgerStores:
+          override: *stores
         EOF
 
     - name: Deploy fog-services

@@ -2,15 +2,15 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view
+  name: {{ include "fogServices.fullname" . }}-fog-ledger-store
   labels:
     publish: grafana-cloud
-    app: fog-view
+    app: fog-ledger-store
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: fog-view
+      app: fog-ledger-store
       {{- include "fogServices.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt-http
@@ -19,4 +19,3 @@ spec:
       replacement: {{ include "fogServices.mobileCoinNetwork.network" . }}
     - targetLabel: partner
       replacement: {{ include "fogServices.mobileCoinNetwork.partner" . }}
-

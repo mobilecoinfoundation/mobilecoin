@@ -2,23 +2,23 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-ledger-store
+  name: {{ include "fogServices.fullname" . }}-fog-view-store
   labels:
-    app: fog-ledger-store
+    app: fog-view-store
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   clusterIP: None
   selector:
-    app: fog-ledger-store
+    app: fog-view-store
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
-    - name: ledger
-      port: 3228
-      targetPort: ledger
-    - name: mgmt
+    - name: view-grpc
+      port: 3225
+      targetPort: view-grpc
+    - name: mgmt-http
       port: 8000
-      targetPort: mgmt
-    - name: ledger-http
-      port: 8228
-      targetPort: ledger-http
+      targetPort: mgmt-http
+    - name: view-http
+      port: 8225
+      targetPort: view-http

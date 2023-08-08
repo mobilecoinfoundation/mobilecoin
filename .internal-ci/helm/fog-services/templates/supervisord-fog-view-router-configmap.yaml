@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "fogServices.fullname" . }}-supervisord-fog-router
+  name: {{ include "fogServices.fullname" . }}-supervisord-fog-view-router
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 data:
-  acct_view.conf: |
+  fog_view_router.conf: |
     [program:fogviewrouter]
     priority=100
     command=fog_view_router

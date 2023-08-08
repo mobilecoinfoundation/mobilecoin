@@ -56,7 +56,7 @@ spec:
       - name: fog-ingest
         image: "{{ .Values.fogIngest.image.org | default .Values.image.org }}/{{ .Values.fogIngest.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.fogIngest.image.pullPolicy }}
-        command: [ "/usr/bin/supervisord" ]
+        args: [ "/usr/bin/supervisord" ]
         ports:
         - name: ingest
           containerPort: 3226
@@ -77,6 +77,8 @@ spec:
           value: {{ .Values.fogIngest.rust.backtrace | quote }}
         - name: RUST_LOG
           value: {{ .Values.fogIngest.rust.log | quote }}
+        - name: MC_LEDGER_DB_MIGRATE
+          value: "true"
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
@@ -160,6 +162,8 @@ spec:
         - name: supervisor-conf
           mountPath: /etc/supervisor/conf.d
           readOnly: true
+        - name: tmp
+          mountPath: /tmp
         resources:
           {{- toYaml .Values.fogIngest.resources | nindent 10 }}
       {{- if eq .Values.jaegerTracing.enabled true }}
@@ -209,6 +213,8 @@ spec:
       - name: fog-data
         emptyDir: {}
       {{- end }}
+      - name: tmp
+        emptyDir: {}
       - name: aesm-socket-dir
         emptyDir: {}
       - name: ingest-run-data

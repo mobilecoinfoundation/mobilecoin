@@ -45,10 +45,17 @@ pub fn process_shard_responses(
     let mut view_store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
+    log::debug!(
+        logger,
+        "process_shard_responses called on {} shards_and_responses",
+        shards_and_responses.len()
+    );
+
     for (shard, response) in shards_and_responses {
         if response.block_range != shard.block_range {
             return Err(RouterServerError::ViewStoreError(format!("The shard response's block range {} does not match the shard's configured block range {}.", response.block_range, shard.block_range)));
         }
+
         match response.status {
             mc_fog_types::view::MultiViewStoreQueryResponseStatus::Unknown => {
                 log::error!(
@@ -72,7 +79,9 @@ pub fn process_shard_responses(
             }
             // Don't do anything if the Fog View Store isn't ready. It's already authenticated,
             // hasn't returned a new query response, and shouldn't be retried yet.
-            mc_fog_types::view::MultiViewStoreQueryResponseStatus::NotReady => (),
+            mc_fog_types::view::MultiViewStoreQueryResponseStatus::NotReady => {
+                log::debug!(logger, "Shard {} status NotReady", response.store_uri);
+            }
         }
     }
 
@@ -157,7 +166,9 @@ mod tests {
         );
 
         let grpc_client = FogViewStoreApiClient::new(
-            ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger),
+            ChannelBuilder::default_channel_builder(grpc_env)
+                .keepalive_permit_without_calls(false)
+                .connect_to_uri(&uri, &logger),
         );
 
         Shard::new(uri, Arc::new(grpc_client), block_range)
