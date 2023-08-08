@@ -394,6 +394,7 @@ mod tests {
                 sig: VerificationSignature::from(vec![report_version; 32]),
                 chain: vec![vec![report_version; 16], vec![3; 32]],
                 http_body: node_url.to_string(),
+                evidence_message_bytes: vec![],
             }
         }
 

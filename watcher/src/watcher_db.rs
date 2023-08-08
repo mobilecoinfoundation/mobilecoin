@@ -1332,12 +1332,14 @@ pub mod tests {
                 sig: vec![1u8; 32].into(),
                 chain: vec![vec![2; 16], vec![3; 32]],
                 http_body: "test body a".to_owned(),
+                evidence_message_bytes: vec![],
             };
 
             let verification_report_b = VerificationReport {
                 sig: vec![10u8; 32].into(),
                 chain: vec![vec![20; 16], vec![30; 32]],
                 http_body: "test body b".to_owned(),
+                evidence_message_bytes: vec![],
             };
 
             {
@@ -1643,6 +1645,7 @@ pub mod tests {
                 sig: vec![1; 32].into(),
                 chain: vec![vec![2; 16], vec![3; 32]],
                 http_body: "test body a".to_owned(),
+                evidence_message_bytes: vec![],
             };
 
             let blocks = setup_blocks();
@@ -1846,6 +1849,7 @@ pub mod tests {
             sig: vec![1; 32].into(),
             chain: vec![vec![2; 16], vec![3; 32]],
             http_body: "test body a".to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let blocks_data = setup_blocks();

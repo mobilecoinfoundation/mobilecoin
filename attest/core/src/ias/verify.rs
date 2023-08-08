@@ -449,6 +449,7 @@ mod test {
             sig: Default::default(),
             chain: Default::default(),
             http_body: String::from(IAS_WITH_PIB.trim()),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report)
@@ -464,6 +465,7 @@ mod test {
             sig: Default::default(),
             chain: Default::default(),
             http_body: String::from(IAS_WITH_PIB),
+            evidence_message_bytes: vec![],
         };
 
         let mut data = VerificationReportData::try_from(&report)

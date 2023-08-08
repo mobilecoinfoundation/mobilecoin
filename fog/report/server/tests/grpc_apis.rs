@@ -64,11 +64,13 @@ fn report_server_grpc_tests(logger: Logger) {
         sig: Default::default(),
         chain: vec![b"asdf".to_vec(), b"jkl;".to_vec()],
         http_body: "body".to_string(),
+        evidence_message_bytes: vec![],
     };
     let verification_report1 = VerificationReport {
         sig: Default::default(),
         chain: vec![b"jkl;".to_vec(), b"asdf".to_vec()],
         http_body: "different body".to_string(),
+        evidence_message_bytes: vec![],
     };
 
     let report1 = ReportData {

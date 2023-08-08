@@ -2528,6 +2528,7 @@ mod tests {
             sig: format!("{name} sig").into_bytes().into(),
             chain,
             http_body: format!("{name} body"),
+            evidence_message_bytes: vec![],
         }
     }
 

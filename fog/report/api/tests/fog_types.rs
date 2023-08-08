@@ -44,6 +44,7 @@ fn prost_verification_report(name: &str) -> ProstVerificationReport {
         sig: format!("{name} sig").into_bytes().into(),
         chain: Default::default(),
         http_body: format!("{name} body"),
+        evidence_message_bytes: vec![],
     }
 }
 

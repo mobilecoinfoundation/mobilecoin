@@ -45,7 +45,7 @@ mod tests {
                 .map(Pem::into_contents)
                 .collect(),
             http_body: IAS_JSON.to_owned(),
-            evidence: None,
+            evidence_message_bytes: vec![],
         };
 
         // external -> prost
