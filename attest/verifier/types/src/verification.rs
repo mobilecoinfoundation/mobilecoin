@@ -6,14 +6,55 @@ use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
+//use mc_attestation_verifier::Evidence;
 use mc_crypto_digestible::Digestible;
+use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
-    DecodeError, Message,
+    Enumeration,
+    DecodeError, Message
 };
 use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,)]
+pub struct DcapEvidence {
+    quote: Quote3<Vec<u8>>,
+    collateral: Collateral,
+}
+
+#[derive(Clone, Debug, Deserialize, Digestible, Enumeration, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,)]
+pub enum EvidenceType {
+    #[prost(enumeration = "0")]
+    Epid = 0,
+    #[prost(enumeration = "1")]
+    Dcap = 1,
+}
+
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,)]
+pub struct EvidenceMessage {
+    #[prost(uint32, required, tag = 0)]
+    evidence: u32,
+    #[prost(bytes, required, tag = 1)]
+    data: Vec<u8>,
+}
+
+impl From<EvidenceType> for u32 {
+    fn from(evidence_type: EvidenceType) -> Self {
+        evidence_type as u32
+    }
+}
+
+impl From<u32> for EvidenceType {
+    fn from(value: u32) -> Self {
+        match value {
+            0 => EvidenceType::Epid,
+            1 => EvidenceType::Dcap,
+            _ => EvidenceType::Epid,
+        }
+    }
+}
 
 /// Container for holding the quote verification sent back from IAS.
 ///
@@ -41,6 +82,9 @@ pub struct VerificationReport {
     #[prost(string, required, tag = 3)]
     #[digestible(never_omit)]
     pub http_body: String,
+
+    #[prost(message, tag = 4)]
+    pub evidence: Option<EvidenceMessage>,
 }
 
 impl Display for VerificationReport {
@@ -168,6 +212,7 @@ mod tests {
             sig: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE].into(),
             chain: vec![vec![0xAB, 0xCD], vec![0xCD, 0xEF], vec![0x12, 0x34]],
             http_body: "some_body".into(),
+            evidence: Default::default(),
         };
         assert_eq!(
             format!("{}", &report),

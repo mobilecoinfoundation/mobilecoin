@@ -8,7 +8,9 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
+mc-attestation-verifier = "0.2.0"
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
+mc-sgx-dcap-types = "0.7.3"
 mc-util-encodings = { path = "../../../util/encodings" }
 
 base64 = { version = "0.21", default-features = false, features = ["alloc"] }

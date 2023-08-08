@@ -22,6 +22,7 @@ impl From<&external::VerificationReport> for VerificationReport {
             sig: src.get_sig().into(),
             chain: src.get_chain().to_vec(),
             http_body: src.get_http_body().to_owned(),
+            evidence: src.get_evidence_bytes().to_owned(),
         }
     }
 }
@@ -44,6 +45,7 @@ mod tests {
                 .map(Pem::into_contents)
                 .collect(),
             http_body: IAS_JSON.to_owned(),
+            evidence: None,
         };
 
         // external -> prost
