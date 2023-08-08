@@ -113,6 +113,7 @@ impl RaClient for SimClient {
             sig,
             chain,
             http_body,
+            evidence_message_bytes: vec![],// TODO: HERE!
         })
     }
 }

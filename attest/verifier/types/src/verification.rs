@@ -18,13 +18,13 @@ use prost::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize,)]
 pub struct DcapEvidence {
     quote: Quote3<Vec<u8>>,
     collateral: Collateral,
 }
 
-#[derive(Clone, Debug, Deserialize, Digestible, Enumeration, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,)]
+#[derive(Clone, Debug, Deserialize, Enumeration, Eq, PartialEq, Serialize,)]
 pub enum EvidenceType {
     #[prost(enumeration = "0")]
     Epid = 0,
@@ -32,7 +32,7 @@ pub enum EvidenceType {
     Dcap = 1,
 }
 
-#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,)]
+#[derive(Clone, Deserialize, Eq, Message, PartialEq, Serialize,)]
 pub struct EvidenceMessage {
     #[prost(uint32, required, tag = 0)]
     evidence: u32,
@@ -83,8 +83,8 @@ pub struct VerificationReport {
     #[digestible(never_omit)]
     pub http_body: String,
 
-    #[prost(message, tag = 4)]
-    pub evidence: Option<EvidenceMessage>,
+    #[prost(bytes, tag = 4)]
+    pub evidence_message_bytes: Vec<u8>,
 }
 
 impl Display for VerificationReport {
@@ -212,7 +212,7 @@ mod tests {
             sig: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE].into(),
             chain: vec![vec![0xAB, 0xCD], vec![0xCD, 0xEF], vec![0x12, 0x34]],
             http_body: "some_body".into(),
-            evidence: Default::default(),
+            // TODO: HERE!
         };
         assert_eq!(
             format!("{}", &report),

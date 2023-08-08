@@ -398,11 +398,6 @@ message VerificationSignature {
     bytes contents = 1;
 }
 
-message EvidenceMessage {
-    uint32 evidence_type = 1;
-    bytes data = 2;
-}
-
 /// The IAS verification report response encoded as a protocol buffer
 message VerificationReport {
     /// The IAS-generated signature over the response string
@@ -415,8 +410,8 @@ message VerificationReport {
     /// The raw report body JSON, as a byte sequence
     string http_body = 3;
 
-    // Attestation evidence
-    EvidenceMessage evidence = 4;
+    // Attestation EvidenceMessage bytes
+    bytes evidence_message_bytes = 4;
 }
 
 /// The contents of a mint-tx, which is a transaction to mint new tokens.

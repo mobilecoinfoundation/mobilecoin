@@ -159,6 +159,7 @@ pub fn make_verification_report(rng: &mut (impl RngCore + CryptoRng)) -> Verific
         sig,
         chain,
         http_body: "testing".to_owned(),
+        evidence_message_bytes: vec![],// TODO: HERE!
     }
 }
 
