@@ -20,6 +20,10 @@ use mbedtls_sys::types::{
 };
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode};
+use p256::{
+    ecdsa::SigningKey,
+    pkcs8::{EncodePrivateKey, LineEnding},
+};
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
@@ -164,23 +168,17 @@ fn main() {
         let mut csprng = RngForMbedTls {};
 
         // ROOT CERTIFICATE
-        let mut root_subject_key =
-            Pk::generate_rsa(&mut csprng, 3072, 65537).expect("Could not generate privkey");
-        let mut root_issuer_key = Pk::from_private_key(
-            &root_subject_key
-                .write_private_der_vec()
-                .expect("Could not export privkey to DER"),
-            None,
-        )
-        .expect("Could not parse privkey from DER");
+        let private_key = SigningKey::random(&mut *RNG.lock().expect("mutex poisoned"));
+        let der_private_key = private_key
+            .to_pkcs8_der()
+            .expect("Could not export privkey to DER");
+        let mut root_subject_key = Pk::from_private_key(der_private_key.as_bytes(), None)
+            .expect("Could not parse privkey from DER");
+        let mut root_issuer_key = Pk::from_private_key(der_private_key.as_bytes(), None)
+            .expect("Could not parse privkey from DER");
         // Intermediate authority will be signed by this key.
-        let mut signer_issuer_key = Pk::from_private_key(
-            &root_subject_key
-                .write_private_der_vec()
-                .expect("Could not export privkey to DER"),
-            None,
-        )
-        .expect("Could not parse privkey from DER");
+        let mut signer_issuer_key = Pk::from_private_key(der_private_key.as_bytes(), None)
+            .expect("Could not parse privkey from DER");
 
         let root_not_before = Time::new(
             u16::try_from(start_time.year()).expect("Year not a u16"),
@@ -223,15 +221,20 @@ fn main() {
         write(root_anchor_path, &root_cert_pem).expect("Unable to write root anchor");
 
         // IAS SIGNER CERT
-        let mut signer_subject_key =
-            Pk::generate_rsa(&mut csprng, 2048, 65537).expect("Could not generate privkey");
+        let signer_key = SigningKey::random(&mut *RNG.lock().expect("mutex poisoned"));
+        let der_signer_key = signer_key
+            .to_pkcs8_der()
+            .expect("Could not export privkey to DER");
         write(
             signer_key_path,
-            signer_subject_key
-                .write_private_pem_string()
-                .expect("Could not create PEM for signer key."),
+            der_signer_key
+                .to_pem("PRIVATE KEY", LineEnding::LF)
+                .expect("Could not encode signer key to PEM"),
         )
         .expect("Could not write signer key PEM to file");
+
+        let mut signer_subject_key = Pk::from_private_key(der_signer_key.as_bytes(), None)
+            .expect("Could not parse privkey from DER");
 
         let signer_not_before = Time::new(
             u16::try_from(start_time.year()).expect("Year not a u16"),

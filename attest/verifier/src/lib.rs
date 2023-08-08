@@ -29,7 +29,7 @@ cfg_if::cfg_if! {
         /// The build-time generated mock IAS signing certificate chain
         pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
         /// The build-time generated mock IAS signing private key
-        pub const IAS_SIM_SIGNING_KEY: &str = concat!(include_str!("../data/sim/signer.key"), "\0");
+        pub const IAS_SIM_SIGNING_KEY: &str = include_str!("../data/sim/signer.key");
 
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;

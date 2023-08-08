@@ -90,8 +90,10 @@ impl RaClient for SimClient {
         let entropy = OsEntropy::new();
         let mut csprng = CtrDrbg::new(Arc::new(entropy), None).expect("Could not create CtrDrbg");
 
-        let mut signer = Pk::from_private_key(IAS_SIM_SIGNING_KEY.as_bytes(), None)
-            .expect("Could not load signing key.");
+        let mut null_terminated_key = IAS_SIM_SIGNING_KEY.as_bytes().to_vec();
+        null_terminated_key.push(0);
+        let mut signer =
+            Pk::from_private_key(&null_terminated_key, None).expect("Could not load signing key.");
         let mut signature = vec![0u8; 1024];
         let bytes_signed = signer
             .sign(
