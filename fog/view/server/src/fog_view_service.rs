@@ -199,6 +199,7 @@ where
         &mut self,
         fog_view_store_uri: FogViewStoreUri,
         queries: Vec<attest::NonceMessage>,
+        logger: &Logger,
     ) -> MultiViewStoreQueryResponse {
         let mut response = MultiViewStoreQueryResponse::new();
         let fog_view_store_uri_string = fog_view_store_uri.url().to_string();
@@ -215,6 +216,11 @@ where
                         .sharding_strategy
                         .is_ready_to_serve_tx_outs(shared_state.processed_block_count.into())
                     {
+                        log::debug!(
+                            logger,
+                            "process_queries setting state NOT_READY block count: {}",
+                            shared_state.processed_block_count
+                        );
                         response.set_status(MultiViewStoreQueryResponseStatus::NOT_READY);
                     } else {
                         response.set_query_response(attested_message);
@@ -282,7 +288,8 @@ where
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
-            let response = self.process_queries(self.uri.clone(), request.queries.into_vec());
+            let response =
+                self.process_queries(self.uri.clone(), request.queries.into_vec(), logger);
             send_result(ctx, sink, Ok(response), logger)
         });
     }

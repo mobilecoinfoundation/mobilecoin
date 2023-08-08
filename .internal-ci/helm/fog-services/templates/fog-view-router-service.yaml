@@ -2,14 +2,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view
+  name: {{ include "fogServices.fullname" . }}-fog-view-router
   labels:
-    app: fog-view
+    app: fog-view-router
     {{- include "fogServices.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   selector:
-    app: fog-view
+    app: fog-view-router
     {{- include "fogServices.selectorLabels" . | nindent 4 }}
   ports:
   - name: view-grpc

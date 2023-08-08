@@ -163,7 +163,21 @@ pub fn process_shard_responses(
                 store_uris_for_authentication.push(store_uri);
             }
             // This call will be retried as part of the larger retry logic
-            MultiKeyImageStoreResponseStatus::NOT_READY => (),
+            MultiKeyImageStoreResponseStatus::NOT_READY => {
+                log::debug!(
+                    logger,
+                    "Shard {} status NotReady",
+                    KeyImageStoreUri::from_str(&response.store_uri)?
+                );
+            }
+            // This is a Protobuf decode error - we should never see this
+            MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT => {
+                log::error!(
+                    logger,
+                    "Received a response with status 'INVALID_ARGUMENT' from store {}",
+                    KeyImageStoreUri::from_str(&response.store_uri)?
+                );
+            }
             // This is an unexpected error - we should never see this
             MultiKeyImageStoreResponseStatus::UNKNOWN => {
                 log::error!(
@@ -380,6 +394,7 @@ async fn authenticate_ledger_store<E: LedgerEnclaveProxy>(
     );
     let ledger_store_client = KeyImageStoreApiClient::new(
         ChannelBuilder::default_channel_builder(grpc_env)
+            .keepalive_permit_without_calls(false)
             .connect_to_uri(&ledger_store_url, &logger),
     );
 

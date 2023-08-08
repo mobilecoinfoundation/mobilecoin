@@ -27,3 +27,6 @@ fogIngest:
   POSTGRES_CONNECTION_TIMEOUT: '5'
   POSTGRES_MAX_CONNECTIONS: '3'
   FOG_PUBKEY_EXPIRY_WINDOW: '10'
+  # Bootstrap ledger/watcher db from public bucket
+  # MC_LEDGER_DB_URL: ''
+  # MC_WATCHER_DB_URL: ''

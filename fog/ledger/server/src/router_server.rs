@@ -67,6 +67,7 @@ where
         for shard_uri in config.shard_uris.clone() {
             let ledger_store_grpc_client = ledger_grpc::KeyImageStoreApiClient::new(
                 ChannelBuilder::default_channel_builder(grpc_env.clone())
+                    .keepalive_permit_without_calls(false)
                     .connect_to_uri(&shard_uri, &logger),
             );
             ledger_store_grpc_clients.insert(shard_uri, Arc::new(ledger_store_grpc_client));

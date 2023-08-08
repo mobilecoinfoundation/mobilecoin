@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "fogServices.labels" . | nindent 4 }}
 data:
-  report.conf: |
+  fog_report.conf: |
     [program:fog-report]
     priority=100
     environment=MC_SENTRY_DSN="%(ENV_FOG_REPORT_SENTRY_DSN)s"

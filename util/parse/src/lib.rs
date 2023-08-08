@@ -19,6 +19,13 @@ pub fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseI
     Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
+/// Parse a number of milliseconds into a duration
+///
+/// This can be used with Clap
+pub fn parse_duration_in_millis(src: &str) -> Result<Duration, std::num::ParseIntError> {
+    Ok(Duration::from_millis(u64::from_str(src)?))
+}
+
 /// Load a CSS file from disk. This represents a signature over an enclave,
 /// and contains attestation parameters like MRENCLAVE and MRSIGNER as well
 /// as other stuff.

@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-from-random"
-version = "4.1.0-pre0"
+version = "5.0.5"
 authors = ["MobileCoin"]
 description = "A trait for constructing an object from a random number generator."
 edition = "2021"

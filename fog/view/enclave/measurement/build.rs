@@ -13,7 +13,7 @@ use std::{env::var, path::PathBuf};
 const SGX_VERSION: &str = "2.19.100.3";
 
 const VIEW_ENCLAVE_PRODUCT_ID: u16 = 3;
-const VIEW_ENCLAVE_SECURITY_VERSION: u16 = 6;
+const VIEW_ENCLAVE_SECURITY_VERSION: u16 = 7;
 const VIEW_ENCLAVE_NAME: &str = "view-enclave";
 const VIEW_ENCLAVE_DIR: &str = "../trusted";
 
