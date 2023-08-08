@@ -33,10 +33,11 @@ mc-sgx-css = { path = "../../sgx/css", default-features = false }
 mc-sgx-types = { path = "../../sgx/types", default-features = false }
 
 cfg-if = "1.0"
+der = { version = "0.7.7", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
-mc-attestation-verifier = "0.3.0"
+mc-attestation-verifier = { version = "0.3.0", features = ["mbedtls"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.10", default-features = false }
 
@@ -44,6 +45,7 @@ sha2 = { version = "0.10", default-features = false }
 mc-util-encodings = { path = "../../util/encodings", default-features = false }
 
 [build-dependencies]
+mc-sgx-core-sys-types = "0.7.4"
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }
 

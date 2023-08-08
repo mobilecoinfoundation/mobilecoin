@@ -122,7 +122,7 @@ impl RaClient for SimClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_verifier::{Verifier, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_verifier::{Verifier, IAS_SIM_ROOT_ANCHOR};
     use mc_util_encodings::FromBase64;
 
     const QUOTE_TEST: &str = include_str!("../data/quote_out_of_date.txt");
@@ -135,7 +135,7 @@ mod test {
             .verify_quote(&quote, None)
             .expect("Could not generate IAS report");
 
-        Verifier::new(&[IAS_SIM_ROOT_ANCHORS])
+        Verifier::new(&[IAS_SIM_ROOT_ANCHOR])
             .expect("Could not initialize new verifier")
             .debug(true)
             .verify(&report)
