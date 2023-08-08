@@ -5389,9 +5389,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-build"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b189eada1191cd6bdc23bcd4d209ec2a28e0d28a7591202af23cf7040402f31"
+checksum = "258102e08d60b5ac1a2f0aedf0e89a35dc6cf252cdbcd5b805b66ea8a7825e12"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5399,9 +5399,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-sys-types"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fee0f6d6dfb4d091ebe1e92302d7ce26f95530ed5a551103e816afa18963af5"
+checksum = "0cfe41bbe52c511ac6bc5a50ffe8d55fd8d23fdc674efa9c8133f3ea4f46f83a"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5412,9 +5412,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-types"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35eb0c445919e921473fd3187e5265c19741546a2d08094ce9c1b7b9250f112d"
+checksum = "b6beacf26a2cb6da23fb8309294f6202947273171a2f2fc8cc1105888c2ab095"
 dependencies = [
  "bitflags 2.3.3",
  "displaydoc",
@@ -5447,9 +5447,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-ql"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ab86d3f73869d67ea28f9d029d6d52405fe73d931627b2831c67bf9184e0282"
+checksum = "36f841e7c6830d1dfcc3a2f3c8179de37443863586339fc3f39530ea35cec904"
 dependencies = [
  "displaydoc",
  "mc-sgx-core-sys-types",
@@ -5463,9 +5463,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-ql-sys"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd6866e092adde8d6d4ff3fa9386a2a1a4278a8b72787330d278150fee636581"
+checksum = "c361fcebcf2f45696221adcaa77cc62391f151709849569c542cbe0f65de6833"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5477,9 +5477,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-ql-sys-types"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c08a8690a40eceeb938131dd5437793567a81dee84b16665354709da40a7531"
+checksum = "98154976daedbd0915967b1518a1ba43046b8009847071a1e9c6ec06442d100d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -5488,9 +5488,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-ql-types"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7633e29a8b03dda8e18224a35eee4b2a6656ef04ffc41f8b58eea3783f683c46"
+checksum = "bdfdaeba27b906405ac2cb87c8f46ca81f8ec1b6ec2007d7585a0d1721de024f"
 dependencies = [
  "mc-sgx-core-types",
  "mc-sgx-dcap-ql-sys-types",
@@ -5498,9 +5498,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-sys-types"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2401911a5367dee2b103e0ffec71b8c17979e34dd2fa9ded9792110482244e5"
+checksum = "d6e045fa0c287949b80b4a091c49fcee1299a8236c24229e394e4659af354aca"
 dependencies = [
  "bindgen 0.66.1",
  "mc-sgx-core-build",
@@ -5509,9 +5509,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-types"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0623b0d7a1f947f7cc1f4269a22a8251cf010d5cbff8b2ee605a289dc9386dc"
+checksum = "69b33623ecdae8e9ddd625dabf0f263641c8a3809da88a23fac12510c0644d80"
 dependencies = [
  "const-oid",
  "displaydoc",
@@ -5606,9 +5606,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-util"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7881cff3a13cb6719d3233f65d6a460481a4faabe948ad7e5e406ea1ade0999"
+checksum = "fe38640778a00d2f23f07611bd2363aab399099f8eb1af2a18fa2f4e116930b8"
 
 [[package]]
 name = "mc-test-vectors-account-keys"
@@ -8058,9 +8058,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e47d95bc83ed33b2ecf84f4187ad1ab9685d18ff28db000c99deac8ce180e3"
+checksum = "1402f54f9a3b9e2efe71c1cea24e648acce55887983553eeb858cf3115acfd49"
 dependencies = [
  "base64 0.21.2",
  "chrono",
@@ -8073,9 +8073,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea3cee93715c2e266b9338b7544da68a9f24e227722ba482bd1c024367c77c65"
+checksum = "9197f1ad0e3c173a0222d3c4404fb04c3afe87e962bcb327af73e8301fa203c7"
 dependencies = [
  "darling",
  "proc-macro2",
