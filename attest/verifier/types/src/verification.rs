@@ -212,7 +212,7 @@ mod tests {
             sig: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE].into(),
             chain: vec![vec![0xAB, 0xCD], vec![0xCD, 0xEF], vec![0x12, 0x34]],
             http_body: "some_body".into(),
-            // TODO: HERE!
+            evidence_message_bytes: vec![],
         };
         assert_eq!(
             format!("{}", &report),

@@ -50,6 +50,7 @@ mod test {
                 sig: VerificationSignature::default(),
                 chain: vec![],
                 http_body: "this should probably be a json".to_owned(),
+                evidence_message_bytes: vec![],
             },
             pubkey_expiry: 0,
         }];

@@ -289,6 +289,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_OK.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -307,6 +308,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_OK.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -329,6 +331,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -351,6 +354,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -373,6 +377,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -395,6 +400,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -417,6 +423,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -439,6 +446,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -461,6 +469,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -480,6 +489,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -502,6 +512,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -524,6 +535,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -546,6 +558,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -568,6 +581,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -590,6 +604,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -612,6 +627,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -634,6 +650,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -655,6 +672,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -677,6 +695,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -700,6 +719,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -721,6 +741,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_OK.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -742,6 +763,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -762,6 +784,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_OK.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -782,6 +805,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_OK.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -802,6 +826,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_OK.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -827,6 +852,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -852,6 +878,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -877,6 +904,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -902,6 +930,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -927,6 +956,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -952,6 +982,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -977,6 +1008,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1002,6 +1034,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1027,6 +1060,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1052,6 +1086,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1077,6 +1112,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1102,6 +1138,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1127,6 +1164,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
@@ -1152,6 +1190,7 @@ mod test {
             sig: Default::default(),
             chain: vec![],
             http_body: IAS_CONFIG_SW_334_615.trim().to_owned(),
+            evidence_message_bytes: vec![],
         };
 
         let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
