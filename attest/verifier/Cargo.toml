@@ -28,7 +28,7 @@ ias-dev = []
 [dependencies]
 mc-attest-core = { path = "../core", default-features = false }
 mc-common = { path = "../../common", default-features = false }
-mc-sgx-core-types = "0.7.3"
+mc-sgx-core-types = "0.7.4"
 mc-sgx-css = { path = "../../sgx/css", default-features = false }
 mc-sgx-types = { path = "../../sgx/types", default-features = false }
 
