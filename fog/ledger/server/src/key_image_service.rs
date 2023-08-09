@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{metrics::*, DbPollSharedState, SVC_COUNTERS};
+use crate::{metrics::QUERY_REQUESTS, DbPollSharedState, SVC_COUNTERS};
 use grpcio::RpcStatus;
 use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
@@ -149,14 +149,13 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         queries: Vec<attest::NonceMessage>,
     ) -> MultiKeyImageStoreResponse {
         let mut response = MultiKeyImageStoreResponse::new();
-        let uri = fog_ledger_store_uri;
         // The router needs our own URI, in case auth fails / hasn't been started yet.
-        response.set_store_uri(uri.url().to_string());
+        response.set_store_uri(fog_ledger_store_uri.url().to_string());
         // Default status of AUTHENTICATION_ERROR in case of empty queries
         response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
 
         let start_time = Instant::now();
-        let subdomain = uri.subdomain().unwrap_or("");
+        let subdomain = fog_ledger_store_uri.subdomain().unwrap_or_default();
         let histogram_observe = |status: &str| {
             let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, status]);
             histogram.observe(start_time.elapsed().as_secs_f64());
