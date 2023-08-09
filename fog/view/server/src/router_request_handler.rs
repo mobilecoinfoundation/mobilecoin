@@ -3,7 +3,9 @@
 use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
     fog_view_router_server::Shard,
-    metrics::STORE_QUERY_REQUESTS,
+    metrics::{
+        AUTH_CLIENT_REQUESTS, CLIENT_QUERY_RETRIES, ROUTER_QUERY_REQUESTS, STORE_QUERY_REQUESTS,
+    },
     shard_responses_processor, SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
