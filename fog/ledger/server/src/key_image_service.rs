@@ -173,12 +173,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
                     continue;
                 }
                 Err(_) => {
-                    // histogram_observe(start_time, "unkown_err");
                     response.set_status(MultiKeyImageStoreResponseStatus::UNKNOWN);
                 }
             }
 
-            // histogram_observe(start_time, "unkown_err");
             // Early-exit for success or failure
             return response;
         }
