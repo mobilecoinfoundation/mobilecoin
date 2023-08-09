@@ -154,13 +154,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         // Default status of AUTHENTICATION_ERROR in case of empty queries
         response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
 
-        let start_time = Instant::now();
-        let subdomain = fog_ledger_store_uri.subdomain().unwrap_or_default();
-        let histogram_observe = |status: &str| {
-            let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, status]);
-            histogram.observe(start_time.elapsed().as_secs_f64());
-        };
-
         for query in queries.into_iter() {
             // Only one of the query messages in the multi-store query is intended for this
             // store. It's a bit of a broadcast model - all queries are sent to
@@ -168,26 +161,24 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             // for them.
             match self.check_key_image_store_auth(query) {
                 Ok(attested_message) => {
-                    histogram_observe("success");
                     response.set_query_response(attested_message);
                     response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
                 }
                 Err(EnclaveError::ProstDecode) => {
-                    histogram_observe("invalid_arg");
                     response.set_status(MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT);
                 }
                 Err(EnclaveError::Attest(_)) => {
-                    histogram_observe("auth_err");
                     response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
                     // All other conditions are early exit but we expect several of these
                     continue;
                 }
                 Err(_) => {
-                    histogram_observe("unkown_err");
+                    // histogram_observe(start_time, "unkown_err");
                     response.set_status(MultiKeyImageStoreResponseStatus::UNKNOWN);
                 }
             }
 
+            // histogram_observe(start_time, "unkown_err");
             // Early-exit for success or failure
             return response;
         }
@@ -240,8 +231,23 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
+            let start_time = Instant::now();
+
             let response =
                 self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
+
+            let status_str = match response.status {
+                MultiKeyImageStoreResponseStatus::UNKNOWN => "UNKNOWN",
+                MultiKeyImageStoreResponseStatus::SUCCESS => "SUCCESS",
+                MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT => "INVALID_ARGUMENT",
+                MultiKeyImageStoreResponseStatus::NOT_READY => "NOT_READY",
+                MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR => "AUTHENTICATION_ERROR",
+            };
+
+            let subdomain = self.client_listen_uri.subdomain().unwrap_or_default();
+            let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, status_str]);
+            histogram.observe(start_time.elapsed().as_secs_f64());
+
             send_result(ctx, sink, Ok(response), logger)
         });
     }
