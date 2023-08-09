@@ -104,10 +104,10 @@ fn ecdsa_sig_data(
 #[allow(unsafe_code)]
 // This should only be used for repr(C) structs.
 fn c_struct_as_bytes<T>(quote: &T) -> &[u8] {
-    // SAFETY: The normal C api will use direct memory access on the bytes coming
-    // across the wire. This module is only used in sim environments
-    // The lifetime of the byte slice is tied to the lifetime of the input
-    // reference.
+    // SAFETY: This is a private function only used in the sim configuration.
+    // The normal C api will use direct memory access on the bytes coming
+    // across the wire. The lifetime of the byte slice is tied to the lifetime of
+    // the input reference.
     unsafe { core::slice::from_raw_parts(quote as *const T as *const u8, mem::size_of::<T>()) }
 }
 
