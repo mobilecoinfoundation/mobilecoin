@@ -183,10 +183,10 @@ where
 
     let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
-    let _timer = BULK_QUERY_REQUESTS.start_timer();
+    let _timer = BULK_STORE_QUERY_REQUESTS.start_timer();
     while remaining_tries > 0 {
         if remaining_tries < RETRY_COUNT {
-            QUERY_GROUP_RETRY.inc();
+            CLIENT_QUERY_RETRIES.inc();
         }
         let multi_view_store_query_request = enclave
             .create_multi_view_store_query_data(sealed_query.clone())
@@ -285,7 +285,7 @@ async fn query_shard(
     let subdomain = shard.uri.subdomain().unwrap_or("");
     let histogram_observe = |status: &str| {
         let status = status.chars().take(10).collect::<String>();
-        let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, status.as_str()]);
+        let histogram = STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status.as_str()]);
         histogram.observe(start_time.elapsed().as_secs_f64());
     };
 

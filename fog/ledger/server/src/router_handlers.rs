@@ -247,10 +247,10 @@ where
     // If there's no new store and we don't have enough responses, decrement
     // remaining_retries and loop
     let mut remaining_retries = query_retries;
-    let _timer = BULK_QUERY_REQUESTS.start_timer();
+    let _timer = BULK_STORE_QUERY_REQUESTS.start_timer();
     while remaining_retries > 0 {
         if remaining_retries < query_retries {
-            QUERY_GROUP_RETRY.inc();
+            CLIENT_QUERY_RETRIES.inc();
         }
         let multi_ledger_store_query_request = tracer
             .in_span("create_multi_key_image_query", |_cx| {
