@@ -149,7 +149,7 @@ where
             config.client_listen_uri.addr(),
         );
 
-        let router_server = grpcio::ServerBuilder::new(env.clone())
+        let router_server = grpcio::ServerBuilder::new(env)
             .register_service(ledger_router_service)
             .register_service(unary_key_image_service)
             .register_service(merkle_proof_service)
