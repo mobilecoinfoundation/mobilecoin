@@ -6,7 +6,7 @@ use prometheus::{
 
 // Initialize global metrics
 lazy_static! {
-    pub static ref QUERY_REQUESTS: HistogramVec = register_histogram_vec!(
+    pub static ref STORE_QUERY_REQUESTS: HistogramVec = register_histogram_vec!(
         histogram_opts!(
             "fog_view_router_query_requests",
             "Queries to individual stores"
@@ -14,12 +14,12 @@ lazy_static! {
         &["store_uri", "status"]
     )
     .expect("metric cannot be created");
-    pub static ref QUERY_GROUP_RETRY: IntCounter = register_int_counter!(
+    pub static ref CLIENT_QUERY_RETRIES: IntCounter = register_int_counter!(
         "fog_view_router_bulk_query_retry",
         "Query retries per client request"
     )
     .expect("metric cannot be created");
-    pub static ref BULK_QUERY_REQUESTS: Histogram = register_histogram!(histogram_opts!(
+    pub static ref ROUTER_QUERY_REQUESTS: Histogram = register_histogram!(histogram_opts!(
         "fog_view_router_bulk_query_requests",
         "Queries to router"
     ))

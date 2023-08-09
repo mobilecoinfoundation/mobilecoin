@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{metrics::QUERY_REQUESTS, DbPollSharedState, SVC_COUNTERS};
+use crate::{metrics::STORE_QUERY_REQUESTS, DbPollSharedState, SVC_COUNTERS};
 use grpcio::RpcStatus;
 use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
@@ -243,7 +243,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
             };
 
             let subdomain = self.client_listen_uri.subdomain().unwrap_or_default();
-            let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, status_str]);
+            let histogram = STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status_str]);
             histogram.observe(start_time.elapsed().as_secs_f64());
 
             send_result(ctx, sink, Ok(response), logger)
