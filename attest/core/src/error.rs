@@ -237,9 +237,9 @@ pub enum QuoteError {
     InvalidSize(u32),
     /// The base64 encoder did not output valid UTF-8 data
     InvalidUtf8,
-    /// Error converting to Quote3: {0}
+    /// Quote3: {0}
     Quote3(Quote3Error),
-    /// Error converting from Quote Library API: {0}
+    /// Quote Library API: {0}
     QlError(QlError),
 }
 

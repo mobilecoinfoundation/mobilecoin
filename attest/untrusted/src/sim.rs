@@ -80,7 +80,10 @@ fn ecdsa_sig_data(
     qe_report_body: ReportBody,
 ) -> sgx_ql_ecdsa_sig_data_t {
     // Encoded points are 65 bytes long and start with 0x04 tag byte for the SEC 1
-    // uncompressed format. We want to strip the tag byte off.
+    // uncompressed format. The `attest_pub_key` member of `sgx_ql_ecdsa_sig_data_t`
+    // contains the uncompressed key as `X` component followed by `Y` component.
+    // We need to strip the tag byte off since it is not part of the
+    // `attest_pub_key`.
     let encoded_point = verifying_key.to_encoded_point(false);
     let verifying_key_bytes = &encoded_point.as_bytes()[1..];
 
