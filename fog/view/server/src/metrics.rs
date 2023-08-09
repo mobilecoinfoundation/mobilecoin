@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use prometheus::{
-    histogram_opts, register_histogram, register_histogram_vec, register_int_counter,
-    register_int_gauge, Histogram, HistogramVec, IntCounter, IntGauge,
+    histogram_opts, register_histogram, register_histogram_vec, register_int_counter, Histogram,
+    HistogramVec, IntCounter,
 };
 
 // Initialize global metrics
@@ -29,7 +29,4 @@ lazy_static! {
         "Auth requests to stores"
     )
     .expect("metric cannot be created");
-    pub static ref CONNECTED_CLIENTS: IntGauge =
-        register_int_gauge!("fog_view_router_connected_clients", "Connected Clients")
-            .expect("metric cannot be created");
 }

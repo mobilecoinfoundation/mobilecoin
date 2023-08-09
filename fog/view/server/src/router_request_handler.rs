@@ -3,7 +3,7 @@
 use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
     fog_view_router_server::Shard,
-    metrics::*,
+    metrics::STORE_QUERY_REQUESTS,
     shard_responses_processor, SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
@@ -39,7 +39,6 @@ where
 {
     while let Some(request) = requests.try_next().await? {
         let _timer = SVC_COUNTERS.req_impl(&method_name);
-        CONNECTED_CLIENTS.inc();
         let result = handle_request(request, shards.clone(), enclave.clone(), logger.clone()).await;
 
         // Perform prometheus logic before the match statement to ensure that
@@ -50,24 +49,11 @@ where
 
         match result {
             Ok(response) => responses.send((response, WriteFlags::default())).await?,
-            Err(rpc_status) => {
-                log::error!(logger, "error handling request: {}", &method_name);
-                CONNECTED_CLIENTS.dec();
-                return responses.fail(rpc_status).await;
-            }
+            Err(rpc_status) => return responses.fail(rpc_status).await,
         }
     }
-    match responses.close().await {
-        Ok(value) => {
-            CONNECTED_CLIENTS.dec();
-            Ok(value)
-        }
-        Err(err) => {
-            log::error!(logger, "error closing response");
-            CONNECTED_CLIENTS.dec();
-            Err(err)
-        }
-    }
+    responses.close().await?;
+    Ok(())
 }
 
 /// Handles a client's request by performing either an authentication or a
@@ -284,7 +270,7 @@ async fn query_shard(
     let start_time = Instant::now();
     let subdomain = shard.uri.subdomain().unwrap_or("");
     let histogram_observe = |status: &str| {
-        let status = status.chars().take(10).collect::<String>();
+        let status = status.chars().take(20).collect::<String>();
         let histogram = STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status.as_str()]);
         histogram.observe(start_time.elapsed().as_secs_f64());
     };
