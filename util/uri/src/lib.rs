@@ -449,6 +449,16 @@ mod fog_uri_tests {
     }
 
     #[test]
+    fn test_subdomain() {
+        assert_eq!(
+            FogUri::from_str("fog://node.svc.cluster.local/")
+                .unwrap()
+                .subdomain(),
+            Some("node")
+        )
+    }
+
+    #[test]
     fn test_tls_override() {
         assert_eq!(
             FogUri::from_str("fog://node.com/")

@@ -12,6 +12,7 @@ use std::sync::Arc;
 /// The admin server is a grpc server that serves the admin endpoint
 pub struct AdminServer {
     server: grpcio::Server,
+    logger: Logger,
 }
 
 impl AdminServer {
@@ -63,11 +64,12 @@ impl AdminServer {
             admin_listen_uri.addr()
         );
 
-        Ok(Self { server })
+        Ok(Self { server, logger })
     }
 
     /// Shuts down the admin server
     pub fn shutdown(&mut self) -> ShutdownFuture {
+        log::info!(self.logger, "Admin GRPC API is shutting down");
         self.server.shutdown()
     }
 }

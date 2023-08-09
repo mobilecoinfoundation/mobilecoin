@@ -2,6 +2,7 @@
 
 use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
+    metrics::*,
     SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
@@ -246,7 +247,11 @@ where
     // If there's no new store and we don't have enough responses, decrement
     // remaining_retries and loop
     let mut remaining_retries = query_retries;
+    let _timer = BULK_QUERY_REQUESTS.start_timer();
     while remaining_retries > 0 {
+        if remaining_retries < query_retries {
+            QUERY_GROUP_RETRY.inc();
+        }
         let multi_ledger_store_query_request = tracer
             .in_span("create_multi_key_image_query", |_cx| {
                 enclave
@@ -356,7 +361,6 @@ async fn query_shard(
 ) -> Result<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse), RouterServerError> {
     let client_unary_receiver = shard_client.multi_key_image_store_query_async(request)?;
     let response = client_unary_receiver.await?;
-
     Ok((shard_client, response))
 }
 

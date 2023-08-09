@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{DbPollSharedState, SVC_COUNTERS};
+use crate::{metrics::*, DbPollSharedState, SVC_COUNTERS};
 use grpcio::RpcStatus;
 use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
@@ -16,7 +16,10 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
 use mc_watcher::watcher_db::WatcherDB;
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 
 #[derive(Clone)]
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
@@ -51,7 +54,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             db_poll_shared_state,
         }
     }
-
     pub fn get_watcher(&mut self) -> WatcherDB {
         self.watcher.clone()
     }
@@ -147,10 +149,18 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
         queries: Vec<attest::NonceMessage>,
     ) -> MultiKeyImageStoreResponse {
         let mut response = MultiKeyImageStoreResponse::new();
+        let uri = fog_ledger_store_uri;
         // The router needs our own URI, in case auth fails / hasn't been started yet.
-        response.set_store_uri(fog_ledger_store_uri.url().to_string());
+        response.set_store_uri(uri.url().to_string());
         // Default status of AUTHENTICATION_ERROR in case of empty queries
         response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
+
+        let start_time = Instant::now();
+        let subdomain = uri.subdomain().unwrap_or("");
+        let histogram_observe = |status: &str| {
+            let histogram = QUERY_REQUESTS.with_label_values(&[subdomain, status]);
+            histogram.observe(start_time.elapsed().as_secs_f64());
+        };
 
         for query in queries.into_iter() {
             // Only one of the query messages in the multi-store query is intended for this
@@ -159,18 +169,22 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             // for them.
             match self.check_key_image_store_auth(query) {
                 Ok(attested_message) => {
+                    histogram_observe("success");
                     response.set_query_response(attested_message);
                     response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
                 }
                 Err(EnclaveError::ProstDecode) => {
+                    histogram_observe("invalid_arg");
                     response.set_status(MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT);
                 }
                 Err(EnclaveError::Attest(_)) => {
+                    histogram_observe("auth_err");
                     response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
                     // All other conditions are early exit but we expect several of these
                     continue;
                 }
                 Err(_) => {
+                    histogram_observe("unkown_err");
                     response.set_status(MultiKeyImageStoreResponseStatus::UNKNOWN);
                 }
             }

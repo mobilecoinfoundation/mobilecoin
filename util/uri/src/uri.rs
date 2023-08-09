@@ -59,6 +59,12 @@ impl<Scheme: UriScheme> Uri<Scheme> {
             .expect("should never fail on valid url");
         self.port = port;
     }
+
+    /// Extract the subdomain from url
+    pub fn subdomain(&self) -> Option<&str> {
+        let host_str = self.url.host_str()?;
+        host_str.split_once('.').map(|(first, _)| first)
+    }
 }
 
 impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
