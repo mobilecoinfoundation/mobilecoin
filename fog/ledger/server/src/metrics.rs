@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use lazy_static::lazy_static;
 use prometheus::{
     histogram_opts, register_histogram, register_histogram_vec, register_int_counter,
