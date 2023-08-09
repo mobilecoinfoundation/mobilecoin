@@ -2605,6 +2605,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-sgx-core-types",
  "mc-sgx-css",
+ "mc-sgx-dcap-types",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -2671,14 +2672,18 @@ dependencies = [
 name = "mc-attest-untrusted"
 version = "5.0.5"
 dependencies = [
+ "cfg-if 1.0.0",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-rand",
  "mc-sgx-build",
  "mc-sgx-core-types",
  "mc-sgx-dcap-ql",
+ "mc-sgx-dcap-sys-types",
  "mc-sgx-dcap-types",
  "mc-sgx-types",
+ "p256",
 ]
 
 [[package]]

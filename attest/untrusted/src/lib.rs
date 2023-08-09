@@ -7,13 +7,21 @@ use mc_attest_core::{
     EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote, QuoteError, QuoteNonce,
     QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
 };
-#[cfg(not(feature = "sgx-sim"))]
-use mc_sgx_dcap_ql::QeTargetInfo;
 use mc_sgx_dcap_types::QlError;
 use mc_sgx_types::{
     sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote,
     sgx_report_attestation_status, sgx_status_t,
 };
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "sgx-sim")] {
+        mod sim;
+        pub type DcapQuotingEnclave = crate::sim::SimQuotingEnclave;
+    } else {
+        mod hw;
+        pub type DcapQuotingEnclave = crate::hw::HwQuotingEnclave;
+    }
+}
 
 pub struct QuotingEnclave;
 
@@ -60,18 +68,7 @@ impl QuotingEnclave {
 
     pub fn target_info() -> Result<(TargetInfo, EpidGroupId), TargetInfoError> {
         let gid = Self::epid_group_id()?;
-        #[cfg(feature = "sgx-sim")]
-        {
-            // The Intel QE and PCE provided with `libsgx-dcap-ql` only work on SGX
-            // hardware. For EPID there is a simulator implementation of
-            // [sgx_init_quote()](https://github.com/intel/linux-sgx/blob/1efe23c20e37f868498f8287921eedfbcecdc216/sdk/simulation/uae_service_sim/quoting_sim.cpp#L138)
-            // Unfortunately there doesn't seem to be a DCAP equivalent.
-            Ok((TargetInfo::default(), gid))
-        }
-        #[cfg(not(feature = "sgx-sim"))]
-        {
-            Ok((TargetInfo::for_quoting_enclave()?, gid))
-        }
+        Ok((DcapQuotingEnclave::target_info()?, gid))
     }
 
     pub fn epid_group_id() -> Result<EpidGroupId, SgxError> {
