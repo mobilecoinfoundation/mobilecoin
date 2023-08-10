@@ -10,7 +10,7 @@ use prometheus::{
 lazy_static! {
     pub static ref STORE_QUERY_REQUESTS: HistogramVec = register_histogram_vec!(
         histogram_opts!(
-            "fog_view_router_query_requests",
+            "fog_view_router_store_query_requests",
             "Queries to individual stores"
         ),
         &["store_uri", "status"]
