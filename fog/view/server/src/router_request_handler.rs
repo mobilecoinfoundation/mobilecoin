@@ -173,9 +173,6 @@ where
     let mut remaining_tries = RETRY_COUNT;
     let _timer = ROUTER_QUERY_REQUESTS.start_timer();
     while remaining_tries > 0 {
-        if remaining_tries < RETRY_COUNT {
-            CLIENT_QUERY_RETRIES.inc();
-        }
         let multi_view_store_query_request = enclave
             .create_multi_view_store_query_data(sealed_query.clone())
             .map_err(|err| {
@@ -230,6 +227,7 @@ where
             )
             .await?;
         } else {
+            CLIENT_QUERY_RETRIES.inc();
             remaining_tries -= 1;
         }
     }

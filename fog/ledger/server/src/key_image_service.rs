@@ -234,16 +234,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
             let response =
                 self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
 
-            let status_str = match response.status {
-                MultiKeyImageStoreResponseStatus::UNKNOWN => "UNKNOWN",
-                MultiKeyImageStoreResponseStatus::SUCCESS => "SUCCESS",
-                MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT => "INVALID_ARGUMENT",
-                MultiKeyImageStoreResponseStatus::NOT_READY => "NOT_READY",
-                MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR => "AUTHENTICATION_ERROR",
-            };
-
+            let status_str = format!("{:?}", response.status);
             let subdomain = self.client_listen_uri.subdomain().unwrap_or_default();
-            let histogram = STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status_str]);
+            let histogram =
+                STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status_str.as_str()]);
             histogram.observe(start_time.elapsed().as_secs_f64());
 
             send_result(ctx, sink, Ok(response), logger)

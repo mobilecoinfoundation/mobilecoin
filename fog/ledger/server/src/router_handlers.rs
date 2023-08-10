@@ -249,9 +249,6 @@ where
     let mut remaining_retries = query_retries;
     let _timer = ROUTER_QUERY_REQUESTS.start_timer();
     while remaining_retries > 0 {
-        if remaining_retries < query_retries {
-            CLIENT_QUERY_RETRIES.inc();
-        }
         let multi_ledger_store_query_request = tracer
             .in_span("create_multi_key_image_query", |_cx| {
                 enclave
@@ -312,6 +309,7 @@ where
             .with_context(create_context(tracer, "authn_key_image_stores"))
             .await?;
         } else {
+            CLIENT_QUERY_RETRIES.inc();
             remaining_retries -= 1;
         }
     }
