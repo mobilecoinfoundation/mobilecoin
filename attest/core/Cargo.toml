@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-core"
-version = "5.0.5"
+version = "5.0.6"
 authors = ["MobileCoin"]
 description = '''
 This crate contains necessary functions and utilities to perform remote

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-kex-rng"
-version = "5.0.5"
+version = "5.0.6"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "Apache-2.0"

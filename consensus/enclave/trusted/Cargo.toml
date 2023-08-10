@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-trusted"
-version = "5.0.5"
+version = "5.0.6"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "The MobileCoin Consensus Service's internal enclave entry point."
