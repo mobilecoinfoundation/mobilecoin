@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.6]
+
+### Fixed
+
+- fix: admin server for fog view & ledger routers should expose metrics ([#3486])
+
+### Added
+
+- feat: additional metrics for fog view & ledger routers and stores ([#3486])
+
 ## [5.0.5]
 
 ### Fixed
