@@ -18,8 +18,8 @@ use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer,
-    TokenAuthenticator,
+    AdminServer, AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel,
+    ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -35,7 +35,7 @@ where
     RC: RaClient + Send + Sync + 'static,
 {
     router_server: grpcio::Server,
-    admin_server: grpcio::Server,
+    admin_service: LedgerRouterAdminService,
     client_listen_uri: FogLedgerUri,
     admin_listen_uri: AdminUri,
     config: LedgerRouterConfig,
@@ -43,6 +43,7 @@ where
     ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
     logger: Logger,
+    admin_server: Option<AdminServer>,
 }
 
 impl<E, RC> LedgerRouterServer<E, RC>
@@ -109,9 +110,8 @@ where
         let unary_key_image_service = ledger_grpc::create_fog_key_image_api(ledger_service);
 
         // Init ledger router admin service.
-        let ledger_router_admin_service = ledger_grpc::create_ledger_router_admin_api(
-            LedgerRouterAdminService::new(ledger_store_grpc_clients, logger.clone()),
-        );
+        let admin_service =
+            LedgerRouterAdminService::new(ledger_store_grpc_clients, logger.clone());
         log::debug!(logger, "Constructed Ledger Router Admin GRPC Service");
 
         // Non-routed servers and services
@@ -149,7 +149,7 @@ where
             config.client_listen_uri.addr(),
         );
 
-        let router_server = grpcio::ServerBuilder::new(env.clone())
+        let router_server = grpcio::ServerBuilder::new(env)
             .register_service(ledger_router_service)
             .register_service(unary_key_image_service)
             .register_service(merkle_proof_service)
@@ -158,14 +158,10 @@ where
             .register_service(health_service)
             .build_using_uri(&config.client_listen_uri, logger.clone())
             .expect("Could not build Ledger Router Server");
-        let admin_server = grpcio::ServerBuilder::new(env)
-            .register_service(ledger_router_admin_service)
-            .build_using_uri(&config.admin_listen_uri, logger.clone())
-            .expect("Could not build Ledger Router Admin Server");
 
         Self {
             router_server,
-            admin_server,
+            admin_service,
             client_listen_uri: config.client_listen_uri.clone(),
             admin_listen_uri: config.admin_listen_uri.clone(),
             config,
@@ -173,6 +169,7 @@ where
             ra_client,
             report_cache_thread: None,
             logger,
+            admin_server: None,
         }
     }
 
@@ -196,7 +193,24 @@ where
             self.client_listen_uri.addr()
         );
 
-        self.admin_server.start();
+        let config_json =
+            serde_json::to_string(&self.config).expect("failed to serialize config to JSON");
+        let get_config_json = Arc::new(move || Ok(config_json.clone()));
+        let admin_service = ledger_grpc::create_ledger_router_admin_api(self.admin_service.clone());
+
+        // Prevent from being dropped
+        self.admin_server = AdminServer::start(
+            None,
+            &self.config.admin_listen_uri,
+            "Fog Ledger Router".to_owned(),
+            self.config.client_responder_id.to_string(),
+            Some(get_config_json),
+            vec![admin_service],
+            self.logger.clone(),
+        )
+        .expect("Failed starting fog-view admin server")
+        .into();
+
         log::info!(
             self.logger,
             "Router Admin API listening on {}",
@@ -207,7 +221,6 @@ where
     /// Stops the server
     pub fn stop(&mut self) {
         block_on(self.router_server.shutdown()).expect("Could not stop router grpc server");
-        block_on(self.admin_server.shutdown()).expect("Could not stop router admin grpc server");
     }
 }
 

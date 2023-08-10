@@ -52,6 +52,8 @@ spec:
                     name: {{ include "fogServices.fullname" $ }}-supervisord-sgx
                 - configMap:
                     name: {{ include "fogServices.fullname" $ }}-supervisord-daemon
+                - configMap:
+                    name: {{ include "fogServices.fullname" $ }}-supervisord-admin
             nodeSelector:
               {{- toYaml $.Values.fogViewRouter.nodeSelector | nindent 14 }}
             tolerations:
@@ -132,6 +134,10 @@ spec:
               env:
               - name: RUST_BACKTRACE
                 value: {{ $.Values.fogViewRouter.rust.backtrace | quote }}
+              {{- if eq $.Values.jaegerTracing.enabled true }}
+              - name: MC_TELEMETRY
+                value: "true"
+              {{- end }}
               - name: RUST_LOG
                 value: {{ $.Values.fogViewRouter.rust.log | quote }}
               - name: CLIENT_AUTH_TOKEN_SECRET
@@ -300,6 +306,10 @@ spec:
               value: {{ $.Values.fogView.rust.backtrace | quote }}
             - name: RUST_LOG
               value: {{ $.Values.fogView.rust.log | quote }}
+            {{- if eq $.Values.jaegerTracing.enabled true }}
+            - name: MC_TELEMETRY
+              value: "true"
+            {{- end }}
             - name: FOG_VIEW_SENTRY_DSN
               valueFrom:
                 configMapKeyRef:

@@ -26,6 +26,7 @@ displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.1"
 lazy_static = "1.4"
+prometheus = "0.13"
 
 # mobilecoin
 mc-api = { path = "../../../api" }
