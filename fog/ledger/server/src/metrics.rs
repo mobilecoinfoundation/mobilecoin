@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use lazy_static::lazy_static;
 use prometheus::{
@@ -10,7 +10,7 @@ use prometheus::{
 lazy_static! {
     pub static ref STORE_QUERY_REQUESTS: HistogramVec = register_histogram_vec!(
         histogram_opts!(
-            "fog_ledger_router_query_requests",
+            "fog_ledger_router_store_query_requests",
             "Queries to individual stores"
         ),
         &["store_uri", "status"]
