@@ -6,54 +6,101 @@ use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
-//use mc_attestation_verifier::Evidence;
 use mc_crypto_digestible::Digestible;
 use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
-    Enumeration,
-    DecodeError, Message
+    DecodeError, Message, Oneof,
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize,)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DcapEvidence {
     quote: Quote3<Vec<u8>>,
     collateral: Collateral,
 }
 
-#[derive(Clone, Debug, Deserialize, Enumeration, Eq, PartialEq, Serialize,)]
-pub enum EvidenceType {
-    #[prost(enumeration = "0")]
-    Epid = 0,
-    #[prost(enumeration = "1")]
-    Dcap = 1,
-}
-
-#[derive(Clone, Deserialize, Eq, Message, PartialEq, Serialize,)]
-pub struct EvidenceMessage {
-    #[prost(uint32, required, tag = 0)]
-    evidence: u32,
-    #[prost(bytes, required, tag = 1)]
-    data: Vec<u8>,
-}
-
-impl From<EvidenceType> for u32 {
-    fn from(evidence_type: EvidenceType) -> Self {
-        evidence_type as u32
-    }
-}
-
-impl From<u32> for EvidenceType {
-    fn from(value: u32) -> Self {
-        match value {
-            0 => EvidenceType::Epid,
-            1 => EvidenceType::Dcap,
-            _ => EvidenceType::Epid,
+impl Default for DcapEvidence {
+    fn default() -> Self {
+        let quote_bytes: Vec<u8> = Vec::new();
+        DcapEvidence {
+            quote: Quote3 {
+                raw_bytes: quote_bytes,
+                report_body: Default::default(),
+            },
+            collateral: Default::default(),
         }
     }
+}
+
+const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
+const TAG_SCAP_EVIDENCE_COLLATERAL: u32 = 2;
+
+impl Message for DcapEvidence {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+        encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
+        let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
+        encoding::bytes::encode(TAG_SCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        match tag {
+            TAG_DCAP_EVIDENCE_QUOTE3 => {
+                let mut quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+                encoding::bytes::merge(wire_type, &mut quote_bytes, buf, ctx)
+            },
+            TAG_SCAP_EVIDENCE_COLLATERAL => {
+                let mut collateral_bytes = bincode::serialize(&self.collateral).unwrap();
+                encoding::bytes::merge(wire_type, &mut collateral_bytes, buf, ctx)
+            },
+            _ => encoding::skip_field(wire_type, tag, buf, ctx),
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+        let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
+
+        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes) +
+            encoding::bytes::encoded_len(TAG_SCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
+    }
+
+    fn clear(&mut self) {
+        //let default: DcapEvidence = Default::default();
+        //self.quote = default.quote;
+        //self.collateral = default.collateral;
+    }
+}
+
+#[derive(Clone, Oneof)]
+pub enum EvidenceKind {
+    #[prost(message, tag = "4")]
+    Dcap(DcapEvidence),
+    //#[prost(message, tag = 5)]
+    //Tdx(Vec<u8>),// TODO: remove test
+}
+
+#[derive(Clone, prost::Message)]
+struct EvidenceMessage {
+    #[prost(oneof = "EvidenceKind", tags = "4")]
+    of: Option<EvidenceKind>,
 }
 
 /// Container for holding the quote verification sent back from IAS.
@@ -82,9 +129,6 @@ pub struct VerificationReport {
     #[prost(string, required, tag = 3)]
     #[digestible(never_omit)]
     pub http_body: String,
-
-    #[prost(bytes, tag = 4)]
-    pub evidence_message_bytes: Vec<u8>,
 }
 
 impl Display for VerificationReport {
@@ -212,7 +256,6 @@ mod tests {
             sig: vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE].into(),
             chain: vec![vec![0xAB, 0xCD], vec![0xCD, 0xEF], vec![0x12, 0x34]],
             http_body: "some_body".into(),
-            evidence_message_bytes: vec![],
         };
         assert_eq!(
             format!("{}", &report),

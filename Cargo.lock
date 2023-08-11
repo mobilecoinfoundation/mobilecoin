@@ -2759,6 +2759,7 @@ name = "mc-attest-verifier-types"
 version = "4.1.0-pre0"
 dependencies = [
  "base64 0.21.0",
+ "bincode",
  "displaydoc",
  "hex",
  "hex_fmt",
