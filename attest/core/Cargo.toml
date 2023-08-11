@@ -37,7 +37,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes", features = ["hex_fmt"] }
 
 base64 = { version = "0.21", default-features = false, features = ["alloc"] }
 bitflags = { version = "2.0", default-features = false, features = ["serde"] }
-chrono = { version = "0.4.24", default-features = false, features = ["alloc"] }
+chrono = { version = "0.4.26", default-features = false, features = ["alloc"] }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
