@@ -246,8 +246,6 @@ impl Builder {
         cargo_builder
             .target(ENCLAVE_TARGET_TRIPLE)
             .add_rust_flags(&[
-                "-D",
-                "warnings",
                 "-C",
                 &feature_buf,
                 "--cfg",
