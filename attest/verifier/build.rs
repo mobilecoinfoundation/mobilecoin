@@ -25,6 +25,7 @@ use std::{
     fs::write,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
+    time::SystemTime,
 };
 
 lazy_static::lazy_static! {
@@ -68,6 +69,10 @@ impl RngCallback for RngForMbedTls {
 }
 
 fn main() {
+    // This path is inside of the repo and not the normal output directory.
+    // This is to reuse the generated files between the main build and the enclave
+    // builds. There is not a good way to communicate a common build directory
+    // between the different builds.
     let base_dir = env::var("CARGO_MANIFEST_DIR").expect("Could not read manifest dir");
     let data_path = PathBuf::from(base_dir).join("data").join("sim");
 
@@ -86,12 +91,19 @@ fn main() {
         generate_sim_files(&data_path);
     }
 }
+
+const ROOT_ANCHOR_FILENAME: &str = "root_anchor.pem";
+const SIGNER_KEY_FILENAME: &str = "signer.key";
+const CHAIN_FILENAME: &str = "chain.pem";
+
+const GENERATED_FILENAMES: &[&str] = &[ROOT_ANCHOR_FILENAME, SIGNER_KEY_FILENAME, CHAIN_FILENAME];
+
 fn generate_sim_files(data_path: impl AsRef<Path>) {
     let data_path = data_path.as_ref();
 
-    let root_anchor_path = data_path.join("root_anchor.pem");
-    let signer_key_path = data_path.join("signer.key");
-    let chain_path = data_path.join("chain.pem");
+    let root_anchor_path = data_path.join(ROOT_ANCHOR_FILENAME);
+    let signer_key_path = data_path.join(SIGNER_KEY_FILENAME);
+    let chain_path = data_path.join(CHAIN_FILENAME);
 
     const ROOT_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signing CA\0";
     const SIGNER_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signer\0";
@@ -223,26 +235,34 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
 /// Returns true of the build script should generate the sim files
 fn should_generating_sim_files(data_path: impl AsRef<Path>) -> bool {
     let data_path = data_path.as_ref();
-    let signal_file = data_path.join("delete_me_to_regenerate_sim_files.empty");
     cargo_emit::rerun_if_env_changed!("MC_SEED");
-    cargo_emit::rerun_if_changed!(signal_file.to_str().expect("Could not stringify path"));
 
-    // We use a signal file to know if this build script needs to be run again
-    // Using `rerun_if_changed` will ensure this build script runs when the
-    // signal file doesn't exist.
-    // However, the creation/updating of the signal file by this build script is
-    // itself a modification. So we only concern ourselves with the existence of
-    // the signal file.
-    if !signal_file.exists() {
-        write(&signal_file, "").expect("Could not write signal file");
+    let generated_files = GENERATED_FILENAMES
+        .iter()
+        .map(|file| data_path.join(file))
+        .collect::<Vec<_>>();
+    for file in generated_files.iter() {
+        cargo_emit::rerun_if_changed!(file.to_str().expect("Could not stringify path"));
+    }
+
+    let regenerate_time = SystemTime::now()
+        - Duration::weeks(1)
+            .to_std()
+            .expect("Failed to convert to std duration");
+
+    if generated_files.iter().any(|file| {
+        file.metadata()
+            .and_then(|f| f.modified().map(|t| t < regenerate_time))
+            .unwrap_or(true)
+    }) {
         return true;
     }
 
     // If we got this far we assume that the MC_SEED environment variable was
-    // changed The downside to this approach is that if the MC_SEED is set
+    // changed. The downside to this approach is that if the MC_SEED is set
     // initially there will always be one incremental build:
-    // - first build the `signal_file` is created, which tells cargo to re-run this
-    //   build script
+    // - first build the generated files are created, which tells cargo to re-run
+    //   this build script
     // - The second build will get down to here, see the MC_SEED env variable is set
     //   and regenerate the files.
     // - The third build cargo should skip this build script.
