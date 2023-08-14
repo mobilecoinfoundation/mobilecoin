@@ -35,14 +35,14 @@ cargo install --version 1.0.9 --locked cargo-sort
 
 # We want to check with --all-targets since it checks test code, but that flag
 # leads to build errors in enclave workspaces, so check it here.
-cargo clippy --all --all-features --all-targets
+cargo clippy --all --all-features --all-targets -- -D warnings
 
 for toml in $(grep --exclude-dir cargo --exclude-dir rust-mbedtls --include=Cargo.toml -r . -e '\[workspace\]' | cut -d: -f1); do
   pushd $(dirname $toml) >/dev/null
   echo "Linting in $PWD"
   cargo sort --workspace --grouped $CHECK
   cargo fmt -- --unstable-features $CHECK
-  cargo clippy --all --all-features
+  cargo clippy --all --all-features -- -D warnings
   echo "Linting in $PWD complete."
   popd >/dev/null
 done
