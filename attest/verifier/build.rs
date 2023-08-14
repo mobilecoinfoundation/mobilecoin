@@ -111,11 +111,8 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
     let mut serial: [u8; 1] = [1u8];
 
     let now = Utc::now();
-    let end_now = now;
-    // Starting 1 hour ago
     let start_time = now - Duration::hours(1);
-    // Good for 30 days
-    let end_time = end_now + Duration::weeks(1);
+    let end_time = now + Duration::days(30);
 
     let mut csprng = RngForMbedTls {};
 
