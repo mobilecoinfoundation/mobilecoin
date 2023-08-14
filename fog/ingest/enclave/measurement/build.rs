@@ -71,7 +71,7 @@ fn main() {
     }
 
     builder
-        .target_dir(env.target_dir().join(INGEST_ENCLAVE_NAME).as_path())
+        .target_dir(env.target_dir().join("enclave-trusted").as_path())
         .config_builder
         .debug(
             sgx.sgx_mode() == SgxMode::Simulation

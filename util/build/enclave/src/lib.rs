@@ -284,6 +284,7 @@ impl Builder {
 
     /// Set a new "base" target dir to use when building an enclave
     pub fn target_dir(&mut self, target_dir: &Path) -> &mut Self {
+        self.target_dir = target_dir.to_owned();
         self.cargo_builder.target_dir(target_dir);
         self
     }
@@ -655,9 +656,6 @@ impl Builder {
             SgxMode::Simulation => "_sim",
         };
 
-        // "target/mc_foo_enclave"
-        let staticlib_target_dir = self.target_dir.join(&self.name);
-
         // e.g. "mc_foo_enclave_trusted"
         let staticlib_crate_name = self.staticlib.workspace_members[0]
             .repr
@@ -669,7 +667,7 @@ impl Builder {
         // neither is our use of SGX, so meh.
         let static_archive_name = format!("lib{}", staticlib_crate_name.replace('-', "_"));
 
-        let mut static_archive = staticlib_target_dir.join(ENCLAVE_TARGET_TRIPLE);
+        let mut static_archive = self.target_dir.join(ENCLAVE_TARGET_TRIPLE);
         static_archive.push(&self.profile);
         static_archive.push(static_archive_name);
         static_archive.set_extension("a");
