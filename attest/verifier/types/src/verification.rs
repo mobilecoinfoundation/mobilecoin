@@ -16,23 +16,10 @@ use prost::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DcapEvidence {
-    quote: Quote3<Vec<u8>>,
-    collateral: Collateral,
-}
-
-impl Default for DcapEvidence {
-    fn default() -> Self {
-        let quote_bytes: Vec<u8> = Vec::new();
-        DcapEvidence {
-            quote: Quote3 {
-                raw_bytes: quote_bytes,
-                report_body: Default::default(),
-            },
-            collateral: Default::default(),
-        }
-    }
+    quote: Option<Quote3<Vec<u8>>>,
+    collateral: Option<Collateral>,
 }
 
 const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
