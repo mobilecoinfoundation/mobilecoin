@@ -7,6 +7,8 @@ use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::X25519Public;
+use mc_sgx_core_types::QuoteNonce;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
@@ -14,6 +16,7 @@ use prost::{
     DecodeError, Message,
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 /// Container for holding the quote verification sent back from IAS.
 ///
@@ -148,6 +151,63 @@ impl Message for VerificationSignature {
 
     fn clear(&mut self) {
         self.0.clear()
+    }
+}
+
+/// Structure for holding the contents of the Enclave's Report Data.
+/// The Enclave's ReportData member contains a SHA256 hash of this structure's
+/// contents.
+#[derive(Debug, Clone)]
+pub struct EnclaveReportDataContents {
+    nonce: QuoteNonce,
+    key: X25519Public,
+    custom_identity: [u8; 32],
+}
+
+impl EnclaveReportDataContents {
+    /// Create a new EnclaveReportDataContents.
+    ///
+    /// # Arguments
+    /// * `nonce` - The nonce provided from the enclave when generating the
+    ///   Report.
+    /// * `key` - The public key of the enclave. Previously this was bytes 0..32
+    ///   of the enclave's [`ReportData`](mc-sgx-core-types::ReportData).
+    /// * `custom_identity` - The custom identity of the enclave. Previously
+    ///   this was bytes 32..64 of the enclave's
+    ///   [`ReportData`](mc-sgx-core-types::ReportData).
+    pub fn new(nonce: QuoteNonce, key: X25519Public, custom_identity: [u8; 32]) -> Self {
+        Self {
+            nonce,
+            key,
+            custom_identity,
+        }
+    }
+
+    /// Get the nonce
+    pub fn nonce(&self) -> &QuoteNonce {
+        &self.nonce
+    }
+
+    /// Get the public key
+    pub fn key(&self) -> &X25519Public {
+        &self.key
+    }
+
+    ///  Get the custom identity
+    pub fn custom_identity(&self) -> &[u8; 32] {
+        &self.custom_identity
+    }
+
+    /// Returns a SHA256 hash of the contents of this structure.
+    ///
+    /// This is the value that is stored in bytes 0..32 of the enclave's
+    /// [`ReportData`](mc-sgx-core-types::ReportData).
+    pub fn sha256(&self) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.update(&self.nonce);
+        hasher.update(&self.key);
+        hasher.update(self.custom_identity);
+        hasher.finalize().into()
     }
 }
 
