@@ -32,7 +32,7 @@ clap = { version = "4.3", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.12.1"
 hex = "0.4"
-mc-attestation-verifier = "0.2.0"
+mc-attestation-verifier = "0.3.0"
 rand = "0.8"
 rocket = { version = "0.5.0-rc.3", features = ["json"] }
 serde = "1.0"
