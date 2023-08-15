@@ -117,11 +117,31 @@ fn c_struct_as_bytes<T>(quote: &T) -> &[u8] {
 #[cfg(test)]
 mod test {
     use super::*;
+    use mc_sgx_dcap_types::{CertificationData, TcbInfo};
+    use x509_cert::{der::DecodePem, Certificate};
 
     #[test]
     fn simulated_quote_from_report() {
         let report = Report::default();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
         assert_eq!(quote.app_report_body(), &report.body());
+    }
+
+    #[test]
+    fn tcb_values_from_simulated_quote() {
+        let report = Report::default();
+        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
+        let signature_data = quote.signature_data();
+        let certification_data = signature_data.certification_data();
+        let CertificationData::PckCertificateChain(pem_chain) = certification_data else {
+            panic!("Should have had PckCertificateChain in quote");
+        };
+        let leaf_pem = pem_chain
+            .into_iter()
+            .next()
+            .expect("No certs in the quote data");
+        let leaf_cert = Certificate::from_pem(leaf_pem).expect("Failed to parse leaf cert");
+        let result = TcbInfo::try_from(&leaf_cert);
+        assert!(result.is_ok());
     }
 }

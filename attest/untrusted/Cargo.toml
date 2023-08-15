@@ -25,5 +25,8 @@ mc-sgx-dcap-types = "0.7.4"
 mc-sgx-types = { path = "../../sgx/types" }
 p256 = { version = "0.13.0", default-features = false, features = ["ecdsa", "pem"] }
 
+[dev-dependencies]
+x509-cert = { version = "0.2.3", default-features = false, features = ["pem"] }
+
 [build-dependencies]
 mc-sgx-build = { path = "../../sgx/build" }

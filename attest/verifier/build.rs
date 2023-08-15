@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use chrono::{offset::Utc, DateTime, Datelike, Duration, Timelike};
 use core::{ptr::null_mut, slice::from_raw_parts_mut};
@@ -26,6 +26,14 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::SystemTime,
+};
+
+use p256::pkcs8::{
+    der::{
+        asn1::{Int, OctetString, SequenceOf},
+        Any, Encode, EncodeValue, SliceWriter, Tag, Tagged,
+    },
+    ObjectIdentifier,
 };
 
 lazy_static::lazy_static! {
@@ -117,6 +125,8 @@ struct Subject<'a> {
     is_ca: bool,
     /// The validity times of the certificate
     validity: Validity,
+    /// The optional extensions (oid, value)
+    extensions: Vec<(Vec<u8>, Vec<u8>)>,
 }
 
 /// Validity times
@@ -158,6 +168,7 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
         description: ROOT_SUBJECT,
         is_ca: true,
         validity: validity.clone(),
+        extensions: vec![],
     };
     let (root_cert_pem, root_key) = create_certificate(None, &subject);
     write(root_anchor_path, &root_cert_pem).expect("Unable to write root anchor");
@@ -171,6 +182,7 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
         description: SIGNER_SUBJECT,
         is_ca: false,
         validity,
+        extensions: vec![dcap_extensions()],
     };
     let (signer_cert_pem, signer_key) = create_certificate(issuer, &subject);
     write(chain_path, signer_cert_pem + &root_cert_pem).expect("Unable to write cert chain");
@@ -264,6 +276,11 @@ fn create_certificate<'a>(
         .subject_key(&mut subject_key)
         .issuer_key(&mut issuer_key)
         .signature_hash(HashType::Sha256);
+    for (oid, value) in subject.extensions.iter() {
+        builder
+            .extension(oid, value, false)
+            .expect("Could not set extension");
+    }
     let cert_pem = builder
         .write_pem_string(&mut csprng)
         .expect("Could not create PEM string of certificate");
@@ -306,4 +323,106 @@ fn write_signing_key(signer_key_path: impl AsRef<Path>, signer_key: &SigningKey)
             .expect("Could not encode signer key to PEM"),
     )
     .expect("Could not write signer key PEM to file");
+}
+
+/// Returns the mandatory DCAP OID extensions, `(oid, bytes)`
+///
+/// The extensions (and OID values) are documented at
+/// <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf#%5B%7B%22num%22%3A193%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C690%2C0%5D>
+fn dcap_extensions() -> (Vec<u8>, Vec<u8>) {
+    // We use 0 for all the SVNs in the unlikely event this cert tries to
+    // get used to verify against real TCB info, the real TCB Info will have a
+    // higher SVN. The IDs and FMSPC uses an incrementing sequence of numbers
+    // hoping to avoid real values seen in the wild.
+
+    let ppid = sequence_of_2(
+        "1.2.840.113741.1.13.1.1",
+        OctetString::new("1234562890123456").expect("failed to create octet string"),
+    );
+
+    let mut tcb_sequence = SequenceOf::<_, 18>::new();
+    for i in 1..=16 {
+        let comp_svn = sequence_of_2(
+            &format!("1.2.840.113741.1.13.1.2.{i}"),
+            Int::new(&[0]).expect("failed to create integer"),
+        );
+        tcb_sequence
+            .add(comp_svn)
+            .expect("failed to add component sequence");
+    }
+    let pce_svn = sequence_of_2(
+        "1.2.840.113741.1.13.1.2.17",
+        Int::new(&[0]).expect("failed to create integer"),
+    );
+    tcb_sequence.add(pce_svn).expect("failed to add pce svn");
+    let cpu_svn = sequence_of_2(
+        "1.2.840.113741.1.13.1.2.18",
+        OctetString::new("0000000000000000").expect("failed to create octet string"),
+    );
+    tcb_sequence.add(cpu_svn).expect("failed to add cpu svn");
+    let tcb = sequence_of_2("1.2.840.113741.1.13.1.2", tcb_sequence);
+
+    let pce_id = sequence_of_2(
+        "1.2.840.113741.1.13.1.3",
+        OctetString::new("12").expect("failed to create octet string"),
+    );
+    let fmspc = sequence_of_2(
+        "1.2.840.113741.1.13.1.4",
+        // Not re-using a valid FMSPC to prevent mixing with real TCB info data
+        OctetString::new("123456").expect("failed to create octet string"),
+    );
+    let sgx_type = sequence_of_2(
+        "1.2.840.113741.1.13.1.4",
+        Any::new(
+            Tag::Enumerated,
+            // Zero is `Standard`
+            Int::new(&[0]).expect("failed to create integer").as_bytes(),
+        )
+        .expect("failed to create any"),
+    );
+    let mut extensions_sequence = SequenceOf::<_, 5>::new();
+    for extension in [ppid, tcb, pce_id, fmspc, sgx_type] {
+        extensions_sequence
+            .add(extension)
+            .expect("failed to add extension");
+    }
+
+    (
+        ObjectIdentifier::new_unwrap("1.2.840.113741.1.13.1")
+            .as_bytes()
+            .to_vec(),
+        extensions_sequence
+            .to_der()
+            .expect("failed to serialize extensions sequence"),
+    )
+}
+
+/// Create a 2 element SEQUENCE
+///
+/// The extension format is:
+///
+///    extension ::= SEQUENCE {
+///         oid OID,
+///         value ANY DEFINED BY oid }
+fn sequence_of_2<T: EncodeValue + Tagged>(oid: impl AsRef<str>, value: T) -> SequenceOf<Any, 2> {
+    let oid = ObjectIdentifier::new(oid.as_ref()).expect("failed to create oid");
+
+    // Most types have a `value()` method, but it isn't on a trait. So to keep this
+    // function generic we leverage the `EncodeValue` trait, which require a bit
+    // more work to get to the value.
+    let length = u32::from(value.value_len().expect("failed to get value len"));
+    let mut buf = vec![0; length as usize];
+    let mut writer = SliceWriter::new(buf.as_mut_slice());
+    value
+        .encode_value(&mut writer)
+        .expect("failed to encode value");
+
+    let mut sequence = SequenceOf::<_, 2>::new();
+    sequence
+        .add(Any::new(oid.tag(), oid.as_bytes()).expect("failed to create any"))
+        .expect("failed to add oid");
+    sequence
+        .add(Any::new(value.tag(), buf).expect("failed to create any"))
+        .expect("failed to add oid");
+    sequence
 }
