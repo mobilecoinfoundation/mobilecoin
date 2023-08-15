@@ -12,10 +12,12 @@
 #![allow(clippy::result_large_err)]
 
 mod avr;
+mod dcap;
 mod ias;
 mod quote;
 mod report_body;
 mod status;
+pub use crate::dcap::DcapVerifier;
 
 extern crate alloc;
 
@@ -24,31 +26,31 @@ pub use crate::status::{Kind as StatusVerifier, MrEnclaveVerifier, MrSignerVerif
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
         /// The build-time generated mock IAS signing root authority
-        pub const IAS_SIM_ROOT_ANCHORS: &str =
-            concat!(include_str!("../data/sim/root_anchor.pem"), "\0");
+        pub const IAS_SIM_ROOT_ANCHOR: &str =include_str!("../data/sim/root_anchor.pem");
         /// The build-time generated mock IAS signing certificate chain
         pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
         /// The build-time generated mock IAS signing private key
         pub const IAS_SIM_SIGNING_KEY: &str = include_str!("../data/sim/signer.key");
+        /// A CRL that can be used in the simulated collateral
+        pub const SIM_CRL: &[u8] = include_bytes!("../data/sim/root_crl.der");
+        pub const SIM_TCB_INFO: &str = include_str!("../data/sim/tcb_info.json");
+        /// The build-time generated fake QE identity
+        pub const SIM_QE_IDENTITY: &str = include_str!("../data/sim/qe_identity.json");
 
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
         /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[IAS_SIM_ROOT_ANCHORS];
+        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = IAS_SIM_ROOT_ANCHOR;
     } else if #[cfg(feature = "ias-dev")] {
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
         /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
-            "../data/Dev_AttestationReportSigningCACert.pem"
-        ), "\0")];
+        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = include_str!("../data/Dev_AttestationReportSigningCACert.pem");
     } else {
         /// Debug enclaves in prod mode are not supported.
         pub const DEBUG_ENCLAVE: bool = false;
         /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
-            "../data/AttestationReportSigningCACert.pem"
-        ), "\0")];
+        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = include_str!("../data/AttestationReportSigningCACert.pem");
     }
 }
 
@@ -166,7 +168,7 @@ pub struct Verifier {
 /// settings.
 impl Default for Verifier {
     fn default() -> Self {
-        Self::new(IAS_SIGNING_ROOT_CERT_PEMS).expect("Invalid hard-coded certificates found")
+        Self::new(&[IAS_SIGNING_ROOT_CERT_PEM]).expect("Invalid hard-coded certificates found")
     }
 }
 

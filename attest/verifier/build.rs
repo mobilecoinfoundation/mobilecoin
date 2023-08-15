@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use chrono::{offset::Utc, DateTime, Datelike, Duration, Timelike};
+use chrono::{offset::Utc, DateTime, Datelike, Duration, SecondsFormat::Secs, Timelike};
 use core::{ptr::null_mut, slice::from_raw_parts_mut};
 use mbedtls::{
     hash::Type as HashType,
@@ -15,7 +15,7 @@ use mbedtls_sys::types::{
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode};
 use p256::{
-    ecdsa::SigningKey,
+    ecdsa::{signature::Signer, Signature, SigningKey},
     pkcs8::{EncodePrivateKey, LineEnding},
 };
 use rand::{RngCore, SeedableRng};
@@ -35,6 +35,8 @@ use p256::pkcs8::{
     },
     ObjectIdentifier,
 };
+
+const FMSPC: &str = "0123456789AB";
 
 lazy_static::lazy_static! {
     static ref RNG: Arc<Mutex<Hc128Rng>> = Arc::new(Mutex::new({
@@ -103,8 +105,16 @@ fn main() {
 const ROOT_ANCHOR_FILENAME: &str = "root_anchor.pem";
 const SIGNER_KEY_FILENAME: &str = "signer.key";
 const CHAIN_FILENAME: &str = "chain.pem";
+const QE_IDENTITY_FILENAME: &str = "qe_identity.json";
+const TCB_INFO_FILENAME: &str = "tcb_info.json";
 
-const GENERATED_FILENAMES: &[&str] = &[ROOT_ANCHOR_FILENAME, SIGNER_KEY_FILENAME, CHAIN_FILENAME];
+const GENERATED_FILENAMES: &[&str] = &[
+    ROOT_ANCHOR_FILENAME,
+    SIGNER_KEY_FILENAME,
+    CHAIN_FILENAME,
+    QE_IDENTITY_FILENAME,
+    TCB_INFO_FILENAME,
+];
 
 /// An issuer of a certificate. This is the one that signs a certificate.
 struct Issuer<'a> {
@@ -151,6 +161,8 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
     let root_anchor_path = data_path.join(ROOT_ANCHOR_FILENAME);
     let signer_key_path = data_path.join(SIGNER_KEY_FILENAME);
     let chain_path = data_path.join(CHAIN_FILENAME);
+    let qe_identity_path = data_path.join(QE_IDENTITY_FILENAME);
+    let tcb_info_path = data_path.join(TCB_INFO_FILENAME);
 
     const ROOT_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signing CA\0";
     const SIGNER_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signer\0";
@@ -181,13 +193,15 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
         serial: 2,
         description: SIGNER_SUBJECT,
         is_ca: false,
-        validity,
+        validity: validity.clone(),
         extensions: vec![dcap_extensions()],
     };
     let (signer_cert_pem, signer_key) = create_certificate(issuer, &subject);
     write(chain_path, signer_cert_pem + &root_cert_pem).expect("Unable to write cert chain");
-
     write_signing_key(signer_key_path, &signer_key);
+
+    generate_qe_identity(qe_identity_path, &validity, &signer_key);
+    generate_tcb_info(tcb_info_path, &validity, &signer_key);
 }
 
 /// Returns true of the build script should generate the sim files
@@ -368,8 +382,8 @@ fn dcap_extensions() -> (Vec<u8>, Vec<u8>) {
     );
     let fmspc = sequence_of_2(
         "1.2.840.113741.1.13.1.4",
-        // Not re-using a valid FMSPC to prevent mixing with real TCB info data
-        OctetString::new("123456").expect("failed to create octet string"),
+        OctetString::new(hex::decode(FMSPC).expect("failed to decode FMSPC"))
+            .expect("failed to create octet string"),
     );
     let sgx_type = sequence_of_2(
         "1.2.840.113741.1.13.1.4",
@@ -425,4 +439,152 @@ fn sequence_of_2<T: EncodeValue + Tagged>(oid: impl AsRef<str>, value: T) -> Seq
         .add(Any::new(value.tag(), buf).expect("failed to create any"))
         .expect("failed to add oid");
     sequence
+}
+
+/// Update the TCB info file if it's expired or doesn't exist.
+fn generate_tcb_info(tcb_path: impl AsRef<Path>, validity: &Validity, signing_key: &SigningKey) {
+    // The example TCB info from
+    // <https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v4>
+    // with unnecessary fields omitted.
+    let tcb_info = format!(
+        r#"
+        {{
+          "id": "SGX",
+          "version": 3,
+          "issueDate": "{}",
+          "nextUpdate": "{}",
+          "fmspc": "{}",
+          "pceId": "0000",
+          "tcbType": 0,
+          "tcbEvaluationDataNumber": 12,
+          "tcbLevels": [
+            {{
+              "tcb": {{
+                "sgxtcbcomponents": [
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }}
+                ],
+                "pcesvn": 0
+              }},
+              "tcbDate": "2021-11-10T00:00:00Z",
+              "tcbStatus": "UpToDate"
+            }}
+          ]
+        }}"#,
+        validity.not_before.to_rfc3339_opts(Secs, true),
+        validity.not_after.to_rfc3339_opts(Secs, true),
+        FMSPC
+    );
+
+    sign_and_write_json(tcb_path, signing_key, &tcb_info, "tcbInfo");
+}
+
+/// Update the QE identity file if it's expired or doesn't exist.
+fn generate_qe_identity(
+    qe_identity_path: impl AsRef<Path>,
+    validity: &Validity,
+    signing_key: &SigningKey,
+) {
+    // The example QE identity from
+    // <https://api.portal.trustedservices.intel.com/documentation#pcs-enclave-identity-v4>
+    // with unnecessary fields omitted.
+    let qe_identity = format!(
+        r#"
+        {{
+          "id": "QE",
+          "version": 2,
+          "issueDate": "{}",
+          "nextUpdate": "{}",
+          "tcbEvaluationDataNumber": 12,
+          "miscselect": "00000000",
+          "miscselectMask": "FFFFFFFF",
+          "attributes": "00000000000000000000000000000000",
+          "attributesMask": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "mrsigner": "1234567890ABCDEFFEDCBA09876543211234567890ABCDEFFEDCBA0987654321",
+          "isvprodid": 0,
+          "tcbLevels": [
+            {{
+              "tcb": {{
+                "isvsvn": 0
+              }},
+              "tcbDate": "2021-11-10T00:00:00Z",
+              "tcbStatus": "UpToDate"
+            }}
+          ]
+        }}"#,
+        validity.not_before.to_rfc3339_opts(Secs, true),
+        validity.not_after.to_rfc3339_opts(Secs, true)
+    );
+    sign_and_write_json(
+        qe_identity_path,
+        signing_key,
+        &qe_identity,
+        "enclaveIdentity",
+    );
+}
+
+fn sign_and_write_json(
+    json_path: impl AsRef<Path>,
+    signing_key: &SigningKey,
+    json: &str,
+    json_tag: &str,
+) {
+    let mut json_string = json.to_owned();
+    // The signature is sensitive to the whitespace or lack thereof. The
+    // <https://api.portal.trustedservices.intel.com/documentation> says:
+    //      "signature calculated over tcbInfo body without whitespaces"
+    // Both the qe_identity and tcb_info json have no intermediate whitespace.
+    json_string.retain(|c| !c.is_whitespace());
+    let json_signature = (signing_key as &dyn Signer<Signature>).sign(json_string.as_bytes());
+
+    let hex_signature = hex::encode(json_signature.to_bytes());
+    let json_with_signature =
+        format!("{{\"{json_tag}\":{json_string},\"signature\":\"{hex_signature}\"}}");
+    write(json_path, json_with_signature).expect("Unable to write json");
 }
