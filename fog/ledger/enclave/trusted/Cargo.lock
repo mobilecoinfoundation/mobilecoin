@@ -1010,9 +1010,9 @@ dependencies = [
 
 [[package]]
 name = "mc-attestation-verifier"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39a132b80d1cf8fb1d22e5a81fe77b77cc7252a677ab7ade3410d057e68623e5"
+checksum = "6bdeca0948f17208a69b0bccd33f28c7f75c0053c5b13e22389d04fcbb662aaf"
 dependencies = [
  "der",
  "displaydoc",

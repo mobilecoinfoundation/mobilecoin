@@ -33,7 +33,7 @@ clap = { version = "4.3", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 grpcio = "0.12.1"
 lazy_static = "1.4"
-mc-attestation-verifier = "0.3.0"
+mc-attestation-verifier = "0.3.1"
 rand = "0.8"
 rayon = "1.7"
 retry = "2.0"
