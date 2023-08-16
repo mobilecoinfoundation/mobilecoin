@@ -2,22 +2,25 @@
 
 //! Verify the contents of a Quote3.
 
-use crate::IAS_SIGNING_ROOT_CERT_PEM;
+use crate::{DEBUG_ENCLAVE, IAS_SIGNING_ROOT_CERT_PEM};
 use alloc::{format, vec::Vec};
 use core::fmt::Formatter;
 use der::DateTime;
 use hex_fmt::HexFmt;
 use mc_attest_verifier_types::EnclaveReportDataContents;
 use mc_attestation_verifier::{
-    Accessor, And, AndOutput, Evidence, EvidenceValue, EvidenceVerifier,
+    Accessor, And, AndOutput, AttributesVerifier, Evidence, EvidenceValue, EvidenceVerifier,
     MbedTlsCertificateChainVerifier, ReportDataVerifier, TrustAnchor, TrustedIdentity,
     VerificationMessage, VerificationOutput, Verifier, MESSAGE_INDENT,
 };
-use mc_sgx_core_types::ReportData;
+use mc_sgx_core_types::{AttributeFlags, Attributes, ReportData};
 
 #[derive(Debug)]
 pub struct DcapVerifier {
-    verifier: And<EvidenceVerifier<MbedTlsCertificateChainVerifier>, ReportDataHashVerifier>,
+    verifier: And<
+        EvidenceVerifier<MbedTlsCertificateChainVerifier>,
+        And<ReportDataHashVerifier, AttributesVerifier>,
+    >,
 }
 
 impl DcapVerifier {
@@ -43,7 +46,10 @@ impl DcapVerifier {
         let certificate_verifier = MbedTlsCertificateChainVerifier::new(trust_anchor);
         let verifier = And::new(
             EvidenceVerifier::new(certificate_verifier, trusted_identities, time),
-            ReportDataHashVerifier::new(report_data),
+            And::new(
+                ReportDataHashVerifier::new(report_data),
+                debug_attribute_verifier(DEBUG_ENCLAVE),
+            ),
         );
         Self { verifier }
     }
@@ -52,9 +58,32 @@ impl DcapVerifier {
     pub fn verify(
         &self,
         evidence: Evidence<Vec<u8>>,
-    ) -> VerificationOutput<AndOutput<EvidenceValue, ReportData>> {
+    ) -> VerificationOutput<AndOutput<EvidenceValue, AndOutput<ReportData, Attributes>>> {
         self.verifier.verify(&evidence)
     }
+}
+
+/// Create an attributes verifier that will only allow the DEBUG flag to be set
+/// if `debug_allowed` is true.
+///
+/// As documented in
+/// <https://download.01.org/intel-sgx/sgx-dcap/1.17/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A64%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C283%2C0%5D>
+///
+///     Production enclaves should not have the REPORT.Attribute.Debug flag set
+///     to 1. When the Debug flag is set, a debugger can read the enclave’s
+///     memory and should not be provisioned with production secrets.
+fn debug_attribute_verifier(debug_allowed: bool) -> AttributesVerifier {
+    // The default bits are all 0 meaning a non debug build.
+    let attributes = Attributes::default();
+
+    // We only enforce checking the Debug bit when debug isn't allowed.
+    // There is no harm in verifying a production enclave when debug is allowed.
+    let mut mask = Attributes::default();
+    if !debug_allowed {
+        mask = mask.set_flags(AttributeFlags::DEBUG);
+    }
+
+    AttributesVerifier::new(attributes, mask)
 }
 
 #[derive(Debug, Clone)]
@@ -178,5 +207,31 @@ mod test {
               - Custom identity: 0303030303030303030303030303030303030303030303030303030303030303
               - [ ] The expected report data is 0xC339_24B6_D47F_16A8_5882_721C_8CAE_C78C_4A61_F797_E0F4_F9B4_15CD_2829_A8D0_85C5_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000 with mask 0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000, but the actual report data was 0xC439_24B6_D47F_16A8_5882_721C_8CAE_C78C_4A61_F797_E0F4_F9B4_15CD_2829_A8D0_85C5_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000"#;
         assert_eq!(format!("\n{displayable}"), textwrap::dedent(expected));
+    }
+
+    #[test]
+    fn debug_with_debug_not_allowed_fails() {
+        let debug_attributes = Attributes::default().set_flags(AttributeFlags::DEBUG);
+        let verifier = debug_attribute_verifier(false);
+        let verification = verifier.verify(&debug_attributes);
+        assert_eq!(verification.is_success().unwrap_u8(), 0);
+    }
+
+    #[test]
+    fn debug_with_debug_allowed_succeeds() {
+        let debug_attributes = Attributes::default().set_flags(AttributeFlags::DEBUG);
+        let verifier = debug_attribute_verifier(true);
+        let verification = verifier.verify(&debug_attributes);
+        assert_eq!(verification.is_success().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn release_with_debug_allowed_succeeds() {
+        // This case shouldn't normally happen, but there is no harm in
+        // verifying a release enclave when debug is allowed.
+        let release_attributes = Attributes::default();
+        let verifier = debug_attribute_verifier(true);
+        let verification = verifier.verify(&release_attributes);
+        assert_eq!(verification.is_success().unwrap_u8(), 1);
     }
 }
