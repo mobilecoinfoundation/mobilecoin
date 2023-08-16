@@ -7,13 +7,88 @@ use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
+use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
-    DecodeError, Message,
+    DecodeError, Message, Oneof,
 };
 use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DcapEvidence {
+    quote: Option<Quote3<Vec<u8>>>,
+    collateral: Option<Collateral>,
+}
+
+const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
+const TAG_SCAP_EVIDENCE_COLLATERAL: u32 = 2;
+
+impl Message for DcapEvidence {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+        encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
+        let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
+        encoding::bytes::encode(TAG_SCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        match tag {
+            TAG_DCAP_EVIDENCE_QUOTE3 => {
+                let mut quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+                encoding::bytes::merge(wire_type, &mut quote_bytes, buf, ctx)
+            },
+            TAG_SCAP_EVIDENCE_COLLATERAL => {
+                let mut collateral_bytes = bincode::serialize(&self.collateral).unwrap();
+                encoding::bytes::merge(wire_type, &mut collateral_bytes, buf, ctx)
+            },
+            _ => encoding::skip_field(wire_type, tag, buf, ctx),
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+        let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
+
+        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes) +
+            encoding::bytes::encoded_len(TAG_SCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
+    }
+
+    fn clear(&mut self) {
+        //let default: DcapEvidence = Default::default();
+        //self.quote = default.quote;
+        //self.collateral = default.collateral;
+    }
+}
+
+#[derive(Clone, Oneof)]
+pub enum EvidenceKind {
+    #[prost(message, tag = "4")]
+    Dcap(DcapEvidence),
+    //#[prost(message, tag = 5)]
+    //Tdx(Vec<u8>),// TODO: remove test
+}
+
+#[derive(Clone, prost::Message)]
+struct EvidenceMessage {
+    #[prost(oneof = "EvidenceKind", tags = "4")]
+    of: Option<EvidenceKind>,
+}
 
 /// Container for holding the quote verification sent back from IAS.
 ///
