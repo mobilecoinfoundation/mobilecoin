@@ -985,11 +985,13 @@ dependencies = [
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-attest-core",
+ "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-common",
  "mc-sgx-core-sys-types",
  "mc-sgx-core-types",
  "mc-sgx-css",
+ "mc-sgx-dcap-types",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -1009,9 +1011,13 @@ dependencies = [
  "hex",
  "hex_fmt",
  "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-sgx-core-types",
+ "mc-sgx-dcap-types",
  "mc-util-encodings",
  "prost",
  "serde",
+ "sha2",
 ]
 
 [[package]]
