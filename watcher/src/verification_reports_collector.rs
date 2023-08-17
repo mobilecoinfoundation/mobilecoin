@@ -71,12 +71,16 @@ impl NodeClient for ConsensusNodeClient {
                 AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
             };
 
+        // We allow any svn as we don't need to attest with the node, just store it's
+        // report.
+        let mr_signer = mc_consensus_enclave_measurement::mr_signer_identity(Some(0.into()));
+
         // Contact node and get a VerificationReport.
         let mut client = ThickClient::new(
             // TODO: Supply a chain-id to watcher?
             String::default(),
             node_url.clone(),
-            [],
+            [mr_signer],
             env,
             credentials_provider,
             logger,

@@ -6293,6 +6293,7 @@ dependencies = [
  "mc-blockchain-types",
  "mc-common",
  "mc-connection",
+ "mc-consensus-enclave-measurement",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-ledger-db",
