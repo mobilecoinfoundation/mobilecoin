@@ -1,9 +1,9 @@
 # Copyright (c) 2023 The MobileCoin Foundation
 #
-# Dockerfile.runtime-base
+# Dockerfile.dcap-runtime-base
 #  A minimal base runtime image for MobileCoin applications.
 #
-FROM ubuntu:focal-20221019
+FROM ubuntu:focal-20230801
 
 SHELL ["/bin/bash", "-c"]
 
@@ -59,7 +59,7 @@ RUN  apt-get update \
 COPY .internal-ci/docker/support/sgx_default_qcnl_azure.conf /etc/sgx_default_qcnl.conf
 
 # Install GRPC health probe
-ARG GRPC_HEALTH_UTILITY_URL=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.7/grpc_health_probe-linux-amd64
+ARG GRPC_HEALTH_UTILITY_URL=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.9/grpc_health_probe-linux-amd64
 
 RUN  curl --retry 5 -fL ${GRPC_HEALTH_UTILITY_URL} -o /usr/local/bin/grpc_health_probe \
   && chmod +x /usr/local/bin/grpc_health_probe
