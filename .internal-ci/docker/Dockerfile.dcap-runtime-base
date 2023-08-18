@@ -26,6 +26,8 @@ RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-ke
 ARG SGX_SDK_VERSION=2.19.100.3-focal1
 ENV SGX_SDK_VERSION=${SGX_SDK_VERSION}
 
+# Explicitly call out *all* dependency versions. This is because the Intel
+# packages don't pin the dependency versions and instead use "<dependency>=<verison>"
 RUN  apt-get update \
   && apt-get --no-install-recommends install -y \
      libsgx-ae-pce=${SGX_SDK_VERSION} \
@@ -37,6 +39,9 @@ RUN  apt-get update \
 # Install DCAP libraries
 ARG DCAP_VERSION=1.16.100.2-focal1
 ENV DCAP_VERSION=${DCAP_VERSION}
+
+# Explicitly call out *all* dependency versions. This is because the Intel
+# packages don't pin the dependency versions and instead use "<dependency>=<verison>"
 RUN  apt-get update \
   && apt-get --no-install-recommends install -y \
      libsgx-pce-logic=${DCAP_VERSION} \
