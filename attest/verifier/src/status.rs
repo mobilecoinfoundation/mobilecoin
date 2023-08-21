@@ -68,6 +68,8 @@ pub enum Kind {
     /// MRSIGNER/product-id/enclave-version tuple, allow select non-OK
     /// quote-status results from IAS.
     Signer(MrSignerVerifier),
+    /// Any enclave identity is allowed.
+    Any,
 }
 
 impl Kind {
@@ -82,6 +84,7 @@ impl Kind {
             Kind::Signer(v) => {
                 v.set_advisories(advisories);
             }
+            Kind::Any => {}
         }
         self
     }
@@ -92,6 +95,7 @@ impl From<&TrustedIdentity> for Kind {
         match trusted_identity {
             TrustedIdentity::MrEnclave(mr_enclave) => MrEnclaveVerifier::from(mr_enclave).into(),
             TrustedIdentity::MrSigner(mr_signer) => MrSignerVerifier::from(mr_signer).into(),
+            TrustedIdentity::Any => Kind::Any,
         }
     }
 }
@@ -113,6 +117,7 @@ impl Verify<VerificationReportData> for Kind {
         match self {
             Kind::Enclave(v) => v.verify(data),
             Kind::Signer(v) => v.verify(data),
+            Kind::Any => true,
         }
     }
 }

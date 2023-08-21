@@ -5,6 +5,7 @@
 use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use grpcio::Environment;
 use mc_attest_core::{VerificationReport, VerificationReportData};
+use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -76,7 +77,7 @@ impl NodeClient for ConsensusNodeClient {
             // TODO: Supply a chain-id to watcher?
             String::default(),
             node_url.clone(),
-            [],
+            [TrustedIdentity::Any],
             env,
             credentials_provider,
             logger,

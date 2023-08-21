@@ -18,6 +18,7 @@ path = "src/bin/db-dump.rs"
 [dependencies]
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
+mc-attestation-verifier = "0.3.1"
 mc-blockchain-types = { path = "../blockchain/types" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }

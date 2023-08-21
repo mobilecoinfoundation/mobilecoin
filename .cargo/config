@@ -19,3 +19,6 @@ rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"'
 [cargo-new]
 name = "MobileCoin"
 email = ""
+
+[patch.crates-io]
+mc-attestation-verifier = { git = "https://github.com/mobilecoinfoundation/attestation.git", rev = "31e6ff41a436a365e2030e8f36e6d4695b05a4c8" }
