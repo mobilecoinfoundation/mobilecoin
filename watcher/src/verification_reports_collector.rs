@@ -3,21 +3,27 @@
 //! Worker thread for collecting verification reports from nodes.
 
 use crate::{config::SourceConfig, watcher_db::WatcherDB};
-use grpcio::Environment;
+use aes_gcm::Aes256Gcm;
+use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
+use mc_attest_ake::{AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedReport};
+use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApiClient};
 use mc_attest_core::{VerificationReport, VerificationReportData};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
-    HashMap,
+    trace_time, HashMap,
 };
 use mc_connection::{
-    AnyCredentialsProvider, AttestedConnection, HardcodedCredentialsProvider, ThickClient,
+    AnyCredentialsProvider, CredentialsProvider, HardcodedCredentialsProvider,
     TokenBasicCredentialsProvider,
 };
-use mc_crypto_keys::Ed25519Public;
-use mc_util_grpc::TokenBasicCredentialsGenerator;
+use mc_crypto_keys::{Ed25519Public, X25519};
+use mc_crypto_noise::HandshakeNX;
+use mc_rand::McRng;
+use mc_util_grpc::{ConnectionUriGrpcioChannel, TokenBasicCredentialsGenerator};
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
+use sha2::Sha512;
 use std::{
     marker::PhantomData,
     sync::{
@@ -71,21 +77,7 @@ impl NodeClient for ConsensusNodeClient {
                 AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
             };
 
-        // Contact node and get a VerificationReport.
-        let mut client = ThickClient::new(
-            // TODO: Supply a chain-id to watcher?
-            String::default(),
-            node_url.clone(),
-            [],
-            env,
-            credentials_provider,
-            logger,
-        )
-        .map_err(|err| format!("Failed constructing client to connect to {node_url}: {err}"))?;
-
-        client
-            .attest()
-            .map_err(|err| format!("Failed attesting {node_url}: {err}"))
+        verification_report_from_node_url(env, logger, node_url, credentials_provider)
     }
 
     /// Get the block signer key out of a VerificationReport
@@ -115,6 +107,75 @@ impl NodeClient for ConsensusNodeClient {
 
         Ok(signer_public_key)
     }
+}
+
+fn verification_report_from_node_url(
+    env: Arc<Environment>,
+    logger: Logger,
+    node_url: ConsensusClientUri,
+    credentials_provider: AnyCredentialsProvider,
+) -> Result<VerificationReport, String> {
+    trace_time!(logger, "verification_report_from_node_url");
+    let mut csprng = McRng::default();
+
+    let initiator = Start::new(
+        node_url
+            .responder_id()
+            .map_err(|err| format!("Failed getting responder id for {node_url}: {err}"))?
+            .to_string(),
+    );
+
+    let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
+    let (initiator, auth_request) = initiator
+        .try_next(&mut csprng, init_input)
+        .map_err(|err| format!("Failed initiating auth request for {node_url}: {err}"))?;
+
+    let auth_response =
+        auth_message_from_responder(env, &logger, &node_url, credentials_provider, auth_request)?;
+
+    let unverified_report_event = UnverifiedReport::new(auth_response.into());
+    let (_, verification_report) = initiator
+        .try_next(&mut csprng, unverified_report_event)
+        .map_err(|err| format!("Failed decoding verification report from {node_url}: {err}"))?;
+
+    Ok(verification_report)
+}
+
+fn auth_message_from_responder(
+    env: Arc<Environment>,
+    logger: &Logger,
+    node_url: &ConsensusClientUri,
+    credentials_provider: AnyCredentialsProvider,
+    auth_request: AuthRequestOutput<HandshakeNX, X25519, Aes256Gcm, Sha512>,
+) -> Result<AuthMessage, String> {
+    let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(node_url, logger);
+
+    let attested_api_client = AttestedApiClient::new(ch);
+
+    let mut metadata_builder = MetadataBuilder::new();
+
+    if let Some(creds) = credentials_provider
+        .get_credentials()
+        .map_err(|err| format!("failed getting credentials for {node_url}: {err}"))?
+    {
+        if !creds.username().is_empty() && !creds.password().is_empty() {
+            metadata_builder
+                .add_str("Authorization", &creds.authorization_header())
+                .expect("Error setting authorization header");
+        }
+    }
+
+    let call_option = CallOption::default().headers(metadata_builder.build());
+
+    let mut result = attested_api_client
+        .auth_async_opt(&auth_request.into(), call_option)
+        .map_err(|err| format!("Failed to attest with {node_url}: {err}"))?;
+
+    let response = result
+        .receive_sync()
+        .map(|(_, response, _)| response)
+        .map_err(|err| format!("Failed to receive response from {node_url}: {err}"))?;
+    Ok(response)
 }
 
 /// Periodically checks the verification report poll queue in the database and
