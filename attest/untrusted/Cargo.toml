@@ -29,7 +29,7 @@ sha2 = { version = "0.10.6", default-features = false }
 
 [dev-dependencies]
 mc-attest-verifier-types = { path = "../verifier/types", default-features = false }
-x509-cert = { version = "0.2.3", default-features = false, features = ["pem"] }
+x509-cert = { version = "0.2.4", default-features = false, features = ["pem"] }
 
 [build-dependencies]
 mc-sgx-build = { path = "../../sgx/build" }
