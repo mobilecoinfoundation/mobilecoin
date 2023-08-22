@@ -12,7 +12,9 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
-use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
+use mc_attest_core::{
+    EnclaveReportDataContents, Quote, Report, SgxError, TargetInfo, VerificationReport,
+};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, NonceAuthRequest, NonceAuthResponse, NonceSession,
@@ -68,7 +70,7 @@ pub enum ViewEnclaveRequest {
 
     /// Verify a quote
     /// The report part should be a quoting enclave report
-    VerifyQuote(Quote, Report),
+    VerifyQuote(Quote, Report, EnclaveReportDataContents),
 
     /// Verify an IAS report, and cache it if it is accepted
     VerifyIasReport(VerificationReport),

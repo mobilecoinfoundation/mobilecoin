@@ -8,7 +8,9 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Client, Request, Response, Server,
 };
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{
+    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
+};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession,
@@ -38,11 +40,24 @@ use tokio::{sync::oneshot, task::JoinHandle};
 pub struct MockEnclave {}
 
 impl ReportableEnclave for MockEnclave {
-    fn new_ereport(&self, _qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
-        Ok((Report::default(), QuoteNonce::default()))
+    fn new_ereport(
+        &self,
+        _qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
+        let report_data = EnclaveReportDataContents::new(
+            Default::default(),
+            [0u8; 32].as_slice().try_into().expect("bad key"),
+            Default::default(),
+        );
+        Ok((Report::default(), report_data))
     }
 
-    fn verify_quote(&self, _quote: Quote, _qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+    fn verify_quote(
+        &self,
+        _quote: Quote,
+        _qe_report: Report,
+        _report_data: EnclaveReportDataContents,
+    ) -> ReportableEnclaveResult<IasNonce> {
         Ok(IasNonce::default())
     }
 

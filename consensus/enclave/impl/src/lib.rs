@@ -34,7 +34,7 @@ use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, IasNonce, IntelSealed, Quote, Report, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -429,12 +429,20 @@ impl SgxConsensusEnclave {
 }
 
 impl ReportableEnclave for SgxConsensusEnclave {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         Ok(self.ake.new_ereport(qe_info)?)
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        Ok(self.ake.verify_quote(quote, qe_report)?)
+    fn verify_quote(
+        &self,
+        quote: Quote,
+        qe_report: Report,
+        report_data: EnclaveReportDataContents,
+    ) -> ReportableEnclaveResult<IasNonce> {
+        Ok(self.ake.verify_quote(quote, qe_report, &report_data)?)
     }
 
     fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {

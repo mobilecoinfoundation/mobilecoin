@@ -33,7 +33,7 @@ use marker::ContiguousMemory;
 extern crate mc_sgx_core_sys_types;
 pub use self::mc_sgx_core_sys_types::{
     sgx_target_info_t, sgx_report_data_t, sgx_attributes_t, sgx_isv_svn_t, sgx_config_svn_t,
-    sgx_cpu_svn_t, sgx_prod_id_t, sgx_misc_select_t, sgx_report_body_t, sgx_report_t, sgx_measurement_t
+    sgx_cpu_svn_t, sgx_prod_id_t, sgx_misc_select_t, sgx_report_body_t, sgx_report_t, sgx_measurement_t, sgx_quote_nonce_t
 };
 
 //
@@ -313,11 +313,6 @@ impl_struct! {
     #[repr(packed)]
     pub struct sgx_basename_t {
         pub name: [::uint8_t ; 32],
-    }
-
-    #[repr(packed)]
-    pub struct sgx_quote_nonce_t {
-        pub rand: [::uint8_t ; 16],
     }
 
     #[repr(packed)]

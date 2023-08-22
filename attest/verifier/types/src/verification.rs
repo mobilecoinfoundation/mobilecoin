@@ -247,7 +247,7 @@ impl Message for VerificationSignature {
 /// Structure for holding the contents of the Enclave's Report Data.
 /// The Enclave's ReportData member contains a SHA256 hash of this structure's
 /// contents.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EnclaveReportDataContents {
     nonce: QuoteNonce,
     key: X25519Public,

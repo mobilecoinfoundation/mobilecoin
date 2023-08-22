@@ -144,6 +144,14 @@ impl From<EncodingError> for NonceError {
     }
 }
 
+impl From<mc_sgx_core_types::FfiError> for NonceError {
+    fn from(_src: mc_sgx_core_types::FfiError) -> NonceError {
+        // The FFI error is either wrong length or bad enum value so we always
+        // map to invalid input length since nonces are byte arrays.
+        NonceError::Convert(EncodingError::InvalidInputLength)
+    }
+}
+
 /// An enumeration of possible errors while working with a PlatformInfoBase
 /// object
 #[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

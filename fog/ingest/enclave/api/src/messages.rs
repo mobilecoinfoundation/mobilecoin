@@ -2,7 +2,7 @@
 
 //! The message types used by the ingest_enclave_api.
 
-use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{EnclaveReportDataContents, Quote, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_fog_types::ingest::TxsForIngest;
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,7 @@ pub enum EnclaveCall {
     /// * Verifies that the Quoting Enclave is sane,
     /// * Verifies that the Quote matches the previously generated report.
     /// * Caches the quote.
-    VerifyQuote(Quote, Report),
+    VerifyQuote(Quote, Report, EnclaveReportDataContents),
 
     /// The [IngestEnclave::verify_ias_report()] method.
     ///
