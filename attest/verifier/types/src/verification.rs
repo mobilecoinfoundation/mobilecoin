@@ -91,8 +91,6 @@ impl Message for DcapEvidence {
 pub enum EvidenceKind {
     #[prost(message, tag = "4")]
     Dcap(DcapEvidence),
-    //#[prost(message, tag = 5)]
-    //Tdx(Vec<u8>),// TODO: remove test
 }
 
 #[derive(Clone, prost::Message)]
