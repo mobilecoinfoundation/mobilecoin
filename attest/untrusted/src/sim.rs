@@ -274,11 +274,13 @@ mod test {
         let report = Report::default();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
         let collateral = SimQuotingEnclave::collateral(&quote);
-        let uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
+        let mut uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
         uut.encode(&mut buf)
             .expect("Failed to encode DcapEvidence");
         let decoded = DcapEvidence::decode(buf.as_slice())
             .expect("Failed to decode DcapEvidence");
         assert_eq!(uut, decoded);
+        uut.clear();
+        assert_eq!(DcapEvidence::default(), uut);
     }
 }
