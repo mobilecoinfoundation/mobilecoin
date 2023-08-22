@@ -2659,6 +2659,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attest-verifier-types",
  "mc-attestation-verifier 0.3.0",
  "mc-rand",
  "mc-sgx-build",
@@ -2668,6 +2669,7 @@ dependencies = [
  "mc-sgx-dcap-types",
  "mc-sgx-types",
  "p256",
+ "prost",
  "sha2 0.10.7",
  "x509-cert",
 ]

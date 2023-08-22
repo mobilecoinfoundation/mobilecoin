@@ -3,9 +3,9 @@
 //! A simulated implementation of DCAP quote generation.
 
 use crate::TargetInfoError;
-use mc_attest_core::QuoteError;
+use mc_attest_core::{DcapEvidence, QuoteError};
 use mc_attest_verifier::{
-    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY, SIM_CRL, SIM_QE_IDENTITY, SIM_TCB_INFO,
+    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY, SIM_CRL, SIM_QE_IDENTITY, SIM_TCB_INFO
 };
 use mc_attestation_verifier::{QeIdentity, SignedQeIdentity};
 use mc_rand::McRng;
@@ -209,6 +209,7 @@ mod test {
     use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
     use p256::pkcs8::der::DateTime;
+    use prost::Message;
     use std::time::{SystemTime, UNIX_EPOCH};
     use x509_cert::{der::DecodePem, Certificate};
 
@@ -257,5 +258,26 @@ mod test {
         let verifier = DcapVerifier::new(identities, time);
         let verification = verifier.verify(evidence);
         assert_eq!(verification.is_success().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn test_dcap_evidence_serialization() {
+        let mut buf: Vec<u8> = vec![];
+        let uut: DcapEvidence = Default::default();
+        uut.encode(&mut buf)
+            .expect("Failed to encode empty DcapEvidence");
+        let decoded = DcapEvidence::decode(buf.as_slice())
+            .expect("Failed to decode empty DcapEvidence");
+        assert_eq!(uut, decoded);
+        let mut buf: Vec<u8> = vec![];// TODO: buf.clear? _GIT_FAIL_COMMIT
+        let report = Report::default();
+        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = SimQuotingEnclave::collateral(&quote);
+        let uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
+        uut.encode( &mut buf)
+            .expect("Failed to encode DcapEvidence");
+        let decoded = DcapEvidence::decode(buf.as_slice())
+            .expect("Failed to decode DcapEvidence");
+        assert_eq!(uut, decoded);
     }
 }

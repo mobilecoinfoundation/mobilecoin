@@ -18,12 +18,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DcapEvidence {
-    quote: Option<Quote3<Vec<u8>>>,
-    collateral: Option<Collateral>,
+    pub quote: Option<Quote3<Vec<u8>>>,
+    pub collateral: Option<Collateral>,
 }
 
 const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
-const TAG_SCAP_EVIDENCE_COLLATERAL: u32 = 2;
+const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
 
 impl Message for DcapEvidence {
     fn encode_raw<B>(&self, buf: &mut B)
@@ -34,7 +34,7 @@ impl Message for DcapEvidence {
         let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
         encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
         let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
-        encoding::bytes::encode(TAG_SCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
+        encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
     }
 
     fn merge_field<B>(
@@ -50,12 +50,25 @@ impl Message for DcapEvidence {
     {
         match tag {
             TAG_DCAP_EVIDENCE_QUOTE3 => {
-                let mut quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
-                encoding::bytes::merge(wire_type, &mut quote_bytes, buf, ctx)
+                let mut vbuf = Vec::new();
+                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+                let quote: Option<Quote3<Vec<u8>>> = bincode::deserialize(vbuf.as_slice())
+                    .map_err(|bc_err| {
+                        DecodeError::new("Failed to deserialize quote3 from bytes")
+                    })?;
+                self.quote = quote;
+                Ok(())
             },
-            TAG_SCAP_EVIDENCE_COLLATERAL => {
-                let mut collateral_bytes = bincode::serialize(&self.collateral).unwrap();
-                encoding::bytes::merge(wire_type, &mut collateral_bytes, buf, ctx)
+            TAG_DCAP_EVIDENCE_COLLATERAL => {
+                let mut vbuf = Vec::new();
+                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+                let collateral: Option<Collateral> = bincode::deserialize(vbuf.as_slice())
+                    .map_err(|bc_err| {
+                        DecodeError::new("Failed to deserialize collateral from bytes")
+                    })?;
+                self.collateral = collateral;
+                Ok(())
+
             },
             _ => encoding::skip_field(wire_type, tag, buf, ctx),
         }
@@ -66,13 +79,13 @@ impl Message for DcapEvidence {
         let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
 
         encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes) +
-            encoding::bytes::encoded_len(TAG_SCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
+            encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
     }
 
     fn clear(&mut self) {
-        //let default: DcapEvidence = Default::default();
-        //self.quote = default.quote;
-        //self.collateral = default.collateral;
+        let default: DcapEvidence = Default::default();
+        self.quote = default.quote;
+        self.collateral = default.collateral;
     }
 }
 
@@ -85,9 +98,9 @@ pub enum EvidenceKind {
 }
 
 #[derive(Clone, prost::Message)]
-struct EvidenceMessage {
+pub struct EvidenceMessage {
     #[prost(oneof = "EvidenceKind", tags = "4")]
-    of: Option<EvidenceKind>,
+    pub of: Option<EvidenceKind>,
 }
 
 /// Container for holding the quote verification sent back from IAS.
