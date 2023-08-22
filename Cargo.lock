@@ -2655,6 +2655,7 @@ dependencies = [
 name = "mc-attest-untrusted"
 version = "5.0.5"
 dependencies = [
+ "bincode",
  "cfg-if 1.0.0",
  "displaydoc",
  "mc-attest-core",
