@@ -2655,7 +2655,6 @@ dependencies = [
 name = "mc-attest-untrusted"
 version = "5.0.5"
 dependencies = [
- "bincode",
  "cfg-if 1.0.0",
  "displaydoc",
  "mc-attest-core",
@@ -2669,6 +2668,7 @@ dependencies = [
  "mc-sgx-dcap-sys-types",
  "mc-sgx-dcap-types",
  "mc-sgx-types",
+ "mc-util-serial",
  "p256",
  "prost",
  "sha2 0.10.7",
@@ -2725,7 +2725,6 @@ name = "mc-attest-verifier-types"
 version = "5.0.5"
 dependencies = [
  "base64 0.21.2",
- "bincode",
  "displaydoc",
  "hex",
  "hex_fmt",
@@ -2733,6 +2732,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-sgx-dcap-types",
  "mc-util-encodings",
+ "mc-util-serial",
  "prost",
  "serde",
 ]

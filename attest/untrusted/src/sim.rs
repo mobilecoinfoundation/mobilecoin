@@ -270,19 +270,15 @@ mod test {
         let decoded = DcapEvidence::decode(buf.as_slice())
             .expect("Failed to decode empty DcapEvidence");
         assert_eq!(uut, decoded);
-        let mut buf: Vec<u8> = vec![];// TODO: buf.clear? _GIT_FAIL_COMMIT
+        buf.clear();
         let report = Report::default();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
         let collateral = SimQuotingEnclave::collateral(&quote);
-        /*let uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
+        let uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
         uut.encode(&mut buf)
             .expect("Failed to encode DcapEvidence");
         let decoded = DcapEvidence::decode(buf.as_slice())
             .expect("Failed to decode DcapEvidence");
-        assert_eq!(uut, decoded);*/
-        let ser_quote = bincode::serialize(&quote).unwrap();
-        assert_eq!(quote, bincode::deserialize(ser_quote.as_slice()).unwrap());
-        let ser_collat = bincode::serialize(&collateral).unwrap();
-        assert_eq!(collateral, bincode::deserialize(ser_collat.as_slice()).unwrap());
+        assert_eq!(uut, decoded);
     }
 }

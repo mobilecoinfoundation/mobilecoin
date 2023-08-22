@@ -31,9 +31,9 @@ impl Message for DcapEvidence {
         B: BufMut,
         Self: Sized,
     {
-        let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
+        let quote_bytes: Vec<u8> = mc_util_serial::serialize(&self.quote).unwrap();
         encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
-        let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
+        let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).unwrap();
         encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
     }
 
@@ -52,7 +52,7 @@ impl Message for DcapEvidence {
             TAG_DCAP_EVIDENCE_QUOTE3 => {
                 let mut vbuf = Vec::new();
                 encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let quote: Option<Quote3<Vec<u8>>> = bincode::deserialize(vbuf.as_slice())
+                let quote: Option<Quote3<Vec<u8>>> = mc_util_serial::deserialize(vbuf.as_slice())
                     .map_err(|_| {
                         DecodeError::new("Failed to deserialize quote3 from bytes")
                     })?;
@@ -62,7 +62,7 @@ impl Message for DcapEvidence {
             TAG_DCAP_EVIDENCE_COLLATERAL => {
                 let mut vbuf = Vec::new();
                 encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let collateral: Option<Collateral> = bincode::deserialize(vbuf.as_slice())
+                let collateral: Option<Collateral> = mc_util_serial::deserialize(vbuf.as_slice())
                     .map_err(|_| {
                         DecodeError::new("Failed to deserialize collateral from bytes")
                     })?;
@@ -75,8 +75,8 @@ impl Message for DcapEvidence {
     }
 
     fn encoded_len(&self) -> usize {
-        let quote_bytes: Vec<u8> = bincode::serialize(&self.quote).unwrap();
-        let collateral_bytes: Vec<u8> = bincode::serialize(&self.collateral).unwrap();
+        let quote_bytes: Vec<u8> = mc_util_serial::serialize(&self.quote).unwrap();
+        let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).unwrap();
 
         encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes) +
             encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
