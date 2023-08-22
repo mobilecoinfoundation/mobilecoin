@@ -52,24 +52,22 @@ impl Message for DcapEvidence {
             TAG_DCAP_EVIDENCE_QUOTE3 => {
                 let mut vbuf = Vec::new();
                 encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let quote: Option<Quote3<Vec<u8>>> = mc_util_serial::deserialize(vbuf.as_slice())
-                    .map_err(|_| {
-                        DecodeError::new("Failed to deserialize quote3 from bytes")
-                    })?;
+                let quote: Option<Quote3<Vec<u8>>> =
+                    mc_util_serial::deserialize(vbuf.as_slice())
+                        .map_err(|_| DecodeError::new("Failed to deserialize quote3 from bytes"))?;
                 self.quote = quote;
                 Ok(())
-            },
+            }
             TAG_DCAP_EVIDENCE_COLLATERAL => {
                 let mut vbuf = Vec::new();
                 encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
                 let collateral: Option<Collateral> = mc_util_serial::deserialize(vbuf.as_slice())
                     .map_err(|_| {
-                        DecodeError::new("Failed to deserialize collateral from bytes")
-                    })?;
+                    DecodeError::new("Failed to deserialize collateral from bytes")
+                })?;
                 self.collateral = collateral;
                 Ok(())
-
-            },
+            }
             _ => encoding::skip_field(wire_type, tag, buf, ctx),
         }
     }
@@ -78,8 +76,8 @@ impl Message for DcapEvidence {
         let quote_bytes: Vec<u8> = mc_util_serial::serialize(&self.quote).unwrap();
         let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).unwrap();
 
-        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes) +
-            encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
+        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
+            + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
     }
 
     fn clear(&mut self) {

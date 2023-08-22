@@ -5,7 +5,7 @@
 use crate::TargetInfoError;
 use mc_attest_core::QuoteError;
 use mc_attest_verifier::{
-    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY, SIM_CRL, SIM_QE_IDENTITY, SIM_TCB_INFO
+    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY, SIM_CRL, SIM_QE_IDENTITY, SIM_TCB_INFO,
 };
 use mc_attestation_verifier::{QeIdentity, SignedQeIdentity};
 use mc_rand::McRng;
@@ -267,18 +267,19 @@ mod test {
         let uut: DcapEvidence = Default::default();
         uut.encode(&mut buf)
             .expect("Failed to encode empty DcapEvidence");
-        let decoded = DcapEvidence::decode(buf.as_slice())
-            .expect("Failed to decode empty DcapEvidence");
+        let decoded =
+            DcapEvidence::decode(buf.as_slice()).expect("Failed to decode empty DcapEvidence");
         assert_eq!(uut, decoded);
         buf.clear();
         let report = Report::default();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
         let collateral = SimQuotingEnclave::collateral(&quote);
-        let mut uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
-        uut.encode(&mut buf)
-            .expect("Failed to encode DcapEvidence");
-        let decoded = DcapEvidence::decode(buf.as_slice())
-            .expect("Failed to decode DcapEvidence");
+        let mut uut = DcapEvidence {
+            quote: Some(quote),
+            collateral: Some(collateral),
+        };
+        uut.encode(&mut buf).expect("Failed to encode DcapEvidence");
+        let decoded = DcapEvidence::decode(buf.as_slice()).expect("Failed to decode DcapEvidence");
         assert_eq!(uut, decoded);
         uut.clear();
         assert_eq!(DcapEvidence::default(), uut);
