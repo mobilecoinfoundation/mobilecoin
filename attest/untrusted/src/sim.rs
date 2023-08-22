@@ -3,7 +3,7 @@
 //! A simulated implementation of DCAP quote generation.
 
 use crate::TargetInfoError;
-use mc_attest_core::{DcapEvidence, QuoteError};
+use mc_attest_core::QuoteError;
 use mc_attest_verifier::{
     IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY, SIM_CRL, SIM_QE_IDENTITY, SIM_TCB_INFO
 };
@@ -205,6 +205,7 @@ fn c_struct_as_bytes<T>(c_struct: &T) -> &[u8] {
 #[cfg(test)]
 mod test {
     use super::*;
+    use mc_attest_core::DcapEvidence;
     use mc_attest_verifier::DcapVerifier;
     use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
@@ -274,7 +275,7 @@ mod test {
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
         let collateral = SimQuotingEnclave::collateral(&quote);
         let uut = DcapEvidence { quote: Some(quote), collateral: Some(collateral) };
-        uut.encode( &mut buf)
+        uut.encode(&mut buf)
             .expect("Failed to encode DcapEvidence");
         let decoded = DcapEvidence::decode(buf.as_slice())
             .expect("Failed to decode DcapEvidence");

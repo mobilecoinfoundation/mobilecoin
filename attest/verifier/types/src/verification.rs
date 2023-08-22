@@ -53,7 +53,7 @@ impl Message for DcapEvidence {
                 let mut vbuf = Vec::new();
                 encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
                 let quote: Option<Quote3<Vec<u8>>> = bincode::deserialize(vbuf.as_slice())
-                    .map_err(|bc_err| {
+                    .map_err(|_| {
                         DecodeError::new("Failed to deserialize quote3 from bytes")
                     })?;
                 self.quote = quote;
@@ -63,7 +63,7 @@ impl Message for DcapEvidence {
                 let mut vbuf = Vec::new();
                 encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
                 let collateral: Option<Collateral> = bincode::deserialize(vbuf.as_slice())
-                    .map_err(|bc_err| {
+                    .map_err(|_| {
                         DecodeError::new("Failed to deserialize collateral from bytes")
                     })?;
                 self.collateral = collateral;
