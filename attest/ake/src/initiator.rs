@@ -4,7 +4,7 @@
 
 use crate::{
     AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
-    Start, Transition, UnverifiedReport,
+    Start, Terminated, Transition, UnverifiedReport,
 };
 use alloc::vec::Vec;
 use mc_attest_core::{ReportDataMask, VerificationReport};
@@ -197,8 +197,8 @@ where
     }
 }
 
-/// AuthPending + UnverifiedReport => Ready + VerificationReport
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, UnverifiedReport, VerificationReport>
+/// AuthPending + UnverifiedReport => Terminated + VerificationReport
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedReport, VerificationReport>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -211,25 +211,18 @@ where
         self,
         _csprng: &mut R,
         input: UnverifiedReport,
-    ) -> Result<(Ready<Cipher>, VerificationReport), Self::Error> {
+    ) -> Result<(Terminated, VerificationReport), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
             .map_err(Error::HandshakeRead)?;
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
-            HandshakeStatus::Complete(result) => {
+            HandshakeStatus::Complete(_) => {
                 let remote_report = VerificationReport::decode(output.payload.as_slice())
                     .map_err(|_e| Error::ReportDeserialization)?;
 
-                Ok((
-                    Ready {
-                        writer: result.initiator_cipher,
-                        reader: result.responder_cipher,
-                        binding: result.channel_binding,
-                    },
-                    remote_report,
-                ))
+                Ok((Terminated, remote_report))
             }
         }
     }

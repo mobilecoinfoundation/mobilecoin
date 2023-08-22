@@ -27,7 +27,7 @@ pub use crate::{
         UnverifiedReport,
     },
     mealy::Transition,
-    state::{AuthPending, Ready, Start},
+    state::{AuthPending, Ready, Start, Terminated},
 };
 
 #[cfg(test)]
