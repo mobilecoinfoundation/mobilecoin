@@ -25,6 +25,10 @@ pub struct DcapEvidence {
 const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
 const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
 
+// Quote3 and Collateral cannot trivially be made to implement prost::Message.
+// Since they implement serde Serialize and Deserialize though, we can manually
+// implement it for DcapEvidence. To do this, we use serde to serialize and
+// deserialize them to/from Vec<u8>
 impl Message for DcapEvidence {
     fn encode_raw<B>(&self, buf: &mut B)
     where
