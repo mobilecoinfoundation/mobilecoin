@@ -985,11 +985,13 @@ dependencies = [
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-attest-core",
- "mc-attestation-verifier 0.3.0",
+ "mc-attest-verifier-types",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-sgx-core-sys-types",
  "mc-sgx-core-types",
  "mc-sgx-css",
+ "mc-sgx-dcap-types",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -1010,37 +1012,21 @@ dependencies = [
  "hex_fmt",
  "mc-attestation-verifier 0.2.0",
  "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-sgx-core-types",
  "mc-sgx-dcap-types",
  "mc-util-encodings",
  "mc-util-serial",
  "prost",
  "serde",
+ "sha2",
 ]
 
 [[package]]
 name = "mc-attestation-verifier"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726b479ab41e7ae8b147fd2e69b4d8000f5a908210641a2662867111025c83c5"
-dependencies = [
- "der",
- "displaydoc",
- "hex",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
- "p256",
- "serde",
- "serde_json",
- "subtle",
- "x509-cert",
-]
-
-[[package]]
-name = "mc-attestation-verifier"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39a132b80d1cf8fb1d22e5a81fe77b77cc7252a677ab7ade3410d057e68623e5"
+checksum = "6bdeca0948f17208a69b0bccd33f28c7f75c0053c5b13e22389d04fcbb662aaf"
 dependencies = [
  "der",
  "displaydoc",

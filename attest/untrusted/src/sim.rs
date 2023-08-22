@@ -207,6 +207,7 @@ mod test {
     use super::*;
     use mc_attest_core::DcapEvidence;
     use mc_attest_verifier::DcapVerifier;
+    use mc_attest_verifier_types::EnclaveReportDataContents;
     use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
     use p256::pkcs8::der::DateTime;
@@ -214,16 +215,27 @@ mod test {
     use std::time::{SystemTime, UNIX_EPOCH};
     use x509_cert::{der::DecodePem, Certificate};
 
+    fn report_and_report_data() -> (Report, EnclaveReportDataContents) {
+        let mut report = Report::default();
+        let report_data_contents = EnclaveReportDataContents::new(
+            [0x42u8; 16].into(),
+            [0x11u8; 32].as_slice().try_into().expect("bad key"),
+            [0xAAu8; 32],
+        );
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data_contents.sha256());
+        (report, report_data_contents)
+    }
+
     #[test]
     fn simulated_quote_from_report() {
-        let report = Report::default();
+        let (report, _) = report_and_report_data();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
         assert_eq!(quote.app_report_body(), &report.body());
     }
 
     #[test]
     fn tcb_values_from_simulated_quote() {
-        let report = Report::default();
+        let (report, _) = report_and_report_data();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
         let signature_data = quote.signature_data();
         let certification_data = signature_data.certification_data();
@@ -241,7 +253,7 @@ mod test {
 
     #[test]
     fn verify_simulated_quote() {
-        let report = Report::default();
+        let (report, report_data_contents) = report_and_report_data();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
         let collateral = SimQuotingEnclave::collateral(&quote);
         let mr_enclave = quote.app_report_body().mr_enclave();
@@ -256,7 +268,7 @@ mod test {
             .expect("Failed to get duration since epoch");
         let time =
             DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");
-        let verifier = DcapVerifier::new(identities, time);
+        let verifier = DcapVerifier::new(identities, time, report_data_contents);
         let verification = verifier.verify(evidence);
         assert_eq!(verification.is_success().unwrap_u8(), 1);
     }
