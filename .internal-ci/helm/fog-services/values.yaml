@@ -45,8 +45,8 @@ fogViewShardRangeGenerator:
   # The dev options are set in the github workflow deployment.
   # This is just for reference.
   # dev:
-  #   shardSize: 25_000
-  #   exceedBlockHeightBy: 10_000
+  #   shardSize: 10_000
+  #   exceedBlockHeightBy: 5_000
   #   shardOverlap: 0
   #   count: 2
   main:
@@ -162,12 +162,12 @@ fogLedgerShardRangeGenerator:
   # The dev options are set in the github workflow deployment.
   # This is just for reference.
   # dev:
-  #   shardSize: 25_000
-  #   exceedBlockHeightBy: 10_000
+  #   shardSize: 10_000
+  #   exceedBlockHeightBy: 5_000
   #   shardOverlap: 0
   #   count: 2
   main:
-    shardSize: 800_000
+    shardSize: 400_000
     exceedBlockHeightBy: 10_000
     shardOverlap: 0
     count: 3
