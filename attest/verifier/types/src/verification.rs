@@ -81,7 +81,7 @@ impl Message for DcapEvidence {
 
     fn encoded_len(&self) -> usize {
         let quote_bytes: Vec<u8> = mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
-        let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).unwrap("Failed serializing Collateral");
+        let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
 
         encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
             + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
