@@ -39,7 +39,9 @@ pub use crate::{
     },
 };
 
-pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
+pub use mc_attest_verifier_types::{
+    DcapEvidence, EvidenceMessage, VerificationReport, VerificationSignature,
+};
 
 pub use mc_sgx_core_types::{
     Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvProductId, IsvSvn,

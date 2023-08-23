@@ -9,14 +9,104 @@ use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::X25519Public;
 use mc_sgx_core_types::QuoteNonce;
+use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
-    DecodeError, Message,
+    DecodeError, Message, Oneof,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DcapEvidence {
+    pub quote: Option<Quote3<Vec<u8>>>,
+    pub collateral: Option<Collateral>,
+}
+
+const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
+const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
+
+// Quote3 and Collateral cannot trivially be made to implement prost::Message.
+// Since they implement serde Serialize and Deserialize though, we can manually
+// implement it for DcapEvidence. To do this, we use serde to serialize and
+// deserialize them to/from Vec<u8>
+impl Message for DcapEvidence {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        let quote_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.quote).expect("Failed to serialize Quote3");
+        encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
+        let collateral_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.collateral).expect("Failed to serialize Collateral");
+        encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        match tag {
+            TAG_DCAP_EVIDENCE_QUOTE3 => {
+                let mut vbuf = Vec::new();
+                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+                let quote: Option<Quote3<Vec<u8>>> =
+                    mc_util_serial::deserialize(vbuf.as_slice())
+                        .map_err(|_| DecodeError::new("Failed to deserialize quote3 from bytes"))?;
+                self.quote = quote;
+                Ok(())
+            }
+            TAG_DCAP_EVIDENCE_COLLATERAL => {
+                let mut vbuf = Vec::new();
+                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+                let collateral: Option<Collateral> = mc_util_serial::deserialize(vbuf.as_slice())
+                    .map_err(|_| {
+                    DecodeError::new("Failed to deserialize collateral from bytes")
+                })?;
+                self.collateral = collateral;
+                Ok(())
+            }
+            _ => encoding::skip_field(wire_type, tag, buf, ctx),
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        let quote_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
+        let collateral_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
+
+        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
+            + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
+    }
+
+    fn clear(&mut self) {
+        *self = Default::default();
+    }
+}
+
+#[derive(Clone, Oneof)]
+pub enum EvidenceKind {
+    #[prost(message, tag = "4")]
+    Dcap(DcapEvidence),
+}
+
+#[derive(Clone, prost::Message)]
+pub struct EvidenceMessage {
+    #[prost(oneof = "EvidenceKind", tags = "4")]
+    pub evidence: Option<EvidenceKind>,
+}
 
 /// Container for holding the quote verification sent back from IAS.
 ///
