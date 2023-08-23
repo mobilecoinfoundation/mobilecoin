@@ -874,7 +874,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
- "mc-attestation-verifier 0.3.1",
+ "mc-attestation-verifier",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-util-build-script",
@@ -956,7 +956,7 @@ dependencies = [
  "mbedtls-sys-auto",
  "mc-attest-core",
  "mc-attest-verifier-types",
- "mc-attestation-verifier 0.3.1",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-sgx-core-sys-types",
  "mc-sgx-core-types",
@@ -980,7 +980,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
- "mc-attestation-verifier 0.2.0",
+ "mc-attestation-verifier",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-sgx-core-types",
@@ -990,25 +990,6 @@ dependencies = [
  "prost",
  "serde",
  "sha2",
-]
-
-[[package]]
-name = "mc-attestation-verifier"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726b479ab41e7ae8b147fd2e69b4d8000f5a908210641a2662867111025c83c5"
-dependencies = [
- "der",
- "displaydoc",
- "hex",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
- "p256",
- "serde",
- "serde_json",
- "subtle",
- "x509-cert",
 ]
 
 [[package]]
@@ -1216,7 +1197,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-trusted",
  "mc-attest-verifier",
- "mc-attestation-verifier 0.3.1",
+ "mc-attestation-verifier",
  "mc-common",
  "mc-crypto-keys",
  "mc-rand",

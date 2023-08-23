@@ -38,9 +38,11 @@ impl Message for DcapEvidence {
         B: BufMut,
         Self: Sized,
     {
-        let quote_bytes: Vec<u8> = mc_util_serial::serialize(&self.quote).expect("Failed to serialize Quote3");
+        let quote_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.quote).expect("Failed to serialize Quote3");
         encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
-        let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).expect("Failed to serialize Collateral");
+        let collateral_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.collateral).expect("Failed to serialize Collateral");
         encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
     }
 
@@ -80,8 +82,10 @@ impl Message for DcapEvidence {
     }
 
     fn encoded_len(&self) -> usize {
-        let quote_bytes: Vec<u8> = mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
-        let collateral_bytes: Vec<u8> = mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
+        let quote_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
+        let collateral_bytes: Vec<u8> =
+            mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
 
         encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
             + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
