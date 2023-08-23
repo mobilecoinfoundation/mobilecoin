@@ -1,5 +1,6 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- $stacks := until (int .Values.fogLedgerShardRangeGenerator.count) }}
+{{- $count := (include "fogServices.fogLedgerShardRangeGenerator" .| fromYaml).count }}
+{{- $stacks := until (int $count) }}
 {{- range $stacks }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
@@ -8,8 +9,12 @@ metadata:
   labels:
     {{- include "fogServices.labels" $ | nindent 4 }}
 spec:
-  {{- include "fogServices.fogLedgerStores" $ | nindent 2 }}
   blockCountURL: {{ include "fogServices.blockHeightURL" $ | quote }}
+  {{- with (include "fogServices.fogLedgerShardRangeGenerator" $ | fromYaml) }}
+  shardSize: {{ .shardSize }}
+  exceedBlockHeightBy: {{ .exceedBlockHeightBy }}
+  shardOverlap: {{ .exceedBlockHeightBy }}
+  {{- end }}
   {{- with $.Values.blockHeighRetrieval }}
   blockCountQueryInterval: {{ .queryInterval | quote }}
   blockCountResponseJQ: {{ .responseJQ | quote }}

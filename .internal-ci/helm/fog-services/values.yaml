@@ -41,18 +41,24 @@ ingress:
   enabled: true
 
 #### Fog View
-fogViewStores:
+fogViewShardRangeGenerator:
+  # The dev options are set in the github workflow deployment.
+  # This is just for reference.
+  # dev:
+  #   shardSize: 25_000
+  #   exceedBlockHeightBy: 10_000
+  #   shardOverlap: 0
+  #   count: 2
   main:
     shardSize: 400_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 200_000
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 3
   test:
     shardSize: 800_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 400_000
-
-fogViewShardRangeGenerator:
-  count: 3
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 2
 
 fogViewRouter:
   podManagementPolicy: Parallel
@@ -152,18 +158,24 @@ fogView:
 
 
 #### Fog Ledger
-fogLedgerStores:
+fogLedgerShardRangeGenerator:
+  # The dev options are set in the github workflow deployment.
+  # This is just for reference.
+  # dev:
+  #   shardSize: 25_000
+  #   exceedBlockHeightBy: 10_000
+  #   shardOverlap: 0
+  #   count: 2
   main:
-    shardSize: 400_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 200_000
+    shardSize: 800_000
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 3
   test:
     shardSize: 800_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 400_000
-
-fogLedgerShardRangeGenerator:
-  count: 3
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 2
 
 fogLedgerRouter:
   replicaCount: 1
