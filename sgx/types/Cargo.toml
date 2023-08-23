@@ -28,4 +28,4 @@ crate-type = ["rlib"]
 default = []
 
 [dependencies]
-mc-sgx-core-sys-types = "0.7.4"
+mc-sgx-core-sys-types = "0.7.5"

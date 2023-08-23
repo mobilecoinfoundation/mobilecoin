@@ -10,8 +10,8 @@ rust-version = { workspace = true }
 [dependencies]
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-sgx-core-types = "0.7.4"
-mc-sgx-dcap-types = { version = "0.7.4", default-features = false, features = ["alloc"] }
+mc-sgx-core-types = "0.7.5"
+mc-sgx-dcap-types = { version = "0.7.5", default-features = false, features = ["alloc"] }
 mc-util-encodings = { path = "../../../util/encodings" }
 
 base64 = { version = "0.21", default-features = false, features = ["alloc"] }
