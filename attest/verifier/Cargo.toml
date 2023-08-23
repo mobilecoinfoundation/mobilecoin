@@ -29,9 +29,9 @@ ias-dev = []
 mc-attest-core = { path = "../core", default-features = false }
 mc-attest-verifier-types = { path = "types", default-features = false }
 mc-common = { path = "../../common", default-features = false }
-mc-sgx-core-types = "0.7.4"
+mc-sgx-core-types = "0.7.5"
 mc-sgx-css = { path = "../../sgx/css", default-features = false }
-mc-sgx-dcap-types = "0.7.4"
+mc-sgx-dcap-types = "0.7.5"
 mc-sgx-types = { path = "../../sgx/types", default-features = false }
 
 cfg-if = "1.0"
@@ -48,7 +48,7 @@ mc-util-encodings = { path = "../../util/encodings", default-features = false }
 textwrap = "0.11"
 
 [build-dependencies]
-mc-sgx-core-sys-types = "0.7.4"
+mc-sgx-core-sys-types = "0.7.5"
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }
 
