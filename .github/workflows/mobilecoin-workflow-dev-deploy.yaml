@@ -112,7 +112,7 @@ jobs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
-    - name: Deploy Consensus nodes
+    - name: Mobilecoind nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy
