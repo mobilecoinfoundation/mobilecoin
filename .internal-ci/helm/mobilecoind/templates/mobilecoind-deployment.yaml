@@ -23,7 +23,7 @@ spec:
         {{- include "mobilecoind.labels" . | nindent 8 }}
     spec:
       nodeSelector:
-        {{- toYaml .Values.mobilecoindNodeSelector | nindent 8 }}
+        {{- toYaml .Values.mobilecoind.nodeSelector | nindent 8 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       initContainers:
