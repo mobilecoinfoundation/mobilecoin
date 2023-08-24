@@ -141,10 +141,6 @@ jobs:
           org: ${{ inputs.docker_image_org }}
         global:
           certManagerClusterIssuer: google-public-ca
-        fogLedgerShardRangeGenerator:
-          count: 2
-        fogViewShardRangeGenerator:
-          count: 2
         fogLedgerRouter:
           resources:
             limits:
@@ -178,12 +174,13 @@ jobs:
           responseJQ: '.index'
           requestBody: ' '
           queryInterval: 5m
-        fogViewStores:
+        fogViewShardRangeGenerator:
           override: &stores
-            shardSize: 100_000
+            shardSize: 10_000
             exceedBlockHeightBy: 5_000
             shardOverlap: 0
-        fogLedgerStores:
+            count: 2
+        fogLedgerShardRangeGenerator:
           override: *stores
         EOF
 
