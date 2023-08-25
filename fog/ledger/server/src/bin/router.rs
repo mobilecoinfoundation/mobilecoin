@@ -56,7 +56,7 @@ fn main() {
     let mut router_server =
         LedgerRouterServer::new(config, enclave.clone(), ias_client, ledger_db, watcher_db, logger.clone());
     router_server.start();
-    mc_common::logger::log::error!(logger, "HERE! hello world")
+    mc_common::logger::log::error!(logger, "HERE! hello world");
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
         if enclave.get_identity().is_err() {
