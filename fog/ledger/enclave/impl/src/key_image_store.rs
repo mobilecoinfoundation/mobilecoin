@@ -3,6 +3,9 @@
 //! Mediates between the bytes used in ORAM and the protobuf format,
 //! the various ORAM vs. fog api error codes, etc.
 #![deny(missing_docs)]
+use core::time::Duration;
+use std::thread;
+
 use aligned_cmov::{
     subtle::{Choice, ConstantTimeEq},
     typenum::{U1024, U16, U32, U4096, U64},
@@ -120,6 +123,10 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> KeyImageStore<OS
                 omap_result_code
             );
         }
+        thread::spawn(|| {
+            thread::sleep(Duration::from_secs(1800));
+            panic!("HERE! ded");
+        });
         Ok(())
     }
 
