@@ -61,7 +61,7 @@ fn main() {
     let log_clone = logger.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(5400));
-        if let Ok(_r) = enc_clone.initiate_self_destruct().unwrap() {
+        if let Ok(_r) = enc_clone.initiate_self_destruct() {
             mc_common::logger::log::error!(log_clone, "self destruct executed");
         }
         else {
