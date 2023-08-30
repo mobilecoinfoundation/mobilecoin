@@ -57,7 +57,7 @@ fn main() {
         LedgerRouterServer::new(config, enclave.clone(), ias_client, ledger_db, watcher_db, logger.clone());
     router_server.start();
     mc_common::logger::log::error!(logger, "HERE! hello world");
-    thread::spawn(|| {
+    std::thread::spawn(|| {
         std::thread::sleep(Duration::from_secs(5400));
         enclave.clone().initiate_self_destruct();
     });
