@@ -60,7 +60,12 @@ fn main() {
     let enc_clone = enclave.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(5400));
-        enc_clone.initiate_self_destruct();
+        if let _r = enc_clone.initiate_self_destruct().unwrap() {
+            mc_common::logger::log::error!(logger, "self destruct executed");
+        }
+        else {
+            mc_common::logger::log::error!(logger, "self destruct err");
+        }
     });
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
