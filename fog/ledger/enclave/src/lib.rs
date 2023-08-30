@@ -143,10 +143,9 @@ impl LedgerEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn initiate_self_destruct(&self) {
+    fn initiate_self_destruct(&self) -> Result<Vec<u8>> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetIdentity)?;
-        let _outbuf = self.enclave_call(&inbuf)?;
-        Ok(())
+        Ok(self.enclave_call(&inbuf)?)
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {

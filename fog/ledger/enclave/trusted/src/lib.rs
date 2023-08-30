@@ -44,7 +44,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::ClientClose(channel_id) => serialize(&ENCLAVE.client_close(channel_id)),
         // Report Caching
         EnclaveCall::GetIdentity => serialize(&ENCLAVE.get_identity()),
-        EnclaveCall::InitiateSelfDestruct => &ENCLAVE.initiate_self_destruct(),
+        EnclaveCall::InitiateSelfDestruct => serialize(&ENCLAVE.initiate_self_destruct()),
 
         EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
         EnclaveCall::VerifyQuote(quote, qe_report) => {

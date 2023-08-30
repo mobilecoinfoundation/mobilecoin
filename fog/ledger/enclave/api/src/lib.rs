@@ -73,7 +73,7 @@ pub trait LedgerEnclave: ReportableEnclave {
     fn get_identity(&self) -> Result<X25519Public>;
 
     /// Initiates self destruct
-    fn initiate_self_destruct(&self);
+    fn initiate_self_destruct(&self) -> Result<Vec<u8>>;
 
     // CLIENT-FACING METHODS
 

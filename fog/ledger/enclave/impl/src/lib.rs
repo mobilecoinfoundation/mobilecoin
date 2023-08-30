@@ -111,7 +111,7 @@ where
         Ok(self.ake.get_kex_identity())
     }
 
-    fn initiate_self_destruct(&self) {
+    fn initiate_self_destruct(&self) -> Result<Vec<u8>> {
         panic!("asdfghjkl;");
     }
 
