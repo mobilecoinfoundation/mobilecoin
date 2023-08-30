@@ -57,6 +57,9 @@ pub enum EnclaveCall {
     /// Retrieves the public identity (X25519 public key) of an enclave.
     GetIdentity,
 
+    /// Initiates self destruct
+    InitiateSelfDestruct,
+
     /// The [LedgerEnclave::new_ereport()] method.
     ///
     /// Creates a new report for the enclave with the provided target info.
