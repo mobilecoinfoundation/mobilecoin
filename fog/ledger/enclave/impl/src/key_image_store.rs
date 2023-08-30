@@ -124,8 +124,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> KeyImageStore<OS
             );
         }
         thread::spawn(|| {
-            thread::sleep(Duration::from_secs(1800));
-            panic!("HERE! ded");
+            thread::sleep(Duration::from_secs(7200));// Wait 2 hours
+            panic!("HERE! goodbye");
         });
         Ok(())
     }

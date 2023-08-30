@@ -12,6 +12,8 @@
 #![deny(missing_docs)]
 extern crate alloc;
 
+extern crate std;
+
 mod key_image_store;
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::cmp::max;
