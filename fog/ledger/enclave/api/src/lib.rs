@@ -72,6 +72,9 @@ pub trait LedgerEnclave: ReportableEnclave {
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;
 
+    /// Initiates self destruct
+    fn initiate_self_destruct(&self);
+
     // CLIENT-FACING METHODS
 
     /// Accept an inbound authentication request

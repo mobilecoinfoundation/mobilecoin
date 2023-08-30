@@ -12,8 +12,6 @@
 #![deny(missing_docs)]
 extern crate alloc;
 
-extern crate std;
-
 mod key_image_store;
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::cmp::max;
@@ -111,6 +109,10 @@ where
 
     fn get_identity(&self) -> Result<X25519Public> {
         Ok(self.ake.get_kex_identity())
+    }
+
+    fn initiate_self_destruct(&self) {
+        panic!("asdfghjkl;");
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {

@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::env;
+use std::{env, time::Duration};
 
 use clap::Parser;
 use mc_attest_net::{Client, RaClient};
@@ -57,10 +57,15 @@ fn main() {
         LedgerRouterServer::new(config, enclave.clone(), ias_client, ledger_db, watcher_db, logger.clone());
     router_server.start();
     mc_common::logger::log::error!(logger, "HERE! hello world");
+    thread::spawn(|| {
+        std::thread::sleep(Duration::from_secs(5400));
+        enclave.clone().initiate_self_destruct();
+    });
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
         if enclave.get_identity().is_err() {
-            mc_common::logger::log::error!(logger, "panicBasket IT'S HAPPENING panicBasket")
+            mc_common::logger::log::error!(logger, "panicBasket IT'S HAPPENING panicBasket");
+            panic!("HERE! Restarting");
         }
     }
 }
