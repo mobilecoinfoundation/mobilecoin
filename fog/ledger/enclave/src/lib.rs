@@ -144,7 +144,7 @@ impl LedgerEnclave for LedgerSgxEnclave {
     }
 
     fn initiate_self_destruct(&self) -> Result<Vec<u8>> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetIdentity)?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::InitiateSelfDestruct)?;
         Ok(self.enclave_call(&inbuf)?)
     }
 
