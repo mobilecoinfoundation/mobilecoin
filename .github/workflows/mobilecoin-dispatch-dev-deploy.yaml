@@ -57,7 +57,7 @@ jobs:
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: 👾 Print Environment Details 👾
       env:
