@@ -12,7 +12,7 @@ pub use mc_fog_ledger_enclave_api::{
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -42,14 +42,23 @@ pub struct LedgerSgxEnclave {
 }
 
 impl ReportableEnclave for LedgerSgxEnclave {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
+    fn verify_quote(
+        &self,
+        quote: Quote,
+        qe_report: Report,
+        report_data: EnclaveReportDataContents,
+    ) -> ReportableEnclaveResult<IasNonce> {
+        let inbuf =
+            mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report, report_data))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

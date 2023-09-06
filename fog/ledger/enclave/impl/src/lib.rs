@@ -16,7 +16,9 @@ mod key_image_store;
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{
+    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
+};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession, SealedClientMessage,
@@ -76,12 +78,20 @@ impl<OSC> ReportableEnclave for SgxLedgerEnclave<OSC>
 where
     OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>,
 {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         Ok(self.ake.new_ereport(qe_info)?)
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        Ok(self.ake.verify_quote(quote, qe_report)?)
+    fn verify_quote(
+        &self,
+        quote: Quote,
+        qe_report: Report,
+        report_data: EnclaveReportDataContents,
+    ) -> ReportableEnclaveResult<IasNonce> {
+        Ok(self.ake.verify_quote(quote, qe_report, &report_data)?)
     }
 
     fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {

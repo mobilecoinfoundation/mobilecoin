@@ -149,7 +149,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                 other_ti_err => other_ti_err,
             })?;
         log::debug!(self.logger, "Getting EREPORT from node enclave...");
-        let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;
+        let (report, report_data_contents) = self.enclave.new_ereport(qe_info)?;
         log::debug!(self.logger, "Downloading SigRL for GID '{}'...", &gid);
         let sigrl = self.ra_client.get_sigrl(gid)?;
         log::debug!(self.logger, "Quoting report...");
@@ -157,11 +157,13 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             &report,
             QuoteSignType::Linkable,
             &self.ias_spid,
-            &quote_nonce,
+            &report_data_contents,
             &sigrl,
         )?;
         log::debug!(self.logger, "Double-checking quoted report with enclave...");
-        let ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;
+        let ias_nonce =
+            self.enclave
+                .verify_quote(quote.clone(), qe_report, report_data_contents)?;
         log::debug!(
             self.logger,
             "Verifying quote with remote attestation service..."

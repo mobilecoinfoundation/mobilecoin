@@ -4,8 +4,8 @@
 
 use displaydoc::Display;
 use mc_attest_core::{
-    EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote, QuoteError, QuoteNonce,
-    QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
+    EnclaveReportDataContents, EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote,
+    QuoteError, QuoteSignType, Report, SgxError, SigRL, TargetInfo, UpdateInfo,
 };
 use mc_sgx_dcap_types::QlError;
 use mc_sgx_types::{
@@ -36,7 +36,7 @@ impl QuotingEnclave {
         report: &Report,
         quote_sign_type: QuoteSignType,
         spid: &ProviderId,
-        nonce: &QuoteNonce,
+        report_data: &EnclaveReportDataContents,
         sigrl: &SigRL,
     ) -> Result<(Quote, Report), QuoteError> {
         let mut quote_size: u32 = 0;
@@ -53,7 +53,7 @@ impl QuotingEnclave {
                 report.as_ref(),
                 quote_sign_type.into(),
                 spid.as_ref(),
-                nonce.as_ref(),
+                report_data.nonce().as_ref(),
                 sigrl.as_ptr(),
                 sigrl.size(),
                 qe_report.as_mut(),

@@ -61,8 +61,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::GetMintingTrustRoot => serialize(&ENCLAVE.get_minting_trust_root()),
         // Report Caching
         EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
-        EnclaveCall::VerifyQuote(quote, qe_report) => {
-            serialize(&ENCLAVE.verify_quote(quote, qe_report))
+        EnclaveCall::VerifyQuote(quote, qe_report, report_data) => {
+            serialize(&ENCLAVE.verify_quote(quote, qe_report, report_data))
         }
         EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report)),
         EnclaveCall::GetReport => serialize(&ENCLAVE.get_ias_report()),

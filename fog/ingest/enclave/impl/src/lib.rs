@@ -20,7 +20,7 @@ pub use rng_store::{RngStore, StorageDataSize, StorageMetaSize};
 use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, IasNonce, IntelSealed, Quote, Report, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
@@ -176,12 +176,20 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
 impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ReportableEnclave
     for SgxIngestEnclave<OSC>
 {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         Ok(self.ake.new_ereport(qe_info)?)
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        Ok(self.ake.verify_quote(quote, qe_report)?)
+    fn verify_quote(
+        &self,
+        quote: Quote,
+        qe_report: Report,
+        report_data: EnclaveReportDataContents,
+    ) -> ReportableEnclaveResult<IasNonce> {
+        Ok(self.ake.verify_quote(quote, qe_report, &report_data)?)
     }
 
     fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {

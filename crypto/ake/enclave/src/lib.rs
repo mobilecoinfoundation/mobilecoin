@@ -6,14 +6,13 @@ extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
 use alloc::{borrow::ToOwned, string::ToString, vec::Vec};
-use digest::Digest;
 use mc_attest_ake::{
     AuthPending, AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientAuthRequestInput,
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
-    VerificationReport,
+    EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
+    ReportData, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -28,7 +27,7 @@ use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
-use sha2::{Sha256, Sha512};
+use sha2::Sha512;
 
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
@@ -632,7 +631,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Build a new Report and QuoteNonce object for ourself
-    pub fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
+    pub fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, EnclaveReportDataContents)> {
         let mut quote_pending = self.quote_pending.lock()?;
 
         let quote_nonce = loop {
@@ -645,77 +644,61 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             }
         };
 
-        // Copy the public key into the report data.
+        let report_contents = EnclaveReportDataContents::new(
+            quote_nonce.clone(),
+            self.get_kex_identity(),
+            self.custom_identity.get_bytes_for_report(),
+        );
+
         let mut report_data = ReportData::default();
         let report_data_bytes: &mut [u8] = report_data.as_mut();
-        let identity = self.get_kex_identity();
-        let identity_bytes: &[u8] = identity.as_ref();
-        let custom_identity_bytes = self.custom_identity.get_bytes_for_report();
+        let identity_bytes: &[u8] = report_contents.key().as_ref();
         report_data_bytes[..identity_bytes.len()].copy_from_slice(identity_bytes);
-        report_data_bytes[identity_bytes.len()..].copy_from_slice(custom_identity_bytes.as_ref());
+        report_data_bytes[identity_bytes.len()..]
+            .copy_from_slice(report_contents.custom_identity());
 
         // Actually get the EREPORT
         let report = Report::new(Some(&qe_info), Some(&report_data))?;
         quote_pending.put(quote_nonce, report.clone());
 
-        Ok((report, quote_nonce))
+        Ok((report, report_contents))
     }
 
     /// Verify a quote
-    pub fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
+    pub fn verify_quote(
+        &self,
+        quote: Quote,
+        qe_report: Report,
+        report_data: &EnclaveReportDataContents,
+    ) -> Result<IasNonce> {
         // Is the qe_report for our enclave?
         qe_report.verify()?;
 
-        // The qe_report contains SHA256(quote || quote_nonce) as the lower
-        // 32 bytes of the report data.
-        //
-        // Unfortunately, this means we cannot do anything but hash each
-        // potential in-flight quote with each nonce in our state cache.
-        let qe_report_data = qe_report.body().report_data();
-        let qe_report_bytes: &[u8] = qe_report_data.as_ref();
-
-        let mut target_nonce: Option<QuoteNonce> = None;
-        let mut hasher = Sha256::new();
+        let nonce = report_data.nonce();
 
         let mut quote_pending = self.quote_pending.lock()?;
 
-        // We iterate each nonce in our cache, and save the key of the one
-        // we want to work on
-        for (nonce, _) in quote_pending.iter() {
-            hasher.update(<QuoteNonce as AsRef<[u8]>>::as_ref(nonce));
-            hasher.update(quote.as_ref());
-            let output_arr = hasher.finalize_reset();
-            let output = output_arr.as_slice();
-            debug_assert!(output.len() < qe_report_bytes.len());
-            if output == &qe_report_bytes[..output.len()] {
-                target_nonce = Some(*nonce);
-                break;
-            }
-        }
+        let report = quote_pending.pop(nonce);
 
-        // If we found a matching entry in our cache, then we remove the
-        // old state from the phase-one cache, upgrade it to the IasPending
-        // state object, and insert it into the IAS pending cache. If the
-        // upgrade fails, it's because the quote and qe_report don't match,
+        // If we found a matching entry in our cache, then we upgrade it to the
+        // IasPending state object, and insert it into the IAS pending cache. If
+        // the upgrade fails, it's because the quote and qe_report don't match,
         // in which case we should simply abort the attempt because there's
         // nothing we can do to fix it, and leaving it around is probably
         // wrong.
-        if let Some(target_nonce) = target_nonce {
+        if let Some(report) = report {
             let mut ias_pending = self.ias_pending.lock()?;
             let mut csprng = McRng::default();
-            // this should never fail...
-            if let Some(report) = quote_pending.pop(&target_nonce) {
-                let ias_nonce = loop {
-                    let ias_nonce = IasNonce::new(&mut csprng)?;
-                    if !ias_pending.contains(&ias_nonce) {
-                        break ias_nonce;
-                    }
-                };
-                // Ensure the quote contains our report, and is sane.
-                quote.verify_report(&qe_report, &report)?;
-                ias_pending.put(ias_nonce.clone(), quote);
-                return Ok(ias_nonce);
-            }
+            let ias_nonce = loop {
+                let ias_nonce = IasNonce::new(&mut csprng)?;
+                if !ias_pending.contains(&ias_nonce) {
+                    break ias_nonce;
+                }
+            };
+            // Ensure the quote contains our report, and is sane.
+            quote.verify_report(&qe_report, &report)?;
+            ias_pending.put(ias_nonce.clone(), quote);
+            return Ok(ias_nonce);
         }
 
         Err(Error::InvalidState)

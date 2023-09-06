@@ -28,7 +28,7 @@ pub use crate::{
         SgxResult, SignatureError, VerifyError,
     },
     ias::verify::{EpidPseudonym, VerificationReportData},
-    nonce::{IasNonce, Nonce, QuoteNonce},
+    nonce::{IasNonce, Nonce},
     quote::{Quote, QuoteSignType},
     seal::{IntelSealed, IntelSealingError, ParseSealedError, Sealed},
     sigrl::SigRL,
@@ -40,12 +40,14 @@ pub use crate::{
 };
 
 pub use mc_attest_verifier_types::{
-    DcapEvidence, EvidenceMessage, VerificationReport, VerificationSignature,
+    DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
+    VerificationSignature,
 };
 
 pub use mc_sgx_core_types::{
     Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvProductId, IsvSvn,
-    MiscellaneousSelect, MrEnclave, MrSigner, Report, ReportBody, ReportData, TargetInfo,
+    MiscellaneousSelect, MrEnclave, MrSigner, QuoteNonce, Report, ReportBody, ReportData,
+    TargetInfo,
 };
 
 /// The IAS version we support
