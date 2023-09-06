@@ -1,6 +1,6 @@
 [package]
 name = "mc-common"
-version = "5.0.6"
+version = "5.0.7"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
