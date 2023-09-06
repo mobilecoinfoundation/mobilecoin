@@ -286,9 +286,15 @@ mod test {
         let report = Report::default();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
         let collateral = SimQuotingEnclave::collateral(&quote);
+        let report_data = EnclaveReportDataContents::new(
+            [0x42u8; 16].into(),
+            [0x11u8; 32].as_slice().try_into().expect("bad key"),
+            [0xAAu8; 32],
+        );
         let mut uut = DcapEvidence {
             quote: Some(quote),
             collateral: Some(collateral),
+            report_data: Some(report_data),
         };
         uut.encode(&mut buf).expect("Failed to encode DcapEvidence");
         let decoded = DcapEvidence::decode(buf.as_slice()).expect("Failed to decode DcapEvidence");
