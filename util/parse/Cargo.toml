@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-parse"
-version = "5.0.6"
+version = "5.0.7"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Helpers for parsing, particularly, for use with Clap and similar"

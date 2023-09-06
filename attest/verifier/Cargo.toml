@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-verifier"
-version = "5.0.6"
+version = "5.0.7"
 authors = ["MobileCoin"]
 description = '''
 This crate contains necessary functions and utilities to perform verification of
