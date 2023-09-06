@@ -17,7 +17,7 @@ fn main() {
     let config = LedgerRouterConfig::parse();
 
     let enclave_path = env::current_exe()
-        .expect("Could not get the path of our executable")
+        .expect("Could get the path of our executable")
         .with_file_name(ENCLAVE_FILE);
 
     if let Some(enclave_path_str) = enclave_path.to_str() {
