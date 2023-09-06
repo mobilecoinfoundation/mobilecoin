@@ -48,7 +48,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Generate version metadata
       id: meta
@@ -81,7 +81,7 @@ jobs:
     steps:
     - name: Checkout
       if: "! contains(github.event.head_commit.message, '[skip build]')"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Write environment values
       if: "! contains(github.event.head_commit.message, '[skip build]')"
@@ -193,7 +193,7 @@ jobs:
     steps:
     - name: Checkout
       if: "! contains(github.event.head_commit.message, '[skip build]')"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Add protobuf-compiler
       if: "! contains(github.event.head_commit.message, '[skip build]')"
@@ -240,7 +240,7 @@ jobs:
     - generate-metadata
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Generate Docker Tags
       id: docker_meta
@@ -298,7 +298,7 @@ jobs:
         - watcher
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Cache rust build binaries
       id: rust_artifact_cache
@@ -370,7 +370,7 @@ jobs:
     steps:
     - name: Checkout
       if: "! contains(github.event.head_commit.message, '[skip charts]')"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Package and publish chart
       if: "! contains(github.event.head_commit.message, '[skip charts]')"
