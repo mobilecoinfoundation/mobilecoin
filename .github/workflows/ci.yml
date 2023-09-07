@@ -676,7 +676,7 @@ jobs:
         name: junit-xml
     - name: Publish Test Report
       if: success() || failure()
-      uses: mikepenz/action-junit-report@v3
+      uses: mikepenz/action-junit-report@v4
       with:
         check_name: Test Report
         report_paths: '**/*.xml'
