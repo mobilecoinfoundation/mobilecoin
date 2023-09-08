@@ -16,7 +16,7 @@ path = "src/bin/ingest.rs"
 clap = { version = "4.3", features = ["derive", "env"] }
 grpcio = "0.12"
 retry = "2.0"
-tempfile = "3.7"
+tempfile = "3.8"
 
 # mc
 mc-account-keys = { path = "../../account-keys" }
