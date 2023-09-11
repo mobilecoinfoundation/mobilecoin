@@ -20,9 +20,6 @@ pub enum Error {
     /// Invalid curve point
     InvalidCurvePoint,
 
-    /// Invalid curve scalar
-    InvalidCurveScalar,
-
     /// The signature was not able to be validated
     InvalidSignature,
 
