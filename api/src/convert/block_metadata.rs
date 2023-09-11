@@ -3,7 +3,7 @@
 //! Convert to/from blockchain::BlockMetadataContents.
 
 use crate::{blockchain, ConversionError};
-use mc_blockchain_types::{BlockMetadata, BlockMetadataContents};
+use mc_blockchain_types::{AttestationEvidence, BlockMetadata, BlockMetadataContents};
 use mc_common::ResponderId;
 use std::str::FromStr;
 
@@ -12,7 +12,12 @@ impl From<&BlockMetadataContents> for blockchain::BlockMetadataContents {
         let mut proto = Self::new();
         proto.set_block_id(src.block_id().into());
         proto.set_quorum_set(src.quorum_set().into());
-        proto.set_verification_report(src.verification_report().into());
+        match src.attestation_evidence() {
+            AttestationEvidence::DcapEvidence(evidence) => proto.set_dcap_evidence(evidence.into()),
+            AttestationEvidence::VerificationReport(report) => {
+                proto.set_verification_report(report.into())
+            }
+        }
         proto.set_responder_id(src.responder_id().to_string());
         proto
     }
@@ -24,13 +29,27 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
     fn try_from(src: &blockchain::BlockMetadataContents) -> Result<Self, Self::Error> {
         let block_id = src.get_block_id().try_into()?;
         let quorum_set = src.get_quorum_set().try_into()?;
-        let report = src.get_verification_report().try_into()?;
+        let attestation_evidence = match (src.has_dcap_evidence(), src.has_verification_report()) {
+            (true, false) => {
+                let evidence = src.get_dcap_evidence().try_into()?;
+                AttestationEvidence::DcapEvidence(evidence)
+            }
+            (false, true) => {
+                let report = src.get_verification_report().try_into()?;
+                AttestationEvidence::VerificationReport(report)
+            }
+            _ => {
+                return Err(ConversionError::MissingField(
+                    "attestation_evidence".to_string(),
+                ))
+            }
+        };
         let responder_id = ResponderId::from_str(&src.responder_id)
             .map_err(|_| ConversionError::InvalidContents)?;
         Ok(BlockMetadataContents::new(
             block_id,
             quorum_set,
-            report,
+            attestation_evidence,
             responder_id,
         ))
     }

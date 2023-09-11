@@ -2803,6 +2803,7 @@ dependencies = [
  "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
+ "mc-util-serial",
  "mc-util-test-helper",
  "prost",
  "rand",

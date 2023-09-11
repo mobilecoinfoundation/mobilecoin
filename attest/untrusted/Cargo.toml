@@ -37,3 +37,4 @@ x509-cert = { version = "0.2.4", default-features = false, features = ["pem"] }
 
 [build-dependencies]
 mc-sgx-build = { path = "../../sgx/build" }
+
