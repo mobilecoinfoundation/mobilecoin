@@ -28,6 +28,9 @@ spec:
       spec:
         podManagementPolicy: {{ $.Values.fogLedgerRouter.podManagementPolicy }}
         replicas: {{ $.Values.fogLedgerRouter.replicaCount }}
+        persistentVolumeClaimRetentionPolicy:
+          whenDeleted: Delete
+          whenScaled: Delete
         selector:
           matchLabels:
             app: fog-ledger-router
@@ -267,6 +270,9 @@ spec:
     spec:
       podManagementPolicy: {{ $.Values.fogLedger.podManagementPolicy }}
       replicas: {{ $.Values.fogLedger.replicaCount }}
+      persistentVolumeClaimRetentionPolicy:
+        whenDeleted: Delete
+        whenScaled: Delete
       selector:
         matchLabels:
           app: fog-ledger-store
