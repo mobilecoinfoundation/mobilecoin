@@ -70,9 +70,5 @@ fn main() {
     });
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
-        if enclave.get_identity().is_err() {
-            mc_common::logger::log::error!(logger, "panicBasket IT'S HAPPENING panicBasket");
-            panic!("HERE! Restarting");
-        }
     }
 }

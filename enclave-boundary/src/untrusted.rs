@@ -52,7 +52,10 @@ pub fn make_variable_length_ecall(
                 sgx_status_t::SGX_SUCCESS => {
                     outbuf.truncate(outbuf_used);
                     break Ok(outbuf);
-                }
+                },
+                sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED => {
+                    panic!("Test panic");
+                },
                 other_retval => break (Err(other_retval)),
             },
             status => break Err(status),
