@@ -50,10 +50,7 @@ pub const BURN_ADDRESS_VIEW_PRIVATE_BYTES: [u8; 32] = [1u8; 32];
 
 /// The burn address view private key in the keys-crate wrapper type
 pub fn burn_address_view_private() -> RistrettoPrivate {
-    RistrettoPrivate::from(
-        Scalar::from_canonical_bytes(BURN_ADDRESS_VIEW_PRIVATE_BYTES)
-            .expect("Tests should have ensured a valid Scalar"),
-    )
+    RistrettoPrivate::from(Scalar::from_canonical_bytes(BURN_ADDRESS_VIEW_PRIVATE_BYTES).unwrap())
 }
 
 /// The public address for burning funds transparently.
@@ -120,8 +117,7 @@ fn burn_address_spend_public() -> RistrettoPoint {
 // that all addresses in MobileCoin are subaddresses, but it's simpler not to
 // have to do that.
 fn burn_address_view_public() -> RistrettoPoint {
-    Scalar::from_canonical_bytes(BURN_ADDRESS_VIEW_PRIVATE_BYTES)
-        .expect("Tests should have ensured a valid Scalar")
+    Scalar::from_canonical_bytes(BURN_ADDRESS_VIEW_PRIVATE_BYTES).unwrap()
         * burn_address_spend_public()
 }
 
