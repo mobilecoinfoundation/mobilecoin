@@ -13,7 +13,7 @@ spec:
   {{- with (include "fogServices.fogViewShardRangeGenerator" $ | fromYaml) }}
   shardSize: {{ .shardSize }}
   exceedBlockHeightBy: {{ .exceedBlockHeightBy }}
-  shardOverlap: {{ .exceedBlockHeightBy }}
+  shardOverlap: {{ .shardOverlap }}
   {{- end }}
   {{- with $.Values.blockHeighRetrieval }}
   blockCountQueryInterval: {{ .queryInterval | quote }}

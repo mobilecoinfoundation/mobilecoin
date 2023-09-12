@@ -1,7 +1,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 ### Chart wide values.
 nameOverride: ''
-fullnameOverride: ''
+fullnameOverride: 'fs'
 
 ###  mc-core-common-config child chart configuration.
 #    See ../mc-core-common-config for details.
