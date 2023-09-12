@@ -54,11 +54,20 @@ pub fn make_variable_length_ecall(
                     break Ok(outbuf);
                 },
                 sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED => {
-                    panic!("Test panic");
+                    panic!("HERE! Test panic");
                 },
-                other_retval => break (Err(other_retval)),
+                other_retval => {
+                    //eprintln!("HERE! {:?}", other_retval);
+                    break (Err(other_retval))
+                }
             },
-            status => break Err(status),
+            sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED => {
+                panic!("HERE! Outer Test panic");
+            },
+            status => {
+                //eprintln!("HERE! Outer {:?}", other_retval);
+                break Err(status)
+            },
         }
     }
 }
