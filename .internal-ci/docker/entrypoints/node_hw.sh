@@ -143,7 +143,6 @@ then
     then
         echo "Existing database found at ${MC_LEDGER_PATH}/data.mdb"
         echo "Migrating ledger to latest version"
-        cp /ledger/data.mdb "/ledger/data.mdb.$(date +%y%m%d-%H%M%S)"
         /usr/bin/mc-ledger-migration --ledger-db "${MC_LEDGER_PATH}"
     else
         # Try to find origin block from s3 archive - preserve existing data, testnet/mainnet
