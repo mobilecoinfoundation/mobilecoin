@@ -658,18 +658,17 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.26"
+version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec837a71355b28f6556dbd569b37b3f363091c0bd4b2e735674521b4c5fd9bc5"
+checksum = "defd4e7873dbddba6c7c91e199c7fcb946abc4a6a4ac3195400bcfb01b5de877"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "js-sys",
  "num-traits",
  "serde",
- "time 0.1.43",
  "wasm-bindgen",
- "winapi",
+ "windows-targets",
 ]
 
 [[package]]
@@ -847,7 +846,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7efb37c3e1ccb1ff97164ad95ac1606e8ccd35b3fa0a7d99a304c7f4a428cc24"
 dependencies = [
  "percent-encoding",
- "time 0.3.15",
+ "time",
  "version_check",
 ]
 
@@ -7515,7 +7514,7 @@ dependencies = [
  "serde_json",
  "state",
  "tempfile",
- "time 0.3.15",
+ "time",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -7562,7 +7561,7 @@ dependencies = [
  "smallvec",
  "stable-pattern",
  "state",
- "time 0.3.15",
+ "time",
  "tokio",
  "uncased",
 ]
@@ -8020,7 +8019,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "time 0.3.15",
+ "time",
  "url",
  "uuid",
 ]
@@ -8108,7 +8107,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros",
- "time 0.3.15",
+ "time",
 ]
 
 [[package]]
@@ -8323,7 +8322,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slog",
- "time 0.3.15",
+ "time",
 ]
 
 [[package]]
@@ -8358,7 +8357,7 @@ dependencies = [
  "slog",
  "term",
  "thread_local",
- "time 0.3.15",
+ "time",
 ]
 
 [[package]]
@@ -8603,16 +8602,6 @@ dependencies = [
  "log",
  "ordered-float",
  "threadpool",
-]
-
-[[package]]
-name = "time"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
-dependencies = [
- "libc",
- "winapi",
 ]
 
 [[package]]
