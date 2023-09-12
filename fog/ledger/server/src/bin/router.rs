@@ -63,7 +63,7 @@ fn main() {
         std::thread::sleep(Duration::from_secs(2700));
         match enc_clone.initiate_self_destruct() {
             Ok(v) => {
-                mc_common::logger::log::error!(log_clone, "self destruct executed {:?}", v);
+                mc_common::logger::log::error!(log_clone, format!("self destruct executed {:?}", v));
             },
             Err(error) => {
                 mc_common::logger::log::error!(log_clone, format!("self destruct err {:?}", error));
