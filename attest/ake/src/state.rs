@@ -110,3 +110,10 @@ where
 }
 
 impl<Cipher> State for Ready<Cipher> where Cipher: NoiseCipher {}
+
+/// The state after an auth response has been sent by a responder/received by
+/// an initiator, but no further communication can occur. A new handshake must
+/// be created in order to continue communication.
+pub struct Terminated;
+
+impl State for Terminated {}

@@ -4,7 +4,7 @@
 
 use crate::{
     AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
-    Start, Transition,
+    Start, Terminated, Transition, UnverifiedReport,
 };
 use alloc::vec::Vec;
 use mc_attest_core::{ReportDataMask, VerificationReport};
@@ -192,6 +192,37 @@ where
                     },
                     remote_report,
                 ))
+            }
+        }
+    }
+}
+
+/// AuthPending + UnverifiedReport => Terminated + VerificationReport
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedReport, VerificationReport>
+    for AuthPending<KexAlgo, Cipher, DigestAlgo>
+where
+    KexAlgo: Kex,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
+{
+    type Error = Error;
+
+    fn try_next<R: CryptoRng + RngCore>(
+        self,
+        _csprng: &mut R,
+        input: UnverifiedReport,
+    ) -> Result<(Terminated, VerificationReport), Self::Error> {
+        let output = self
+            .state
+            .read_message(input.as_ref())
+            .map_err(Error::HandshakeRead)?;
+        match output.status {
+            HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
+            HandshakeStatus::Complete(_) => {
+                let remote_report = VerificationReport::decode(output.payload.as_slice())
+                    .map_err(|_e| Error::ReportDeserialization)?;
+
+                Ok((Terminated, remote_report))
             }
         }
     }
