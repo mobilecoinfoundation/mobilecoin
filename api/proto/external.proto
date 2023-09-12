@@ -393,6 +393,23 @@ message Receipt {
     };
 }
 
+/// Structure for holding the contents of the Enclave's Report Data.
+/// The Enclave Quote's ReportData member contains a SHA256 hash of this
+/// structure's contents.
+message EnclaveReportDataContents {
+    /// The nonce used for generating the quote.
+    /// Must be exactly 16 bytes long (see mc-sgx-core-types::QuoteNonce).
+    bytes nonce = 1;
+
+    /// The public key of the enclave, it's an x25519 key.
+    /// Must be exactly 32 bytes long.
+    bytes key = 2;
+
+    /// An optional custom identity of the enclave.
+    /// Must be exactly 32 bytes long.
+    bytes custom_identity = 3;
+}
+
 /// The signature over an IAS JSON reponse, created by Intel
 message VerificationSignature {
     bytes contents = 1;

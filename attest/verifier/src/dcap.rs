@@ -140,8 +140,14 @@ impl VerificationMessage<ReportData> for ReportDataHashVerifier {
             writeln!(f, "{:pad$}  {line}", "")?;
         }
 
-        let hex = HexFmt(self.report_data.custom_identity());
-        writeln!(f, "{:pad$}- Custom identity: {hex:X}", "")?;
+        write!(f, "{:pad$}- Custom identity: ", "")?;
+        match self.report_data.custom_identity() {
+            Some(value) => {
+                let hex = HexFmt(value);
+                writeln!(f, "{hex:X}")?
+            }
+            None => writeln!(f, "<None>")?,
+        }
 
         self.report_data_verifier.fmt_padded(f, pad, result)
     }

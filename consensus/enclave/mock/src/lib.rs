@@ -99,7 +99,7 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
         let report_data = EnclaveReportDataContents::new(
             Default::default(),
             [0u8; 32].as_slice().try_into().expect("bad key"),
-            Default::default(),
+            None,
         );
         Ok((Report::default(), report_data))
     }
