@@ -39,6 +39,7 @@ pub struct LedgerSgxEnclave {
     eid: sgx_enclave_id_t,
     // Hold a reference counter to the enclave to prevent destruction.
     _enclave: Arc<SgxEnclave>,
+    logger: Logger,
 }
 
 impl ReportableEnclave for LedgerSgxEnclave {
@@ -81,7 +82,7 @@ impl LedgerSgxEnclave {
         enclave_path: path::PathBuf,
         self_id: &ResponderId,
         desired_capacity: u64,
-        _logger: Logger,
+        logger: Logger,
     ) -> LedgerSgxEnclave {
         let mut launch_token: sgx_launch_token_t = [0; 1024];
         let mut launch_token_updated: i32 = 0;
@@ -106,6 +107,7 @@ impl LedgerSgxEnclave {
         let sgx_enclave = LedgerSgxEnclave {
             eid: enclave.geteid(),
             _enclave: Arc::new(enclave),
+            logger: logger.clone(),
         };
 
         sgx_enclave
@@ -117,11 +119,19 @@ impl LedgerSgxEnclave {
 
     /// Takes serialized data, and fires to the corresponding ECALL.
     fn enclave_call(&self, inbuf: &[u8]) -> StdResult<Vec<u8>, SgxError> {
-        Ok(make_variable_length_ecall(
+        match make_variable_length_ecall(
             self.eid,
             ledger_enclave_call,
             inbuf,
-        )?)
+        ) {
+            Err(e) => {
+                mc_common::logger::log::error!(&self.logger, "HERE! ledger enclave call err: {:?}", e);
+                Err(e.into())
+            }
+            Ok(v) => {
+                Ok(v)
+            }
+        }
     }
 }
 

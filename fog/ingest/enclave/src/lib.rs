@@ -139,7 +139,7 @@ impl IngestSgxEnclave {
             inbuf,
         ) {
             Err(e) => {
-                mc_common::logger::log::error!(&self.logger, "HERE! enclave call err: {:?}", e);
+                mc_common::logger::log::error!(&self.logger, "HERE! ingest enclave call err: {:?}", e);
                 Err(e.into())
             }
             Ok(v) => {
