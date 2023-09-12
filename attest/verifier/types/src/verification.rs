@@ -30,7 +30,12 @@ const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
 const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
 const TAG_DCAP_EVIDENCE_REPORT_DATA: u32 = 3;
 
-// Quote3 and Collateral cannot trivially be made to implement prost::Message.
+// Quote3 and Collateral cannot trivially be made to implement prost::Message:
+//    - Quote3 is a already an opaque byte array which implements serde. Prost
+//      isn't brought in to mc-sgx-dcap-types to minimize dependencies.
+//    - Collateral is composed of X509-cert types which do not implement
+//      prost::Message.
+//
 // Since they implement serde Serialize and Deserialize though, we can manually
 // implement it for DcapEvidence. To do this, we use serde to serialize and
 // deserialize them to/from Vec<u8>
