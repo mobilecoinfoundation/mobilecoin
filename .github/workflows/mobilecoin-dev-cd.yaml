@@ -244,7 +244,7 @@ jobs:
 
     - name: Generate Docker Tags
       id: docker_meta
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@v5
       with:
         images: ${{ env.DOCKER_ORG }}/runtime-base
         flavor: |
@@ -314,7 +314,7 @@ jobs:
 
     - name: Generate Docker Tags
       id: docker_meta
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@v5
       with:
         images: ${{ env.DOCKER_ORG }}/${{ matrix.image }}
         tags: ${{ needs.generate-metadata.outputs.docker_tag }}
