@@ -23,12 +23,19 @@ use sha2::{Digest, Sha256};
 pub struct DcapEvidence {
     pub quote: Option<Quote3<Vec<u8>>>,
     pub collateral: Option<Collateral>,
+    pub report_data: Option<EnclaveReportDataContents>,
 }
 
 const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
 const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
+const TAG_DCAP_EVIDENCE_REPORT_DATA: u32 = 3;
 
-// Quote3 and Collateral cannot trivially be made to implement prost::Message.
+// Quote3 and Collateral cannot trivially be made to implement prost::Message:
+//    - Quote3 is a already an opaque byte array which implements serde. Prost
+//      isn't brought in to mc-sgx-dcap-types to minimize dependencies.
+//    - Collateral is composed of X509-cert types which do not implement
+//      prost::Message.
+//
 // Since they implement serde Serialize and Deserialize though, we can manually
 // implement it for DcapEvidence. To do this, we use serde to serialize and
 // deserialize them to/from Vec<u8>
@@ -44,6 +51,9 @@ impl Message for DcapEvidence {
         let collateral_bytes: Vec<u8> =
             mc_util_serial::serialize(&self.collateral).expect("Failed to serialize Collateral");
         encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
+        let report_data_bytes: Vec<u8> = mc_util_serial::serialize(&self.report_data)
+            .expect("Failed to serialize EnclaveReportDataContents");
+        encoding::bytes::encode(TAG_DCAP_EVIDENCE_REPORT_DATA, &report_data_bytes, buf);
     }
 
     fn merge_field<B>(
@@ -77,6 +87,18 @@ impl Message for DcapEvidence {
                 self.collateral = collateral;
                 Ok(())
             }
+            TAG_DCAP_EVIDENCE_REPORT_DATA => {
+                let mut vbuf = Vec::new();
+                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+                let report_data: Option<EnclaveReportDataContents> =
+                    mc_util_serial::deserialize(vbuf.as_slice()).map_err(|_| {
+                        DecodeError::new(
+                            "Failed to deserialize EnclaveReportDataContents from bytes",
+                        )
+                    })?;
+                self.report_data = report_data;
+                Ok(())
+            }
             _ => encoding::skip_field(wire_type, tag, buf, ctx),
         }
     }
@@ -86,9 +108,12 @@ impl Message for DcapEvidence {
             mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
         let collateral_bytes: Vec<u8> =
             mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
+        let report_data_bytes: Vec<u8> = mc_util_serial::serialize(&self.report_data)
+            .expect("Failed serializing EnclaveReportDataContents");
 
         encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
             + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
+            + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_REPORT_DATA, &report_data_bytes)
     }
 
     fn clear(&mut self) {
