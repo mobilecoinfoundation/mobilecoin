@@ -62,6 +62,7 @@ pub struct IngestSgxEnclave {
     // This is a proxy object, its lifetime is not in lock-step with the
     // actual enclave.
     _enclave: Arc<SgxEnclave>,
+    logger: Logger,
 }
 
 impl IngestSgxEnclave {
@@ -116,6 +117,7 @@ impl IngestSgxEnclave {
         let sgx_enclave = IngestSgxEnclave {
             eid: enclave.geteid(),
             _enclave: Arc::new(enclave),
+            logger: logger.clone(),
         };
 
         let params = IngestEnclaveInitParams {
@@ -131,11 +133,19 @@ impl IngestSgxEnclave {
 
     /// Takes serialized data, and fires to the corresponding ECALL.
     fn enclave_call(&self, inbuf: &[u8]) -> StdResult<Vec<u8>, SgxError> {
-        Ok(make_variable_length_ecall(
+        match make_variable_length_ecall(
             self.eid,
             ingest_enclave_call,
             inbuf,
-        )?)
+        ) {
+            Err(e) => {
+                mc_common::logger::log::error!(&self.logger, "HERE! enclave call err: {:?}", e);
+                Err(e.into())
+            }
+            Ok(v) => {
+                Ok(v)
+            }
+        }
     }
 }
 
