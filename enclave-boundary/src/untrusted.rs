@@ -47,18 +47,6 @@ pub fn make_variable_length_ecall(
                 &mut outbuf_retry_id,
             )
         };
-        if is_fatal_sgx_status(retval) {
-            panic!(
-                "Enclave reported fatal error: ecall retval: {:?}. Panicking to restart.",
-                retval
-            );
-        }
-        if is_fatal_sgx_status(result) {
-            panic!(
-                "Enclave reported fatal error: ecall returned {:?}. Panicking to restart.",
-                result
-            );
-        }
         match result {
             sgx_status_t::SGX_SUCCESS => match retval {
                 sgx_status_t::SGX_ERROR_OUT_OF_MEMORY => continue,
@@ -66,8 +54,20 @@ pub fn make_variable_length_ecall(
                     outbuf.truncate(outbuf_used);
                     break Ok(outbuf);
                 }
+                other_retval if is_fatal_sgx_status(other_retval) => {
+                    panic!(
+                        "Enclave reported fatal error: ecall retval: {:?}. Panicking to restart.",
+                        retval
+                    );
+                }
                 other_retval => break (Err(other_retval)),
             },
+            status if is_fatal_sgx_status(status) => {
+                panic!(
+                    "Enclave reported fatal error: ecall returned {:?}. Panicking to restart.",
+                    result
+                );
+            }
             status => break Err(status),
         }
     }
