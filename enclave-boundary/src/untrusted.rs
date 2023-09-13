@@ -64,7 +64,7 @@ pub fn make_variable_length_ecall(
             },
             status if is_fatal_sgx_status(status) => {
                 panic!(
-                    "Enclave reported fatal error: ecall returned {:?}. Panicking to restart.",
+                    "Enclave reported fatal error: ecall returned {:?}",
                     result
                 );
             }
