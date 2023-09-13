@@ -5,7 +5,7 @@ use std::env;
 use clap::Parser;
 use mc_attest_net::{Client, RaClient};
 use mc_common::logger::log;
-use mc_fog_ledger_enclave::{LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE};
+use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{LedgerRouterConfig, LedgerRouterServer};
 use mc_ledger_db::LedgerDB;
 use mc_watcher::watcher_db::WatcherDB;
@@ -65,9 +65,5 @@ fn main() {
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(1000));
-        if enclave.get_identity().is_err() {
-            mc_common::logger::log::crit!(logger, "get_identity call to ledger enclave failed. Enclave may not be running or is not in a healthy state.");
-            panic!("Panicking to restart enclave");
-        }
     }
 }
