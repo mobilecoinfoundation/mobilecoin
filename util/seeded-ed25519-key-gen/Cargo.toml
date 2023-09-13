@@ -11,7 +11,7 @@ mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../from-random" }
 mc-util-parse = { path = "../parse" }
 
-clap = { version = "4.3", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 pem = "3.0"
 rand = "0.8"
 rand_hc = "0.3"

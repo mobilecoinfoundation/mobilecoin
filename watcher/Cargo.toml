@@ -39,7 +39,7 @@ mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "api" }
 
 aes-gcm = "0.10.2"
-clap = { version = "4.3", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.1"

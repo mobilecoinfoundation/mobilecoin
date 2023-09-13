@@ -36,7 +36,7 @@ mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
 
 base64 = "0.21"
-clap = { version = "4.3", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"
 pem = "3.0"
