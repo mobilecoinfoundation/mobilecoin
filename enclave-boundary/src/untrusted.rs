@@ -57,7 +57,7 @@ pub fn make_variable_length_ecall(
                 other_retval if is_fatal_sgx_status(other_retval) => {
                     panic!(
                         "Enclave reported fatal error: ecall retval: {:?}",
-                        retval
+                        other_retval
                     );
                 }
                 other_retval => break (Err(other_retval)),
@@ -65,7 +65,7 @@ pub fn make_variable_length_ecall(
             status if is_fatal_sgx_status(status) => {
                 panic!(
                     "Enclave reported fatal error: ecall returned {:?}",
-                    result
+                    status
                 );
             }
             status => break Err(status),
