@@ -344,8 +344,7 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 [[package]]
 name = "cpufeatures"
 version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a17b76ff3a4162b0b27f354a0c87015ddad39d35f9c0c36607a3bdd175dde1f1"
+source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=f04659dd5dd39fd2f02a4bf14c39a39825d1c8d3#f04659dd5dd39fd2f02a4bf14c39a39825d1c8d3"
 dependencies = [
  "libc",
 ]
@@ -2721,8 +2720,3 @@ dependencies = [
  "syn 1.0.109",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "cpufeatures"
-version = "0.2.2"
-source = "git+https://github.com/mobilecoinfoundation/RustCrypto-utils.git?rev=7c1804bf4f95ef84a7a53be93552ddf1708135bb#7c1804bf4f95ef84a7a53be93552ddf1708135bb"
