@@ -35,8 +35,8 @@ pub fn make_variable_length_ecall(
         }
 
         let mut outbuf = vec![0u8; outbuf_used];
-        match unsafe {
-            ecall_fcn(
+        unsafe {
+            let result = ecall_fcn(
                 eid,
                 &mut retval,
                 inbuf.as_ptr(),
@@ -44,30 +44,36 @@ pub fn make_variable_length_ecall(
                 outbuf.as_mut_ptr(),
                 outbuf.len(),
                 &mut outbuf_used,
-                &mut outbuf_retry_id,
-            )
-        } {
-            sgx_status_t::SGX_SUCCESS => match retval {
-                sgx_status_t::SGX_ERROR_OUT_OF_MEMORY => continue,
-                sgx_status_t::SGX_SUCCESS => {
-                    outbuf.truncate(outbuf_used);
-                    break Ok(outbuf);
+                &mut outbuf_retry_id
+            );
+            match result {
+                sgx_status_t::SGX_SUCCESS => match retval {
+                    sgx_status_t::SGX_ERROR_OUT_OF_MEMORY => continue,
+                    sgx_status_t::SGX_SUCCESS => {
+                        outbuf.truncate(outbuf_used);
+                        break Ok(outbuf);
+                    },
+                    // Fatal runtime errors
+                    sgx_status_t::SGX_ERROR_INVALID_FUNCTION |
+                        sgx_status_t::SGX_ERROR_OUT_OF_TCS |
+                        sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED |
+                        sgx_status_t::SGX_ERROR_ECALL_NOT_ALLOWED |
+                        sgx_status_t::SGX_ERROR_OCALL_NOT_ALLOWED |
+                        sgx_status_t::SGX_ERROR_STACK_OVERRUN => {
+                        panic!("Enclave reported fatal error: ecall retval: {:?}. Panicking to restart.", retval);
+                    },
+                    other_retval => break (Err(other_retval)),
                 },
-                sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED => {
-                    panic!("HERE! Test panic");
-                },
-                other_retval => {
-                    //eprintln!("HERE! {:?}", other_retval);
-                    break (Err(other_retval))
+                sgx_status_t::SGX_ERROR_INVALID_FUNCTION |
+                    sgx_status_t::SGX_ERROR_OUT_OF_TCS |
+                    sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED |
+                    sgx_status_t::SGX_ERROR_ECALL_NOT_ALLOWED |
+                    sgx_status_t::SGX_ERROR_OCALL_NOT_ALLOWED |
+                    sgx_status_t::SGX_ERROR_STACK_OVERRUN => {
+                    panic!("Enclave reported fatal error: ecall returned {:?}. Panicking to restart.", result);
                 }
-            },
-            sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED => {
-                panic!("HERE! Outer Test panic");
-            },
-            status => {
-                //eprintln!("HERE! Outer {:?}", other_retval);
-                break Err(status)
-            },
+                status => break Err(status),
+            }
         }
     }
 }
