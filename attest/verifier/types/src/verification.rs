@@ -123,6 +123,33 @@ impl Message for DcapEvidence {
     }
 }
 
+// This is implementation is tested in `attest/untrusted/src/sim.rs` as the
+// quote and collateral are not trivial to construct.
+impl Digestible for DcapEvidence {
+    fn append_to_transcript<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        let typename = b"DcapEvidence";
+        transcript.append_agg_header(context, typename);
+        if let Some(quote) = &self.quote {
+            transcript.append_primitive(context, b"quote", quote.as_ref());
+        }
+        if let Some(collateral) = &self.collateral {
+            transcript.append_primitive(
+                context,
+                b"collateral",
+                mc_util_serial::serialize(collateral).expect("Failed to serialize Collateral"),
+            );
+        }
+        if let Some(report_data) = &self.report_data {
+            report_data.append_to_transcript(context, transcript);
+        }
+        transcript.append_agg_closer(context, typename);
+    }
+}
+
 #[derive(Clone, Oneof)]
 pub enum EvidenceKind {
     #[prost(message, tag = "4")]

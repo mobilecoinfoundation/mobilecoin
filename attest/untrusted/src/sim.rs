@@ -53,35 +53,49 @@ impl SimQuotingEnclave {
     }
 
     pub fn collateral<Q: AsRef<[u8]>>(_quote: &Quote3<Q>) -> Collateral {
-        let mut tcb_info = SIM_TCB_INFO.to_owned();
-        let mut qe_identity = SIM_QE_IDENTITY.to_owned();
-
-        let mut crl = SIM_CRL.to_vec();
-        crl.push(0);
-
-        // Normally the PCK chain would not be the same one used on TCB info and the QE
-        // identity, but they share the same root so it works for this sim
-        // implementation.
-        let mut pem_chain = IAS_SIM_SIGNING_CHAIN.as_bytes().to_vec();
-
-        let mut sgx_collateral = version_3_1_empty_collateral();
-        sgx_collateral.root_ca_crl = crl.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.root_ca_crl_size = crl.len() as u32;
-        sgx_collateral.pck_crl_issuer_chain = pem_chain.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.pck_crl_issuer_chain_size = pem_chain.len() as u32;
-        sgx_collateral.pck_crl = crl.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.pck_crl_size = crl.len() as u32;
-        sgx_collateral.tcb_info_issuer_chain = pem_chain.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.tcb_info_issuer_chain_size = pem_chain.len() as u32;
-        sgx_collateral.tcb_info = tcb_info.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.tcb_info_size = tcb_info.len() as u32;
-        sgx_collateral.qe_identity_issuer_chain = pem_chain.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.qe_identity_issuer_chain_size = pem_chain.len() as u32;
-        sgx_collateral.qe_identity = qe_identity.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.qe_identity_size = qe_identity.len() as u32;
-
-        Collateral::try_from(&sgx_collateral).expect("Failed to convert collateral")
+        collateral_from_from_raw_data(
+            SIM_TCB_INFO,
+            SIM_QE_IDENTITY,
+            SIM_CRL,
+            IAS_SIM_SIGNING_CHAIN,
+        )
     }
+}
+
+fn collateral_from_from_raw_data(
+    tcb_info: impl AsRef<str>,
+    qe_identity: impl AsRef<str>,
+    crl: impl AsRef<[u8]>,
+    pem_chain: impl AsRef<[u8]>,
+) -> Collateral {
+    let mut tcb_info = tcb_info.as_ref().to_owned();
+    let mut qe_identity = qe_identity.as_ref().to_owned();
+
+    let mut crl = crl.as_ref().to_vec();
+    crl.push(0);
+
+    // Normally the PCK chain would not be the same one used on TCB info and the QE
+    // identity, but they share the same root so it works for this sim
+    // implementation.
+    let mut pem_chain = pem_chain.as_ref().to_vec();
+
+    let mut sgx_collateral = version_3_1_empty_collateral();
+    sgx_collateral.root_ca_crl = crl.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.root_ca_crl_size = crl.len() as u32;
+    sgx_collateral.pck_crl_issuer_chain = pem_chain.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.pck_crl_issuer_chain_size = pem_chain.len() as u32;
+    sgx_collateral.pck_crl = crl.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.pck_crl_size = crl.len() as u32;
+    sgx_collateral.tcb_info_issuer_chain = pem_chain.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.tcb_info_issuer_chain_size = pem_chain.len() as u32;
+    sgx_collateral.tcb_info = tcb_info.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.tcb_info_size = tcb_info.len() as u32;
+    sgx_collateral.qe_identity_issuer_chain = pem_chain.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.qe_identity_issuer_chain_size = pem_chain.len() as u32;
+    sgx_collateral.qe_identity = qe_identity.as_mut_ptr() as *mut core::ffi::c_char;
+    sgx_collateral.qe_identity_size = qe_identity.len() as u32;
+
+    Collateral::try_from(&sgx_collateral).expect("Failed to convert collateral")
 }
 
 fn version_3_1_empty_collateral() -> sgx_ql_qve_collateral_t {
@@ -205,10 +219,12 @@ fn c_struct_as_bytes<T>(c_struct: &T) -> &[u8] {
 #[cfg(test)]
 mod test {
     use super::*;
+    use mc_api::external;
     use mc_attest_core::DcapEvidence;
     use mc_attest_verifier::DcapVerifier;
     use mc_attest_verifier_types::EnclaveReportDataContents;
     use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
+    use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
     use p256::pkcs8::der::DateTime;
     use prost::Message;
@@ -274,7 +290,7 @@ mod test {
     }
 
     #[test]
-    fn test_dcap_evidence_serialization() {
+    fn test_dcap_evidence_prost_serialization() {
         let mut buf: Vec<u8> = vec![];
         let uut: DcapEvidence = Default::default();
         uut.encode(&mut buf)
@@ -301,5 +317,126 @@ mod test {
         assert_eq!(uut, decoded);
         uut.clear();
         assert_eq!(DcapEvidence::default(), uut);
+    }
+
+    #[test]
+    fn default_dcap_evidence_digest_is_not_an_empty_digest() {
+        let empty_evidence = DcapEvidence::default();
+        let digest = empty_evidence.digest32::<MerlinTranscript>(b"");
+
+        let mut empty_digest = [0u8; 32];
+        let transcript: MerlinTranscript = DigestTranscript::new();
+        transcript.extract_digest(&mut empty_digest);
+
+        assert_ne!(digest, empty_digest);
+    }
+
+    #[test]
+    fn dcap_evidence_digest() {
+        let (report, report_data) = report_and_report_data();
+        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
+        let tcb_info = SIM_TCB_INFO.to_owned();
+        let collateral = collateral_from_from_raw_data(
+            &tcb_info,
+            SIM_QE_IDENTITY,
+            SIM_CRL,
+            IAS_SIM_SIGNING_CHAIN,
+        );
+
+        let evidence_1 = DcapEvidence {
+            quote: Some(quote.clone()),
+            collateral: Some(collateral.clone()),
+            report_data: Some(report_data.clone()),
+        };
+
+        let evidence_2 = DcapEvidence {
+            quote: Some(quote.clone()),
+            collateral: Some(collateral.clone()),
+            report_data: Some(report_data.clone()),
+        };
+
+        let digest_1 = evidence_1.digest32::<MerlinTranscript>(b"");
+        let digest_2 = evidence_2.digest32::<MerlinTranscript>(b"");
+        assert_eq!(digest_1, digest_2);
+
+        let mut quote_bytes: Vec<u8> = quote.as_ref().to_vec();
+        // Need to jump past the `Version` and `Attestation Type` bytes or else
+        // building a quote will fail.
+        quote_bytes[4] += 1;
+        let modified_quote =
+            Quote3::try_from(quote_bytes).expect("Failed to create modified quote");
+        let modified_quote_evidence = DcapEvidence {
+            quote: Some(modified_quote),
+            collateral: Some(collateral.clone()),
+            report_data: Some(report_data.clone()),
+        };
+
+        let modified_quote_digest = modified_quote_evidence.digest32::<MerlinTranscript>(b"");
+        assert_ne!(digest_1, modified_quote_digest);
+
+        // The collateral doesn't decode the TCB json so any character can be
+        // added and still create the TCB info.
+        let mut modified_tcb_info = tcb_info;
+        modified_tcb_info.push('\0');
+
+        let modified_collateral = collateral_from_from_raw_data(
+            &modified_tcb_info,
+            SIM_QE_IDENTITY,
+            SIM_CRL,
+            IAS_SIM_SIGNING_CHAIN,
+        );
+
+        let modified_collateral_evidence = DcapEvidence {
+            quote: Some(quote.clone()),
+            collateral: Some(modified_collateral),
+            report_data: Some(report_data.clone()),
+        };
+
+        let modified_collateral_digest =
+            modified_collateral_evidence.digest32::<MerlinTranscript>(b"");
+        assert_ne!(digest_1, modified_collateral_digest);
+
+        let mut modified_nonce = report_data.nonce().clone();
+        let nonce_bytes: &mut [u8] = modified_nonce.as_mut();
+        nonce_bytes[0] += 1;
+
+        let modified_report_data = EnclaveReportDataContents::new(
+            modified_nonce,
+            report_data.key().clone(),
+            report_data.custom_identity().cloned(),
+        );
+
+        let modified_report_data_evidence = DcapEvidence {
+            quote: Some(quote),
+            collateral: Some(collateral),
+            report_data: Some(modified_report_data),
+        };
+
+        let modified_report_data_digest =
+            modified_report_data_evidence.digest32::<MerlinTranscript>(b"");
+        assert_ne!(digest_1, modified_report_data_digest);
+    }
+
+    #[test]
+    fn dcap_evidence_to_external_roundtrip() {
+        let report = Report::default();
+        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = SimQuotingEnclave::collateral(&quote);
+        let report_data = EnclaveReportDataContents::new(
+            [0x32u8; 16].into(),
+            [0x77u8; 32].as_slice().try_into().expect("bad key"),
+            [0xCCu8; 32],
+        );
+
+        let evidence = DcapEvidence {
+            quote: Some(quote),
+            collateral: Some(collateral),
+            report_data: Some(report_data),
+        };
+
+        let external_evidence = external::DcapEvidence::from(&evidence);
+        let converted_evidence =
+            DcapEvidence::try_from(&external_evidence).expect("Failed to convert evidence");
+        assert_eq!(evidence, converted_evidence);
     }
 }

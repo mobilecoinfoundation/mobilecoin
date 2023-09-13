@@ -410,6 +410,18 @@ message EnclaveReportDataContents {
     bytes custom_identity = 3;
 }
 
+/// Evidence for DCAP attestation
+message DcapEvidence {
+    /// The quote from the enclave
+    bytes quote = 1;
+
+    /// The collateral used for verifying the quote signatures
+    bytes collateral = 2;
+
+    /// The data that represents the hash stored in the quote's `ReportData`.
+    EnclaveReportDataContents enclave_report_data_contents = 3;
+}
+
 /// The signature over an IAS JSON reponse, created by Intel
 message VerificationSignature {
     bytes contents = 1;

@@ -21,6 +21,7 @@ mod account_key;
 mod amount;
 mod compressed_ristretto;
 mod curve_scalar;
+mod dcap_evidence;
 mod ed25519_multisig;
 mod ed25519_signature;
 mod enclave_report_data_contents;

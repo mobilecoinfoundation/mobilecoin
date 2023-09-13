@@ -29,6 +29,7 @@ bs58 = "0.4.0"
 crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 mc-sgx-core-types = "0.7.5"
+mc-sgx-dcap-types = "0.7.5"
 protobuf = "2.27.1"
 
 curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
