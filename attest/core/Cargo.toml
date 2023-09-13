@@ -42,7 +42,7 @@ digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 hex_fmt = "0.3"
-prost = { version = "0.11", default-features = false }
+prost = { version = "0.12", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 rjson = "0.3.1"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
