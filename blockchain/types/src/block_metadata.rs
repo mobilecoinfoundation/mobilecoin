@@ -189,38 +189,39 @@ mod test {
 
     #[test]
     fn metadata_contents_version_3_works_with_version_4() {
-        let quorum_set = QuorumSet::new(
-            2,
-            vec![
-                QuorumSetMember::Node(test_node_id(9)),
-                QuorumSetMember::Node(test_node_id(8)),
-                QuorumSetMember::Node(test_node_id(7)),
-            ],
-        );
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let report = mc_blockchain_test_utils::make_verification_report(&mut rng);
+            let quorum_set = QuorumSet::new(
+                2,
+                vec![
+                    QuorumSetMember::Node(test_node_id(9)),
+                    QuorumSetMember::Node(test_node_id(8)),
+                    QuorumSetMember::Node(test_node_id(7)),
+                ],
+            );
 
-        let block_v3 = BlockMetadataContentsV3 {
-            block_id: BlockID([1; 32]),
-            quorum_set: quorum_set.clone(),
-            verification_report: VerificationReport::default(),
-            responder_id: ResponderId("hello".into()),
-        };
+            let block_v3 = BlockMetadataContentsV3 {
+                block_id: BlockID([1; 32]),
+                quorum_set: quorum_set.clone(),
+                verification_report: report.clone(),
+                responder_id: ResponderId("hello".into()),
+            };
 
-        let bytes = mc_util_serial::encode(&block_v3);
+            let bytes = mc_util_serial::encode(&block_v3);
 
-        let block_v4: BlockMetadataContents = mc_util_serial::decode(&bytes).unwrap();
+            let block_v4: BlockMetadataContents = mc_util_serial::decode(&bytes).unwrap();
 
-        assert_eq!(block_v4.block_id(), &BlockID([1; 32]));
-        assert_eq!(block_v4.quorum_set(), &quorum_set);
-        assert_eq!(block_v4.responder_id(), &ResponderId("hello".into()));
-        assert_eq!(
-            block_v4.attestation_evidence,
-            Some(AttestationEvidence::VerificationReport(
-                VerificationReport::default()
-            ))
-        );
+            assert_eq!(block_v4.block_id(), &BlockID([1; 32]));
+            assert_eq!(block_v4.quorum_set(), &quorum_set);
+            assert_eq!(block_v4.responder_id(), &ResponderId("hello".into()));
+            assert_eq!(
+                block_v4.attestation_evidence,
+                Some(AttestationEvidence::VerificationReport(report))
+            );
 
-        let block_v3_digest = block_v3.digest32::<MerlinTranscript>(b"");
-        let block_v4_digest = block_v4.digest32::<MerlinTranscript>(b"");
-        assert_eq!(block_v3_digest, block_v4_digest);
+            let block_v3_digest = block_v3.digest32::<MerlinTranscript>(b"");
+            let block_v4_digest = block_v4.digest32::<MerlinTranscript>(b"");
+            assert_eq!(block_v3_digest, block_v4_digest);
+        })
     }
 }
