@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-verifier-types"
-version = "5.0.7"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "This crate contains the type definitions for attestation"

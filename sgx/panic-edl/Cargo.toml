@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-panic-edl"
-version = "5.0.7"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
