@@ -29,16 +29,20 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
     fn try_from(src: &blockchain::BlockMetadataContents) -> Result<Self, Self::Error> {
         let block_id = src.get_block_id().try_into()?;
         let quorum_set = src.get_quorum_set().try_into()?;
-        let attestation_evidence = match (src.has_dcap_evidence(), src.has_verification_report()) {
-            (true, false) => {
-                let evidence = src.get_dcap_evidence().try_into()?;
-                AttestationEvidence::DcapEvidence(evidence)
+        let attestation_evidence = match &src.attestation_evidence {
+            Some(evidence) => {
+                match evidence {
+                    blockchain::BlockMetadataContents_oneof_attestation_evidence::dcap_evidence(evidence) => {
+                        let evidence = evidence.try_into()?;
+                        AttestationEvidence::DcapEvidence(evidence)
+                    }
+                    blockchain::BlockMetadataContents_oneof_attestation_evidence::verification_report(report) => {
+                        let report = report.try_into()?;
+                        AttestationEvidence::VerificationReport(report)
+                    }
+                }
             }
-            (false, true) => {
-                let report = src.get_verification_report().try_into()?;
-                AttestationEvidence::VerificationReport(report)
-            }
-            _ => {
+            None => {
                 return Err(ConversionError::MissingField(
                     "attestation_evidence".to_string(),
                 ))
