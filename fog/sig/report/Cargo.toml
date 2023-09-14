@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sig-report"
-version = "5.0.7"
+version = "5.0.8"
 authors = ["MobileCoin"]
 description = "Create and verify fog report signatures"
 edition = "2021"
