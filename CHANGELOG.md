@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.8]
+
+### Changed
+
+- Previously the application running the ledger enclave would perform a periodic
+  check to see if the ledger enclave was in a good state. Now all enclave
+  runners will panic if an enclave call comes back with a fatal SGX error.
+  ([#3526])
+
+### Fixed
+
+#### Deployments
+
+- fix: shardOverlap ([#3545])
+
+### Removed
+
+#### Deployments
+
+- removed backing up of ledger database ([#3558])
+
+[#3545]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3545
+[#3549]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3549
+[#3558]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3558
+
 ## [5.0.7]
 
 ### Added
