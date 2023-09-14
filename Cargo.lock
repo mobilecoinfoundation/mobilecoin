@@ -2504,6 +2504,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
+ "mc-sgx-core-types",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-builder",
  "mc-transaction-core",

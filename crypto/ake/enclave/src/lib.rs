@@ -654,8 +654,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let report_data_bytes: &mut [u8] = report_data.as_mut();
         let identity_bytes: &[u8] = report_contents.key().as_ref();
         report_data_bytes[..identity_bytes.len()].copy_from_slice(identity_bytes);
-        report_data_bytes[identity_bytes.len()..]
-            .copy_from_slice(report_contents.custom_identity());
+        if let Some(id) = report_contents.custom_identity() {
+            report_data_bytes[identity_bytes.len()..identity_bytes.len() + id.len()]
+                .copy_from_slice(id);
+        }
 
         // Actually get the EREPORT
         let report = Report::new(Some(&qe_info), Some(&report_data))?;
