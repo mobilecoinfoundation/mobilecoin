@@ -2,7 +2,10 @@
 
 //! Convert to/from blockchain::BlockMetadataContents.
 
-use crate::{blockchain, ConversionError};
+use crate::{
+    blockchain::{self, BlockMetadataContents_oneof_attestation_evidence},
+    ConversionError,
+};
 use mc_blockchain_types::{AttestationEvidence, BlockMetadata, BlockMetadataContents};
 use mc_common::ResponderId;
 use std::str::FromStr;
@@ -30,17 +33,13 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
         let block_id = src.get_block_id().try_into()?;
         let quorum_set = src.get_quorum_set().try_into()?;
         let attestation_evidence = match &src.attestation_evidence {
-            Some(evidence) => {
-                match evidence {
-                    blockchain::BlockMetadataContents_oneof_attestation_evidence::dcap_evidence(evidence) => {
-                        let evidence = evidence.try_into()?;
-                        AttestationEvidence::DcapEvidence(evidence)
-                    }
-                    blockchain::BlockMetadataContents_oneof_attestation_evidence::verification_report(report) => {
-                        let report = report.try_into()?;
-                        AttestationEvidence::VerificationReport(report)
-                    }
-                }
+            Some(BlockMetadataContents_oneof_attestation_evidence::dcap_evidence(evidence)) => {
+                let evidence = evidence.try_into()?;
+                AttestationEvidence::DcapEvidence(evidence)
+            }
+            Some(BlockMetadataContents_oneof_attestation_evidence::verification_report(report)) => {
+                let report = report.try_into()?;
+                AttestationEvidence::VerificationReport(report)
             }
             None => {
                 return Err(ConversionError::MissingField(
