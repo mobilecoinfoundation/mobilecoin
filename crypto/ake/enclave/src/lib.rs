@@ -59,7 +59,8 @@ pub use identity::{EnclaveIdentity, NullIdentity};
 
 /// State associated to Attested Authenticated Key Exchange held by an enclave,
 /// including for peers and for clients.
-/// This also includes cached IAS reports, and data that goes in those reports
+/// This also includes cached attestation evidence, and data that goes in the
+/// attestation evidence
 pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// ResponderId used for peer connections
     peer_self_id: Mutex<Option<ResponderId>>,
@@ -82,8 +83,8 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// A map of generated quotes, awaiting reporting and signature by IAS.
     ias_pending: Mutex<LruCache<IasNonce, Quote>>,
 
-    /// The cached IAS report, if any.
-    current_ias_report: Mutex<Option<VerificationReport>>,
+    /// The cached attestation evidence, if any.
+    current_attestation_evidence: Mutex<Option<VerificationReport>>,
 
     /// A map of responder-ID to incomplete, outbound, AKE state.
     initiator_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
@@ -126,7 +127,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             custom_identity,
             quote_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
             ias_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
-            current_ias_report: Mutex::new(None),
+            current_attestation_evidence: Mutex::new(None),
             initiator_auth_pending: Mutex::new(LruCache::new(MAX_AUTH_PENDING_REQUESTS)),
             backend_auth_pending: Mutex::new(LruCache::new(MAX_BACKEND_AUTH_PENDING_REQUESTS)),
             peer_outbound: Mutex::new(LruCache::new(MAX_PEER_SESSIONS)),
@@ -246,7 +247,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         req: NonceAuthRequest,
     ) -> Result<(NonceAuthResponse, NonceSession)> {
         let local_identity = self.kex_identity.clone();
-        let ias_report = self.get_ias_report()?;
+        let attestation_evidence = self.get_attestation_evidence()?;
 
         // Create the state machine
         let responder = Start::new(self.get_client_self_id()?.to_string());
@@ -257,7 +258,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                ias_report,
+                attestation_evidence,
             )
         };
 
@@ -337,7 +338,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         req: ClientAuthRequest,
     ) -> Result<(ClientAuthResponse, ClientSession)> {
         let local_identity = self.kex_identity.clone();
-        let ias_report = self.get_ias_report()?;
+        let attestation_evidence = self.get_attestation_evidence()?;
 
         // Create the state machine
         let responder = Start::new(self.get_client_self_id()?.to_string());
@@ -348,7 +349,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                ias_report,
+                attestation_evidence,
             )
         };
 
@@ -375,15 +376,16 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// Begin a peer connection
     pub fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
         let local_identity = self.kex_identity.clone();
-        let ias_report = self.get_ias_report()?;
+        let attestation_evidence = self.get_attestation_evidence()?;
 
         // Fire up the state machine.
         let mut csprng = McRng::default();
         let initiator = Start::new(peer_id.to_string());
 
         // Construct the initializer input.
-        let node_init =
-            { NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(local_identity, ias_report) };
+        let node_init = {
+            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(local_identity, attestation_evidence)
+        };
 
         // Initialize
         let (initiator, msg) = initiator.try_next(&mut csprng, node_init)?;
@@ -401,7 +403,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// Accept a peer connection
     pub fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession)> {
         let local_identity = self.kex_identity.clone();
-        let ias_report = self.get_ias_report()?;
+        let attestation_evidence = self.get_attestation_evidence()?;
 
         // Create the state machine
         let responder = Start::new(self.get_peer_self_id()?.to_string());
@@ -412,7 +414,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             NodeAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                ias_report,
+                attestation_evidence,
                 [self.trusted_identity()?],
             )
         };
@@ -623,11 +625,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     // IAS related
     //
 
-    /// Get the cached IAS report if available
-    pub fn get_ias_report(&self) -> Result<VerificationReport> {
-        (*self.current_ias_report.lock()?)
+    /// Get the cached attestation evidence if available
+    pub fn get_attestation_evidence(&self) -> Result<VerificationReport> {
+        (*self.current_attestation_evidence.lock()?)
             .clone()
-            .ok_or(Error::NoReportAvailable)
+            .ok_or(Error::NoAttestationEvidenceAvailable)
     }
 
     /// Build a new Report and QuoteNonce object for ourself
@@ -706,12 +708,15 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Err(Error::InvalidState)
     }
 
-    /// Verify an ias report
-    pub fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
+    /// Verify attestation evidence
+    pub fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: VerificationReport,
+    ) -> Result<()> {
         let verifier = self.get_verifier()?;
 
         // Verify signature, MRENCLAVE, report value, etc.
-        let report_data = verifier.verify(&ias_report)?;
+        let report_data = verifier.verify(&attestation_evidence)?;
 
         // Get the nonce from the IAS report
         let nonce = report_data
@@ -731,10 +736,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let _ = Verifier::default()
             .quote_body(&cached_quote)
             .nonce(nonce)
-            .verify(&ias_report)?;
+            .verify(&attestation_evidence)?;
 
         // Save the result
-        *(self.current_ias_report.lock()?) = Some(ias_report);
+        *(self.current_attestation_evidence.lock()?) = Some(attestation_evidence);
         Ok(())
     }
 

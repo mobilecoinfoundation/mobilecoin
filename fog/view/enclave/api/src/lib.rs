@@ -72,11 +72,11 @@ pub enum ViewEnclaveRequest {
     /// The report part should be a quoting enclave report
     VerifyQuote(Quote, Report, EnclaveReportDataContents),
 
-    /// Verify an IAS report, and cache it if it is accepted
-    VerifyIasReport(VerificationReport),
+    /// Verify attestation evidence, and cache it if it is accepted
+    VerifyAttestationEvidence(VerificationReport),
 
-    /// Get the cached verification report if any
-    GetIasReport,
+    /// Get the cached attestation evidence if any
+    GetAttestationEvidence,
 
     // View-enclave specific
     /// Accept a client connection

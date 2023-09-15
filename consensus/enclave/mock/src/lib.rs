@@ -113,11 +113,14 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
         Ok(IasNonce::default())
     }
 
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_attestation_evidence(
+        &self,
+        _attestation_evidence: VerificationReport,
+    ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         Ok(self.verification_report.clone())
     }
 }

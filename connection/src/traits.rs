@@ -33,9 +33,10 @@ pub trait AttestationError: Debug + Display + Send + Sync {
     fn should_reattest(&self) -> bool;
 
     /// Should the error be retried?
-    /// Some errors like, failing to verify IAS report, are not retriable, since
-    /// report verification is deterministic and the report will probably not be
-    /// different the next time.
+    /// Some errors like, failing to verify attestation evidence, are not
+    /// retriable, since attestation evidence verification is deterministic
+    /// and the attestation evidence will probably not be different the next
+    /// time.
     fn should_retry(&self) -> bool;
 }
 

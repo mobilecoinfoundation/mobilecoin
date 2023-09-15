@@ -123,7 +123,7 @@ impl AttestationError for ThickClientAttestationError {
     fn should_retry(&self) -> bool {
         match self {
             Self::Grpc(_) | Self::Cipher(_) | Self::CredentialsProvider(_) => true,
-            Self::Ake(AkeError::ReportVerification(_)) => false,
+            Self::Ake(AkeError::AttestationEvidenceVerification(_)) => false,
             Self::Ake(_) => true,
             Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
         }

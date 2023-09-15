@@ -148,13 +148,16 @@ where
         Ok(self.ake.verify_quote(quote, qe_report, &report_data)?)
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
-        self.ake.verify_ias_report(ias_report)?;
+    fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: VerificationReport,
+    ) -> ReportableEnclaveResult<()> {
+        self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(self.ake.get_ias_report()?)
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+        Ok(self.ake.get_attestation_evidence()?)
     }
 }
 

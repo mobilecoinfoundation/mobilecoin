@@ -31,7 +31,7 @@ impl AttestationError for Error {
     fn should_retry(&self) -> bool {
         match self {
             Error::Rpc(_) | Error::Cipher(_) | Error::ProtoDecode(_) => true,
-            Error::Ake(AkeError::ReportVerification(_)) => false,
+            Error::Ake(AkeError::AttestationEvidenceVerification(_)) => false,
             Error::Ake(_) => true,
             Error::InvalidUri(_) => false,
         }

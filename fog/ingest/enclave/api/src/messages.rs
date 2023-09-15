@@ -85,18 +85,18 @@ pub enum EnclaveCall {
     /// * Caches the quote.
     VerifyQuote(Quote, Report, EnclaveReportDataContents),
 
-    /// The [IngestEnclave::verify_ias_report()] method.
+    /// The [IngestEnclave::verify_attestation_evidence()] method.
     ///
-    /// * Verifies the signed report from IAS matches the previously received
+    /// * Verifies the attestation evidence matches the previously received
     ///   quote,
-    /// * Caches the signed report. This cached report may be overwritten by
-    ///   later calls.
-    VerifyReport(VerificationReport),
+    /// * Caches the attestation evidence. This cached attestation evidence may
+    ///   be overwritten by later calls.
+    VerifyAttestationEvidence(VerificationReport),
 
-    /// The [IngestEnclave::get_ias_report()] method.
+    /// The [IngestEnclave::get_attestation_evidence()] method.
     ///
-    /// Retrieves a previously cached report, if any.
-    GetReport,
+    /// Retrieves a previously cached attestation evidence, if any.
+    GetAttestationEvidence,
 
     /// The [IngestEnclave::peer_init()] method.
     PeerInit(ResponderId),

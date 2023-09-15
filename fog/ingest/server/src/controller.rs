@@ -1199,7 +1199,7 @@ where
     ) -> Result<IngressPublicKeyStatus, Error> {
         // Get a report and check that it makes sense with what we think is happening
         let report = {
-            let report = self.enclave.get_ias_report()?;
+            let report = self.enclave.get_attestation_evidence()?;
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
             let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&report)?;
@@ -1213,7 +1213,7 @@ where
                 );
                 self.update_enclave_report_cache()?;
 
-                let report = self.enclave.get_ias_report()?;
+                let report = self.enclave.get_attestation_evidence()?;
                 let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&report)?;
                 if &found_key == ingress_public_key {
                     report

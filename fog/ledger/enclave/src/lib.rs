@@ -63,14 +63,19 @@ impl ReportableEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
+    fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: VerificationReport,
+    ) -> ReportableEnclaveResult<()> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyAttestationEvidence(
+            attestation_evidence,
+        ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetAttestationEvidence)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

@@ -13,7 +13,7 @@ This crate exists to support remote attestation via Intel SGX, albeit on a lower
 There are several compile-time features which change the behavior of this crate, as well as the API compatibility:
 
  * `std` - Enables the Rust standard library (this should not be used when built for an enclave).
- * `sgx-sim` - Selects the fake IAS signing certificates generated at build time as the default verification certificates, and link against the `_sim.so` variants provided by Intel. Because this is dangerous, and should only be used during testing, a warning will be printed indicated what libraries are being linked.
+ * `sgx-sim` - Selects the fake signing certificates generated at build time as the default verification certificates, and link against the `_sim.so` variants provided by Intel. Because this is dangerous, and should only be used during testing, a warning will be printed indicated what libraries are being linked.
 
 ## Usage
 

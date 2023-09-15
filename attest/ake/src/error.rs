@@ -20,12 +20,12 @@ pub enum Error {
     EarlyHandshakeComplete,
     /// Handshake should have been completed
     HandshakeNotComplete,
-    /// The IAS report could not be serialized
-    ReportSerialization,
-    /// The IAS report could not be deserialized
-    ReportDeserialization,
-    /// The IAS report could not be verified: {0}
-    ReportVerification(VerifierError),
+    /// The attestation evidence could not be serialized
+    AttestationEvidenceSerialization,
+    /// The attestation evidence could not be deserialized
+    AttestationEvidenceDeserialization,
+    /// The attestation evidence could not be verified: {0}
+    AttestationEvidenceVerification(VerifierError),
     /// The remote identity was not in a format that fit within report data
     BadRemoteIdentity,
     /// Invariant problem: we completed a handshake without a remote identity
@@ -40,6 +40,6 @@ pub enum Error {
 
 impl From<VerifierError> for Error {
     fn from(src: VerifierError) -> Error {
-        Error::ReportVerification(src)
+        Error::AttestationEvidenceVerification(src)
     }
 }
