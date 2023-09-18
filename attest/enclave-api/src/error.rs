@@ -70,7 +70,7 @@ pub enum Error {
     NoAttestationEvidenceAvailable,
 
     /// Too many attestation evidence instances are already in-flight
-    TooManyPendingAttestationEvidences,
+    TooManyPendingAttestationEvidenceInstances,
 
     /// Encoding error
     Encode(String),

@@ -78,7 +78,7 @@ pub enum Error {
     NoAttestationEvidenceAvailable,
 
     /// Too many attestation evidence instances are already in-flight
-    TooManyAttestationEvidences,
+    TooManyPendingAttestationEvidenceInstances,
 
     /// Error parsing key: {0}
     Key(KeyError),
