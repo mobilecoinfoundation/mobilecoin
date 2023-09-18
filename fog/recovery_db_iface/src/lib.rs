@@ -358,9 +358,9 @@ pub trait ReportDb {
     ///
     /// Arguments:
     /// * ingress_public_key - the public key signed by this report
-    /// * report_id - the report_id associated to the report. this should almost
+    /// * report_id - the report_id associated to the report. This should almost
     ///   always be the empty string.
-    /// * data - The IAS verification report and cert chain.
+    /// * data - The attestation evidence and cert chain.
     ///
     /// Returns:
     /// * The status of this ingress public key in the database. If the status

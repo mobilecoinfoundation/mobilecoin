@@ -23,4 +23,4 @@ In particular, `Frobnication` will be stuffed into a `Call::Frobnicate(Frobnicat
 
 ## Traits
 
-At the moment, we have two traits: `ReportableEnclave`, which provides a way for the untrusted code to seed the IAS `VerificationReport` cache using the structures in `attest`, and `PeerableEnclave`, which is intended to support the node-to-node attestation via the gRPC API defined in `attest_api`. We anticipate adding a `BlockEnclave` to support the APIs needed by the SCP externalization phase, and an additional `ClientEnclave` to support client connectivity using the same gRPC API defined in `attest_api` (albeit on a different port).
+At the moment, we have two traits: `ReportableEnclave`, which provides a way for the untrusted code to seed the attestation evidence cache using the structures in `attest`, and `PeerableEnclave`, which is intended to support the node-to-node attestation via the gRPC API defined in `attest_api`. We anticipate adding a `BlockEnclave` to support the APIs needed by the SCP externalization phase, and an additional `ClientEnclave` to support client connectivity using the same gRPC API defined in `attest_api` (albeit on a different port).

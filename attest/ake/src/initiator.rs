@@ -161,7 +161,7 @@ where
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
                 let remote_report = VerificationReport::decode(output.payload.as_slice())
-                    .map_err(|_e| Error::ReportDeserialization)?;
+                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
 
                 let identities = input.identities;
                 let mut verifier = Verifier::default();
@@ -220,7 +220,7 @@ where
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
                 let remote_report = VerificationReport::decode(output.payload.as_slice())
-                    .map_err(|_e| Error::ReportDeserialization)?;
+                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
 
                 Ok((Terminated, remote_report))
             }

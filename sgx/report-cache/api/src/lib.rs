@@ -79,20 +79,20 @@ pub trait ReportableEnclave {
         report_data: EnclaveReportDataContents,
     ) -> Result<IasNonce>;
 
-    /// Cache the verification report for this enclave.
+    /// Cache the attestation evidence for this enclave.
     ///
     /// Untrusted code should transmit the quote previously checked by
-    /// `check_quote()` to IAS, and construct the verification report structure
+    /// `check_quote()` to IAS, and construct the attestation evidence
     /// from the results. That result should be given back to the enclave
     /// for future use.
     ///
-    /// The enclave will verify the IAS report was signed by a trusted IAS
+    /// The enclave will verify the attestation evidence was signed by a trusted
     /// certifcate, and the contents match the previously checked quote.
     /// After that check has been performed, the enclave will use the
-    /// verification report for all requests until another verfication report
+    /// attestation evidence for all requests until another attestation evidence
     /// has been successfully loaded in it's place.
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()>;
+    fn verify_attestation_evidence(&self, attestation_evidence: VerificationReport) -> Result<()>;
 
-    /// Retrieve a copy of the cached verification report.
-    fn get_ias_report(&self) -> Result<VerificationReport>;
+    /// Retrieve a copy of the cached attestation evidence.
+    fn get_attestation_evidence(&self) -> Result<VerificationReport>;
 }

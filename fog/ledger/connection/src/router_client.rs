@@ -34,7 +34,7 @@ pub struct LedgerGrpcClient {
     /// The URI of the router to communicate with
     uri: FogLedgerUri,
 
-    /// The identities that a fog node's IAS report must match one of
+    /// The identities that a fog node's attestation evidence must match, one of
     identities: Vec<TrustedIdentity>,
 
     /// The AKE state machine object, if one is available.

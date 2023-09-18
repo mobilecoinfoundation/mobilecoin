@@ -146,7 +146,7 @@ where
 
         // Parse the received IAS report
         let remote_report = VerificationReport::decode(payload.as_slice())
-            .map_err(|_| Error::ReportDeserialization)?;
+            .map_err(|_| Error::AttestationEvidenceDeserialization)?;
         // Verify using given verifier, and ensure the first 32B of the report data are
         // the identity pubkey.
         verifier

@@ -21,10 +21,11 @@
 //! # Fog Report Signatures
 //!
 //! A fog report server uses the signing key and certificate provided by the fog
-//! operator in order to cryptographically sign a list of IAS verification
-//! report structures created by ingest nodes. This resulting data (chain,
-//! signature, and reports) is then returned from the fog report server to a
-//! senders when they want to send coins to the destination account owner.
+//! operator in order to cryptographically sign a list of attestation evidence
+//! structures created by ingest nodes. This resulting data (chain,
+//! signature, and attestation evidence) is then returned from the fog report
+//! server to a sender when they want to send coins to the destination account
+//! owner.
 //!
 //! # Sender Verification
 //!

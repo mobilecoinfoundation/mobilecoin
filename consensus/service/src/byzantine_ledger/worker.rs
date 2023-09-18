@@ -880,9 +880,14 @@ impl<
     }
 
     fn get_block_metadata(&self, block_id: &BlockID) -> BlockMetadata {
-        let verification_report = self.enclave.get_ias_report().unwrap_or_else(|err| {
-            panic!("Failed to fetch verification report after forming block {block_id:?}: {err}")
-        });
+        let verification_report = self
+            .enclave
+            .get_attestation_evidence()
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to fetch attestation evidence after forming block {block_id:?}: {err}"
+                )
+            });
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
@@ -1607,7 +1612,7 @@ mod tests {
             broadcast,
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
-        let report = enclave.get_ias_report().unwrap();
+        let report = enclave.get_attestation_evidence().unwrap();
 
         let tx_manager = TxManagerImpl::new(
             enclave.clone(),

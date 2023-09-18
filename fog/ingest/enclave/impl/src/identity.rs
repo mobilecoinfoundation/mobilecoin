@@ -31,7 +31,7 @@ impl RistrettoIdentity {
 }
 
 impl EnclaveIdentity for RistrettoIdentity {
-    /// Get the bytes for the IAS report
+    /// Get the bytes for the attestation evidence
     fn get_bytes_for_report(&self) -> [u8; 32] {
         self.get_public_key().to_bytes()
     }

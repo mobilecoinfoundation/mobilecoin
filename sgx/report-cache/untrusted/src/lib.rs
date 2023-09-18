@@ -188,16 +188,22 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         Ok(retval)
     }
 
-    /// Update the IAS report cached within the enclave.
+    /// Update the attestation evidence cached within the enclave.
     pub fn update_enclave_report_cache(&self) -> Result<(), Error> {
         log::debug!(
             self.logger,
             "Starting enclave report cache update process..."
         );
-        let mut ias_report = self.start_report_cache()?;
+        let mut attestation_evidence = self.start_report_cache()?;
 
-        log::debug!(self.logger, "Verifying IAS report with enclave...");
-        let retval = match self.enclave.verify_ias_report(ias_report.clone()) {
+        log::debug!(
+            self.logger,
+            "Verifying attestation evidence with enclave..."
+        );
+        let retval = match self
+            .enclave
+            .verify_attestation_evidence(attestation_evidence.clone())
+        {
             Ok(()) => {
                 log::debug!(self.logger, "Enclave accepted report as valid...");
                 Ok(())
@@ -217,9 +223,13 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                         self.logger,
                         "TCB update complete, restarting reporting process"
                     );
-                    ias_report = self.start_report_cache()?;
-                    log::debug!(self.logger, "Verifying IAS report with enclave (again)...");
-                    self.enclave.verify_ias_report(ias_report.clone())?;
+                    attestation_evidence = self.start_report_cache()?;
+                    log::debug!(
+                        self.logger,
+                        "Verifying attestation evidence with enclave (again)..."
+                    );
+                    self.enclave
+                        .verify_attestation_evidence(attestation_evidence.clone())?;
                     log::debug!(self.logger, "Enclave accepted new report as valid...");
                     Ok(())
                 } else {
@@ -234,7 +244,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         };
 
         if retval.is_ok() {
-            let ias_report_data = VerificationReportData::try_from(&ias_report)?;
+            let ias_report_data = VerificationReportData::try_from(&attestation_evidence)?;
             let timestamp = ias_report_data.parse_timestamp()?;
 
             self.report_timestamp_gauge.set(timestamp.timestamp());

@@ -94,9 +94,9 @@ mock! {
 
         fn verify_quote(&self, quote: Quote, qe_report: Report, report_data: EnclaveReportDataContents) -> SgxReportResult<IasNonce>;
 
-        fn verify_ias_report(&self, ias_report: VerificationReport) -> SgxReportResult<()>;
+        fn verify_attestation_evidence(&self, attestation_evidence: VerificationReport) -> SgxReportResult<()>;
 
-        fn get_ias_report(&self) -> SgxReportResult<VerificationReport>;
+        fn get_attestation_evidence(&self) -> SgxReportResult<VerificationReport>;
     }
 }
 

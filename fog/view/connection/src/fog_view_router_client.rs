@@ -45,7 +45,7 @@ pub struct FogViewRouterGrpcClient {
 
     uri: FogViewRouterUri,
 
-    /// The identities that a fog node's IAS report must match one of
+    /// The identities that a fog node's attestation evidence must match, one of
     identities: Vec<TrustedIdentity>,
 }
 
