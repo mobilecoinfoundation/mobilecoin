@@ -52,7 +52,7 @@ message Message {
 /// An AEAD message with an explicit nonce.
 ///
 /// This message is technically compatible with [`Message`], but exists to
-// ensure generated code doesn't use Message.
+/// ensure generated code doesn't use Message.
 message NonceMessage {
         /// A byte array containing plaintext authenticated data.
         bytes aad = 1;
@@ -64,4 +64,63 @@ message NonceMessage {
         bytes data = 3;
         /// The explicit nonce.
         fixed64 nonce = 4;
+}
+
+/// SGX quote version 3 as specified in
+/// <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A73%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C375%2C0%5D>.
+message Quote3 {
+        /// The raw bytestream of the quote. This will contain only the
+        /// bytes specified in <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A73%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C375%2C0%5D>
+        bytes data = 1;
+}
+
+/// A representation of
+/// [`sgx_ql_qve_collateral_t`](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A70%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C230%2C0%5D)
+/// All certificate and CRL values are DER encoded.
+/// All fields should be present
+message Collateral {
+        /// The Provisioning Certification Key (PCK) certificate revocation list
+        /// (CRL) issuer chain. This is a sequence of DER formatted certificates.
+        ///
+        /// This chain is used to verify the `pck_crl`. The consumers should
+        /// have the root CA, which signed this issuer chain.
+        repeated bytes pck_crl_issuer_chain = 1;
+        /// The root certificate authority (CA) certificate revocation list
+        /// (CRL) in DER format.
+        ///
+        /// This will be the "Intel® SGX Root CA CRL" described in
+        /// <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf>.
+        ///
+        /// It can manually be retrieved from
+        /// <https://certificates.trustedservices.intel.com/IntelSGXRootCA.der>
+        bytes root_ca_crl = 2;
+        /// The the Provisioning Certification Key (PCK) certificate revocation
+        /// list (CRL) in DER format.
+        ///
+        /// This will be the "Intel® SGX PCK Processor CA CRL" described in
+        /// <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf>.
+        bytes pck_crl = 3;
+        /// The Trusted Computing Base (TCB) info issuer chain.
+        /// This is a sequence of DER formatted certificates.
+        ///
+        /// This is the x509 certificate chain that can verify the signature on
+        /// the `tcb_info`. Consumers should have the root CA which signed this
+        /// issuer chain.
+        repeated bytes tcb_info_issuer_chain = 4;
+        /// The Trusted Computing Base (TCB) info.
+        ///
+        /// JSON formatted TCB info described at
+        /// <https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v4>
+        string tcb_info = 5;
+        /// The Quoting Enclave (QE) identity issuer chain.
+        ///
+        /// This is the x509 certificate chain that can verify the signature on
+        /// the `qe_identity`. Consumers should have the root CA which signed
+        /// this issuer chain.
+        repeated bytes qe_identity_issuer_chain = 6;
+        /// The Quoting Enclave (QE) identity.
+        ///
+        /// JSON formatted QE identity info described at
+        /// <https://api.portal.trustedservices.intel.com/documentation#pcs-enclave-identity-v4>
+        string qe_identity = 7;
 }
