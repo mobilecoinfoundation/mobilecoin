@@ -1,6 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Conversions from gRPC message types into consensus_enclave_api types.
+//! Conversions from gRPC message types into attest api types.
+pub mod collateral;
+pub mod quote3;
 
 use crate::attest::{AuthMessage, Message, NonceMessage};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
