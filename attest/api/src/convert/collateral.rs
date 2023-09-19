@@ -2,11 +2,11 @@
 
 //! Convert to/from attest::Collateral
 
-use crate::{attest, ConversionError};
+use crate::{attest, convert::encode_to_protobuf_vec, ConversionError};
 use mc_attest_verifier_types::prost;
 use mc_sgx_dcap_types::Collateral;
 use mc_util_serial::Message;
-use protobuf::{CodedOutputStream, Message as ProtoMessage};
+use protobuf::Message as ProtoMessage;
 
 impl TryFrom<&Collateral> for attest::Collateral {
     type Error = ConversionError;
@@ -28,31 +28,6 @@ impl TryFrom<&attest::Collateral> for Collateral {
         let prost = prost::Collateral::decode(bytes.as_slice())?;
         prost.try_into()
     }
-}
-
-/// Encode a protobuf type to the protobuf representation.
-///
-/// This makes it easy to convert from a protobuf to a rust type by way of a
-/// prost implementation. While this requires converting to a protobuf stream
-/// and back again, this allows for placing most of the complex logic in the
-/// `prost` implementation and keeping the local `try_from` implementations
-/// simple.
-///
-/// For example:
-/// ```ignore
-///     let bytes = encode_to_protobuf_vec(proto_type)?;
-///     let prost = prost::TYPENAME::decode(bytes.as_slice())?;
-///     let rust_type = TYPENAME::try_from(prost)?;
-/// ```
-pub fn encode_to_protobuf_vec<T: ProtoMessage>(msg: &T) -> Result<Vec<u8>, ConversionError> {
-    let mut bytes = vec![];
-    let mut stream = CodedOutputStream::vec(&mut bytes);
-    msg.write_to_with_cached_sizes(&mut stream)
-        .map_err(|e| ConversionError::Other(e.to_string()))?;
-    stream
-        .flush()
-        .map_err(|e| ConversionError::Other(e.to_string()))?;
-    Ok(bytes)
 }
 
 #[cfg(test)]
