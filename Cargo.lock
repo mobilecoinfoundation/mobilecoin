@@ -2868,7 +2868,7 @@ dependencies = [
  "sentry",
  "serde",
  "sha3",
- "siphasher",
+ "siphasher 1.0.0",
  "slog",
  "slog-async",
  "slog-atomic",
@@ -5292,7 +5292,7 @@ dependencies = [
  "generic-array",
  "mc-oblivious-traits",
  "rand_core",
- "siphasher",
+ "siphasher 0.3.11",
 ]
 
 [[package]]
@@ -8319,9 +8319,15 @@ dependencies = [
 
 [[package]]
 name = "siphasher"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bd3e3206899af3f8b12af284fafc038cc1dc2b41d1b89dd17297221c5d225de"
+checksum = "38b58827f4464d87d377d175e90bf58eb00fd8716ff0a62f80356b5e61555d0d"
+
+[[package]]
+name = "siphasher"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54ac45299ccbd390721be55b412d41931911f654fa99e2cb8bfb57184b2061fe"
 
 [[package]]
 name = "slab"
