@@ -205,13 +205,11 @@ fn c_struct_as_bytes<T>(c_struct: &T) -> &[u8] {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_core::DcapEvidence;
     use mc_attest_verifier::DcapVerifier;
     use mc_attest_verifier_types::EnclaveReportDataContents;
     use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
     use p256::pkcs8::der::DateTime;
-    use prost::Message;
     use std::time::{SystemTime, UNIX_EPOCH};
     use x509_cert::{der::DecodePem, Certificate};
 
@@ -271,35 +269,5 @@ mod test {
         let verifier = DcapVerifier::new(identities, time, report_data_contents);
         let verification = verifier.verify(evidence);
         assert_eq!(verification.is_success().unwrap_u8(), 1);
-    }
-
-    #[test]
-    fn test_dcap_evidence_serialization() {
-        let mut buf: Vec<u8> = vec![];
-        let uut: DcapEvidence = Default::default();
-        uut.encode(&mut buf)
-            .expect("Failed to encode empty DcapEvidence");
-        let decoded =
-            DcapEvidence::decode(buf.as_slice()).expect("Failed to decode empty DcapEvidence");
-        assert_eq!(uut, decoded);
-        buf.clear();
-        let report = Report::default();
-        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
-        let collateral = SimQuotingEnclave::collateral(&quote);
-        let report_data = EnclaveReportDataContents::new(
-            [0x42u8; 16].into(),
-            [0x11u8; 32].as_slice().try_into().expect("bad key"),
-            [0xAAu8; 32],
-        );
-        let mut uut = DcapEvidence {
-            quote: Some(quote),
-            collateral: Some(collateral),
-            report_data: Some(report_data),
-        };
-        uut.encode(&mut buf).expect("Failed to encode DcapEvidence");
-        let decoded = DcapEvidence::decode(buf.as_slice()).expect("Failed to decode DcapEvidence");
-        assert_eq!(uut, decoded);
-        uut.clear();
-        assert_eq!(DcapEvidence::default(), uut);
     }
 }

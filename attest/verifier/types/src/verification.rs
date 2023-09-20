@@ -2,6 +2,12 @@
 
 //! Attestation Verification Report type.
 
+use crate::prost;
+use ::prost::{
+    bytes::{Buf, BufMut},
+    encoding::{self, DecodeContext, WireType},
+    DecodeError, Message, Oneof,
+};
 use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
@@ -11,125 +17,23 @@ use mc_crypto_keys::X25519Public;
 use mc_sgx_core_types::QuoteNonce;
 use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
-use prost::{
-    bytes::{Buf, BufMut},
-    encoding::{self, DecodeContext, WireType},
-    DecodeError, Message, Oneof,
-};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DcapEvidence {
-    pub quote: Option<Quote3<Vec<u8>>>,
-    pub collateral: Option<Collateral>,
-    pub report_data: Option<EnclaveReportDataContents>,
-}
-
-const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
-const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
-const TAG_DCAP_EVIDENCE_REPORT_DATA: u32 = 3;
-
-// Quote3 and Collateral cannot trivially be made to implement prost::Message:
-//    - Quote3 is a already an opaque byte array which implements serde. Prost
-//      isn't brought in to mc-sgx-dcap-types to minimize dependencies.
-//    - Collateral is composed of X509-cert types which do not implement
-//      prost::Message.
-//
-// Since they implement serde Serialize and Deserialize though, we can manually
-// implement it for DcapEvidence. To do this, we use serde to serialize and
-// deserialize them to/from Vec<u8>
-// This is implementation is tested in `attest/untrusted/src/sim.rs` as the
-// quote and collateral are not trivial to construct.
-impl Message for DcapEvidence {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        let quote_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.quote).expect("Failed to serialize Quote3");
-        encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
-        let collateral_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.collateral).expect("Failed to serialize Collateral");
-        encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
-        let report_data_bytes: Vec<u8> = mc_util_serial::serialize(&self.report_data)
-            .expect("Failed to serialize EnclaveReportDataContents");
-        encoding::bytes::encode(TAG_DCAP_EVIDENCE_REPORT_DATA, &report_data_bytes, buf);
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        match tag {
-            TAG_DCAP_EVIDENCE_QUOTE3 => {
-                let mut vbuf = Vec::new();
-                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let quote: Option<Quote3<Vec<u8>>> =
-                    mc_util_serial::deserialize(vbuf.as_slice())
-                        .map_err(|_| DecodeError::new("Failed to deserialize quote3 from bytes"))?;
-                self.quote = quote;
-                Ok(())
-            }
-            TAG_DCAP_EVIDENCE_COLLATERAL => {
-                let mut vbuf = Vec::new();
-                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let collateral: Option<Collateral> = mc_util_serial::deserialize(vbuf.as_slice())
-                    .map_err(|_| {
-                    DecodeError::new("Failed to deserialize collateral from bytes")
-                })?;
-                self.collateral = collateral;
-                Ok(())
-            }
-            TAG_DCAP_EVIDENCE_REPORT_DATA => {
-                let mut vbuf = Vec::new();
-                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let report_data: Option<EnclaveReportDataContents> =
-                    mc_util_serial::deserialize(vbuf.as_slice()).map_err(|_| {
-                        DecodeError::new(
-                            "Failed to deserialize EnclaveReportDataContents from bytes",
-                        )
-                    })?;
-                self.report_data = report_data;
-                Ok(())
-            }
-            _ => encoding::skip_field(wire_type, tag, buf, ctx),
-        }
-    }
-
-    fn encoded_len(&self) -> usize {
-        let quote_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
-        let collateral_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
-        let report_data_bytes: Vec<u8> = mc_util_serial::serialize(&self.report_data)
-            .expect("Failed serializing EnclaveReportDataContents");
-
-        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
-            + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
-            + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_REPORT_DATA, &report_data_bytes)
-    }
-
-    fn clear(&mut self) {
-        *self = Default::default();
-    }
+    pub quote: Quote3<Vec<u8>>,
+    pub collateral: Collateral,
+    pub report_data: EnclaveReportDataContents,
 }
 
 #[derive(Clone, Oneof)]
 pub enum EvidenceKind {
     #[prost(message, tag = "4")]
-    Dcap(DcapEvidence),
+    Dcap(prost::DcapEvidence),
 }
 
-#[derive(Clone, prost::Message)]
+#[derive(Clone, Message)]
 pub struct EvidenceMessage {
     #[prost(oneof = "EvidenceKind", tags = "4")]
     pub evidence: Option<EvidenceKind>,
