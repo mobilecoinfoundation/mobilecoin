@@ -19,11 +19,19 @@ cargo-emit = "0.2.1"
 [dependencies]
 mc-attest-ake = { path = "../ake" }
 mc-attest-enclave-api = { path = "../enclave-api" }
+mc-attest-verifier-types = { path = "../verifier/types" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-noise = { path = "../../crypto/noise" }
+mc-sgx-core-types = "0.7.5"
+mc-sgx-dcap-types = "0.7.5"
+mc-util-serial = { path = "../../util/serial" }
 
 aead = "0.5"
 digest = "0.10"
 futures = "0.3"
 grpcio = "0.12.1"
 protobuf = "2.27.1"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+mc-attest-untrusted = { path = "../untrusted", default-features = false }

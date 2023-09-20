@@ -14,6 +14,8 @@ use mc_sgx_dcap_types::{CollateralError, Quote3Error};
 pub enum ConversionError {
     /// The contents are not as expected: {0}
     InvalidContents(String),
+    /// Other error: {0}
+    Other(String),
 }
 
 impl From<DecodeError> for ConversionError {
