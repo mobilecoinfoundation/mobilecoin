@@ -1081,7 +1081,7 @@ dependencies = [
  "rand_core",
  "serde",
  "sha3",
- "siphasher",
+ "siphasher 1.0.0",
  "slog",
 ]
 
@@ -1502,7 +1502,7 @@ dependencies = [
  "generic-array",
  "mc-oblivious-traits",
  "rand_core",
- "siphasher",
+ "siphasher 0.3.9",
 ]
 
 [[package]]
@@ -2363,6 +2363,12 @@ name = "siphasher"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a86232ab60fa71287d7f2ddae4a7073f6b7aac33631c3015abb556f08c6d0a3e"
+
+[[package]]
+name = "siphasher"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54ac45299ccbd390721be55b412d41931911f654fa99e2cb8bfb57184b2061fe"
 
 [[package]]
 name = "slog"
