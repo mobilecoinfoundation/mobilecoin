@@ -3,6 +3,7 @@
 //! Conversions from prost message types into common crate rust types.
 
 mod collateral;
+mod dcap_evidence;
 mod enclave_report_data_contents;
 mod quote3;
 
@@ -29,6 +30,8 @@ pub enum ConversionError {
     },
     /// The key is not valid: {0}
     Key(KeyError),
+    /// The field is missing: {0}
+    MissingField(String),
 }
 
 impl From<KeyError> for ConversionError {

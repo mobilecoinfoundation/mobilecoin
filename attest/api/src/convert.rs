@@ -2,6 +2,7 @@
 
 //! Conversions from gRPC message types into attest api types.
 pub mod collateral;
+pub mod dcap_evidence;
 pub mod enclave_report_data_contents;
 pub mod quote3;
 
@@ -14,7 +15,7 @@ use mc_attest_enclave_api::{
 use mc_attest_verifier_types::ConversionError;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakePattern, NoiseCipher, NoiseDigest};
-use protobuf::{CodedOutputStream, Message as ProtoMessage};
+use protobuf::Message as ProtoMessage;
 
 impl<Handshake, KexAlgo, Cipher, DigestAlgo>
     From<AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestAlgo>> for AuthMessage
@@ -181,12 +182,8 @@ impl From<EnclaveMessage<NonceSession>> for NonceMessage {
 ///     let rust_type = TYPENAME::try_from(prost)?;
 /// ```
 pub(crate) fn encode_to_protobuf_vec<T: ProtoMessage>(msg: &T) -> Result<Vec<u8>, ConversionError> {
-    let mut bytes = vec![];
-    let mut stream = CodedOutputStream::vec(&mut bytes);
-    msg.write_to_with_cached_sizes(&mut stream)
-        .map_err(|e| ConversionError::Other(e.to_string()))?;
-    stream
-        .flush()
+    let bytes = msg
+        .write_to_bytes()
         .map_err(|e| ConversionError::Other(e.to_string()))?;
     Ok(bytes)
 }
