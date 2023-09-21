@@ -13,7 +13,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // `Digestible` should be stable. There are tests in each of the
     // `convert/<type_name>.rs` files that help ensure the `Digestible` field
     // order stability.
-    for t in ["EnclaveReportDataContents", "Quote3", "Collateral"].iter() {
+    for t in [
+        "EnclaveReportDataContents",
+        "Quote3",
+        "Collateral",
+        "DcapEvidence",
+    ]
+    .iter()
+    {
         config.type_attribute(
             t,
             "#[derive(serde::Serialize, serde::Deserialize, Digestible, Eq)]",

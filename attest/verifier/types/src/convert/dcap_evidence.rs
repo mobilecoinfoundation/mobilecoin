@@ -4,7 +4,6 @@
 
 use crate::{prost, ConversionError, DcapEvidence};
 use alloc::string::ToString;
-use mc_crypto_digestible::{DigestTranscript, Digestible};
 
 impl TryFrom<prost::DcapEvidence> for DcapEvidence {
     type Error = ConversionError;
@@ -39,28 +38,6 @@ impl TryFrom<&DcapEvidence> for prost::DcapEvidence {
     }
 }
 
-impl Digestible for prost::DcapEvidence {
-    fn append_to_transcript<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        let typename = b"DcapEvidence";
-        transcript.append_agg_header(context, typename);
-
-        let Self {
-            quote,
-            collateral,
-            report_data,
-        } = self;
-        quote.append_to_transcript(context, transcript);
-        collateral.append_to_transcript(context, transcript);
-        report_data.append_to_transcript(context, transcript);
-
-        transcript.append_agg_closer(context, typename);
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::{prost, *};
@@ -68,7 +45,7 @@ mod test {
     use ::prost::Message;
     use assert_matches::assert_matches;
     use mc_attest_untrusted::DcapQuotingEnclave;
-    use mc_crypto_digestible::MerlinTranscript;
+    use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
     use mc_sgx_core_types::Report;
 
     fn evidence() -> DcapEvidence {
@@ -222,17 +199,17 @@ mod test {
             .quote
             .clone()
             .expect("Quote should be set")
-            .append_to_transcript(context, &mut transcript);
+            .append_to_transcript(b"quote", &mut transcript);
         prost_evidence
             .collateral
             .clone()
             .expect("Collateral should be set")
-            .append_to_transcript(context, &mut transcript);
+            .append_to_transcript(b"collateral", &mut transcript);
         prost_evidence
             .report_data
             .clone()
             .expect("Report data should be set")
-            .append_to_transcript(context, &mut transcript);
+            .append_to_transcript(b"report_data", &mut transcript);
 
         transcript.append_agg_closer(context, b"DcapEvidence");
 
