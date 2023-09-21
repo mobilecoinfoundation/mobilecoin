@@ -4,6 +4,7 @@
 
 use crate::{prost, ConversionError, DcapEvidence};
 use alloc::string::ToString;
+use mc_crypto_digestible::{DigestTranscript, Digestible};
 
 impl TryFrom<prost::DcapEvidence> for DcapEvidence {
     type Error = ConversionError;
@@ -38,6 +39,28 @@ impl TryFrom<&DcapEvidence> for prost::DcapEvidence {
     }
 }
 
+impl Digestible for prost::DcapEvidence {
+    fn append_to_transcript<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        let typename = b"DcapEvidence";
+        transcript.append_agg_header(context, typename);
+
+        let Self {
+            quote,
+            collateral,
+            report_data,
+        } = self;
+        quote.append_to_transcript(context, transcript);
+        collateral.append_to_transcript(context, transcript);
+        report_data.append_to_transcript(context, transcript);
+
+        transcript.append_agg_closer(context, typename);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{prost, *};
@@ -45,6 +68,7 @@ mod test {
     use ::prost::Message;
     use assert_matches::assert_matches;
     use mc_attest_untrusted::DcapQuotingEnclave;
+    use mc_crypto_digestible::MerlinTranscript;
     use mc_sgx_core_types::Report;
 
     fn evidence() -> DcapEvidence {
@@ -170,5 +194,52 @@ mod test {
         );
 
         assert_matches!(error, Err(ConversionError::LengthMismatch { .. }));
+    }
+
+    #[test]
+    fn digestible() {
+        let evidence = evidence();
+        let prost_evidence =
+            prost::DcapEvidence::try_from(&evidence).expect("Failed to convert evidence to prost");
+
+        // We manually build up the digest here, to help ensure that the digest
+        // order of fields is maintained in the future.
+        let context = b"history sticks to your feet";
+
+        // The `digestible` byte string is used in the `DigestTranscript`
+        // implementation for `MerlinTranscript`. It shouldn't change or else
+        // historical digests would fail to be reproduced.
+        let mut transcript = MerlinTranscript::new(b"digestible");
+        transcript.append_agg_header(context, b"DcapEvidence");
+
+        // As mentioned above the order of these calls should not change after
+        // release. Only items added or removed. This is because the digest
+        // will be stored on the block chain and someone will need to be able
+        // to reproduce it. Note that prost will order the fields in generated
+        // code based on tag numbers. This test also helps ensure the order
+        // of the prost generated fields.
+        prost_evidence
+            .quote
+            .clone()
+            .expect("Quote should be set")
+            .append_to_transcript(context, &mut transcript);
+        prost_evidence
+            .collateral
+            .clone()
+            .expect("Collateral should be set")
+            .append_to_transcript(context, &mut transcript);
+        prost_evidence
+            .report_data
+            .clone()
+            .expect("Report data should be set")
+            .append_to_transcript(context, &mut transcript);
+
+        transcript.append_agg_closer(context, b"DcapEvidence");
+
+        let mut expected_digest = [0u8; 32];
+        transcript.extract_digest(&mut expected_digest);
+
+        let evidence_digest = prost_evidence.digest32::<MerlinTranscript>(context);
+        assert_eq!(evidence_digest, expected_digest);
     }
 }
