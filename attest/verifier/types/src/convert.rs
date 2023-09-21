@@ -3,10 +3,12 @@
 //! Conversions from prost message types into common crate rust types.
 
 mod collateral;
+mod enclave_report_data_contents;
 mod quote3;
 
 use ::prost::DecodeError;
 use alloc::string::{String, ToString};
+use mc_crypto_keys::KeyError;
 use mc_sgx_dcap_types::{CollateralError, Quote3Error};
 
 #[derive(displaydoc::Display, Debug, Eq, PartialEq, Clone)]
@@ -16,6 +18,23 @@ pub enum ConversionError {
     InvalidContents(String),
     /// Other error: {0}
     Other(String),
+    /**
+     * The length of `{name}` does not match the expected
+     * length, provided {provided}, required {required}
+     */
+    LengthMismatch {
+        name: String,
+        provided: usize,
+        required: usize,
+    },
+    /// The key is not valid: {0}
+    Key(KeyError),
+}
+
+impl From<KeyError> for ConversionError {
+    fn from(value: KeyError) -> Self {
+        Self::Key(value)
+    }
 }
 
 impl From<DecodeError> for ConversionError {

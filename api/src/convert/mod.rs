@@ -23,7 +23,6 @@ mod compressed_ristretto;
 mod curve_scalar;
 mod ed25519_multisig;
 mod ed25519_signature;
-mod enclave_report_data_contents;
 mod input_ring;
 mod input_secret;
 mod key_image;

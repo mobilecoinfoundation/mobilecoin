@@ -2,6 +2,7 @@
 
 //! Conversions from gRPC message types into attest api types.
 pub mod collateral;
+pub mod enclave_report_data_contents;
 pub mod quote3;
 
 use crate::attest::{AuthMessage, Message, NonceMessage};
@@ -10,8 +11,10 @@ use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
     NonceSession, PeerAuthRequest, PeerAuthResponse, Session,
 };
+use mc_attest_verifier_types::ConversionError;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakePattern, NoiseCipher, NoiseDigest};
+use protobuf::{CodedOutputStream, Message as ProtoMessage};
 
 impl<Handshake, KexAlgo, Cipher, DigestAlgo>
     From<AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestAlgo>> for AuthMessage
@@ -161,4 +164,29 @@ impl From<EnclaveMessage<NonceSession>> for NonceMessage {
         retval.set_data(src.data);
         retval
     }
+}
+
+/// Encode a protobuf type to the protobuf representation.
+///
+/// This makes it easy to convert from a protobuf to a rust type by way of a
+/// prost implementation. While this requires converting to a protobuf stream
+/// and back again, this allows for placing most of the complex logic in the
+/// `prost` implementation and keeping the local `try_from` implementations
+/// simple.
+///
+/// For example:
+/// ```ignore
+///     let bytes = encode_to_protobuf_vec(proto_type)?;
+///     let prost = prost::TYPENAME::decode(bytes.as_slice())?;
+///     let rust_type = TYPENAME::try_from(prost)?;
+/// ```
+pub(crate) fn encode_to_protobuf_vec<T: ProtoMessage>(msg: &T) -> Result<Vec<u8>, ConversionError> {
+    let mut bytes = vec![];
+    let mut stream = CodedOutputStream::vec(&mut bytes);
+    msg.write_to_with_cached_sizes(&mut stream)
+        .map_err(|e| ConversionError::Other(e.to_string()))?;
+    stream
+        .flush()
+        .map_err(|e| ConversionError::Other(e.to_string()))?;
+    Ok(bytes)
 }
