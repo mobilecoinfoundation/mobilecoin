@@ -3,7 +3,6 @@
 //! Conversions from prost message type into common crate rust types.
 use crate::{prost, ConversionError, EnclaveReportDataContents};
 use alloc::string::ToString;
-use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_crypto_keys::X25519Public;
 use mc_sgx_core_types::QuoteNonce;
 
@@ -53,34 +52,12 @@ impl From<&EnclaveReportDataContents> for prost::EnclaveReportDataContents {
     }
 }
 
-impl Digestible for prost::EnclaveReportDataContents {
-    fn append_to_transcript<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        let typename = b"EnclaveReportDataContents";
-        transcript.append_agg_header(context, typename);
-
-        let Self {
-            nonce,
-            key,
-            custom_identity,
-        } = self;
-        nonce.append_to_transcript(context, transcript);
-        key.append_to_transcript(context, transcript);
-        custom_identity.append_to_transcript_allow_omit(context, transcript);
-
-        transcript.append_agg_closer(context, typename);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::vec;
     use assert_matches::assert_matches;
-    use mc_crypto_digestible::MerlinTranscript;
+    use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 
     #[test]
     fn prost_roundtrip() {
@@ -179,9 +156,9 @@ mod tests {
         // to reproduce it. Note that prost will order the fields in generated
         // code based on tag numbers. This test also helps ensure the order
         // of the prost generated fields.
-        nonce.append_to_transcript(context, &mut transcript);
-        key.append_to_transcript(context, &mut transcript);
-        custom_identity.append_to_transcript(context, &mut transcript);
+        nonce.append_to_transcript(b"nonce", &mut transcript);
+        key.append_to_transcript(b"key", &mut transcript);
+        custom_identity.append_to_transcript(b"custom_identity", &mut transcript);
 
         transcript.append_agg_closer(context, b"EnclaveReportDataContents");
 
@@ -196,44 +173,5 @@ mod tests {
 
         let report_data_digest = report_data.digest32::<MerlinTranscript>(context);
         assert_eq!(report_data_digest, expected_digest);
-    }
-
-    #[test]
-    fn enclave_report_data_contents_digest_without_custom_id() {
-        let nonce = vec![0x2u8; 16];
-        let key = vec![0x33u8; 32];
-        let zeroed_custom_identity = vec![0x0u8; 32];
-        let report_data_without_custom_id = prost::EnclaveReportDataContents {
-            nonce: nonce.clone(),
-            key: key.clone(),
-            custom_identity: vec![],
-        };
-
-        let report_data_with_zeroed_custom_id = prost::EnclaveReportDataContents {
-            nonce: nonce.clone(),
-            key: key.clone(),
-            custom_identity: zeroed_custom_identity,
-        };
-
-        let context = b"no custom id";
-
-        let no_custom_id_digest =
-            report_data_without_custom_id.digest32::<MerlinTranscript>(context);
-        let zeroed_custom_id_digest =
-            report_data_with_zeroed_custom_id.digest32::<MerlinTranscript>(context);
-        assert_ne!(no_custom_id_digest, zeroed_custom_id_digest);
-
-        let mut transcript = MerlinTranscript::new(b"digestible");
-        transcript.append_agg_header(context, b"EnclaveReportDataContents");
-
-        nonce.append_to_transcript(context, &mut transcript);
-        key.append_to_transcript(context, &mut transcript);
-        // No custom identity added to the transcript, since it's empty
-
-        transcript.append_agg_closer(context, b"EnclaveReportDataContents");
-
-        let mut expected_digest = [0u8; 32];
-        transcript.extract_digest(&mut expected_digest);
-        assert_eq!(no_custom_id_digest, expected_digest);
     }
 }

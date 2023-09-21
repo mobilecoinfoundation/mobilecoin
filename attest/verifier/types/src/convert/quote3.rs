@@ -4,7 +4,6 @@
 
 use crate::{prost, ConversionError};
 use alloc::vec::Vec;
-use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_sgx_dcap_types::Quote3;
 
 impl TryFrom<prost::Quote3> for Quote3<Vec<u8>> {
@@ -23,22 +22,6 @@ impl<T: AsRef<[u8]>> From<&Quote3<T>> for prost::Quote3 {
     }
 }
 
-impl Digestible for prost::Quote3 {
-    fn append_to_transcript<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        let typename = b"Quote3";
-        transcript.append_agg_header(context, typename);
-
-        let Self { data } = self;
-        data.append_to_transcript(context, transcript);
-
-        transcript.append_agg_closer(context, typename);
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::{prost, *};
@@ -46,7 +29,7 @@ mod test {
     use alloc::vec;
     use assert_matches::assert_matches;
     use mc_attest_untrusted::DcapQuotingEnclave;
-    use mc_crypto_digestible::MerlinTranscript;
+    use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
     use mc_sgx_core_types::Report;
 
     #[test]
@@ -99,7 +82,7 @@ mod test {
         // release. Only items added or removed. This is because the digest
         // will be stored on the block chain and someone will need to be able
         // to reproduce it.
-        data.append_to_transcript(context, &mut transcript);
+        data.append_to_transcript(b"data", &mut transcript);
 
         transcript.append_agg_closer(context, b"Quote3");
 

@@ -7,7 +7,6 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_sgx_dcap_sys_types::sgx_ql_qve_collateral_t;
 use mc_sgx_dcap_types::Collateral;
 use x509_cert::{
@@ -139,36 +138,6 @@ fn version_3_1_empty_collateral() -> sgx_ql_qve_collateral_t {
     collateral
 }
 
-impl Digestible for prost::Collateral {
-    fn append_to_transcript<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        let typename = b"Collateral";
-        transcript.append_agg_header(context, typename);
-
-        let Self {
-            pck_crl_issuer_chain,
-            root_ca_crl,
-            pck_crl,
-            tcb_info_issuer_chain,
-            tcb_info,
-            qe_identity_issuer_chain,
-            qe_identity,
-        } = self;
-        pck_crl_issuer_chain.append_to_transcript(context, transcript);
-        root_ca_crl.append_to_transcript(context, transcript);
-        pck_crl.append_to_transcript(context, transcript);
-        tcb_info_issuer_chain.append_to_transcript(context, transcript);
-        tcb_info.append_to_transcript(context, transcript);
-        qe_identity_issuer_chain.append_to_transcript(context, transcript);
-        qe_identity.append_to_transcript(context, transcript);
-
-        transcript.append_agg_closer(context, typename);
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::{prost, *};
@@ -176,7 +145,7 @@ mod test {
     use alloc::vec;
     use assert_matches::assert_matches;
     use mc_attest_untrusted::DcapQuotingEnclave;
-    use mc_crypto_digestible::MerlinTranscript;
+    use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
     use mc_sgx_core_types::Report;
 
     fn collateral() -> Collateral {
@@ -334,13 +303,13 @@ mod test {
         // to reproduce it. Note that prost will order the fields in generated
         // code based on tag numbers. This test also helps ensure the order
         // of the prost generated fields.
-        pck_crl_issuer_chain.append_to_transcript(context, &mut transcript);
-        root_ca_crl.append_to_transcript(context, &mut transcript);
-        pck_crl.append_to_transcript(context, &mut transcript);
-        tcb_info_issuer_chain.append_to_transcript(context, &mut transcript);
-        tcb_info.append_to_transcript(context, &mut transcript);
-        qe_identity_issuer_chain.append_to_transcript(context, &mut transcript);
-        qe_identity.append_to_transcript(context, &mut transcript);
+        pck_crl_issuer_chain.append_to_transcript(b"pck_crl_issuer_chain", &mut transcript);
+        root_ca_crl.append_to_transcript(b"root_ca_crl", &mut transcript);
+        pck_crl.append_to_transcript(b"pck_crl", &mut transcript);
+        tcb_info_issuer_chain.append_to_transcript(b"tcb_info_issuer_chain", &mut transcript);
+        tcb_info.append_to_transcript(b"tcb_info", &mut transcript);
+        qe_identity_issuer_chain.append_to_transcript(b"qe_identity_issuer_chain", &mut transcript);
+        qe_identity.append_to_transcript(b"qe_identity", &mut transcript);
 
         transcript.append_agg_closer(context, b"Collateral");
 
