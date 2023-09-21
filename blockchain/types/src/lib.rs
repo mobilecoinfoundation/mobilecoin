@@ -22,7 +22,7 @@ pub use crate::{
     block_contents::{BlockContents, BlockContentsHash},
     block_data::BlockData,
     block_id::BlockID,
-    block_metadata::{BlockMetadata, BlockMetadataContents},
+    block_metadata::{AttestationEvidence, BlockMetadata, BlockMetadataContents},
     block_signature::BlockSignature,
     error::ConvertError,
 };

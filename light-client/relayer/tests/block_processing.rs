@@ -1,7 +1,9 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use mc_account_keys::{burn_address, AccountKey, PublicAddress};
-use mc_blockchain_types::{Block, BlockContents, BlockData, BlockMetadata, BlockMetadataContents};
+use mc_blockchain_types::{
+    AttestationEvidence, Block, BlockContents, BlockData, BlockMetadata, BlockMetadataContents,
+};
 use mc_common::{
     logger::{log, test_with_logger, Logger},
     ResponderId,
@@ -53,7 +55,7 @@ fn append_tx_outs_as_block(
             let bmc = BlockMetadataContents::new(
                 block.id.clone(),
                 Default::default(),
-                Default::default(),
+                AttestationEvidence::VerificationReport(Default::default()),
                 ResponderId::from_str(&format!("node{idx}.test.com:8433")).unwrap(),
             );
             BlockMetadata::from_contents_and_keypair(bmc, signer).unwrap()
