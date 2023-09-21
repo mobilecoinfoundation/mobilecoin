@@ -132,6 +132,8 @@ pub struct TxSummaryUnblindingReport<
     pub tombstone_block: u64,
 }
 
+/// Type of total balance, either `Ours` for inputs from our account or
+/// `Sci` for inputs from a swap counterparty.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum TotalKind {
     /// Input owned by our account (less change), outgoing from our account

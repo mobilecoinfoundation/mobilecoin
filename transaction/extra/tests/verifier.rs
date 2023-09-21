@@ -18,7 +18,7 @@ use mc_transaction_core::{
     Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_extra::UnsignedTx;
-use mc_transaction_summary::{verify_tx_summary, TransactionEntity};
+use mc_transaction_summary::{verify_tx_summary, TotalKind, TransactionEntity};
 use mc_util_from_random::FromRandom;
 use mc_util_serial::encode;
 use rand::{rngs::StdRng, SeedableRng};
@@ -221,7 +221,10 @@ fn test_max_size_tx_summary_verification() {
             160
         )]
     );
-    assert_eq!(&report.totals, &[(TokenId::from(0), 16000),]);
+    assert_eq!(
+        &report.totals,
+        &[(TokenId::from(0), TotalKind::Ours, 16000),]
+    );
 
     assert_eq!(report.network_fee, Amount::new(15840, TokenId::from(0)));
 }
@@ -256,7 +259,10 @@ fn test_min_size_tx_summary_verification() {
             10
         )]
     );
-    assert_eq!(&report.totals, &[(TokenId::from(0), 1000),]);
+    assert_eq!(
+        &report.totals,
+        &[(TokenId::from(0), TotalKind::Ours, 1000),]
+    );
     assert_eq!(report.network_fee, Amount::new(990, TokenId::from(0)));
 }
 
@@ -343,7 +349,11 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, (value + value2 - change_value) as i64),]
+            &[(
+                token_id,
+                TotalKind::Ours,
+                (value + value2 - change_value) as i64
+            ),]
         );
         assert_eq!(
             &report.outputs,
@@ -431,7 +441,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, ((value - change_value) as i64)),]
+            &[(token_id, TotalKind::Ours, ((value - change_value) as i64)),]
         );
         assert_eq!(
             &report.outputs,
@@ -523,7 +533,11 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
         let recipient2_hash = ShortAddressHash::from(&recipient2.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, (value + value2 + Mob::MINIMUM_FEE) as i64),]
+            &[(
+                token_id,
+                TotalKind::Ours,
+                (value + value2 + Mob::MINIMUM_FEE) as i64
+            ),]
         );
         let mut outputs = vec![
             (
@@ -652,7 +666,9 @@ fn test_sci_tx_summary_verification() {
         &report.totals,
         &[
             // Bob spends 3x worth of token id 2 in the transaction
-            (token2, value2 as i64),
+            (token2, TotalKind::Ours, value2 as i64),
+            // SCI inputs used in the transaction
+            (Mob::ID, TotalKind::Sci, value as i64),
         ]
     );
     let mut outputs = vec![
@@ -781,7 +797,9 @@ fn test_sci_three_way_tx_summary_verification() {
         &report.totals,
         &[
             // Bob's spend to create the transaction
-            (token2, value2 as i64),
+            (token2, TotalKind::Ours, value2 as i64),
+            // SCI inputs used in the transaction
+            (Mob::ID, TotalKind::Sci, value as i64),
         ]
     );
     let mut outputs = vec![

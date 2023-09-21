@@ -18,5 +18,5 @@ mod verifier;
 pub use data::{verify_tx_summary, TxOutSummaryUnblindingData, TxSummaryUnblindingData};
 
 pub use error::Error;
-pub use report::{TransactionEntity, TxSummaryUnblindingReport};
+pub use report::{TotalKind, TransactionEntity, TxSummaryUnblindingReport};
 pub use verifier::TxSummaryStreamingVerifierCtx;
