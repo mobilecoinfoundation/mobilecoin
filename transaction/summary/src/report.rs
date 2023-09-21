@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(
             &report.outputs[..],
             &[
-                (addr.clone(), TokenId::from(2), 50),
+                (addr, TokenId::from(2), 50),
                 (TransactionEntity::Swap, TokenId::from(1), 10),
             ]
         );

@@ -394,7 +394,6 @@ mod tests {
     }
 
     #[derive(Clone, Debug, PartialEq)]
-    #[allow(dead_code)]
     enum InputType {
         /// An input we own, reducing our balance
         Owned,
@@ -403,7 +402,6 @@ mod tests {
     }
 
     #[derive(Clone, Debug, PartialEq)]
-    #[allow(dead_code)]
     enum OutputTarget {
         /// An output to ourself (_not_ a change address)
         Ourself,
@@ -439,7 +437,7 @@ mod tests {
             // Output to ourself, should show output to our address and total of output + fee
             TxOutReportTest {
                 inputs: vec![(InputType::Owned, Amount::new(amount.value + fee, token_id))],
-                outputs: vec![(OutputTarget::Ourself, amount.clone())],
+                outputs: vec![(OutputTarget::Ourself, amount)],
                 changes: vec![(
                     TransactionEntity::OurAddress(ShortAddressHash::from(&sender_subaddress)),
                     token_id,
@@ -456,7 +454,7 @@ mod tests {
                     ),
                     (InputType::Owned, Amount::new(amount.value / 2, token_id)),
                 ],
-                outputs: vec![(OutputTarget::Change, amount.clone())],
+                outputs: vec![(OutputTarget::Change, amount)],
                 changes: vec![
                     //(TransactionEntity::Total, token_id, 0),
                 ],
@@ -465,7 +463,7 @@ mod tests {
             // Output to someone else, should show their address and total of output + fee
             TxOutReportTest {
                 inputs: vec![(InputType::Owned, Amount::new(amount.value + fee, token_id))],
-                outputs: vec![(OutputTarget::Other, amount.clone())],
+                outputs: vec![(OutputTarget::Other, amount)],
                 changes: vec![(
                     TransactionEntity::OtherAddress(ShortAddressHash::from(&target_subaddress)),
                     token_id,
@@ -499,7 +497,7 @@ mod tests {
                     // The total is the change to _our_ balance spent during the transaction
                     (token_id, TotalKind::Ours, (10_000 + fee) as i64),
                     // And the SCI input
-                    (TokenId::from(2), TotalKind::Sci, (200) as i64),
+                    (TokenId::from(2), TotalKind::Sci, 200_i64),
                 ],
             },
             // Partial SCI
@@ -531,14 +529,14 @@ mod tests {
                     // The total is the change to _our_ balance spent during the transaction
                     (token_id, TotalKind::Ours, (7_500 + fee) as i64),
                     // And the SCI input - partial value returned
-                    (TokenId::from(2), TotalKind::Sci, (150) as i64),
+                    (TokenId::from(2), TotalKind::Sci, 150_i64),
                 ],
             },
         ];
 
         // Run tests
         for t in tests {
-            println!("Running test: {:?}", t);
+            println!("Running test: {t:?}");
 
             // Setup verifier
             let mut report = TxSummaryUnblindingReport::<16>::default();
@@ -547,16 +545,16 @@ mod tests {
                 BlockVersion::THREE,
                 t.outputs.len(),
                 t.inputs.len(),
-                sender.view_private_key().clone(),
+                *sender.view_private_key(),
                 PublicSubaddress {
-                    view_public: change_subaddress.view_public_key().clone().into(),
-                    spend_public: change_subaddress.spend_public_key().clone().into(),
+                    view_public: (*change_subaddress.view_public_key()).into(),
+                    spend_public: (*change_subaddress.spend_public_key()).into(),
                 },
             );
 
             // Build and process TxOuts
             for (target, amount) in &t.outputs {
-                println!("Add output {:?}: {:?}", target, amount);
+                println!("Add output {target:?}: {amount:?}");
 
                 // Select target address
                 let receive_subaddress = match target {
@@ -574,8 +572,8 @@ mod tests {
                 // Construct TxOut object
                 let tx_out = TxOut::new(
                     BlockVersion::THREE,
-                    amount.clone(),
-                    &receive_subaddress,
+                    *amount,
+                    receive_subaddress,
                     &tx_private_key,
                     Default::default(),
                 )
@@ -622,7 +620,7 @@ mod tests {
 
             // Build and process TxIns?
             for (kind, amount) in &t.inputs {
-                println!("Add input: {:?}", amount);
+                println!("Add input: {amount:?}");
 
                 // Setup keys for TxOut (kx against sender key as this is an input)
                 let tx_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -632,7 +630,7 @@ mod tests {
                 // Construct TxOut object
                 let tx_out = TxOut::new(
                     BlockVersion::THREE,
-                    amount.clone(),
+                    *amount,
                     &sender_subaddress,
                     &tx_private_key,
                     Default::default(),
@@ -647,7 +645,7 @@ mod tests {
                     InputType::Sci => vec![0u8; 32],
                 };
                 let tx_in_summary = TxInSummary {
-                    pseudo_output_commitment: masked_amount.commitment().clone(),
+                    pseudo_output_commitment: *masked_amount.commitment(),
                     input_rules_digest,
                 };
 
