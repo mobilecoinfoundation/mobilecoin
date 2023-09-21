@@ -7,6 +7,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_sgx_dcap_sys_types::sgx_ql_qve_collateral_t;
 use mc_sgx_dcap_types::Collateral;
 use x509_cert::{
@@ -138,12 +139,44 @@ fn version_3_1_empty_collateral() -> sgx_ql_qve_collateral_t {
     collateral
 }
 
+impl Digestible for prost::Collateral {
+    fn append_to_transcript<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        let typename = b"Collateral";
+        transcript.append_agg_header(context, typename);
+
+        let Self {
+            pck_crl_issuer_chain,
+            root_ca_crl,
+            pck_crl,
+            tcb_info_issuer_chain,
+            tcb_info,
+            qe_identity_issuer_chain,
+            qe_identity,
+        } = self;
+        pck_crl_issuer_chain.append_to_transcript(context, transcript);
+        root_ca_crl.append_to_transcript(context, transcript);
+        pck_crl.append_to_transcript(context, transcript);
+        tcb_info_issuer_chain.append_to_transcript(context, transcript);
+        tcb_info.append_to_transcript(context, transcript);
+        qe_identity_issuer_chain.append_to_transcript(context, transcript);
+        qe_identity.append_to_transcript(context, transcript);
+
+        transcript.append_agg_closer(context, typename);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{prost, *};
     use ::prost::Message;
+    use alloc::vec;
     use assert_matches::assert_matches;
     use mc_attest_untrusted::DcapQuotingEnclave;
+    use mc_crypto_digestible::MerlinTranscript;
     use mc_sgx_core_types::Report;
 
     fn collateral() -> Collateral {
@@ -262,5 +295,69 @@ mod test {
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
+    }
+
+    #[test]
+    fn digestible() {
+        // Some notes about this test:
+        // - We don't use the `collateral()` function as it re-uses the same issuer
+        //   chain for TCB info and QE identity.
+        // - We use simple vectors as we don't need to test the DER encoding, just the
+        //   digesting of the bytes.
+        // - We manually build up the digest here, to help ensure that the digest order
+        //   of fields is maintained in the future.
+
+        let pck_crl_issuer_chain = vec![vec![1u8; 10], vec![2u8; 10]];
+        let root_ca_crl = vec![3u8; 20];
+        let pck_crl = vec![4u8; 30];
+        let tcb_info_issuer_chain = vec![vec![5u8; 10], vec![6u8; 10], vec![7u8; 10]];
+        let tcb_info = "8".repeat(40);
+        let qe_identity_issuer_chain = vec![
+            vec![9u8; 10],
+            vec![10u8; 10],
+            vec![11u8; 10],
+            vec![12u8; 10],
+        ];
+        let qe_identity = "13".repeat(50);
+
+        let context = b"test";
+
+        // The `digestible` byte string is used in the `DigestTranscript`
+        // implementation for `MerlinTranscript`. It shouldn't change or else
+        // historical digests would fail to be reproduced.
+        let mut transcript = MerlinTranscript::new(b"digestible");
+        transcript.append_agg_header(context, b"Collateral");
+
+        // As mentioned above the order of these calls should not change after
+        // release. Only items added or removed. This is because the digest
+        // will be stored on the block chain and someone will need to be able
+        // to reproduce it. Note that prost will order the fields in generated
+        // code based on tag numbers. This test also helps ensure the order
+        // of the prost generated fields.
+        pck_crl_issuer_chain.append_to_transcript(context, &mut transcript);
+        root_ca_crl.append_to_transcript(context, &mut transcript);
+        pck_crl.append_to_transcript(context, &mut transcript);
+        tcb_info_issuer_chain.append_to_transcript(context, &mut transcript);
+        tcb_info.append_to_transcript(context, &mut transcript);
+        qe_identity_issuer_chain.append_to_transcript(context, &mut transcript);
+        qe_identity.append_to_transcript(context, &mut transcript);
+
+        transcript.append_agg_closer(context, b"Collateral");
+
+        let mut expected_digest = [0u8; 32];
+        transcript.extract_digest(&mut expected_digest);
+
+        let prost_collateral = prost::Collateral {
+            pck_crl_issuer_chain,
+            root_ca_crl,
+            pck_crl,
+            tcb_info_issuer_chain,
+            tcb_info,
+            qe_identity_issuer_chain,
+            qe_identity,
+        };
+
+        let prost_digest = prost_collateral.digest32::<MerlinTranscript>(context);
+        assert_eq!(prost_digest, expected_digest);
     }
 }
