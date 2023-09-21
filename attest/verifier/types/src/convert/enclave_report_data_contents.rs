@@ -51,39 +51,13 @@ impl From<&EnclaveReportDataContents> for prost::EnclaveReportDataContents {
         }
     }
 }
-use mc_crypto_digestible::{DigestTranscript, Digestible};
-
-impl Digestible for prost::EnclaveReportDataContents {
-    fn append_to_transcript<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        let typename = b"EnclaveReportDataContents";
-        transcript.append_agg_header(context, typename);
-
-        let Self {
-            nonce,
-            key,
-            custom_identity,
-        } = self;
-        transcript.append_primitive(context, b"nonce", nonce);
-        transcript.append_primitive(context, b"key", key);
-        // Since custom identity is optional we only include it if it has data.
-        if !self.custom_identity.is_empty() {
-            transcript.append_primitive(context, b"custom_identity", custom_identity);
-        }
-
-        transcript.append_agg_closer(context, typename);
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::vec;
     use assert_matches::assert_matches;
-    use mc_crypto_digestible::MerlinTranscript;
+    use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 
     #[test]
     fn prost_roundtrip() {
@@ -162,80 +136,42 @@ mod tests {
 
     #[test]
     fn enclave_report_data_contents_digest() {
-        let nonce_bytes = [0x1u8; 16];
-        let key_bytes = [0x22u8; 32];
-        let custom_identity = [0x33u8; 32];
-        let report_data_1 = prost::EnclaveReportDataContents {
-            nonce: nonce_bytes.to_vec(),
-            key: key_bytes.to_vec(),
-            custom_identity: custom_identity.to_vec(),
+        // We manually build up the digest here, to help ensure that the digest
+        // order of fields is maintained in the future.
+        let nonce = vec![0x1u8; 16];
+        let key = vec![0x22u8; 32];
+        let custom_identity = vec![0x33u8; 32];
+
+        let context = b"toasty";
+
+        // The `digestible` byte string is used in the `DigestTranscript`
+        // implementation for `MerlinTranscript`. It shouldn't change or else
+        // historical digests would fail to be reproduced.
+        let mut transcript = MerlinTranscript::new(b"digestible");
+        transcript.append_agg_header(context, b"EnclaveReportDataContents");
+
+        // As mentioned above the order of these calls should not change after
+        // release. Only items added or removed. This is because the digest
+        // will be stored on the block chain and someone will need to be able
+        // to reproduce it. Note that prost will order the fields in generated
+        // code based on tag numbers. This test also helps ensure the order
+        // of the prost generated fields.
+        nonce.append_to_transcript(b"nonce", &mut transcript);
+        key.append_to_transcript(b"key", &mut transcript);
+        custom_identity.append_to_transcript(b"custom_identity", &mut transcript);
+
+        transcript.append_agg_closer(context, b"EnclaveReportDataContents");
+
+        let mut expected_digest = [0u8; 32];
+        transcript.extract_digest(&mut expected_digest);
+
+        let report_data = prost::EnclaveReportDataContents {
+            nonce,
+            key,
+            custom_identity,
         };
 
-        let report_data_2 = prost::EnclaveReportDataContents {
-            nonce: nonce_bytes.to_vec(),
-            key: key_bytes.to_vec(),
-            custom_identity: custom_identity.to_vec(),
-        };
-
-        let digest_1 = report_data_1.digest32::<MerlinTranscript>(b"");
-        let digest_2 = report_data_2.digest32::<MerlinTranscript>(b"");
-        assert_eq!(digest_1, digest_2);
-
-        let mut modified_nonce = nonce_bytes.to_vec();
-        modified_nonce[0] += 1;
-        let modified_nonce_report_data = prost::EnclaveReportDataContents {
-            nonce: modified_nonce,
-            key: key_bytes.to_vec(),
-            custom_identity: custom_identity.to_vec(),
-        };
-
-        let modified_nonce_digest = modified_nonce_report_data.digest32::<MerlinTranscript>(b"");
-        assert_ne!(digest_1, modified_nonce_digest);
-
-        let mut modified_key_bytes = key_bytes.to_vec();
-        modified_key_bytes[0] += 1;
-        let modified_key_report_data = prost::EnclaveReportDataContents {
-            nonce: nonce_bytes.to_vec(),
-            key: modified_key_bytes,
-            custom_identity: custom_identity.to_vec(),
-        };
-
-        let modified_key_digest = modified_key_report_data.digest32::<MerlinTranscript>(b"");
-        assert_ne!(digest_1, modified_key_digest);
-
-        let mut modified_custom_identity = custom_identity.to_vec();
-        modified_custom_identity[0] += 1;
-        let modified_custom_identity_report_data = prost::EnclaveReportDataContents {
-            nonce: nonce_bytes.to_vec(),
-            key: key_bytes.to_vec(),
-            custom_identity: modified_custom_identity,
-        };
-
-        let modified_custom_identity_digest =
-            modified_custom_identity_report_data.digest32::<MerlinTranscript>(b"");
-        assert_ne!(digest_1, modified_custom_identity_digest);
-    }
-
-    #[test]
-    fn enclave_report_data_contents_digest_without_custom_id() {
-        let nonce_bytes = [0x2u8; 16];
-        let key_bytes = [0x33u8; 32];
-        let zeroed_custom_identity = [0x0u8; 32];
-        let report_data_without_custom_id = prost::EnclaveReportDataContents {
-            nonce: nonce_bytes.to_vec(),
-            key: key_bytes.to_vec(),
-            custom_identity: vec![],
-        };
-
-        let report_data_with_zeroed_custom_id = prost::EnclaveReportDataContents {
-            nonce: nonce_bytes.to_vec(),
-            key: key_bytes.to_vec(),
-            custom_identity: zeroed_custom_identity.to_vec(),
-        };
-
-        let no_custom_id_digest = report_data_without_custom_id.digest32::<MerlinTranscript>(b"");
-        let zeroed_custom_id_digest =
-            report_data_with_zeroed_custom_id.digest32::<MerlinTranscript>(b"");
-        assert_ne!(no_custom_id_digest, zeroed_custom_id_digest);
+        let report_data_digest = report_data.digest32::<MerlinTranscript>(context);
+        assert_eq!(report_data_digest, expected_digest);
     }
 }
