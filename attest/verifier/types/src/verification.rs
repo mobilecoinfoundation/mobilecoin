@@ -12,7 +12,7 @@ use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
-use mc_crypto_digestible::{DigestTranscript, Digestible};
+use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::X25519Public;
 use mc_sgx_core_types::QuoteNonce;
 use mc_sgx_dcap_types::{Collateral, Quote3};
@@ -238,32 +238,10 @@ impl EnclaveReportDataContents {
     }
 }
 
-impl Digestible for EnclaveReportDataContents {
-    fn append_to_transcript<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        let typename = b"EnclaveReportDataContents";
-        transcript.append_agg_header(context, typename);
-        transcript.append_primitive(
-            context,
-            b"nonce",
-            <QuoteNonce as AsRef<[u8]>>::as_ref(&self.nonce),
-        );
-        self.key.append_to_transcript(context, transcript);
-        if let Some(custom_identity) = &self.custom_identity {
-            custom_identity.append_to_transcript(context, transcript);
-        }
-        transcript.append_agg_closer(context, typename);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::{format, vec};
-    use mc_crypto_digestible::MerlinTranscript;
 
     #[test]
     fn test_signature_debug() {
@@ -285,53 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn enclave_report_data_contents_digest() {
-        let nonce: QuoteNonce = [0x1u8; 16].into();
-        let key_bytes = [0x22u8; 32];
-        let key: X25519Public = key_bytes.as_slice().try_into().expect("bad key");
-        let custom_identity = [0x33u8; 32];
-        let report_data_1 =
-            EnclaveReportDataContents::new(nonce.clone(), key.clone(), custom_identity);
-
-        let report_data_2 =
-            EnclaveReportDataContents::new(nonce.clone(), key.clone(), custom_identity);
-
-        let digest_1 = report_data_1.digest32::<MerlinTranscript>(b"");
-        let digest_2 = report_data_2.digest32::<MerlinTranscript>(b"");
-        assert_eq!(digest_1, digest_2);
-
-        let mut modified_nonce = nonce.clone();
-        let nonce_bytes: &mut [u8] = modified_nonce.as_mut();
-        nonce_bytes[0] += 1;
-        let modified_nonce_report_data =
-            EnclaveReportDataContents::new(modified_nonce, key.clone(), custom_identity);
-
-        let modified_nonce_digest = modified_nonce_report_data.digest32::<MerlinTranscript>(b"");
-        assert_ne!(digest_1, modified_nonce_digest);
-
-        let mut modified_key_bytes = key_bytes;
-        modified_key_bytes[0] += 1;
-        let modified_key_report_data = EnclaveReportDataContents::new(
-            nonce.clone(),
-            modified_key_bytes.as_slice().try_into().expect("bad key"),
-            custom_identity,
-        );
-
-        let modified_key_digest = modified_key_report_data.digest32::<MerlinTranscript>(b"");
-        assert_ne!(digest_1, modified_key_digest);
-
-        let mut modified_custom_identity = custom_identity;
-        modified_custom_identity[0] += 1;
-        let modified_custom_identity_report_data =
-            EnclaveReportDataContents::new(nonce, key, modified_custom_identity);
-
-        let modified_custom_identity_digest =
-            modified_custom_identity_report_data.digest32::<MerlinTranscript>(b"");
-        assert_ne!(digest_1, modified_custom_identity_digest);
-    }
-
-    #[test]
-    fn enclave_report_data_contents_digest_without_custom_id() {
+    fn enclave_report_data_contents_sha256_without_custom_id() {
         let nonce: QuoteNonce = [0x2u8; 16].into();
         let key_bytes = [0x33u8; 32];
         let key: X25519Public = key_bytes.as_slice().try_into().expect("bad key");
@@ -342,10 +274,6 @@ mod tests {
         let report_data_with_zeroed_custom_id =
             EnclaveReportDataContents::new(nonce, key, zeroed_custom_identity);
 
-        let no_custom_id_digest = report_data_without_custom_id.digest32::<MerlinTranscript>(b"");
-        let zeroed_custom_id_digest =
-            report_data_with_zeroed_custom_id.digest32::<MerlinTranscript>(b"");
-        assert_ne!(no_custom_id_digest, zeroed_custom_id_digest);
         assert_ne!(
             report_data_without_custom_id.sha256(),
             report_data_with_zeroed_custom_id.sha256()
