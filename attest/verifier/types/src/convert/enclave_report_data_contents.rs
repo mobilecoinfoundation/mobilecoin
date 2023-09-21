@@ -62,16 +62,19 @@ impl Digestible for prost::EnclaveReportDataContents {
         let typename = b"EnclaveReportDataContents";
         transcript.append_agg_header(context, typename);
 
-        let Self {nonce, key, custom_identity} = self;
-        transcript.append_primitive(context, b"nonce", &nonce);
-        transcript.append_primitive(context, b"key", &key);
+        let Self {
+            nonce,
+            key,
+            custom_identity,
+        } = self;
+        transcript.append_primitive(context, b"nonce", nonce);
+        transcript.append_primitive(context, b"key", key);
         // Since custom identity is optional we only include it if it has data.
         if !self.custom_identity.is_empty() {
-            transcript.append_primitive(context, b"custom_identity", &custom_identity);
+            transcript.append_primitive(context, b"custom_identity", custom_identity);
         }
 
         transcript.append_agg_closer(context, typename);
-
     }
 }
 
