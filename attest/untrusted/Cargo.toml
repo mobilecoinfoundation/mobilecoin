@@ -18,7 +18,7 @@ displaydoc = { version = "0.2", default-features = false }
 mc-attest-core = { path = "../core", default-features = false }
 mc-attest-verifier = { path = "../verifier", default-features = false }
 mc-attest-verifier-types = { path = "../verifier/types", default-features = false }
-mc-attestation-verifier = "0.3.1"
+mc-attestation-verifier = "0.4.0"
 mc-rand = "1.1.0"
 mc-sgx-core-types = "0.7.5"
 mc-sgx-dcap-ql = "0.7.5"

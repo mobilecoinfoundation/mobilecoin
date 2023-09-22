@@ -2510,7 +2510,7 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.7.5",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-builder",
  "mc-transaction-core",
@@ -2547,7 +2547,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-net",
  "mc-attest-verifier",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-util-build-script",
@@ -2577,8 +2577,8 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-crypto-keys",
  "mc-crypto-noise",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-types 0.7.5",
+ "mc-sgx-dcap-types 0.7.5",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-serial",
@@ -2601,9 +2601,9 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.7.5",
  "mc-sgx-css",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-types 0.7.5",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -2675,13 +2675,13 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-verifier",
  "mc-attest-verifier-types",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-rand",
  "mc-sgx-build",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.7.5",
  "mc-sgx-dcap-ql",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-sys-types 0.7.5",
+ "mc-sgx-dcap-types 0.7.5",
  "mc-sgx-types",
  "mc-util-serial",
  "p256",
@@ -2706,12 +2706,12 @@ dependencies = [
  "mbedtls-sys-auto",
  "mc-attest-core",
  "mc-attest-verifier-types",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-common",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
+ "mc-sgx-core-sys-types 0.7.5",
+ "mc-sgx-core-types 0.7.5",
  "mc-sgx-css",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-types 0.7.5",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -2732,8 +2732,8 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex-literal",
- "mc-attestation-verifier",
- "mc-sgx-core-types",
+ "mc-attestation-verifier 0.4.0",
+ "mc-sgx-core-types 0.7.5",
  "serde",
  "serde_json",
 ]
@@ -2748,12 +2748,12 @@ dependencies = [
  "hex",
  "hex_fmt",
  "mc-attest-untrusted",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-crypto-digestible",
  "mc-crypto-keys",
- "mc-sgx-core-types",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-types 0.7.5",
+ "mc-sgx-dcap-sys-types 0.7.5",
+ "mc-sgx-dcap-types 0.7.5",
  "mc-util-encodings",
  "mc-util-serial",
  "prost",
@@ -2772,10 +2772,29 @@ dependencies = [
  "der",
  "displaydoc",
  "hex",
+ "mc-sgx-core-sys-types 0.7.5",
+ "mc-sgx-core-types 0.7.5",
+ "mc-sgx-dcap-types 0.7.5",
+ "p256",
+ "serde",
+ "serde_json",
+ "subtle",
+ "x509-cert",
+]
+
+[[package]]
+name = "mc-attestation-verifier"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8145f2ccdf417ba2463928b7ff50200caf0be7c37a32265822c7ed7f7d4fb528"
+dependencies = [
+ "der",
+ "displaydoc",
+ "hex",
  "mbedtls",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-sys-types 0.8.0",
+ "mc-sgx-core-types 0.8.0",
+ "mc-sgx-dcap-types 0.8.0",
  "p256",
  "serde",
  "serde_json",
@@ -2891,7 +2910,7 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-api",
@@ -3055,7 +3074,7 @@ version = "5.0.5"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -3096,7 +3115,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-common",
  "mc-consensus-api",
  "mc-consensus-enclave-api",
@@ -3343,7 +3362,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-trusted",
  "mc-attest-verifier",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.3.1",
  "mc-common",
  "mc-crypto-keys",
  "mc-rand",
@@ -3662,7 +3681,7 @@ dependencies = [
  "lazy_static",
  "mc-account-keys",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-common",
  "mc-connection",
  "mc-consensus-enclave-measurement",
@@ -3695,7 +3714,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-common",
  "mc-connection",
  "mc-crypto-keys",
@@ -3845,7 +3864,7 @@ version = "5.0.5"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -3973,7 +3992,7 @@ dependencies = [
  "mc-api",
  "mc-attest-ake",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
@@ -4078,7 +4097,7 @@ version = "5.0.5"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -4103,7 +4122,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-net",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -4368,7 +4387,7 @@ version = "5.0.5"
 dependencies = [
  "mc-account-keys",
  "mc-attest-verifier",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-fog-ingest-report",
  "mc-fog-report-types",
  "mc-fog-report-validation",
@@ -4457,7 +4476,7 @@ dependencies = [
  "link-cplusplus",
  "mc-account-keys",
  "mc-api",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-types",
  "mc-common",
  "mc-connection",
@@ -4697,7 +4716,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-noise",
@@ -4808,7 +4827,7 @@ version = "5.0.5"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-sgx-css",
  "mc-util-build-enclave",
  "mc-util-build-script",
@@ -4917,7 +4936,7 @@ version = "5.0.5"
 dependencies = [
  "grpcio",
  "mc-attest-net",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-types",
  "mc-common",
  "mc-fog-api",
@@ -5023,7 +5042,7 @@ dependencies = [
  "grpcio",
  "mc-account-keys",
  "mc-api",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -5137,7 +5156,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-core",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -5220,7 +5239,7 @@ dependencies = [
  "hex",
  "mc-account-keys",
  "mc-api",
- "mc-attestation-verifier",
+ "mc-attestation-verifier 0.4.0",
  "mc-common",
  "mc-connection",
  "mc-consensus-enclave-measurement",
@@ -5424,6 +5443,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-sgx-core-build"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b948e5bb6b9bcde3daa1a3852a396a78bc0d01b3e1321a9f4939dc638c8bdd1d"
+dependencies = [
+ "bindgen 0.66.1",
+ "cargo-emit",
+]
+
+[[package]]
 name = "mc-sgx-core-sys-types"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5431,7 +5460,20 @@ checksum = "61e974f10ecf0d0c644e62a44ba8ffb679b0f4c16db3d57662e6ce04adf786a3"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
+ "mc-sgx-core-build 0.7.5",
+ "serde",
+ "serde_with",
+]
+
+[[package]]
+name = "mc-sgx-core-sys-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5032466ad021e904e42b4f251d30eacd3295b98912ff20f4f0b231837d3fbe7b"
+dependencies = [
+ "bindgen 0.66.1",
+ "cargo-emit",
+ "mc-sgx-core-build 0.8.0",
  "serde",
  "serde_with",
 ]
@@ -5446,8 +5488,26 @@ dependencies = [
  "displaydoc",
  "getrandom",
  "hex",
- "mc-sgx-core-sys-types",
- "mc-sgx-util",
+ "mc-sgx-core-sys-types 0.7.5",
+ "mc-sgx-util 0.7.5",
+ "nom",
+ "rand_core",
+ "serde",
+ "subtle",
+]
+
+[[package]]
+name = "mc-sgx-core-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a02f0344fb761c5973e06ddb92414b80dfaf8172df8ea800792bc0f8ae58e743"
+dependencies = [
+ "bitflags 2.3.3",
+ "displaydoc",
+ "getrandom",
+ "hex",
+ "mc-sgx-core-sys-types 0.8.0",
+ "mc-sgx-util 0.8.0",
  "nom",
  "rand_core",
  "serde",
@@ -5459,7 +5519,7 @@ name = "mc-sgx-css"
 version = "5.0.5"
 dependencies = [
  "displaydoc",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.7.5",
  "sha2 0.10.7",
 ]
 
@@ -5479,12 +5539,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa4497c5e07c74b92ae9a93eb04751fd535998ad742574ad9d8e3cae02ac0be5"
 dependencies = [
  "displaydoc",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
+ "mc-sgx-core-sys-types 0.7.5",
+ "mc-sgx-core-types 0.7.5",
  "mc-sgx-dcap-ql-sys",
  "mc-sgx-dcap-ql-types",
- "mc-sgx-dcap-types",
- "mc-sgx-util",
+ "mc-sgx-dcap-types 0.7.5",
+ "mc-sgx-util 0.7.5",
  "once_cell",
 ]
 
@@ -5496,10 +5556,10 @@ checksum = "c4630ad0cd232202eaea8a0ea2c412f6e49044d7fe7fb6ccd820aa2e2b1ac3dd"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
- "mc-sgx-core-sys-types",
+ "mc-sgx-core-build 0.7.5",
+ "mc-sgx-core-sys-types 0.7.5",
  "mc-sgx-dcap-ql-sys-types",
- "mc-sgx-dcap-sys-types",
+ "mc-sgx-dcap-sys-types 0.7.5",
 ]
 
 [[package]]
@@ -5510,7 +5570,7 @@ checksum = "70b93ebfbf89b804c16260c30c0aa2e21707df38fb54e5739844973bc2ee7883"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
+ "mc-sgx-core-build 0.7.5",
 ]
 
 [[package]]
@@ -5519,7 +5579,7 @@ version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "171e0be8e433431b1ebb52907fb2473214995af544c28bad2c3f88950a4d1dbf"
 dependencies = [
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.7.5",
  "mc-sgx-dcap-ql-sys-types",
 ]
 
@@ -5530,8 +5590,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3c431199bc5e06a88b859aeecabe752e77f2da7583d3675ae27566e68291b64"
 dependencies = [
  "bindgen 0.66.1",
- "mc-sgx-core-build",
- "mc-sgx-core-sys-types",
+ "mc-sgx-core-build 0.7.5",
+ "mc-sgx-core-sys-types 0.7.5",
+]
+
+[[package]]
+name = "mc-sgx-dcap-sys-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf98663e9bd1ecd54df3525b57616f00307fde2cf60dd986740de88cfe161860"
+dependencies = [
+ "bindgen 0.66.1",
+ "mc-sgx-core-build 0.8.0",
+ "mc-sgx-core-sys-types 0.8.0",
 ]
 
 [[package]]
@@ -5543,9 +5614,30 @@ dependencies = [
  "const-oid",
  "displaydoc",
  "hex",
- "mc-sgx-core-types",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-util",
+ "mc-sgx-core-types 0.7.5",
+ "mc-sgx-dcap-sys-types 0.7.5",
+ "mc-sgx-util 0.7.5",
+ "nom",
+ "p256",
+ "serde",
+ "sha2 0.10.7",
+ "static_assertions",
+ "subtle",
+ "x509-cert",
+]
+
+[[package]]
+name = "mc-sgx-dcap-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "825e6a9c0cf6e74654e8b64b806cba8bbf54f49ec7b7e09fbf140c95b357a3e7"
+dependencies = [
+ "const-oid",
+ "displaydoc",
+ "hex",
+ "mc-sgx-core-types 0.8.0",
+ "mc-sgx-dcap-sys-types 0.8.0",
+ "mc-sgx-util 0.8.0",
  "nom",
  "p256",
  "serde",
@@ -5617,7 +5709,7 @@ dependencies = [
 name = "mc-sgx-types"
 version = "5.0.5"
 dependencies = [
- "mc-sgx-core-sys-types",
+ "mc-sgx-core-sys-types 0.7.5",
 ]
 
 [[package]]
@@ -5636,6 +5728,12 @@ name = "mc-sgx-util"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f913f943bb5a925308f4e741d85234d2d8090dc6fc35ed9eae7cd885891b383"
+
+[[package]]
+name = "mc-sgx-util"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4db5b47e10b27c1f310371d1542a496884589e5e40618fade19ec6417ceb847"
 
 [[package]]
 name = "mc-test-vectors-account-keys"
