@@ -10,5 +10,5 @@ rust-version = "1.68.0"
 
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
-mc-sgx-core-types = "0.7.5"
+mc-sgx-core-types = "0.8.0"
 sha2 = { version = "0.10", default-features = false }
