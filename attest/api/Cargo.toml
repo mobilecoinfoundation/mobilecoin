@@ -22,8 +22,8 @@ mc-attest-enclave-api = { path = "../enclave-api" }
 mc-attest-verifier-types = { path = "../verifier/types" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-noise = { path = "../../crypto/noise" }
-mc-sgx-core-types = "0.7.5"
-mc-sgx-dcap-types = "0.7.5"
+mc-sgx-core-types = "0.8.0"
+mc-sgx-dcap-types = "0.8.0"
 mc-util-serial = { path = "../../util/serial" }
 
 aead = "0.5"
