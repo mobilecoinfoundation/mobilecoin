@@ -105,14 +105,15 @@ pub const MAX_TOTALS: usize = 4;
 /// balanced. For each token, totals = our inputs - sum(change outputs) ==
 /// sum(other outputs) + fee
 ///
-/// SCI inputs are currently ignored
+/// SCI inputs are also summed, and can be elided from the report with
+/// [TxSummaryUnblindingReport::elide_swap_totals]
 #[derive(Clone, Debug, Default)]
 pub struct TxSummaryUnblindingReport<
     const RECORDS: usize = MAX_RECORDS,
     const TOTALS: usize = MAX_TOTALS,
 > {
     /// Transaction outputs aggregated by address and token type
-    pub outputs: Vec<(TransactionEntity, TokenId, u64), RECORDS>,
+    pub outputs: Vec<(TransactionEntity, TokenId, u128), RECORDS>,
 
     /// Total balance change for our account for each type of token in the
     /// transaction.
@@ -120,10 +121,11 @@ pub struct TxSummaryUnblindingReport<
     /// totals = inputs - sum(change outputs)
     ///
     /// Note that owned and swap inputs are split as most
-    /// applications are concerned only with the _cost_ of
+    /// applications are concerned only with the cost of
     /// the transaction to the user.
+    ///
     /// See [elide_swap_totals] for more detail.
-    pub totals: Vec<(TokenId, TotalKind, i64), TOTALS>,
+    pub totals: Vec<(TokenId, TotalKind, i128), TOTALS>,
 
     /// The network fee that we pay to execute the transaction
     pub network_fee: Amount,
@@ -151,7 +153,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
         let Amount { token_id, value } = amount;
 
         // Ensure value will not overflow
-        let value = i64::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = i128::try_from(value).map_err(|_| Error::NumericOverflow)?;
 
         // Check for existing total entry for this token
         match self
@@ -176,7 +178,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
         let Amount { token_id, value } = amount;
 
         // Ensure value will not overflow
-        let value = i64::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = i128::try_from(value).map_err(|_| Error::NumericOverflow)?;
 
         // Check for existing total entry for this token
         match self
@@ -185,7 +187,11 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
             .find(|(t, k, _)| t == &token_id && *k == TotalKind::Ours)
         {
             // If we have an entry, subtract the change value from this
-            Some(v) => v.2 = v.2.checked_sub(value).ok_or(Error::NumericOverflow)?,
+            Some(v) => {
+                v.2 =
+                    v.2.checked_sub(value as i128)
+                        .ok_or(Error::NumericOverflow)?
+            }
             // If we do not, create a new entry
             None => self
                 .totals
@@ -201,7 +207,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
         let Amount { token_id, value } = amount;
 
         // Ensure value will not overflow
-        let value = i64::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = i128::try_from(value).map_err(|_| Error::NumericOverflow)?;
 
         // Check for existing total entry for this token
         match self
@@ -210,7 +216,11 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
             .find(|(t, k, _)| t == &token_id && *k == TotalKind::Sci)
         {
             // If we have an entry, add the value to this
-            Some(v) => v.2 = v.2.checked_add(value).ok_or(Error::NumericOverflow)?,
+            Some(v) => {
+                v.2 =
+                    v.2.checked_add(value as i128)
+                        .ok_or(Error::NumericOverflow)?
+            }
             // If we do not, create a new entry
             None => self
                 .totals
@@ -223,6 +233,9 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     /// Add output value to a particular entity / address to the report
     fn output_add(&mut self, entity: TransactionEntity, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
+
+        // Ensure value will not overflow
+        let value = u128::try_from(value).map_err(|_| Error::NumericOverflow)?;
 
         // Check for existing output for this address
         match self
@@ -263,11 +276,9 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
         self.sort();
 
         // For each token id, check that inputs match outputs
-        // (this is only executed where _totals_ exist, so skipped
-        // for the current SCI implementation)
         for (token_id, total_kind, value) in &mut self.totals {
             // Sum outputs for this token id
-            let mut balance = 0u64;
+            let mut balance = 0i128;
             for (e, id, v) in &self.outputs {
                 // Skip other tokens
                 if id != token_id {
@@ -279,16 +290,22 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
                 match total_kind {
                     // If it's coming from our account, track total balance
                     TotalKind::Ours => {
-                        balance = balance.checked_add(*v).ok_or(Error::NumericOverflow)?;
+                        balance = balance
+                            .checked_add(*v as i128)
+                            .ok_or(Error::NumericOverflow)?;
                     }
                     // If it's coming from an SCI, and returned to the counterparty, reduce total by
                     // outgoing value
                     TotalKind::Sci if e == &TransactionEntity::Swap => {
-                        *value = value.checked_sub(*v as i64).ok_or(Error::NumericOverflow)?;
+                        *value = value
+                            .checked_sub(*v as i128)
+                            .ok_or(Error::NumericOverflow)?;
                     }
                     // If it's coming from an SCI to us, add to total balance
                     TotalKind::Sci if e != &TransactionEntity::Swap => {
-                        balance = balance.checked_add(*v).ok_or(Error::NumericOverflow)?;
+                        balance = balance
+                            .checked_add(*v as i128)
+                            .ok_or(Error::NumericOverflow)?;
                     }
                     _ => (),
                 }
@@ -297,12 +314,12 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
             // Add network fee for matching token id
             if &self.network_fee.token_id == token_id {
                 balance = balance
-                    .checked_add(self.network_fee.value)
+                    .checked_add(self.network_fee.value as i128)
                     .ok_or(Error::NumericOverflow)?;
             }
 
             // Check that the balance matches the total
-            if balance != *value as u64 {
+            if balance != *value {
                 return Err(Error::AmountVerificationFailed);
             }
         }
@@ -388,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_report_size() {
-        assert_eq!(core::mem::size_of::<TxSummaryUnblindingReport>(), 1416);
+        assert_eq!(core::mem::size_of::<TxSummaryUnblindingReport>(), 1704);
     }
 
     #[test]

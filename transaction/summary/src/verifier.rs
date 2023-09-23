@@ -388,9 +388,9 @@ mod tests {
         /// Outputs produced by the transaction
         outputs: Vec<(OutputTarget, Amount)>,
         /// Totals / balances by token
-        totals: Vec<(TokenId, TotalKind, i64)>,
+        totals: Vec<(TokenId, TotalKind, i128)>,
         /// Changes produced by the transaction
-        changes: Vec<(TransactionEntity, TokenId, u64)>,
+        changes: Vec<(TransactionEntity, TokenId, u128)>,
     }
 
     #[derive(Clone, Debug, PartialEq)]
@@ -441,9 +441,9 @@ mod tests {
                 changes: vec![(
                     TransactionEntity::OurAddress(ShortAddressHash::from(&sender_subaddress)),
                     token_id,
-                    amount.value,
+                    amount.value as u128,
                 )],
-                totals: vec![(token_id, TotalKind::Ours, (amount.value + fee) as i64)],
+                totals: vec![(token_id, TotalKind::Ours, (amount.value + fee) as i128)],
             },
             // Output to our change address, should show no outputs with balance change = fee
             TxOutReportTest {
@@ -458,7 +458,7 @@ mod tests {
                 changes: vec![
                     //(TransactionEntity::Total, token_id, 0),
                 ],
-                totals: vec![(token_id, TotalKind::Ours, fee as i64)],
+                totals: vec![(token_id, TotalKind::Ours, fee as i128)],
             },
             // Output to someone else, should show their address and total of output + fee
             TxOutReportTest {
@@ -467,9 +467,9 @@ mod tests {
                 changes: vec![(
                     TransactionEntity::OtherAddress(ShortAddressHash::from(&target_subaddress)),
                     token_id,
-                    amount.value,
+                    amount.value as u128,
                 )],
-                totals: vec![(token_id, TotalKind::Ours, (amount.value + fee) as i64)],
+                totals: vec![(token_id, TotalKind::Ours, (amount.value + fee) as i128)],
             },
             // Basic SCI. consuming entire swap, inputs should not count towards totals
             TxOutReportTest {
@@ -489,15 +489,15 @@ mod tests {
                     (
                         TransactionEntity::OurAddress(ShortAddressHash::from(&sender_subaddress)),
                         TokenId::from(2),
-                        200,
+                        200_u128,
                     ),
-                    (TransactionEntity::Swap, token_id, 10_000),
+                    (TransactionEntity::Swap, token_id, 10_000_u128),
                 ],
                 totals: vec![
                     // The total is the change to _our_ balance spent during the transaction
-                    (token_id, TotalKind::Ours, (10_000 + fee) as i64),
+                    (token_id, TotalKind::Ours, (10_000 + fee) as i128),
                     // And the SCI input
-                    (TokenId::from(2), TotalKind::Sci, 200_i64),
+                    (TokenId::from(2), TotalKind::Sci, 200_i128),
                 ],
             },
             // Partial SCI
@@ -527,9 +527,9 @@ mod tests {
                 ],
                 totals: vec![
                     // The total is the change to _our_ balance spent during the transaction
-                    (token_id, TotalKind::Ours, (7_500 + fee) as i64),
+                    (token_id, TotalKind::Ours, (7_500 + fee) as i128),
                     // And the SCI input - partial value returned
-                    (TokenId::from(2), TotalKind::Sci, 150_i64),
+                    (TokenId::from(2), TotalKind::Sci, 150_i128),
                 ],
             },
         ];

@@ -352,7 +352,7 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             &[(
                 token_id,
                 TotalKind::Ours,
-                (value + value2 - change_value) as i64
+                (value + value2 - change_value) as i128
             ),]
         );
         assert_eq!(
@@ -360,7 +360,7 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             &[(
                 TransactionEntity::OtherAddress(recipient_hash),
                 token_id,
-                (value + value2 - change_value - Mob::MINIMUM_FEE)
+                (value + value2 - change_value - Mob::MINIMUM_FEE) as u128
             ),]
         );
         assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
@@ -441,14 +441,14 @@ fn test_simple_tx_with_change_tx_summary_verification() {
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, TotalKind::Ours, ((value - change_value) as i64)),]
+            &[(token_id, TotalKind::Ours, ((value - change_value) as i128)),]
         );
         assert_eq!(
             &report.outputs,
             &[(
                 TransactionEntity::OtherAddress(recipient_hash),
                 token_id,
-                (value - change_value - Mob::MINIMUM_FEE)
+                (value - change_value - Mob::MINIMUM_FEE) as u128
             ),]
         );
         assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
@@ -536,19 +536,19 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             &[(
                 token_id,
                 TotalKind::Ours,
-                (value + value2 + Mob::MINIMUM_FEE) as i64
+                (value + value2 + Mob::MINIMUM_FEE) as i128
             ),]
         );
         let mut outputs = vec![
             (
                 TransactionEntity::OtherAddress(recipient_hash),
                 token_id,
-                value,
+                value as u128,
             ),
             (
                 TransactionEntity::OtherAddress(recipient2_hash),
                 token_id,
-                value2,
+                value2 as u128,
             ),
         ];
         outputs.sort();
@@ -666,19 +666,19 @@ fn test_sci_tx_summary_verification() {
         &report.totals,
         &[
             // Bob spends 3x worth of token id 2 in the transaction
-            (token2, TotalKind::Ours, value2 as i64),
+            (token2, TotalKind::Ours, value2 as i128),
             // SCI inputs used in the transaction
-            (Mob::ID, TotalKind::Sci, value as i64),
+            (Mob::ID, TotalKind::Sci, value as i128),
         ]
     );
     let mut outputs = vec![
         // Output to swap counterparty
-        (TransactionEntity::Swap, token2, value2),
+        (TransactionEntity::Swap, token2, value2 as u128),
         // Converted output to ourself
         (
             TransactionEntity::OurAddress(bob_hash),
             Mob::ID,
-            value - Mob::MINIMUM_FEE,
+            (value - Mob::MINIMUM_FEE) as u128,
         ),
     ];
     outputs.sort();
@@ -797,9 +797,9 @@ fn test_sci_three_way_tx_summary_verification() {
         &report.totals,
         &[
             // Bob's spend to create the transaction
-            (token2, TotalKind::Ours, value2 as i64),
+            (token2, TotalKind::Ours, value2 as i128),
             // SCI inputs used in the transaction
-            (Mob::ID, TotalKind::Sci, value as i64),
+            (Mob::ID, TotalKind::Sci, value as i128),
         ]
     );
     let mut outputs = vec![
@@ -807,10 +807,10 @@ fn test_sci_three_way_tx_summary_verification() {
         (
             TransactionEntity::OtherAddress(charlie_hash),
             Mob::ID,
-            (value - Mob::MINIMUM_FEE),
+            (value - Mob::MINIMUM_FEE) as u128,
         ),
         // Output to swap counterparty
-        (TransactionEntity::Swap, token2, value2),
+        (TransactionEntity::Swap, token2, value2 as u128),
     ];
     outputs.sort();
     assert_eq!(&report.outputs[..], &outputs[..]);
