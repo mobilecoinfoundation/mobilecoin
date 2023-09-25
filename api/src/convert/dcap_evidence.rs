@@ -1,31 +1,44 @@
 // Copyright (c) 2023 The MobileCoin Foundation
 
-//! Convert to/from attest::DcapEvidence
+//! Convert to/from external::DcapEvidence
 
-use crate::{attest, convert::encode_to_protobuf_vec, ConversionError};
+use crate::{convert::encode_to_protobuf_vec, external, ConversionError};
 use mc_attest_verifier_types::{prost, DcapEvidence};
 use mc_util_serial::Message;
 use protobuf::Message as ProtoMessage;
 
-impl TryFrom<&DcapEvidence> for attest::DcapEvidence {
+impl TryFrom<&DcapEvidence> for external::DcapEvidence {
     type Error = ConversionError;
     fn try_from(src: &DcapEvidence) -> Result<Self, Self::Error> {
         let prost = prost::DcapEvidence::try_from(src)?;
-        let bytes = prost.encode_to_vec();
+        Ok((&prost).into())
+    }
+}
+
+impl TryFrom<&external::DcapEvidence> for DcapEvidence {
+    type Error = ConversionError;
+    fn try_from(src: &external::DcapEvidence) -> Result<Self, Self::Error> {
+        let prost = prost::DcapEvidence::try_from(src)?;
+        Ok(prost.try_into()?)
+    }
+}
+
+impl From<&prost::DcapEvidence> for external::DcapEvidence {
+    fn from(src: &prost::DcapEvidence) -> Self {
+        let bytes = src.encode_to_vec();
         let mut proto = Self::default();
         proto
             .merge_from_bytes(&bytes)
             .expect("failure to merge means prost and protobuf are out of sync");
-        Ok(proto)
+        proto
     }
 }
 
-impl TryFrom<&attest::DcapEvidence> for DcapEvidence {
+impl TryFrom<&external::DcapEvidence> for prost::DcapEvidence {
     type Error = ConversionError;
-    fn try_from(src: &attest::DcapEvidence) -> Result<Self, Self::Error> {
+    fn try_from(src: &external::DcapEvidence) -> Result<Self, Self::Error> {
         let bytes = encode_to_protobuf_vec(src)?;
-        let prost = prost::DcapEvidence::decode(bytes.as_slice())?;
-        prost.try_into()
+        Ok(prost::DcapEvidence::decode(bytes.as_slice())?)
     }
 }
 
@@ -58,8 +71,8 @@ mod test {
     #[test]
     fn evidence_back_and_forth() {
         let evidence = evidence();
-        let proto_evidence =
-            attest::DcapEvidence::try_from(&evidence).expect("Failed to convert evidence to proto");
+        let proto_evidence = external::DcapEvidence::try_from(&evidence)
+            .expect("Failed to convert evidence to proto");
         let new_evidence = DcapEvidence::try_from(&proto_evidence)
             .expect("Failed to convert proto evidence to evidence");
 
@@ -69,12 +82,12 @@ mod test {
     #[test]
     fn bad_evidence_fails_to_decode() {
         let evidence = evidence();
-        let mut proto_evidence =
-            attest::DcapEvidence::try_from(&evidence).expect("Failed to convert evidence to proto");
+        let mut proto_evidence = external::DcapEvidence::try_from(&evidence)
+            .expect("Failed to convert evidence to proto");
         let proto_quote = proto_evidence.mut_quote();
         proto_quote.data[0] += 1;
         let error = DcapEvidence::try_from(&proto_evidence);
 
-        assert_matches!(error, Err(ConversionError::InvalidContents(_)));
+        assert_matches!(error, Err(ConversionError::InvalidContents));
     }
 }
