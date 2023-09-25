@@ -329,6 +329,7 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
+    use mc_attest_verifier_types::prost;
     use mc_blockchain_types::{AttestationEvidence, BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
@@ -547,7 +548,7 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::new(BLOCK_VERSION, &mut rng);
-        let attestation_evidence = enclave.attestation_evidence.clone();
+        let dcap_evidence = enclave.dcap_evidence.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -840,13 +841,15 @@ mod tests {
         // The block should have valid metadata with this node's quorum set and AVR.
         let metadata = block_data.metadata().unwrap();
         metadata.verify().unwrap();
+        let prost_evidence = prost::DcapEvidence::try_from(&dcap_evidence)
+            .expect("failed decoding attestation evidence");
         assert_eq!(metadata.node_key(), &local_signer_key.public_key());
         assert_eq!(metadata.contents().responder_id(), &responder_id);
         assert_eq!(metadata.contents().block_id(), &block_data.block().id);
         assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
         assert_eq!(
             metadata.contents().attestation_evidence(),
-            &AttestationEvidence::VerificationReport(attestation_evidence)
+            &AttestationEvidence::DcapEvidence(prost_evidence)
         );
     }
 
@@ -928,7 +931,7 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::new(BlockVersion::MAX, &mut rng);
-        let attestation_evidence = enclave.attestation_evidence.clone();
+        let attestation_evidence = enclave.dcap_evidence.clone();
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -1167,9 +1170,11 @@ mod tests {
         assert_eq!(metadata.contents().responder_id(), &responder_id);
         assert_eq!(metadata.contents().block_id(), &block_data.block().id);
         assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
+        let prost_evidence = prost::DcapEvidence::try_from(&attestation_evidence)
+            .expect("failed decoding attestation evidence");
         assert_eq!(
             metadata.contents().attestation_evidence(),
-            &AttestationEvidence::VerificationReport(attestation_evidence)
+            &AttestationEvidence::DcapEvidence(prost_evidence)
         );
     }
 }

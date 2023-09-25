@@ -3,7 +3,6 @@
 
 //! Fog Ingest target
 
-use mc_attest_net::{Client, RaClient};
 use mc_common::logger::{log, o};
 use mc_fog_ingest_enclave::ENCLAVE_FILE;
 use mc_fog_ingest_server::{
@@ -40,9 +39,6 @@ fn main() {
     });
 
     log::info!(logger, "State file is {:?}", state_file_path);
-
-    // Create IAS client.
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
 
     // Get enclave path
     let enclave_path = env::current_exe()
@@ -86,7 +82,6 @@ fn main() {
 
     let mut server = IngestServer::new(
         server_config,
-        ias_client,
         recovery_db,
         watcher,
         ledger_db,

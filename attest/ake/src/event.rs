@@ -6,7 +6,7 @@ use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use der::DateTime;
-use mc_attest_core::EvidenceKind;
+use mc_attest_core::{DcapEvidence, EvidenceKind};
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
@@ -23,8 +23,8 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) attestation_evidence: EvidenceKind,
+    /// This is the local node's attestation evidence.
+    pub(crate) dcap_evidence: DcapEvidence,
 
     _kex: PhantomData<KexAlgo>,
     _cipher: PhantomData<Cipher>,
@@ -38,10 +38,10 @@ where
     DigestAlgo: NoiseDigest,
 {
     /// Create a new input event to initiate a node-to-node channel.
-    pub fn new(local_identity: KexAlgo::Private, attestation_evidence: EvidenceKind) -> Self {
+    pub fn new(local_identity: KexAlgo::Private, dcap_evidence: DcapEvidence) -> Self {
         Self {
             local_identity,
-            attestation_evidence,
+            dcap_evidence,
             _kex: PhantomData,
             _cipher: PhantomData,
             _digest: PhantomData,
@@ -176,7 +176,7 @@ where
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
     /// This is the local node's attestation evidence.
-    pub(crate) attestation_evidence: EvidenceKind,
+    pub(crate) dcap_evidence: DcapEvidence,
 
     /// The auth request input, including payload, if any
     pub(crate) data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
@@ -199,11 +199,11 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        attestation_evidence: EvidenceKind,
+        dcap_evidence: DcapEvidence,
     ) -> Self {
         Self {
             local_identity,
-            attestation_evidence,
+            dcap_evidence,
             data,
         }
     }
@@ -223,8 +223,8 @@ where
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
     /// This is the local node's attestation evidence.
-    pub(crate) attestation_evidence: EvidenceKind,
-    /// The identities that the initiator's IAS report must conform to
+    pub(crate) dcap_evidence: DcapEvidence,
+    /// The identities that the initiator's attestation evidence must conform to
     pub(crate) identities: Vec<TrustedIdentity>,
 
     /// The auth request input, including payload, if any
@@ -248,12 +248,12 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeIX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        attestation_evidence: EvidenceKind,
+        dcap_evidence: DcapEvidence,
         identities: impl Into<Vec<TrustedIdentity>>,
     ) -> Self {
         Self {
             local_identity,
-            attestation_evidence,
+            dcap_evidence,
             identities: identities.into(),
             data,
         }

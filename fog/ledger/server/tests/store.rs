@@ -10,7 +10,6 @@ use std::{
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
-use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -170,7 +169,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
-    let client_listen_uri = store_config.client_listen_uri.clone();
+    let client_listen_uri = store_config.client_listen_uri;
     let store_service = KeyImageService::new(
         client_listen_uri.clone(),
         ledger,
@@ -181,16 +180,10 @@ pub fn direct_key_image_store_check(logger: Logger) {
         logger.clone(),
     );
 
-    // Set up IAS verficiation
-    // This will be a SimClient in testing contexts.
-    let ias_client =
-        AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
     let mut store_server = KeyImageStoreServer::new_from_service(
         store_service,
         client_listen_uri,
         enclave.clone(),
-        ias_client,
-        store_config.ias_spid,
         EpochShardingStrategy::default(),
         logger,
     );

@@ -3,7 +3,7 @@
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::{collections::BTreeMap, vec::Vec};
-use mc_attest_core::{EnclaveReportDataContents, Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
     NonceSession, SealedClientMessage,
@@ -62,20 +62,13 @@ pub enum EnclaveCall {
     /// Creates a new report for the enclave with the provided target info.
     NewEreport(TargetInfo),
 
-    /// The [LedgerEnclave::verify_quote()] method.
-    ///
-    /// * Verifies that the Quoting Enclave is sane,
-    /// * Verifies that the Quote matches the previously generated report.
-    /// * Caches the quote.
-    VerifyQuote(Quote, Report, EnclaveReportDataContents),
-
     /// The [LedgerEnclave::verify_attestation_evidence()] method.
     ///
     /// * Verifies the attestation evidence matches the previously received
     ///   quote,
     /// * Caches the attestation evidence. This cached attestation evidence may
     ///   be overwritten by later calls.
-    VerifyAttestationEvidence(VerificationReport),
+    VerifyAttestationEvidence(DcapEvidence),
 
     /// The [LedgerEnclave::get_attestation_evidence()] method.
     ///

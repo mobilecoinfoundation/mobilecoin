@@ -8,7 +8,7 @@ use mc_crypto_noise::{CipherError, HandshakeError};
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of errors which can occur during key exchange
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /// The handshake state could not be initialized: {0}
     HandshakeInit(HandshakeError),

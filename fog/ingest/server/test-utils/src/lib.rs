@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_test_utils::get_blocks;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
@@ -46,7 +45,7 @@ fn make_uris(base_port: u16, idx: u8) -> (FogIngestUri, IngestPeerUri) {
 /// Test helper wrapping an IngestServer, tracking its state file path, and
 /// client and peer listen URIs.
 pub struct TestIngestNode {
-    pub server: IngestServer<AttestClient, SqlRecoveryDb>,
+    pub server: IngestServer<SqlRecoveryDb>,
     pub state_file_path: PathBuf,
     pub client_listen_uri: FogIngestUri,
     pub peer_listen_uri: IngestPeerUri,
@@ -81,7 +80,7 @@ impl TestIngestNode {
 
 // Impl Deref and DerefMut so that tests can call IngestServer methods.
 impl Deref for TestIngestNode {
-    type Target = IngestServer<AttestClient, SqlRecoveryDb>;
+    type Target = IngestServer<SqlRecoveryDb>;
     fn deref(&self) -> &Self::Target {
         &self.server
     }
@@ -229,11 +228,8 @@ impl IngestServerTestHelper {
             omap_capacity: OMAP_CAPACITY,
         };
 
-        let ra_client = AttestClient::new("").expect("Failed to create IAS client");
-
         let mut server = IngestServer::new(
             config,
-            ra_client,
             self.recovery_db.clone(),
             self.watcher.clone(),
             self.ledger.clone(),

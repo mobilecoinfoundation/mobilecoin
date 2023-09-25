@@ -7,15 +7,16 @@ use crate::{
     mealy::Transition,
     state::{Ready, Start},
 };
-use alloc::vec::Vec;
-use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
-use mc_crypto_keys::{Kex, ReprBytes};
+use ::prost::Message;
+use alloc::{string::ToString, vec::Vec};
+use mc_attest_verifier::DcapVerifier;
+use mc_attest_verifier_types::{prost, DcapEvidence, EvidenceKind};
+use mc_attestation_verifier::{Evidence, VerificationTreeDisplay};
+use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
     NoiseDigest, ProtocolName,
 };
-use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
 /// A trait containing default implementations, used to tack repeatable chunks
@@ -36,7 +37,7 @@ trait ResponderTransitionMixin {
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
-        attestatio_evidence: EvidenceKind,
+        dcap_evidence: DcapEvidence,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
@@ -82,26 +83,23 @@ impl ResponderTransitionMixin for Start {
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
-        attestation_evidence: EvidenceKind,
+        dcap_evidence: DcapEvidence,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
         Cipher: NoiseCipher,
         DigestAlgo: NoiseDigest,
     {
-        // TODO: This will be replaced with dcap evidence serialization.
-        //       This code will never run.
-        let EvidenceKind::Epid(ias_report) = attestation_evidence else {
-            return Err(Error::AttestationEvidenceSerialization);
-        };
-        // Encrypt the local report for output
-        let mut report_bytes = Vec::with_capacity(ias_report.encoded_len());
-        ias_report
-            .encode(&mut report_bytes)
-            .expect("Invariant failure, encoded_len insufficient to encode IAS report");
+        let prost_evidence = prost::DcapEvidence::try_from(&dcap_evidence)
+            .map_err(|_| Error::AttestationEvidenceSerialization)?;
+
+        // We need to send back EvidenceKind for backward compatibility with
+        // the legacy `EvidenceKind::Epid` version
+        let evidence = EvidenceKind::Dcap(prost_evidence);
+        let serialized_evidence = evidence.into_bytes();
 
         let output = handshake_state
-            .write_message(csprng, &report_bytes)
+            .write_message(csprng, &serialized_evidence)
             .map_err(Error::HandshakeWrite)?;
 
         match output.status {
@@ -146,27 +144,30 @@ where
             )?;
 
         let identities = input.identities;
-        let mut verifier = Verifier::default();
-        verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
-        // Parse the received attestation evidence
-        let remote_report = VerificationReport::decode(payload.as_slice())
+        // Parse the received DCAP evidence from the other node
+        let prost_evidence = prost::DcapEvidence::decode(payload.as_slice())
             .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
-        // Verify using given verifier, and ensure the first 32B of the report data are
-        // the identity pubkey.
-        verifier
-            .report_data(
-                &handshake_state
-                    .remote_identity()
-                    .ok_or(Error::MissingRemoteIdentity)?
-                    .map_bytes(|bytes| {
-                        ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
-                    })?,
-            )
-            .verify(&remote_report)?;
+        let dcap_evidence = DcapEvidence::try_from(&prost_evidence)
+            .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
-        Self::handle_response(csprng, handshake_state, input.attestation_evidence)
+        let DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        } = dcap_evidence;
+
+        let verifier = DcapVerifier::new(identities, None, report_data);
+        let evidence = Evidence::new(quote, collateral).expect("Failed to get evidence");
+
+        let verification = verifier.verify(&evidence);
+        if verification.is_failure().into() {
+            let display_tree = VerificationTreeDisplay::new(&verifier, verification);
+            return Err(mc_attest_verifier::Error::Verification(display_tree.to_string()).into());
+        }
+
+        Self::handle_response(csprng, handshake_state, input.dcap_evidence)
     }
 }
 
@@ -195,6 +196,6 @@ where
                 &input.data.data,
                 input.local_identity,
             )?;
-        Self::handle_response(csprng, handshake_state, input.attestation_evidence)
+        Self::handle_response(csprng, handshake_state, input.dcap_evidence)
     }
 }

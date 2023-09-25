@@ -8,9 +8,7 @@ extern crate mc_fog_ocall_oram_storage_untrusted;
 
 use std::{path, result::Result as StdResult, sync::Arc};
 
-use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, VerificationReport,
-};
+use mc_attest_core::{DcapEvidence, EnclaveReportDataContents, Report, SgxError, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession, SealedClientMessage,
@@ -123,24 +121,9 @@ impl ReportableEnclave for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(
-        &self,
-        quote: Quote,
-        qe_report: Report,
-        report_data: EnclaveReportDataContents,
-    ) -> ReportableEnclaveResult<IasNonce> {
-        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::VerifyQuote(
-            quote,
-            qe_report,
-            report_data,
-        ))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: VerificationReport,
+        attestation_evidence: DcapEvidence,
     ) -> ReportableEnclaveResult<()> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::VerifyAttestationEvidence(
             attestation_evidence,
@@ -149,7 +132,7 @@ impl ReportableEnclave for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
         let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::GetAttestationEvidence)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

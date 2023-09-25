@@ -6,7 +6,6 @@ use crate::{controller::IngestController, error::IngestServiceError, SVC_COUNTER
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::PeerSession;
-use mc_attest_net::RaClient;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
@@ -24,26 +23,21 @@ use std::{str::FromStr, sync::Arc};
 
 /// Implements the Ingest Peer grpc api
 #[derive(Clone)]
-pub struct IngestPeerService<
-    R: RaClient + Send + Sync + 'static,
-    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
+pub struct IngestPeerService<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
-    controller: Arc<IngestController<R, DB>>,
+    controller: Arc<IngestController<DB>>,
     logger: Logger,
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestPeerService<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> IngestPeerService<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
     /// Creates a new ingest node (but does not create sockets and start it
     /// etc.)
-    pub fn new(controller: Arc<IngestController<R, DB>>, logger: Logger) -> Self {
+    pub fn new(controller: Arc<IngestController<DB>>, logger: Logger) -> Self {
         Self { controller, logger }
     }
 
@@ -114,10 +108,8 @@ where
     }
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > mc_fog_api::ingest_peer_grpc::AccountIngestPeerApi for IngestPeerService<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+    mc_fog_api::ingest_peer_grpc::AccountIngestPeerApi for IngestPeerService<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {

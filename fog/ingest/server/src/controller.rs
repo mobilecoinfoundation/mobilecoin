@@ -10,7 +10,7 @@ use crate::{
     server::IngestServerConfig,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
-use mc_attest_net::RaClient;
+use mc_attest_verifier_types::prost;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
@@ -59,10 +59,8 @@ use std::{
 /// So the idea here is instead that the IngestController owns no threads, the
 /// IngestWorker is external to it, and all the grpcio threads are also external
 /// to it, and talk to Arc<IngestController> to accomplish their tasks.
-pub struct IngestController<
-    R: RaClient + Send + Sync + 'static,
-    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
+pub struct IngestController<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// The config object for the server
@@ -74,7 +72,7 @@ pub struct IngestController<
     /// The recovery db that we write rng records and txout records to
     recovery_db: DB,
     /// The cache for reports from this enclave
-    report_cache: Arc<Mutex<ReportCache<IngestSgxEnclave, R>>>,
+    report_cache: Arc<Mutex<ReportCache<IngestSgxEnclave>>>,
     /// grpc environment (thread pool) for grpc connections to our peers
     /// Note: we only make synchronous grpc calls in igp connection object,
     /// and this env isn't used to recieve any connections,
@@ -87,15 +85,12 @@ pub struct IngestController<
     logger: Logger,
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestController<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> IngestController<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Create a new ingest controller
-    pub fn new(config: IngestServerConfig, ra_client: R, recovery_db: DB, logger: Logger) -> Self {
+    pub fn new(config: IngestServerConfig, recovery_db: DB, logger: Logger) -> Self {
         let controller_state = Arc::new(Mutex::new(IngestControllerState::new(
             &config,
             logger.clone(),
@@ -183,9 +178,6 @@ where
         // Initialize report cache
         let report_cache = Arc::new(Mutex::new(ReportCache::new(
             enclave.clone(),
-            ra_client,
-            config.ias_spid,
-            &counters::ENCLAVE_REPORT_TIMESTAMP,
             logger.clone(),
         )));
 
@@ -284,7 +276,7 @@ where
             *self.last_sealed_key.lock().unwrap() = None;
             self.write_state_file_inner(&mut state);
 
-            // Don't hold the lock while we make network calls to IAS
+            // Don't hold the lock any longer than necessary
             drop(state);
 
             // Refresh report cache
@@ -925,7 +917,7 @@ where
         self.write_state_file_inner(&mut state);
         let result = self.get_ingest_summary_inner(&mut state);
 
-        // Don't hold the state mutex while we are talking to IAS
+        // Don't hold the state mutex any longer than necessary
         drop(state);
 
         // Update our report cache since we changed the private key
@@ -1199,12 +1191,14 @@ where
     ) -> Result<IngressPublicKeyStatus, Error> {
         // Get a report and check that it makes sense with what we think is happening
         let evidence = {
-            let attestation_evidence = self.enclave.get_attestation_evidence()?;
+            let dcap_evidence = self.enclave.get_attestation_evidence()?;
+            let prost_evidence =
+                prost::DcapEvidence::try_from(&dcap_evidence).map_err(|_| Error::Serialization)?;
+            let attestation_evidence = prost_evidence.into();
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
-            let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
-                &attestation_evidence.clone().into(),
-            )?;
+            let found_key =
+                try_extract_unvalidated_ingress_pubkey_from_fog_evidence(&attestation_evidence)?;
             if &found_key == ingress_public_key {
                 attestation_evidence
             } else {
@@ -1215,12 +1209,15 @@ where
                 );
                 self.update_enclave_report_cache()?;
 
-                let evidence = self.enclave.get_attestation_evidence()?;
+                let dcap_evidence = self.enclave.get_attestation_evidence()?;
+                let prost_evidence = prost::DcapEvidence::try_from(&dcap_evidence)
+                    .map_err(|_| Error::Serialization)?;
+                let attestation_evidence = prost_evidence.into();
                 let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
-                    &evidence.clone().into(),
+                    &attestation_evidence,
                 )?;
                 if &found_key == ingress_public_key {
-                    evidence
+                    attestation_evidence
                 } else {
                     // This means that the caller is wrong about what the
                     // current ingress public key is, and we don't have anything we can publish.
@@ -1247,7 +1244,7 @@ where
 
         let report_data = ReportData {
             ingest_invocation_id: state.get_ingest_invocation_id(),
-            attestation_evidence: evidence.into(),
+            attestation_evidence: evidence,
             pubkey_expiry: state.get_next_block_index() + state.get_pubkey_expiry_window(),
         };
         let report_id = self.config.fog_report_id.as_ref();

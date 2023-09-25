@@ -2,7 +2,6 @@
 
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
-use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_types::BlockVersion;
 use mc_common::{
     logger,
@@ -128,7 +127,7 @@ fn create_store(
     watcher_db_path: &Path,
     ledger_db_path: &Path,
     logger: Logger,
-) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient> {
+) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy> {
     let uri = KeyImageStoreUri::from_str(&format!(
         "insecure-key-image-store://{}",
         test_config.address
@@ -152,11 +151,9 @@ fn create_store(
 
     populate_ledger(blocks_config, &mut ledger, &mut watcher);
 
-    let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut store = KeyImageStoreServer::new_from_config(
         config,
         enclave,
-        ra_client,
         ledger,
         watcher,
         EpochShardingStrategy::new(block_range),
@@ -185,7 +182,7 @@ fn create_router(
     watcher_db_path: &Path,
     ledger_db_path: &Path,
     logger: Logger,
-) -> LedgerRouterServer<LedgerSgxEnclave, AttestClient> {
+) -> LedgerRouterServer<LedgerSgxEnclave> {
     let uri = FogLedgerUri::from_str(&format!(
         "insecure-fog-ledger://{}",
         test_config.router_address
@@ -234,9 +231,7 @@ fn create_router(
         logger.clone(),
     );
 
-    let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
-    let mut router = LedgerRouterServer::new(config, enclave, ra_client, ledger, watcher, logger);
+    let mut router = LedgerRouterServer::new(config, enclave, ledger, watcher, logger);
     router.start();
     router
 }
@@ -308,9 +303,9 @@ fn create_env(
 
 struct TestEnvironment {
     router_client: LedgerGrpcClient,
-    _router: LedgerRouterServer<LedgerSgxEnclave, AttestClient>,
+    _router: LedgerRouterServer<LedgerSgxEnclave>,
     shards: Vec<ShardProxyServer>,
-    stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient>>,
+    stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy>>,
     _tempdirs: Vec<TempDir>,
 }
 
