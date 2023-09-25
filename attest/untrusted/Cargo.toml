@@ -22,6 +22,7 @@ mc-attestation-verifier = "0.4.0"
 mc-rand = "1.1.0"
 mc-sgx-core-types = "0.8.0"
 mc-sgx-dcap-ql = "0.8.0"
+mc-sgx-dcap-quoteverify = "0.8.0"
 mc-sgx-dcap-sys-types = "0.8.0"
 mc-sgx-dcap-types = "0.8.0"
 mc-sgx-types = { path = "../../sgx/types" }

@@ -47,7 +47,7 @@ mod test {
         report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
 
         let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
-        let collateral = DcapQuotingEnclave::collateral(&quote);
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
         DcapEvidence {
             quote,
             collateral,
