@@ -986,6 +986,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-crypto-keys",
  "mc-crypto-noise",
@@ -1035,6 +1036,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attestation-verifier",
  "mc-crypto-noise",
  "mc-sgx-compat",
  "mc-util-serial",
@@ -1672,6 +1674,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-sgx-dcap-types",
  "mc-util-serial",
  "serde",
 ]

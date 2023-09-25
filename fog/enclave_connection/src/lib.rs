@@ -11,7 +11,7 @@ use core::{
 use grpcio::{CallOption, Metadata, MetadataBuilder, Result as GrpcResult};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::DcapEvidence;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, Logger},
@@ -87,7 +87,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         self.attest_cipher.is_some()
     }
 
-    fn attest(&mut self) -> Result<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> Result<DcapEvidence, Self::Error> {
         trace_time!(self.logger, "FogClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -119,12 +119,12 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         // Process server response, check if key exchange is successful
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
+        let (initiator, attestation_evidence) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(attestation_evidence)
     }
 
     fn deattest(&mut self) {

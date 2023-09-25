@@ -12,13 +12,12 @@ pub use mc_consensus_enclave_api::{
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 use mc_account_keys::PublicAddress;
-use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
-};
+use mc_attest_core::{DcapEvidence, EnclaveReportDataContents, Report, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
+use mc_attest_untrusted::DcapQuotingEnclave;
 use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Private, X25519Public};
@@ -44,7 +43,7 @@ pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
-    pub verification_report: VerificationReport,
+    pub attestation_evidence: DcapEvidence,
     pub identity: X25519Private,
 }
 
@@ -62,14 +61,29 @@ impl ConsensusServiceMockEnclave {
             block_version,
             ..Default::default()
         }));
-        let verification_report = mc_blockchain_test_utils::make_verification_report(csprng);
         let identity = X25519Private::from_random(csprng);
+
+        let report_data = EnclaveReportDataContents::new(
+            [0x2au8; 16].into(),
+            [0x53u8; 32].as_slice().try_into().expect("bad key"),
+            [0x36u8; 32],
+        );
+        let mut report = Report::default();
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
+
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        let attestation_evidence = DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        };
 
         Self {
             signing_keypair,
             minting_trust_root_keypair,
             blockchain_config,
-            verification_report,
+            attestation_evidence,
             identity,
         }
     }
@@ -104,24 +118,15 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
         Ok((Report::default(), report_data))
     }
 
-    fn verify_quote(
-        &self,
-        _quote: Quote,
-        _qe_report: Report,
-        _report_data: EnclaveReportDataContents,
-    ) -> ReportableEnclaveResult<IasNonce> {
-        Ok(IasNonce::default())
-    }
-
     fn verify_attestation_evidence(
         &self,
-        _attestation_evidence: VerificationReport,
+        _attestation_evidence: DcapEvidence,
     ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(self.verification_report.clone())
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
+        Ok(self.attestation_evidence.clone())
     }
 }
 
@@ -207,8 +212,8 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         _node_id: &ResponderId,
         _msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
-        Ok((vec![].into(), VerificationReport::default()))
+    ) -> Result<(PeerSession, DcapEvidence)> {
+        Ok((vec![].into(), self.attestation_evidence.clone()))
     }
 
     fn peer_close(&self, _msg: &PeerSession) -> Result<()> {

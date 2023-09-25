@@ -146,8 +146,8 @@ pub enum Error {
     /// There was an error parsing the JSON contents: {0}
     Parse(VerifyError),
     /**
-     * The report was properly constructed, but did not meet security
-     * requirements, verification output: {0}
+     * The evidence was properly constructed, but did not meet security
+     * requirements:\n{0}
      */
     Verification(String),
 }

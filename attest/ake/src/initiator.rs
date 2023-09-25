@@ -6,15 +6,16 @@ use crate::{
     AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
     Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
-use alloc::vec::Vec;
-use mc_attest_core::{ReportDataMask, VerificationReport};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
-use mc_crypto_keys::{Kex, ReprBytes};
+use ::prost::Message;
+use alloc::string::ToString;
+use mc_attest_verifier::DcapVerifier;
+use mc_attest_verifier_types::{prost, DcapEvidence};
+use mc_attestation_verifier::{Evidence, VerificationTreeDisplay};
+use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, NoiseDigest, ProtocolName,
 };
-use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper function to create the output for an initiate
@@ -124,22 +125,20 @@ where
         )
         .map_err(Error::HandshakeInit)?;
 
-        let mut serialized_report = Vec::with_capacity(input.ias_report.encoded_len());
-        input
-            .ias_report
-            .encode(&mut serialized_report)
-            .expect("Invariants failure, encoded_len insufficient to encode IAS report");
+        let serialized_evidence = prost::DcapEvidence::try_from(&input.attestation_evidence)
+            .map_err(|_| Error::AttestationEvidenceSerialization)?
+            .encode_to_vec();
 
         parse_handshake_output(
             handshake_state
-                .write_message(csprng, &serialized_report)
+                .write_message(csprng, &serialized_evidence)
                 .map_err(Error::HandshakeWrite)?,
         )
     }
 }
 
 /// AuthPending + AuthResponseInput => Ready + VerificationReport
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, VerificationReport>
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, DcapEvidence>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -152,7 +151,7 @@ where
         self,
         _csprng: &mut R,
         input: AuthResponseInput,
-    ) -> Result<(Ready<Cipher>, VerificationReport), Self::Error> {
+    ) -> Result<(Ready<Cipher>, DcapEvidence), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -160,37 +159,37 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
-                let remote_report = VerificationReport::decode(output.payload.as_slice())
+                let prost_evidence = prost::DcapEvidence::decode(output.payload.as_slice())
+                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+
+                let dcap_evidence = DcapEvidence::try_from(&prost_evidence)
                     .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
 
                 let identities = input.identities;
-                let mut verifier = Verifier::default();
-                verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
-                // We are not returning the report data and instead returning the raw report
-                // since that also includes the signature and certificate chain.
-                // However, we still make sure the report contains valid data
-                // before we continue by calling `.verify`. Callers can then
-                // safely construct a VerificationReportData object out of the
-                // VerificationReport returned.
-                let _report_data = verifier
-                    .report_data(
-                        &result
-                            .remote_identity
-                            .ok_or(Error::MissingRemoteIdentity)?
-                            .map_bytes(|bytes| {
-                                ReportDataMask::try_from(bytes)
-                                    .map_err(|_| Error::BadRemoteIdentity)
-                            })?,
-                    )
-                    .verify(&remote_report)?;
+                let DcapEvidence {
+                    quote,
+                    collateral,
+                    report_data,
+                } = dcap_evidence.clone();
+
+                let verifier = DcapVerifier::new(identities, None, report_data);
+                let evidence = Evidence::new(quote, collateral).expect("Failed to get evidence");
+
+                let verification = verifier.verify(&evidence);
+                if verification.is_failure().into() {
+                    let display_tree = VerificationTreeDisplay::new(&verifier, verification);
+                    return Err(
+                        mc_attest_verifier::Error::Verification(display_tree.to_string()).into(),
+                    );
+                }
                 Ok((
                     Ready {
                         writer: result.initiator_cipher,
                         reader: result.responder_cipher,
                         binding: result.channel_binding,
                     },
-                    remote_report,
+                    dcap_evidence,
                 ))
             }
         }
@@ -199,7 +198,7 @@ where
 
 /// AuthPending + UnverifiedReport => Terminated + VerificationReport
 impl<KexAlgo, Cipher, DigestAlgo>
-    Transition<Terminated, UnverifiedAttestationEvidence, VerificationReport>
+    Transition<Terminated, UnverifiedAttestationEvidence, DcapEvidence>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -212,7 +211,7 @@ where
         self,
         _csprng: &mut R,
         input: UnverifiedAttestationEvidence,
-    ) -> Result<(Terminated, VerificationReport), Self::Error> {
+    ) -> Result<(Terminated, DcapEvidence), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -220,10 +219,13 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                let remote_report = VerificationReport::decode(output.payload.as_slice())
+                let prost_evidence = prost::DcapEvidence::decode(output.payload.as_slice())
                     .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
 
-                Ok((Terminated, remote_report))
+                let dcap_evidence = DcapEvidence::try_from(&prost_evidence)
+                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+
+                Ok((Terminated, dcap_evidence))
             }
         }
     }

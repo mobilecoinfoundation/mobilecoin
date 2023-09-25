@@ -165,7 +165,11 @@ fn attestation_evidence_from_node_url(
         .try_next(&mut csprng, unverified_evidence_event)
         .map_err(|err| format!("Failed decoding attestation evidence from {node_url}: {err}"))?;
 
-    Ok(attestation_evidence.into())
+    let prost_dcap_evidence =
+        prost::DcapEvidence::try_from(&attestation_evidence).map_err(|err| {
+            format!("Failed converting attestation evidence to prost {node_url}: {err}")
+        })?;
+    Ok(prost_dcap_evidence.into())
 }
 
 fn auth_message_from_responder(

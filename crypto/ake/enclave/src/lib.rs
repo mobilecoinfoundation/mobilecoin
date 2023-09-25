@@ -11,8 +11,8 @@ use mc_attest_ake::{
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
-    ReportData, TargetInfo, VerificationReport,
+    DcapEvidence, EnclaveReportDataContents, IntelSealed, Nonce, QuoteNonce, Report, ReportData,
+    TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -20,8 +20,10 @@ use mc_attest_enclave_api::{
     PlaintextClientRequest, Result, SealedClientMessage,
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{TrustedIdentity, TrustedMrEnclaveIdentity};
+use mc_attest_verifier::{DcapVerifier, Error as VerifierError};
+use mc_attestation_verifier::{
+    Evidence, TrustedIdentity, TrustedMrEnclaveIdentity, VerificationTreeDisplay,
+};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_rand::McRng;
@@ -80,11 +82,8 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     /// enclave.
     quote_pending: Mutex<LruCache<QuoteNonce, Report>>,
 
-    /// A map of generated quotes, awaiting reporting and signature by IAS.
-    ias_pending: Mutex<LruCache<IasNonce, Quote>>,
-
     /// The cached attestation evidence, if any.
-    current_attestation_evidence: Mutex<Option<VerificationReport>>,
+    current_attestation_evidence: Mutex<Option<DcapEvidence>>,
 
     /// A map of responder-ID to incomplete, outbound, AKE state.
     initiator_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
@@ -126,7 +125,6 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             kex_identity: X25519Private::from_random(&mut McRng::default()),
             custom_identity,
             quote_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
-            ias_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
             current_attestation_evidence: Mutex::new(None),
             initiator_auth_pending: Mutex::new(LruCache::new(MAX_AUTH_PENDING_REQUESTS)),
             backend_auth_pending: Mutex::new(LruCache::new(MAX_BACKEND_AUTH_PENDING_REQUESTS)),
@@ -179,13 +177,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     /// Construct a new verifier which ensures MRENCLAVE and debug settings
     /// match.
-    fn get_verifier(&self) -> Result<Verifier> {
-        let mut verifier = Verifier::default();
-        verifier
-            .identities([&self.trusted_identity()?])
-            .debug(DEBUG_ENCLAVE);
-
-        Ok(verifier)
+    fn get_verifier(&self, report_data: EnclaveReportDataContents) -> Result<DcapVerifier> {
+        Ok(DcapVerifier::new(
+            [self.trusted_identity()?],
+            None,
+            report_data,
+        ))
     }
 
     /// Get the peer ResponderId for ourself
@@ -438,7 +435,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, DcapEvidence)> {
         // Find our state machine
         let initiator = self
             .initiator_auth_pending
@@ -453,7 +450,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, verification_report) =
+        let (initiator, attestation_evidence) =
             initiator.try_next(&mut csprng, auth_response_input)?;
 
         let peer_session = PeerSession::from(initiator.binding());
@@ -462,7 +459,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .lock()?
             .put(peer_session.clone(), initiator);
 
-        Ok((peer_session, verification_report))
+        Ok((peer_session, attestation_evidence))
     }
 
     /// Close a peer connection
@@ -622,17 +619,17 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     //
-    // IAS related
+    // Quote attestation related
     //
 
     /// Get the cached attestation evidence if available
-    pub fn get_attestation_evidence(&self) -> Result<VerificationReport> {
+    pub fn get_attestation_evidence(&self) -> Result<DcapEvidence> {
         (*self.current_attestation_evidence.lock()?)
             .clone()
             .ok_or(Error::NoAttestationEvidenceAvailable)
     }
 
-    /// Build a new Report and QuoteNonce object for ourself
+    /// Build a new Report and EnclaveReportDataContents object for ourself
     pub fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, EnclaveReportDataContents)> {
         let mut quote_pending = self.quote_pending.lock()?;
 
@@ -668,77 +665,39 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Ok((report, report_contents))
     }
 
-    /// Verify a quote
-    pub fn verify_quote(
-        &self,
-        quote: Quote,
-        qe_report: Report,
-        report_data: &EnclaveReportDataContents,
-    ) -> Result<IasNonce> {
-        // Is the qe_report for our enclave?
-        qe_report.verify()?;
+    /// Verify an enclave's attestation evidence
+    pub fn verify_attestation_evidence(&self, attestation_evidence: DcapEvidence) -> Result<()> {
+        let DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        } = attestation_evidence.clone();
 
         let nonce = report_data.nonce();
 
         let mut quote_pending = self.quote_pending.lock()?;
 
-        let report = quote_pending.pop(nonce);
+        let report = quote_pending.pop(nonce).ok_or(Error::InvalidState)?;
 
-        // If we found a matching entry in our cache, then we upgrade it to the
-        // IasPending state object, and insert it into the IAS pending cache. If
-        // the upgrade fails, it's because the quote and qe_report don't match,
-        // in which case we should simply abort the attempt because there's
-        // nothing we can do to fix it, and leaving it around is probably
-        // wrong.
-        if let Some(report) = report {
-            let mut ias_pending = self.ias_pending.lock()?;
-            let mut csprng = McRng::default();
-            let ias_nonce = loop {
-                let ias_nonce = IasNonce::new(&mut csprng)?;
-                if !ias_pending.contains(&ias_nonce) {
-                    break ias_nonce;
-                }
-            };
-            // Ensure the quote contains our report, and is sane.
-            quote.verify_report(&qe_report, &report)?;
-            ias_pending.put(ias_nonce.clone(), quote);
-            return Ok(ias_nonce);
+        // Ensure the quote contains our report, and is sane.
+        let quote_report_body = quote.app_report_body();
+        let report_body = report.body();
+
+        if &report_body != quote_report_body {
+            return Err(VerifierError::Verification("Report mismatch".to_string()).into());
         }
 
-        Err(Error::InvalidState)
-    }
-
-    /// Verify attestation evidence
-    pub fn verify_attestation_evidence(
-        &self,
-        attestation_evidence: VerificationReport,
-    ) -> Result<()> {
-        let verifier = self.get_verifier()?;
+        let verifier = self.get_verifier(report_data)?;
 
         // Verify signature, MRENCLAVE, report value, etc.
-        let report_data = verifier.verify(&attestation_evidence)?;
+        let evidence = Evidence::new(quote, collateral)?;
+        let verification = verifier.verify(&evidence);
 
-        // Get the nonce from the IAS report
-        let nonce = report_data
-            .nonce
-            .as_ref()
-            .ok_or(Error::Nonce(NonceError::Missing))?;
+        if verification.is_failure().into() {
+            let display_tree = VerificationTreeDisplay::new(&verifier, verification);
+            return Err(mc_attest_verifier::Error::Verification(display_tree.to_string()).into());
+        }
 
-        // Find the quote we cached earlier, if any
-        let cached_quote = self
-            .ias_pending
-            .lock()?
-            .pop(nonce)
-            .ok_or(Error::InvalidState)?;
-
-        // And finally, verify that the quote IAS examined is the one we've
-        // sent, using the nonce we provided.
-        let _ = Verifier::default()
-            .quote_body(&cached_quote)
-            .nonce(nonce)
-            .verify(&attestation_evidence)?;
-
-        // Save the result
         *(self.current_attestation_evidence.lock()?) = Some(attestation_evidence);
         Ok(())
     }

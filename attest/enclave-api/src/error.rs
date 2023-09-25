@@ -6,8 +6,9 @@ use alloc::string::{String, ToString};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
-use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, QuoteError, SgxError};
+use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, SgxError};
 use mc_attest_verifier::Error as VerifierError;
+use mc_attestation_verifier::Error as AttestationVerifierError;
 use mc_crypto_noise::CipherError;
 use mc_sgx_compat::sync::PoisonError;
 use serde::{Deserialize, Serialize};
@@ -17,7 +18,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /// An enumeration of errors which can occur inside an enclave, in connection to
 /// attestation or AKE
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /// Enclave not initialized
     NotInit,
@@ -43,11 +44,11 @@ pub enum Error {
      */
     Nonce(NonceError),
 
-    /// The local quote could not be verified: {0}
-    Quote(QuoteError),
-
     /// The local attestation evidence could not be verified: {0}
     Verify(VerifierError),
+
+    /// Attestation verifier error: {0}
+    AttestationVerify(AttestationVerifierError),
 
     /// Another thread crashed while holding a lock
     Poison,
@@ -112,12 +113,6 @@ impl From<NonceError> for Error {
     }
 }
 
-impl From<QuoteError> for Error {
-    fn from(src: QuoteError) -> Error {
-        Error::Quote(src)
-    }
-}
-
 impl From<VerifierError> for Error {
     fn from(src: VerifierError) -> Error {
         Error::Verify(src)
@@ -145,5 +140,11 @@ impl From<mc_util_serial::encode::Error> for Error {
 impl From<mc_util_serial::decode::Error> for Error {
     fn from(src: mc_util_serial::decode::Error) -> Self {
         Error::Decode(src.to_string())
+    }
+}
+
+impl From<AttestationVerifierError> for Error {
+    fn from(src: AttestationVerifierError) -> Self {
+        Error::AttestationVerify(src)
     }
 }

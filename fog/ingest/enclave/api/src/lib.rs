@@ -18,7 +18,7 @@ pub use crate::{
 
 use alloc::vec::Vec;
 use core::result::Result as StdResult;
-use mc_attest_core::VerificationReport;
+use mc_attest_core::DcapEvidence;
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, X25519Public};
@@ -109,7 +109,7 @@ pub trait IngestEnclave: ReportableEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)>;
+    ) -> Result<(PeerSession, DcapEvidence)>;
 
     /// Close a connection with a peer
     fn peer_close(&self, session_id: &PeerSession) -> Result<()>;

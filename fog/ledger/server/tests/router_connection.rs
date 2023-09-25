@@ -6,7 +6,6 @@
 use futures::executor::block_on;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
-use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -147,12 +146,9 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-            let ra_client =
-                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
             let mut ledger_server = LedgerRouterServer::new(
                 config,
                 enclave,
-                ra_client,
                 ledger.clone(),
                 watcher.clone(),
                 logger.clone(),
@@ -368,12 +364,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 OMAP_CAPACITY,
                 logger.clone(),
             );
-            let ra_client =
-                AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
             let mut store_server = KeyImageStoreServer::new_from_config(
                 store_config,
                 store_enclave,
-                ra_client,
                 ledger.clone(),
                 watcher.clone(),
                 EpochShardingStrategy::default(),
@@ -417,12 +410,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 logger.clone(),
             );
 
-            let ra_client =
-                AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
             let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
-                ra_client,
                 ledger.clone(),
                 watcher.clone(),
                 logger.clone(),
@@ -611,12 +601,9 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
 
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
         let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ra_client,
             ledger.clone(),
             watcher.clone(),
             logger.clone(),
@@ -776,12 +763,9 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
 
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
         let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ra_client,
             ledger.clone(),
             watcher.clone(),
             logger.clone(),
@@ -940,12 +924,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 OMAP_CAPACITY,
                 logger.clone(),
             );
-            let ra_client =
-                AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
             let mut store_server = KeyImageStoreServer::new_from_config(
                 store_config,
                 store_enclave,
-                ra_client,
                 ledger.clone(),
                 watcher.clone(),
                 EpochShardingStrategy::default(),
@@ -989,12 +970,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 logger.clone(),
             );
 
-            let ra_client =
-                AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
             let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
-                ra_client,
                 ledger.clone(),
                 watcher.clone(),
                 logger.clone(),

@@ -20,6 +20,7 @@ sgx-sim = [
 [dependencies]
 mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
+mc-attest-verifier-types = { path = "../../attest/verifier/types", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 
@@ -32,7 +33,7 @@ rand_core = "0.6"
 serde = { version = "1.0", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
-mc-attest-net = { path = "../net" }
+mc-attest-untrusted = { path = "../untrusted" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 

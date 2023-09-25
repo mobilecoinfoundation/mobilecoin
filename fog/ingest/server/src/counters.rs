@@ -27,9 +27,6 @@ lazy_static::lazy_static! {
     // Time it takes to perform the db add_block_data call.
     pub static ref DB_ADD_BLOCK_DATA_TIME: Histogram = OP_COUNTERS.histogram("db_add_block_data_time");
 
-    // Ingest enclave report timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
-    pub static ref ENCLAVE_REPORT_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_report_timestamp");
-
     // Whether this ingest server is currently in the Idle mode.
     pub static ref MODE_IS_IDLE: IntGauge = OP_COUNTERS.gauge("mode_is_idle");
 

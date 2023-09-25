@@ -11,6 +11,7 @@ rust-version = { workspace = true }
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
+mc-attest-untrusted = { path = "../../../attest/untrusted" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }

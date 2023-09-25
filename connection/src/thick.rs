@@ -23,7 +23,7 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::DcapEvidence;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
@@ -299,7 +299,7 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
         self.enclave_connection.is_some()
     }
 
-    fn attest(&mut self) -> StdResult<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> StdResult<DcapEvidence, Self::Error> {
         trace_time!(self.logger, "ThickClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -321,12 +321,12 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
 
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
+        let (initiator, attesation_evidence) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 
-        Ok(verification_report)
+        Ok(attesation_evidence)
     }
 
     fn deattest(&mut self) {

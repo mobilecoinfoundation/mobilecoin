@@ -4,7 +4,6 @@
 
 //! Entrypoint for the MobileCoin server.
 
-use mc_attest_net::{Client, RaClient};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
     logger::{create_app_logger, log, o},
@@ -97,8 +96,6 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let local_ledger = LedgerDB::open(&config.ledger_path).expect("Failed creating LedgerDB");
 
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-
     if DEBUG_ENCLAVE {
         log::error!(
             logger,
@@ -125,7 +122,6 @@ fn main() -> Result<(), ConsensusServiceError> {
         config,
         enclave,
         local_ledger,
-        ias_client,
         Arc::new(tx_manager),
         Arc::new(mint_tx_manager),
         Arc::new(SystemTimeProvider::default()),

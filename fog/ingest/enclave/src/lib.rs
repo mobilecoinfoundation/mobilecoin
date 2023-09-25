@@ -12,9 +12,7 @@ pub use mc_fog_ingest_enclave_api::{
 };
 
 use displaydoc::Display;
-use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, VerificationReport,
-};
+use mc_attest_core::{DcapEvidence, EnclaveReportDataContents, Report, SgxError, TargetInfo};
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
@@ -149,21 +147,9 @@ impl ReportableEnclave for IngestSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(
-        &self,
-        quote: Quote,
-        qe_report: Report,
-        report_data: EnclaveReportDataContents,
-    ) -> ReportableEnclaveResult<IasNonce> {
-        let inbuf =
-            mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report, report_data))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: VerificationReport,
+        attestation_evidence: DcapEvidence,
     ) -> ReportableEnclaveResult<()> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyAttestationEvidence(
             attestation_evidence,
@@ -172,7 +158,7 @@ impl ReportableEnclave for IngestSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetAttestationEvidence)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
@@ -266,7 +252,7 @@ impl IngestEnclave for IngestSgxEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, DcapEvidence)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

@@ -36,11 +36,11 @@ mod test {
     //! Unit tests for Attested Key Exchange
     use super::*;
     use aes_gcm::Aes256Gcm;
-    use mc_attest_core::Quote;
-    use mc_attest_net::{Client, RaClient};
+    use mc_attest_core::Report;
+    use mc_attest_untrusted::DcapQuotingEnclave;
+    use mc_attest_verifier_types::{DcapEvidence, EnclaveReportDataContents};
     use mc_attestation_verifier::{TrustedIdentity, TrustedMrSignerIdentity};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
-    use mc_util_encodings::{FromBase64, ToX64};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
@@ -50,34 +50,24 @@ mod test {
 
     #[test]
     fn ix_handshake() {
-        // Read an existing, valid quote
-        let data = include_str!("../test_data/ok_quote.txt");
-        let quote = Quote::from_base64(data.trim()).expect("Could not parse quote");
-
         // Create a new identity pubkey for our "enclave"
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let identity = X25519Private::from_random(&mut csprng);
         let pubkey = X25519Public::from(&identity);
 
-        // Get the bytes from our quote
-        let mut quote_data = quote.to_x64_vec();
+        let report_data = EnclaveReportDataContents::new([0x2au8; 16].into(), pubkey, [0x36u8; 32]);
+        let mut report = Report::default();
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
 
-        // Overwrite the cached quote's report_data contents with our pubkey
-        quote_data[368..400].copy_from_slice(pubkey.as_ref());
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        let attestation_evidence = DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        };
 
-        // Re-assemble a quote from the munged version
-        let quote = Quote::try_from(quote_data.as_ref())
-            .expect("Could not parse quote from modified bytes");
-
-        // Sign the forged quote with the sim client
-        let ra_client = Client::new("").expect("Could not create sim client");
-        let attestation_evidence = ra_client
-            .verify_quote(&quote, None)
-            .expect("Could not sign our bogus report");
-
-        let report_body = quote
-            .report_body()
-            .expect("Could not retrieve report body from cached report");
+        let report_body = attestation_evidence.quote.app_report_body();
 
         let mr_signer = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             report_body.mr_signer(),
@@ -116,7 +106,7 @@ mod test {
         let auth_response_input = AuthResponseInput::new(auth_response_output, identities);
         let (initiator, _) = initiator
             .try_next(&mut csprng, auth_response_input)
-            .expect("Initiator not process auth response");
+            .expect("Initiator could not process auth response");
 
         // initiator = ready, responder = ready
 

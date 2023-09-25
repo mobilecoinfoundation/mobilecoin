@@ -3,8 +3,6 @@
 use std::sync::{Arc, Mutex};
 
 use futures::executor::block_on;
-use mc_attest_core::ProviderId;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
@@ -21,43 +19,38 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
-    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
+    config::LedgerStoreConfig, db_fetcher::DbFetcher, sharding_strategy::ShardingStrategy,
+    DbPollSharedState, KeyImageService,
 };
 
-pub struct KeyImageStoreServer<E, SS, RC>
+pub struct KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
-    RC: RaClient + Send + Sync + 'static,
 {
     server: grpcio::Server,
     client_listen_uri: KeyImageStoreUri,
     db_fetcher: DbFetcher<LedgerDB, E, SS>,
     enclave: E,
-    ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
-    ias_spid: ProviderId,
     logger: Logger,
 }
 
-impl<E, SS, RC> KeyImageStoreServer<E, SS, RC>
+impl<E, SS> KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
-    RC: RaClient + Send + Sync + 'static,
 {
     /// Creates a new key image store server instance
     pub fn new_from_config(
         config: LedgerStoreConfig,
         enclave: E,
-        ra_client: RC,
         ledger: LedgerDB,
         watcher: WatcherDB,
         sharding_strategy: SS,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS, RC> {
+    ) -> KeyImageStoreServer<E, SS> {
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
             if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
                 Arc::new(TokenAuthenticator::new(
@@ -73,8 +66,6 @@ where
             client_authenticator,
             config.client_listen_uri,
             enclave,
-            ra_client,
-            config.ias_spid,
             ledger,
             watcher,
             sharding_strategy,
@@ -86,13 +77,11 @@ where
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
-        ra_client: RC,
-        ias_spid: ProviderId,
         ledger: LedgerDB,
         watcher: WatcherDB,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS, RC> {
+    ) -> KeyImageStoreServer<E, SS> {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let use_tls = client_listen_uri.use_tls();
@@ -115,8 +104,6 @@ where
             key_image_service,
             client_listen_uri,
             enclave,
-            ra_client,
-            ias_spid,
             sharding_strategy,
             logger,
         )
@@ -126,11 +113,9 @@ where
         mut key_image_service: KeyImageService<LedgerDB, E>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
-        ra_client: RC,
-        ias_spid: ProviderId,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS, RC> {
+    ) -> KeyImageStoreServer<E, SS> {
         let readiness_indicator = ReadinessIndicator::default();
 
         let env = Arc::new(
@@ -180,8 +165,6 @@ where
             client_listen_uri,
             db_fetcher,
             enclave,
-            ra_client,
-            ias_spid,
             report_cache_thread: None,
             logger,
         }
@@ -190,14 +173,8 @@ where
     /// Starts the server
     pub fn start(&mut self) {
         self.report_cache_thread = Some(
-            ReportCacheThread::start(
-                self.enclave.clone(),
-                self.ra_client.clone(),
-                self.ias_spid,
-                &counters::ENCLAVE_REPORT_TIMESTAMP,
-                self.logger.clone(),
-            )
-            .expect("failed starting report cache thread"),
+            ReportCacheThread::start(self.enclave.clone(), self.logger.clone())
+                .expect("failed starting report cache thread"),
         );
 
         self.server.start();
@@ -216,11 +193,10 @@ where
     }
 }
 
-impl<E, SS, RC> Drop for KeyImageStoreServer<E, SS, RC>
+impl<E, SS> Drop for KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
-    RC: RaClient + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         self.stop();

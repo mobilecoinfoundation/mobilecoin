@@ -5,7 +5,7 @@
 use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use mc_attest_core::VerificationReport;
+use mc_attest_core::DcapEvidence;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
@@ -22,8 +22,8 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    /// This is the local node's attestation evidence.
+    pub(crate) attestation_evidence: DcapEvidence,
 
     _kex: PhantomData<KexAlgo>,
     _cipher: PhantomData<Cipher>,
@@ -37,10 +37,10 @@ where
     DigestAlgo: NoiseDigest,
 {
     /// Create a new input event to initiate a node-to-node channel.
-    pub fn new(local_identity: KexAlgo::Private, ias_report: VerificationReport) -> Self {
+    pub fn new(local_identity: KexAlgo::Private, attestation_evidence: DcapEvidence) -> Self {
         Self {
             local_identity,
-            ias_report,
+            attestation_evidence,
             _kex: PhantomData,
             _cipher: PhantomData,
             _digest: PhantomData,
@@ -174,8 +174,8 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    /// This is the local node's attestation evidence.
+    pub(crate) attestation_evidence: DcapEvidence,
 
     /// The auth request input, including payload, if any
     pub(crate) data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
@@ -198,11 +198,11 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        ias_report: VerificationReport,
+        attestation_evidence: DcapEvidence,
     ) -> Self {
         Self {
             local_identity,
-            ias_report,
+            attestation_evidence,
             data,
         }
     }
@@ -221,9 +221,9 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
-    /// The identities that the initiator's IAS report must conform to
+    /// This is the local node's attestation evidence.
+    pub(crate) attestation_evidence: DcapEvidence,
+    /// The identities that the initiator's attestation evidence must conform to
     pub(crate) identities: Vec<TrustedIdentity>,
 
     /// The auth request input, including payload, if any
@@ -247,12 +247,12 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeIX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        ias_report: VerificationReport,
+        attestation_evidence: DcapEvidence,
         identities: impl Into<Vec<TrustedIdentity>>,
     ) -> Self {
         Self {
             local_identity,
-            ias_report,
+            attestation_evidence,
             identities: identities.into(),
             data,
         }
@@ -335,8 +335,8 @@ impl AsRef<[u8]> for UnverifiedAttestationEvidence {
 /// An authentication response from a responder
 impl MealyInput for UnverifiedAttestationEvidence {}
 
-/// The IAS report is the final output when authentication succeeds.
-impl MealyOutput for VerificationReport {}
+/// The attestation evidence is the final output when authentication succeeds.
+impl MealyOutput for DcapEvidence {}
 
 /// A type similar to aead::Payload used to distinguish writer inputs from
 /// outputs.

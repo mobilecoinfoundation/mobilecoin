@@ -32,7 +32,7 @@ pub enum RotateKeysError {
 }
 
 /// An enumeration of errors which can occur inside an ingest enclave.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Serialize)]
 pub enum Error {
     /// Enclave not initialized
     NotInit,

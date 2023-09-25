@@ -3,7 +3,6 @@
 //! Contains helper methods and structs used by the router integration test.
 
 use grpcio::ChannelBuilder;
-use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
@@ -57,11 +56,10 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
 /// simply reordering the fields would cause the test to fail without a clear
 /// explanation as to why.
 
-type TestViewServer =
-    ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb, EpochShardingStrategy>;
+type TestViewServer = ViewServer<SgxViewEnclave, SqlRecoveryDb, EpochShardingStrategy>;
 
 pub struct RouterTestEnvironment {
-    pub router_server: Option<FogViewRouterServer<SgxViewEnclave, AttestClient>>,
+    pub router_server: Option<FogViewRouterServer<SgxViewEnclave>>,
     pub router_streaming_client: Option<FogViewRouterGrpcClient>,
     pub router_unary_client: Option<FogViewGrpcClient>,
     pub store_servers: Option<Vec<TestViewServer>>,
@@ -150,19 +148,16 @@ impl RouterTestEnvironment {
         config: FogViewRouterConfig,
         shards: Arc<RwLock<Vec<Shard>>>,
         logger: &Logger,
-    ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
+    ) -> FogViewRouterServer<SgxViewEnclave> {
         let enclave = SgxViewEnclave::new(
             get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
             config.client_responder_id.clone(),
             config.omap_capacity,
             logger.clone(),
         );
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
         let mut router_server = FogViewRouterServer::new(
             config,
             enclave,
-            ra_client,
             shards,
             SystemTimeProvider::default(),
             logger.clone(),
@@ -254,15 +249,11 @@ impl RouterTestEnvironment {
                     logger.clone(),
                 );
 
-                let ra_client =
-                    AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
                 let Epoch(ref sharding_strategy) = config.sharding_strategy;
                 let mut store = ViewServer::new(
                     config.clone(),
                     enclave,
                     db.clone(),
-                    ra_client,
                     SystemTimeProvider::default(),
                     sharding_strategy.clone(),
                     logger.clone(),
