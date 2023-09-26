@@ -9,7 +9,7 @@ extern crate alloc;
 
 use mc_fog_report_validation::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 
-use mc_fog_ingest_report::IngestReportVerifier;
+use mc_fog_ingest_report::IngestAttestationEvidenceVerifier;
 
 use alloc::string::{String, ToString};
 use core::str::FromStr;
@@ -20,8 +20,8 @@ use mc_fog_report_types::{FogReportResponses, ReportResponse};
 use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_util_uri::{FogUri, UriParseError};
 
-/// A collection of unvalidated fog reports, together with an IAS verifier.
-/// This object is passed to the TransactionBuilder object.
+/// A collection of unvalidated fog reports, together with an attestation
+/// evidence verifier. This object is passed to the TransactionBuilder object.
 /// When fog is not involved, it can simply be defaulted.
 ///
 /// Once constructed, this object can get validated fog pubkeys to build fog
@@ -31,7 +31,7 @@ use mc_util_uri::{FogUri, UriParseError};
 #[derive(Default, Clone, Debug)]
 pub struct FogResolver {
     responses: FogReportResponses,
-    verifier: IngestReportVerifier,
+    verifier: IngestAttestationEvidenceVerifier,
 }
 
 impl FogResolver {
@@ -56,7 +56,7 @@ impl FogResolver {
         verifier.identities(identities).debug(DEBUG_ENCLAVE);
         Ok(Self {
             responses,
-            verifier: IngestReportVerifier::from(&verifier),
+            verifier: IngestAttestationEvidenceVerifier::from(&verifier),
         })
     }
 }
@@ -80,7 +80,7 @@ impl FogPubkeyResolver for FogResolver {
                 if report_id == report.fog_report_id {
                     let pubkey = self
                         .verifier
-                        .validate_ingest_ias_report(report.report.clone())
+                        .validate_ingest_attestation_evidence(report.report.clone())
                         .map_err(|e| FogPubkeyError::IngestReport(e.to_string()))?;
                     return Ok(FullyValidatedFogPubkey {
                         pubkey,

@@ -4,9 +4,19 @@
 #![no_std]
 extern crate alloc;
 
+// Prost generated versions
+pub mod prost {
+    use mc_crypto_digestible::Digestible;
+    include!(concat!(env!("OUT_DIR"), "/external.rs"));
+}
+
+mod convert;
 mod verification;
 
-pub use crate::verification::{
-    DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
-    VerificationSignature,
+pub use crate::{
+    convert::ConversionError,
+    verification::{
+        DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
+        VerificationSignature,
+    },
 };

@@ -57,7 +57,7 @@ futures = "0.3"
 grpcio = "0.12.1"
 itertools = "0.10"
 lazy_static = "1.4"
-mc-attestation-verifier = "0.3.1"
+mc-attestation-verifier = "0.4.0"
 rand = "0.8"
 retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
@@ -69,7 +69,7 @@ mc-util-build-script = { path = "../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 [dev-dependencies]
-aes-gcm = "0.10.2"
+aes-gcm = "0.10.3"
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }

@@ -47,7 +47,7 @@ impl ReportableEnclave for MockEnclave {
         let report_data = EnclaveReportDataContents::new(
             Default::default(),
             [0u8; 32].as_slice().try_into().expect("bad key"),
-            Default::default(),
+            None,
         );
         Ok((Report::default(), report_data))
     }
@@ -61,11 +61,14 @@ impl ReportableEnclave for MockEnclave {
         Ok(IasNonce::default())
     }
 
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_attestation_evidence(
+        &self,
+        _attestation_evidence: VerificationReport,
+    ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         Ok(VerificationReport::default())
     }
 }

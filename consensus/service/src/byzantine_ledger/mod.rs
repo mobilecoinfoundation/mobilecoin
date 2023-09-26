@@ -329,7 +329,7 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
-    use mc_blockchain_types::{BlockContents, BlockVersion};
+    use mc_blockchain_types::{AttestationEvidence, BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{ballot::Ballot, msg::*, SlotIndex};
@@ -845,8 +845,8 @@ mod tests {
         assert_eq!(metadata.contents().block_id(), &block_data.block().id);
         assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
         assert_eq!(
-            metadata.contents().verification_report(),
-            &verification_report
+            metadata.contents().attestation_evidence(),
+            &AttestationEvidence::VerificationReport(verification_report)
         );
     }
 
@@ -1168,8 +1168,8 @@ mod tests {
         assert_eq!(metadata.contents().block_id(), &block_data.block().id);
         assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
         assert_eq!(
-            metadata.contents().verification_report(),
-            &verification_report
+            metadata.contents().attestation_evidence(),
+            &AttestationEvidence::VerificationReport(verification_report)
         );
     }
 }

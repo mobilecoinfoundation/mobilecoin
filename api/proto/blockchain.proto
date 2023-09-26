@@ -78,8 +78,11 @@ message BlockMetadataContents {
     // Quorum set configuration at the time of externalization.
     quorum_set.QuorumSet quorum_set = 2;
 
-    // IAS report for the enclave which generated the signature.
-    external.VerificationReport verification_report = 3;
+    // The attestation evidence for the enclave which generated the signature.
+    oneof attestation_evidence {
+        external.VerificationReport verification_report = 3;
+        external.DcapEvidence dcap_evidence = 5;
+    }
 
     // Responder ID of the consensus node that externalized this block.
     string responder_id = 4;

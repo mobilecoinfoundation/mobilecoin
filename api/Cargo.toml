@@ -28,6 +28,8 @@ mc-watcher-api = { path = "../watcher/api" }
 bs58 = "0.4.0"
 crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
+mc-sgx-core-types = "0.8.0"
+mc-sgx-dcap-types = "0.8.0"
 protobuf = "2.27.1"
 
 curve25519-dalek = { version = "4.1.0", default-features = false }
@@ -39,6 +41,8 @@ mc-util-build-script = { path = "../util/build/script" }
 cargo-emit = "0.2.1"
 
 [dev-dependencies]
+assert_matches = "1"
+mc-attest-untrusted = { path = "../attest/untrusted" }
 mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }
@@ -54,7 +58,7 @@ mc-util-zip-exact = { path = "../util/zip-exact" }
 
 generic-array = "0.14"
 pem = "3.0"
-prost = { version = "0.11", default-features = false }
+prost = { version = "0.12", default-features = false }
 rand = "0.8"
 rand_core = "0.6"
 rand_hc = "0.3"

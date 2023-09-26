@@ -11,5 +11,5 @@ rust-version = { workspace = true }
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-crypto-digestible = { path = "../../../crypto/digestible", default-features = false }
 
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

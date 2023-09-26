@@ -60,7 +60,7 @@ pub struct EnclaveConnection<U: ConnectionUri, G: EnclaveGrpcChannel> {
     grpc: G,
     /// The AKE state machine object, if one is available.
     attest_cipher: Option<Ready<Aes256Gcm>>,
-    /// The identities that a fog node's IAS report must match, one of
+    /// The identities that a fog node's attestation evidence must match, one of
     identities: Vec<TrustedIdentity>,
     /// Credentials to use for all GRPC calls (this allows authentication
     /// username/password to go through, if provided).

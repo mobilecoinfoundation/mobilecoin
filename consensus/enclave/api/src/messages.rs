@@ -93,18 +93,18 @@ pub enum EnclaveCall {
     /// * Caches the quote.
     VerifyQuote(Quote, Report, EnclaveReportDataContents),
 
-    /// The [ConsensusEnclave::verify_ias_report()] method.
+    /// The [ConsensusEnclave::verify_attestation_evidence()] method.
     ///
-    /// * Verifies the signed report from IAS matches the previously received
+    /// * Verifies the attestation evidence matches the previously received
     ///   quote,
-    /// * Caches the signed report. This cached report may be overwritten by
-    ///   later calls.
-    VerifyReport(VerificationReport),
+    /// * Caches the attestation evidence. This cached report may be overwritten
+    ///   by later calls.
+    VerifyAttestationEvidence(VerificationReport),
 
-    /// The [ConsensusEnclave::get_ias_report()] method.
+    /// The [ConsensusEnclave::get_attestation_evidence()] method.
     ///
     /// Retrieves a previously cached report, if any.
-    GetReport,
+    GetAttestationEvidence,
 
     /// The [ConsensusEnclave::client_tx_propose()] method.
     ///

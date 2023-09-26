@@ -8,11 +8,11 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-attestation-verifier = "0.3.1"
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-sgx-core-types = "0.7.5"
-mc-sgx-dcap-types = { version = "0.7.5", default-features = false, features = ["alloc"] }
+mc-sgx-core-types = "0.8.0"
+mc-sgx-dcap-sys-types = { version = "0.8.0", default-features = false }
+mc-sgx-dcap-types = { version = "0.8.0", default-features = false, features = ["alloc"] }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-serial = { path = "../../../util/serial" }
 
@@ -20,6 +20,14 @@ base64 = { version = "0.21", default-features = false, features = ["alloc"] }
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 hex_fmt = "0.3"
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.10.6", default-features = false }
+x509-cert = { version = "0.2.3", default-features = false, features = ["pem"] }
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+mc-attest-untrusted = { path = "../../untrusted", default-features = false }
+
+[build-dependencies]
+prost-build = "0.12"

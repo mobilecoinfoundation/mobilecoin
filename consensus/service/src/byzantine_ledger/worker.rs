@@ -9,7 +9,9 @@ use crate::{
     mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
-use mc_blockchain_types::{BlockData, BlockID, BlockMetadata, BlockMetadataContents};
+use mc_blockchain_types::{
+    AttestationEvidence, BlockData, BlockID, BlockMetadata, BlockMetadataContents,
+};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -880,13 +882,18 @@ impl<
     }
 
     fn get_block_metadata(&self, block_id: &BlockID) -> BlockMetadata {
-        let verification_report = self.enclave.get_ias_report().unwrap_or_else(|err| {
-            panic!("Failed to fetch verification report after forming block {block_id:?}: {err}")
-        });
+        let verification_report = self
+            .enclave
+            .get_attestation_evidence()
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to fetch attestation evidence after forming block {block_id:?}: {err}"
+                )
+            });
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
-            verification_report,
+            AttestationEvidence::VerificationReport(verification_report),
             self.scp_node.node_id().responder_id,
         );
 
@@ -1607,7 +1614,7 @@ mod tests {
             broadcast,
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
-        let report = enclave.get_ias_report().unwrap();
+        let report = enclave.get_attestation_evidence().unwrap();
 
         let tx_manager = TxManagerImpl::new(
             enclave.clone(),
@@ -1731,7 +1738,10 @@ mod tests {
         let contents = metadata.contents();
         assert_eq!(&block.id, contents.block_id());
         assert_eq!(&quorum_set, contents.quorum_set());
-        assert_eq!(&report, contents.verification_report());
+        assert_eq!(
+            &AttestationEvidence::VerificationReport(report),
+            contents.attestation_evidence()
+        );
         assert_eq!(&local_node_id.responder_id, contents.responder_id());
     }
 

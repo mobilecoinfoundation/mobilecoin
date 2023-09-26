@@ -24,9 +24,10 @@ pub use crate::{
     event::{
         AuthRequestOutput, AuthResponseInput, AuthResponseOutput, Ciphertext,
         ClientAuthRequestInput, ClientInitiate, NodeAuthRequestInput, NodeInitiate, Plaintext,
+        UnverifiedReport,
     },
     mealy::Transition,
-    state::{AuthPending, Ready, Start},
+    state::{AuthPending, Ready, Start, Terminated},
 };
 
 #[cfg(test)]
@@ -70,7 +71,7 @@ mod test {
 
         // Sign the forged quote with the sim client
         let ra_client = Client::new("").expect("Could not create sim client");
-        let ias_report = ra_client
+        let attestation_evidence = ra_client
             .verify_quote(&quote, None)
             .expect("Could not sign our bogus report");
 
@@ -90,8 +91,10 @@ mod test {
         let initiator = Start::new(RESPONDER_ID_STR.into());
         let responder = Start::new(RESPONDER_ID_STR.into());
 
-        let node_init =
-            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(identity.clone(), ias_report.clone());
+        let node_init = NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(
+            identity.clone(),
+            attestation_evidence.clone(),
+        );
         let (initiator, auth_request_output) = initiator
             .try_next(&mut csprng, node_init)
             .expect("Initiator could not be initiated");
@@ -101,7 +104,7 @@ mod test {
         let auth_request_input = NodeAuthRequestInput::new(
             auth_request_output,
             identity,
-            ias_report,
+            attestation_evidence,
             identities.clone(),
         );
         let (responder, auth_response_output) = responder

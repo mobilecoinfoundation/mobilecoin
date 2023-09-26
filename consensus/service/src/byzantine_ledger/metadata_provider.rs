@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use mc_blockchain_types::{BlockData, BlockMetadata, BlockMetadataContents, QuorumSet};
+use mc_blockchain_types::{
+    AttestationEvidence, BlockData, BlockMetadata, BlockMetadataContents, QuorumSet,
+};
 use mc_common::ResponderId;
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_sync::BlockMetadataProvider;
@@ -35,11 +37,14 @@ impl<E: ReportableEnclave> ConsensusMetadataProvider<E> {
 
 impl<E: ReportableEnclave> BlockMetadataProvider for ConsensusMetadataProvider<E> {
     fn get_metadata(&self, block_data: &BlockData) -> Option<BlockMetadata> {
-        let verification_report = self.enclave.get_ias_report().expect("failed to get AVR");
+        let verification_report = self
+            .enclave
+            .get_attestation_evidence()
+            .expect("failed to get AVR");
         let contents = BlockMetadataContents::new(
             block_data.block().id.clone(),
             self.quorum_set.clone(),
-            verification_report,
+            AttestationEvidence::VerificationReport(verification_report),
             self.responder_id.clone(),
         );
         Some(

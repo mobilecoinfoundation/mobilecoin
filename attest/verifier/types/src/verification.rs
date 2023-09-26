@@ -2,6 +2,12 @@
 
 //! Attestation Verification Report type.
 
+use crate::prost;
+use ::prost::{
+    bytes::{Buf, BufMut},
+    encoding::{self, DecodeContext, WireType},
+    DecodeError, Message, Oneof,
+};
 use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
@@ -11,98 +17,23 @@ use mc_crypto_keys::X25519Public;
 use mc_sgx_core_types::QuoteNonce;
 use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
-use prost::{
-    bytes::{Buf, BufMut},
-    encoding::{self, DecodeContext, WireType},
-    DecodeError, Message, Oneof,
-};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct DcapEvidence {
-    pub quote: Option<Quote3<Vec<u8>>>,
-    pub collateral: Option<Collateral>,
-}
-
-const TAG_DCAP_EVIDENCE_QUOTE3: u32 = 1;
-const TAG_DCAP_EVIDENCE_COLLATERAL: u32 = 2;
-
-// Quote3 and Collateral cannot trivially be made to implement prost::Message.
-// Since they implement serde Serialize and Deserialize though, we can manually
-// implement it for DcapEvidence. To do this, we use serde to serialize and
-// deserialize them to/from Vec<u8>
-impl Message for DcapEvidence {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        let quote_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.quote).expect("Failed to serialize Quote3");
-        encoding::bytes::encode(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes, buf);
-        let collateral_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.collateral).expect("Failed to serialize Collateral");
-        encoding::bytes::encode(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes, buf);
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        match tag {
-            TAG_DCAP_EVIDENCE_QUOTE3 => {
-                let mut vbuf = Vec::new();
-                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let quote: Option<Quote3<Vec<u8>>> =
-                    mc_util_serial::deserialize(vbuf.as_slice())
-                        .map_err(|_| DecodeError::new("Failed to deserialize quote3 from bytes"))?;
-                self.quote = quote;
-                Ok(())
-            }
-            TAG_DCAP_EVIDENCE_COLLATERAL => {
-                let mut vbuf = Vec::new();
-                encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-                let collateral: Option<Collateral> = mc_util_serial::deserialize(vbuf.as_slice())
-                    .map_err(|_| {
-                    DecodeError::new("Failed to deserialize collateral from bytes")
-                })?;
-                self.collateral = collateral;
-                Ok(())
-            }
-            _ => encoding::skip_field(wire_type, tag, buf, ctx),
-        }
-    }
-
-    fn encoded_len(&self) -> usize {
-        let quote_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.quote).expect("Failed serializing Quote3");
-        let collateral_bytes: Vec<u8> =
-            mc_util_serial::serialize(&self.collateral).expect("Failed serializing Collateral");
-
-        encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_QUOTE3, &quote_bytes)
-            + encoding::bytes::encoded_len(TAG_DCAP_EVIDENCE_COLLATERAL, &collateral_bytes)
-    }
-
-    fn clear(&mut self) {
-        *self = Default::default();
-    }
+    pub quote: Quote3<Vec<u8>>,
+    pub collateral: Collateral,
+    pub report_data: EnclaveReportDataContents,
 }
 
 #[derive(Clone, Oneof)]
 pub enum EvidenceKind {
     #[prost(message, tag = "4")]
-    Dcap(DcapEvidence),
+    Dcap(prost::DcapEvidence),
 }
 
-#[derive(Clone, prost::Message)]
+#[derive(Clone, Message)]
 pub struct EvidenceMessage {
     #[prost(oneof = "EvidenceKind", tags = "4")]
     pub evidence: Option<EvidenceKind>,
@@ -245,13 +176,13 @@ impl Message for VerificationSignature {
 }
 
 /// Structure for holding the contents of the Enclave's Report Data.
-/// The Enclave's ReportData member contains a SHA256 hash of this structure's
-/// contents.
+/// The Enclave Quote's ReportData member contains a SHA256 hash of this
+/// structure's contents.
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EnclaveReportDataContents {
     nonce: QuoteNonce,
     key: X25519Public,
-    custom_identity: [u8; 32],
+    custom_identity: Option<[u8; 32]>,
 }
 
 impl EnclaveReportDataContents {
@@ -265,11 +196,15 @@ impl EnclaveReportDataContents {
     /// * `custom_identity` - The custom identity of the enclave. Previously
     ///   this was bytes 32..64 of the enclave's
     ///   [`ReportData`](mc-sgx-core-types::ReportData).
-    pub fn new(nonce: QuoteNonce, key: X25519Public, custom_identity: [u8; 32]) -> Self {
+    pub fn new(
+        nonce: QuoteNonce,
+        key: X25519Public,
+        custom_identity: impl Into<Option<[u8; 32]>>,
+    ) -> Self {
         Self {
             nonce,
             key,
-            custom_identity,
+            custom_identity: custom_identity.into(),
         }
     }
 
@@ -284,8 +219,8 @@ impl EnclaveReportDataContents {
     }
 
     ///  Get the custom identity
-    pub fn custom_identity(&self) -> &[u8; 32] {
-        &self.custom_identity
+    pub fn custom_identity(&self) -> Option<&[u8; 32]> {
+        self.custom_identity.as_ref()
     }
 
     /// Returns a SHA256 hash of the contents of this structure.
@@ -296,7 +231,9 @@ impl EnclaveReportDataContents {
         let mut hasher = Sha256::new();
         hasher.update(&self.nonce);
         hasher.update(&self.key);
-        hasher.update(self.custom_identity);
+        if let Some(custom_identity) = &self.custom_identity {
+            hasher.update(custom_identity);
+        }
         hasher.finalize().into()
     }
 }
@@ -322,6 +259,24 @@ mod tests {
         assert_eq!(
             format!("{}", &report),
             "VerificationReport { sig: deadbeefcafe, chain: [abcd, cdef, 1234], http_body: \"some_body\" }"
+        );
+    }
+
+    #[test]
+    fn enclave_report_data_contents_sha256_without_custom_id() {
+        let nonce: QuoteNonce = [0x2u8; 16].into();
+        let key_bytes = [0x33u8; 32];
+        let key: X25519Public = key_bytes.as_slice().try_into().expect("bad key");
+        let zeroed_custom_identity = [0x0u8; 32];
+        let report_data_without_custom_id =
+            EnclaveReportDataContents::new(nonce.clone(), key.clone(), None);
+
+        let report_data_with_zeroed_custom_id =
+            EnclaveReportDataContents::new(nonce, key, zeroed_custom_identity);
+
+        assert_ne!(
+            report_data_without_custom_id.sha256(),
+            report_data_with_zeroed_custom_id.sha256()
         );
     }
 }

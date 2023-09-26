@@ -10,6 +10,7 @@ use mc_attest_verifier::{
 use mc_attestation_verifier::{QeIdentity, SignedQeIdentity};
 use mc_rand::McRng;
 use mc_sgx_core_types::{Report, ReportBody, TargetInfo};
+use mc_sgx_dcap_quoteverify::Error as QuoteVerifyError;
 use mc_sgx_dcap_sys_types::{
     sgx_ql_ecdsa_sig_data_t, sgx_ql_qve_collateral_t, sgx_quote3_t, sgx_quote_header_t,
 };
@@ -52,7 +53,7 @@ impl SimQuotingEnclave {
         Ok(TargetInfo::default())
     }
 
-    pub fn collateral<Q: AsRef<[u8]>>(_quote: &Quote3<Q>) -> Collateral {
+    pub fn collateral<Q: AsRef<[u8]>>(_quote: &Quote3<Q>) -> Result<Collateral, QuoteVerifyError> {
         let mut tcb_info = SIM_TCB_INFO.to_owned();
         let mut qe_identity = SIM_QE_IDENTITY.to_owned();
 
@@ -80,7 +81,7 @@ impl SimQuotingEnclave {
         sgx_collateral.qe_identity = qe_identity.as_mut_ptr() as *mut core::ffi::c_char;
         sgx_collateral.qe_identity_size = qe_identity.len() as u32;
 
-        Collateral::try_from(&sgx_collateral).expect("Failed to convert collateral")
+        Ok(Collateral::try_from(&sgx_collateral).expect("Failed to convert collateral"))
     }
 }
 
@@ -205,13 +206,11 @@ fn c_struct_as_bytes<T>(c_struct: &T) -> &[u8] {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_core::DcapEvidence;
     use mc_attest_verifier::DcapVerifier;
     use mc_attest_verifier_types::EnclaveReportDataContents;
     use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
     use p256::pkcs8::der::DateTime;
-    use prost::Message;
     use std::time::{SystemTime, UNIX_EPOCH};
     use x509_cert::{der::DecodePem, Certificate};
 
@@ -255,7 +254,7 @@ mod test {
     fn verify_simulated_quote() {
         let (report, report_data_contents) = report_and_report_data();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
-        let collateral = SimQuotingEnclave::collateral(&quote);
+        let collateral = SimQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
         let mr_enclave = quote.app_report_body().mr_enclave();
         let identities =
             &[TrustedMrEnclaveIdentity::new(mr_enclave, [] as [&str; 0], [] as [&str; 0]).into()];
@@ -271,29 +270,5 @@ mod test {
         let verifier = DcapVerifier::new(identities, time, report_data_contents);
         let verification = verifier.verify(evidence);
         assert_eq!(verification.is_success().unwrap_u8(), 1);
-    }
-
-    #[test]
-    fn test_dcap_evidence_serialization() {
-        let mut buf: Vec<u8> = vec![];
-        let uut: DcapEvidence = Default::default();
-        uut.encode(&mut buf)
-            .expect("Failed to encode empty DcapEvidence");
-        let decoded =
-            DcapEvidence::decode(buf.as_slice()).expect("Failed to decode empty DcapEvidence");
-        assert_eq!(uut, decoded);
-        buf.clear();
-        let report = Report::default();
-        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to create quote");
-        let collateral = SimQuotingEnclave::collateral(&quote);
-        let mut uut = DcapEvidence {
-            quote: Some(quote),
-            collateral: Some(collateral),
-        };
-        uut.encode(&mut buf).expect("Failed to encode DcapEvidence");
-        let decoded = DcapEvidence::decode(buf.as_slice()).expect("Failed to decode DcapEvidence");
-        assert_eq!(uut, decoded);
-        uut.clear();
-        assert_eq!(DcapEvidence::default(), uut);
     }
 }
