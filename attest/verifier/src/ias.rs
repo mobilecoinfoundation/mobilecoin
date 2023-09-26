@@ -5,7 +5,7 @@
 //! structure.
 
 use crate::{avr::Kind as AvrKind, Error, StatusVerifier, Verify};
-use alloc::{vec, vec::Vec};
+use alloc::{format, vec, vec::Vec};
 use mbedtls::{
     alloc::{Box as MbedtlsBox, List as MbedtlsList},
     hash::Type as HashType,
@@ -237,7 +237,7 @@ impl IasReportVerifier {
         {
             Ok(report_data)
         } else {
-            Err(Error::Verification(report_data))
+            Err(Error::Verification(format!("{report_data:?}")))
         }
     }
 }
