@@ -151,7 +151,7 @@ mod test {
     fn collateral() -> Collateral {
         let report = Report::default();
         let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
-        DcapQuotingEnclave::collateral(&quote)
+        DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral")
     }
 
     #[test]

@@ -10,6 +10,7 @@ use mc_attest_verifier::{
 use mc_attestation_verifier::{QeIdentity, SignedQeIdentity};
 use mc_rand::McRng;
 use mc_sgx_core_types::{Report, ReportBody, TargetInfo};
+use mc_sgx_dcap_quoteverify::Error as QuoteVerifyError;
 use mc_sgx_dcap_sys_types::{
     sgx_ql_ecdsa_sig_data_t, sgx_ql_qve_collateral_t, sgx_quote3_t, sgx_quote_header_t,
 };
@@ -52,7 +53,7 @@ impl SimQuotingEnclave {
         Ok(TargetInfo::default())
     }
 
-    pub fn collateral<Q: AsRef<[u8]>>(_quote: &Quote3<Q>) -> Collateral {
+    pub fn collateral<Q: AsRef<[u8]>>(_quote: &Quote3<Q>) -> Result<Collateral, QuoteVerifyError> {
         let mut tcb_info = SIM_TCB_INFO.to_owned();
         let mut qe_identity = SIM_QE_IDENTITY.to_owned();
 
@@ -80,7 +81,7 @@ impl SimQuotingEnclave {
         sgx_collateral.qe_identity = qe_identity.as_mut_ptr() as *mut core::ffi::c_char;
         sgx_collateral.qe_identity_size = qe_identity.len() as u32;
 
-        Collateral::try_from(&sgx_collateral).expect("Failed to convert collateral")
+        Ok(Collateral::try_from(&sgx_collateral).expect("Failed to convert collateral"))
     }
 }
 
@@ -253,7 +254,7 @@ mod test {
     fn verify_simulated_quote() {
         let (report, report_data_contents) = report_and_report_data();
         let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
-        let collateral = SimQuotingEnclave::collateral(&quote);
+        let collateral = SimQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
         let mr_enclave = quote.app_report_body().mr_enclave();
         let identities =
             &[TrustedMrEnclaveIdentity::new(mr_enclave, [] as [&str; 0], [] as [&str; 0]).into()];

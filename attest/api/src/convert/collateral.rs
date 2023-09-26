@@ -41,7 +41,7 @@ mod test {
     fn collateral_back_and_forth() {
         let report = Report::default();
         let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
-        let collateral = DcapQuotingEnclave::collateral(&quote);
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
         let proto_collateral = attest::Collateral::try_from(&collateral)
             .expect("Failed to convert collateral to proto");
         let new_collateral = Collateral::try_from(&proto_collateral)
@@ -54,7 +54,7 @@ mod test {
     fn bad_collateral_fails_to_decode() {
         let report = Report::default();
         let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
-        let collateral = DcapQuotingEnclave::collateral(&quote);
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
         let mut proto_collateral = attest::Collateral::try_from(&collateral)
             .expect("Failed to convert collateral to proto");
         proto_collateral.root_ca_crl[0] += 1;
