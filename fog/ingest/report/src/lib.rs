@@ -29,21 +29,16 @@ impl IngestAttestationEvidenceVerifier {
         &self,
         attestation_evidence: DcapEvidence,
     ) -> Result<RistrettoPublic, Error> {
-        let (quote, collateral, report_data) = match attestation_evidence {
-            DcapEvidence {
-                quote: Some(quote),
-                collateral: Some(collateral),
-                report_data: Some(report_data),
-            } => (quote, collateral, report_data),
-            _ => return Err(EncodingError::InvalidInput.into()),
-        };
-        let custom_id = *report_data
+        let quote = attestation_evidence.quote;
+        let collateral = attestation_evidence.collateral;
+        let report_data = attestation_evidence.report_data;
+        let custom_id = report_data
             .custom_identity()
             .ok_or(Error::Encoding(EncodingError::InvalidInput))?;
 
         let now = DateTime::from_system_time(SystemTime::now())
             .expect("System time now should always be able to convert to DateTime");
-        let verifier = DcapVerifier::new(&self.identities, now, report_data);
+        let verifier = DcapVerifier::new(self.identities.clone(), now, report_data);
         let evidence = Evidence::new(quote, collateral)
             .map_err(|_| Error::Encoding(EncodingError::InvalidInput))?;
         let verification = verifier.verify(&evidence);

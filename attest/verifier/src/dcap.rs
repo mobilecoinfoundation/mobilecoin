@@ -59,7 +59,7 @@ impl DcapVerifier {
         &self,
         evidence: &Evidence<Vec<u8>>,
     ) -> VerificationOutput<AndOutput<EvidenceValue, AndOutput<ReportData, Attributes>>> {
-        self.verifier.verify(&evidence)
+        self.verifier.verify(evidence)
     }
 }
 
