@@ -52,5 +52,5 @@ message Report {
     /// The Attestation Evidence ort of the Fog Ingest node.
     ///
     /// This attestation evidence includes the ingest server's ingress public key.
-    external.DcapEvidence evidence = 4;
+    external.DcapEvidence attestation_evidence = 4;
 }

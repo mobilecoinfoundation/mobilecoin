@@ -4421,7 +4421,7 @@ dependencies = [
 name = "mc-fog-report-types"
 version = "5.0.5"
 dependencies = [
- "mc-attest-core",
+ "mc-attest-verifier-types",
  "mc-crypto-digestible",
  "prost",
  "serde",

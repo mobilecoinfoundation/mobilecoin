@@ -24,7 +24,7 @@ impl From<report::Report> for mc_fog_report_types::Report {
     fn from(mut src: report::Report) -> mc_fog_report_types::Report {
         mc_fog_report_types::Report {
             fog_report_id: src.take_fog_report_id(),
-            report: (&src.take_report()).into(),
+            attestation_evidence: (&src.take_attestation_evidence()).into(),
             pubkey_expiry: src.pubkey_expiry,
         }
     }
@@ -34,7 +34,7 @@ impl From<mc_fog_report_types::Report> for report::Report {
     fn from(src: mc_fog_report_types::Report) -> report::Report {
         let mut result = report::Report::new();
         result.set_fog_report_id(src.fog_report_id);
-        result.set_report((&src.report).into());
+        result.set_attestation_evidence((&src.attestation_evidence).into());
         result.set_pubkey_expiry(src.pubkey_expiry);
         result
     }
