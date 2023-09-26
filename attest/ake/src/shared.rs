@@ -8,6 +8,7 @@ use crate::{
     state::Ready,
 };
 use alloc::vec::Vec;
+use der::DateTime;
 use mc_crypto_noise::{CipherError, NoiseCipher};
 use rand_core::{CryptoRng, RngCore};
 
@@ -22,6 +23,7 @@ where
         self,
         _csprng: &mut R,
         input: Ciphertext,
+        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, Vec<u8>), Self::Error> {
         let mut retval = self;
         let plaintext = retval.decrypt(input.aad, input.msg)?;
@@ -40,6 +42,7 @@ where
         self,
         _csprng: &mut R,
         input: Plaintext,
+        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, Vec<u8>), Self::Error> {
         let mut retval = self;
         let ciphertext = retval.encrypt(input.aad, input.msg)?;
@@ -58,6 +61,7 @@ where
         self,
         _csprng: &mut R,
         input: NonceCiphertext<'_, '_>,
+        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, Vec<u8>), Self::Error> {
         let mut retval = self;
         let plaintext =
@@ -77,6 +81,7 @@ where
         self,
         _csprng: &mut R,
         input: NoncePlaintext<'_, '_>,
+        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, (Vec<u8>, u64)), Self::Error> {
         let mut retval = self;
         let output = retval.encrypt_with_nonce(input.aad(), input.msg())?;

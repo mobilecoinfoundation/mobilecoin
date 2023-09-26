@@ -3,6 +3,7 @@
 //! A set of traits used to implement a rusty deterministic finite state
 //! transducer
 
+use der::DateTime;
 use rand_core::{CryptoRng, RngCore};
 
 /// A marker trait indicating a particular structure is a valid input for a
@@ -35,5 +36,6 @@ pub trait Transition<NextState: State, InputEvent: Input, OutputEvent: Output>: 
         self,
         csprng: &mut R,
         input: InputEvent,
+        time: impl Into<Option<DateTime>>,
     ) -> Result<(NextState, OutputEvent), Self::Error>;
 }

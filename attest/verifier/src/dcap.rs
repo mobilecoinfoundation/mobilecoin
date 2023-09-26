@@ -34,7 +34,7 @@ impl DcapVerifier {
     ///   any of the validity periods.
     pub fn new<I, ID>(
         trusted_identities: I,
-        time: DateTime,
+        time: impl Into<Option<DateTime>>,
         report_data: EnclaveReportDataContents,
     ) -> Self
     where

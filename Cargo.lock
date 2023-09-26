@@ -2542,6 +2542,7 @@ dependencies = [
  "aead",
  "aes-gcm",
  "cargo-emit",
+ "der",
  "digest 0.10.7",
  "displaydoc",
  "mc-attest-core",
