@@ -9,9 +9,10 @@ use der::DateTime;
 use hex_fmt::HexFmt;
 use mc_attest_verifier_types::EnclaveReportDataContents;
 use mc_attestation_verifier::{
-    Accessor, And, AndOutput, AttributesVerifier, Evidence, EvidenceValue, EvidenceVerifier,
-    MbedTlsCertificateChainVerifier, ReportDataVerifier, TrustAnchor, TrustedIdentity,
-    VerificationMessage, VerificationOutput, Verifier, MESSAGE_INDENT,
+    choice_to_status_message, Accessor, And, AndOutput, AttributesVerifier, Evidence,
+    EvidenceValue, EvidenceVerifier, MbedTlsCertificateChainVerifier, ReportDataVerifier,
+    TrustAnchor, TrustedIdentity, VerificationMessage, VerificationOutput, Verifier,
+    MESSAGE_INDENT,
 };
 use mc_sgx_core_types::{AttributeFlags, Attributes, ReportData};
 
@@ -22,6 +23,8 @@ pub struct DcapVerifier {
         And<ReportDataHashVerifier, AttributesVerifier>,
     >,
 }
+
+type DcapVerifierOutput = AndOutput<EvidenceValue, AndOutput<ReportData, Attributes>>;
 
 impl DcapVerifier {
     /// Create a new instance of the DcapVerifier.
@@ -55,11 +58,23 @@ impl DcapVerifier {
     }
 
     /// Verify the `evidence`
-    pub fn verify(
-        &self,
-        evidence: &Evidence<Vec<u8>>,
-    ) -> VerificationOutput<AndOutput<EvidenceValue, AndOutput<ReportData, Attributes>>> {
+    pub fn verify(&self, evidence: &Evidence<Vec<u8>>) -> VerificationOutput<DcapVerifierOutput> {
         self.verifier.verify(evidence)
+    }
+}
+
+impl VerificationMessage<DcapVerifierOutput> for DcapVerifier {
+    fn fmt_padded(
+        &self,
+        f: &mut Formatter<'_>,
+        pad: usize,
+        result: &VerificationOutput<DcapVerifierOutput>,
+    ) -> core::fmt::Result {
+        let is_success = result.is_success();
+        let status = choice_to_status_message(is_success);
+
+        writeln!(f, "{:pad$}{status} DCAP evidence:", "")?;
+        self.verifier.fmt_padded(f, pad + MESSAGE_INDENT, result)
     }
 }
 
