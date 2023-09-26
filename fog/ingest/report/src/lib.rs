@@ -32,7 +32,7 @@ impl IngestAttestationEvidenceVerifier {
         let quote = attestation_evidence.quote;
         let collateral = attestation_evidence.collateral;
         let report_data = attestation_evidence.report_data;
-        let custom_id = report_data
+        let custom_id = *report_data
             .custom_identity()
             .ok_or(Error::Encoding(EncodingError::InvalidInput))?;
 
@@ -43,7 +43,7 @@ impl IngestAttestationEvidenceVerifier {
             .map_err(|_| Error::Encoding(EncodingError::InvalidInput))?;
         let verification = verifier.verify(&evidence);
         if verification.is_success().into() {
-            Ok(RistrettoPublic::try_from(custom_id)?)
+            Ok(RistrettoPublic::try_from(&custom_id)?)
         } else {
             let display_tree = VerificationTreeDisplay::new(&verifier, verification);
             Err(VerifierError::Verification(display_tree.to_string()).into())
