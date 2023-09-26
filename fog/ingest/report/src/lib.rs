@@ -1,11 +1,15 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![allow(clippy::result_large_err)]
+
+use der::DateTime;
 use displaydoc::Display;
-use mc_attest_core::{VerificationReport, VerifyError};
-use mc_attest_verifier::{Error as VerifierError, Verifier};
+use mc_attest_core::{DcapEvidence, VerifyError};
+use mc_attest_verifier::{DcapVerifier, Error as VerifierError};
+use mc_attestation_verifier::{Evidence, TrustedIdentity, VerificationTreeDisplay};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_util_encodings::Error as EncodingError;
+use std::time::SystemTime;
 
 /// A structure that can validate ingest enclave evidence and measurements at
 /// runtime.
@@ -14,7 +18,7 @@ use mc_util_encodings::Error as EncodingError;
 /// validated and decompressed RistrettoPublic key.
 #[derive(Default, Clone, Debug)]
 pub struct IngestAttestationEvidenceVerifier {
-    verifier: Verifier,
+    identities: Vec<TrustedIdentity>,
 }
 
 impl IngestAttestationEvidenceVerifier {
@@ -23,19 +27,39 @@ impl IngestAttestationEvidenceVerifier {
     /// the "identity" object in the ingest enclave impl.
     pub fn validate_ingest_attestation_evidence(
         &self,
-        remote_report: VerificationReport,
+        attestation_evidence: DcapEvidence,
     ) -> Result<RistrettoPublic, Error> {
-        let parsed_report = self.verifier.verify(&remote_report)?;
-        let report_data = parsed_report.quote.report_body()?.report_data();
-        let report_data_bytes: &[u8] = report_data.as_ref();
-        Ok(RistrettoPublic::try_from(&report_data_bytes[32..64])?)
+        let (quote, collateral, report_data) = match attestation_evidence {
+            DcapEvidence {
+                quote: Some(quote),
+                collateral: Some(collateral),
+                report_data: Some(report_data),
+            } => (quote, collateral, report_data),
+            _ => return Err(EncodingError::InvalidInput.into()),
+        };
+        let custom_id = *report_data
+            .custom_identity()
+            .ok_or(Error::Encoding(EncodingError::InvalidInput))?;
+
+        let now = DateTime::from_system_time(SystemTime::now())
+            .expect("System time now should always be able to convert to DateTime");
+        let verifier = DcapVerifier::new(&self.identities, now, report_data);
+        let evidence = Evidence::new(quote, collateral)
+            .map_err(|_| Error::Encoding(EncodingError::InvalidInput))?;
+        let verification = verifier.verify(&evidence);
+        if verification.is_success().into() {
+            Ok(RistrettoPublic::try_from(&custom_id)?)
+        } else {
+            let display_tree = VerificationTreeDisplay::new(&verifier, verification);
+            Err(VerifierError::Verification(display_tree.to_string()).into())
+        }
     }
 }
 
-impl From<&Verifier> for IngestAttestationEvidenceVerifier {
-    fn from(src: &Verifier) -> Self {
+impl From<&[TrustedIdentity]> for IngestReportVerifier {
+    fn from(src: &[TrustedIdentity]) -> Self {
         Self {
-            verifier: src.clone(),
+            identities: src.to_vec(),
         }
     }
 }

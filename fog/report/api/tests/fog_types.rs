@@ -1,18 +1,16 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use ::prost::Message as ProstMessage;
 use mc_attest_verifier_types::prost;
 use mc_fog_report_api::{
     external::{
-        DcapEvidence as ProtobufDcapEvidence,
-        Collateral as ProtobufCollateral,
-        EnclaveReportDataContents as ProtobufEnclaveReportDataContents,
-        Quote3 as ProtobufQuote3,
+        Collateral as ProtobufCollateral, DcapEvidence as ProtobufDcapEvidence,
+        EnclaveReportDataContents as ProtobufEnclaveReportDataContents, Quote3 as ProtobufQuote3,
     },
     report::{Report as ProtobufReport, ReportResponse as ProtobufReportResponse},
 };
 use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
 use mc_fog_report_types::{Report as ProstReport, ReportResponse as ProstReportResponse};
-use ::prost::Message as ProstMessage;
 use protobuf::{Message as ProtobufMessage, RepeatedField};
 
 // Round trip a structure through protobuf type, once using serialization to
@@ -42,10 +40,10 @@ where
 }
 
 fn prost_attestation_evidence(name: &str) -> prost::DcapEvidence {
-    let quote = prost::Quote3{
+    let quote = prost::Quote3 {
         data: format!("{name} quote").into_bytes().into(),
     };
-    let report_data = prost::EnclaveReportDataContents{
+    let report_data = prost::EnclaveReportDataContents {
         nonce: format!("{name} nonce").into_bytes().into(),
         key: format!("{name} key").into_bytes().into(),
         custom_identity: format!("{name} custom_id").into_bytes().into(),
@@ -86,7 +84,6 @@ fn protobuf_attestation_evidence(name: &str) -> ProtobufDcapEvidence {
     report_data.set_nonce(format!("{name} nonce").into_bytes());
     report_data.set_key(format!("{name} key").into_bytes());
     report_data.set_custom_identity(format!("{name} custom_id").into_bytes());
-
 
     let mut evidence = ProtobufDcapEvidence::new();
     evidence.set_quote(quote);

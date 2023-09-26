@@ -9,8 +9,10 @@ rust-version = { workspace = true }
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
+mc-attestation-verifier = "0.3.1"
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-encodings = { path = "../../../util/encodings" }
 
+der = { version = "0.7.7", default-features = false, features = ["std"] }
 displaydoc = { version = "0.2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

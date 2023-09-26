@@ -80,7 +80,7 @@ impl FogPubkeyResolver for FogResolver {
                 if report_id == report.fog_report_id {
                     let pubkey = self
                         .verifier
-                        .validate_ingest_attestation_evidence(report.report.clone())
+                        .validate_ingest_attestation_evidence(report.attestation_evidence.clone())
                         .map_err(|e| FogPubkeyError::IngestReport(e.to_string()))?;
                     return Ok(FullyValidatedFogPubkey {
                         pubkey,

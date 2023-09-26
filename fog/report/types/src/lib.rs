@@ -9,10 +9,10 @@
 
 extern crate alloc;
 
+use ::prost::Message;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use mc_attest_verifier_types::prost;
 use mc_crypto_digestible::Digestible;
-use ::prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// A fog report from the report server
