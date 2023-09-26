@@ -2493,6 +2493,7 @@ dependencies = [
 name = "mc-api"
 version = "5.0.5"
 dependencies = [
+ "assert_matches",
  "bs58",
  "cargo-emit",
  "crc",
@@ -2500,6 +2501,7 @@ dependencies = [
  "displaydoc",
  "generic-array",
  "mc-account-keys",
+ "mc-attest-untrusted",
  "mc-attest-verifier-types",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
@@ -2510,6 +2512,7 @@ dependencies = [
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
  "mc-sgx-core-types",
+ "mc-sgx-dcap-types",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-builder",
  "mc-transaction-core",
@@ -2748,7 +2751,6 @@ dependencies = [
  "hex",
  "hex_fmt",
  "mc-attest-untrusted",
- "mc-attestation-verifier",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-sgx-core-types",

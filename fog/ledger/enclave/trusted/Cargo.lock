@@ -1107,7 +1107,6 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
- "mc-attestation-verifier",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-sgx-core-types",

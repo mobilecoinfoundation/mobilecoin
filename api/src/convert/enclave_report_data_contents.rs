@@ -1,13 +1,13 @@
 // Copyright (c) 2023 The MobileCoin Foundation
 
-//! Convert to/from attest::EnclaveReportDataContents
+//! Convert to/from external::EnclaveReportDataContents
 
-use crate::{attest, convert::encode_to_protobuf_vec, ConversionError};
+use crate::{convert::encode_to_protobuf_vec, external, ConversionError};
 use mc_attest_verifier_types::{prost, EnclaveReportDataContents};
 use mc_util_serial::Message;
 use protobuf::Message as ProtoMessage;
 
-impl From<&EnclaveReportDataContents> for attest::EnclaveReportDataContents {
+impl From<&EnclaveReportDataContents> for external::EnclaveReportDataContents {
     fn from(src: &EnclaveReportDataContents) -> Self {
         let prost = prost::EnclaveReportDataContents::from(src);
         let bytes = prost.encode_to_vec();
@@ -19,12 +19,12 @@ impl From<&EnclaveReportDataContents> for attest::EnclaveReportDataContents {
     }
 }
 
-impl TryFrom<&attest::EnclaveReportDataContents> for EnclaveReportDataContents {
+impl TryFrom<&external::EnclaveReportDataContents> for EnclaveReportDataContents {
     type Error = ConversionError;
-    fn try_from(src: &attest::EnclaveReportDataContents) -> Result<Self, Self::Error> {
+    fn try_from(src: &external::EnclaveReportDataContents) -> Result<Self, Self::Error> {
         let bytes = encode_to_protobuf_vec(src)?;
         let prost = prost::EnclaveReportDataContents::decode(bytes.as_slice())?;
-        prost.try_into()
+        Ok(prost.try_into()?)
     }
 }
 
@@ -40,7 +40,7 @@ mod tests {
             [0xCCu8; 32],
         );
 
-        let proto_report_data = attest::EnclaveReportDataContents::from(&report_data);
+        let proto_report_data = external::EnclaveReportDataContents::from(&report_data);
         let new_report_data =
             EnclaveReportDataContents::try_from(&proto_report_data).expect("failed to convert");
 
@@ -55,7 +55,7 @@ mod tests {
             None,
         );
 
-        let proto_report_data = attest::EnclaveReportDataContents::from(&report_data);
+        let proto_report_data = external::EnclaveReportDataContents::from(&report_data);
         let new_report_data =
             EnclaveReportDataContents::try_from(&proto_report_data).expect("failed to convert");
 
