@@ -998,6 +998,7 @@ version = "5.0.5"
 dependencies = [
  "aead",
  "cargo-emit",
+ "der",
  "digest",
  "displaydoc",
  "mc-attest-core",

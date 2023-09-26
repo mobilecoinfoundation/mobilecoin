@@ -168,12 +168,12 @@ where
                 if let Ok(remote_evidence) = EvidenceMessage::decode(output.payload.as_slice()) {
                     match remote_evidence.evidence {
                         Some(EvidenceKind::Dcap(dcap_evidence)) => {
-                            let (quote, collateral, report_data) = match dcap_evidence.clone() {
-                                DcapEvidence {
-                                    quote: Some(quote),
-                                    collateral: Some(collateral),
-                                    report_data: Some(report_data)
-                                } => (quote, collateral, report_data),
+                            let (quote, collateral, report_data) = match dcap_evidence.clone().try_into() {
+                                Ok(DcapEvidence {
+                                    quote,
+                                    collateral,
+                                    report_data,
+                                }) => (quote, collateral, report_data),
                                 _ => return Err(Error::AttestationEvidenceDeserialization),
                             };
                             let verifier = DcapVerifier::new(
@@ -181,9 +181,10 @@ where
                                 time,
                                 report_data,
                             );
-                            let evidence = Evidence::new(quote, collateral)
+                            let evidence = Evidence::new(quote.into(), collateral.into())
                                 .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                            match verifier.verify(evidence).is_success().unwrap_u8() {
+                            let verification_output = verifier.verify(evidence);
+                            match verification_output.is_success().unwrap_u8() {
                                 1 => {
                                     Ok((
                                         Ready {
@@ -196,7 +197,9 @@ where
                                         },
                                     ))
                                 },
-                                _ => Err(Error::AttestationEvidenceDeserialization),// TODO: VerifierError
+                                _ => {
+                                    Err(Error::AttestationEvidenceDeserialization)// TODO: How to create VerifyError from this result
+                                }
                             }
                             
                         }
