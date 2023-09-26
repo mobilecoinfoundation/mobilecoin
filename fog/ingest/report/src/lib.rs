@@ -38,7 +38,7 @@ impl IngestAttestationEvidenceVerifier {
 
         let now = DateTime::from_system_time(SystemTime::now())
             .expect("System time now should always be able to convert to DateTime");
-        let verifier = DcapVerifier::new(self.identities.clone(), now, report_data);
+        let verifier = DcapVerifier::new(&self.identities, now, report_data);
         let evidence = Evidence::new(quote, collateral)
             .map_err(|_| Error::Encoding(EncodingError::InvalidInput))?;
         let verification = verifier.verify(&evidence);

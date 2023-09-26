@@ -9,7 +9,7 @@ rust-version = { workspace = true }
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
-mc-attestation-verifier = "0.3.1"
+mc-attestation-verifier = "0.4.0"
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-encodings = { path = "../../../util/encodings" }
 
