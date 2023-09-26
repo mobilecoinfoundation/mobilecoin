@@ -56,7 +56,7 @@ impl IngestAttestationEvidenceVerifier {
     }
 }
 
-impl From<&[TrustedIdentity]> for IngestReportVerifier {
+impl From<&[TrustedIdentity]> for IngestAttestationEvidenceVerifier {
     fn from(src: &[TrustedIdentity]) -> Self {
         Self {
             identities: src.to_vec(),
