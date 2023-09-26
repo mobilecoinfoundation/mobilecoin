@@ -2609,7 +2609,7 @@ mod test {
         // Add a block with a non-MOB token ID.
         add_block_to_ledger(
             &mut ledger_db,
-            BlockVersion::THREE,
+            BLOCK_VERSION,
             &vec![
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
@@ -3514,7 +3514,7 @@ mod test {
         {
             add_block_to_ledger(
                 &mut ledger_db,
-                BlockVersion::THREE,
+                BLOCK_VERSION,
                 &[account_key.subaddress(5)],
                 Amount::new(102030, 2.into()),
                 &[KeyImage::from(101)],
