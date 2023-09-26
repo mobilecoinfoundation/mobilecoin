@@ -4306,7 +4306,7 @@ dependencies = [
  "grpcio",
  "mc-api",
  "mc-attest-api",
- "mc-attest-core",
+ "mc-attest-verifier-types",
  "mc-consensus-api",
  "mc-fog-report-api-test-utils",
  "mc-fog-report-types",
