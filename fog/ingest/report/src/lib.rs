@@ -43,7 +43,7 @@ impl IngestAttestationEvidenceVerifier {
             .map_err(|_| Error::Encoding(EncodingError::InvalidInput))?;
         let verification = verifier.verify(&evidence);
         if verification.is_success().into() {
-            Ok(RistrettoPublic::try_from(&custom_id)?)
+            Ok(RistrettoPublic::try_from(custom_id)?)
         } else {
             let display_tree = VerificationTreeDisplay::new(&verifier, verification);
             Err(VerifierError::Verification(display_tree.to_string()).into())
