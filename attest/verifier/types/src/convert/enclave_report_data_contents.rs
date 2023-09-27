@@ -6,10 +6,10 @@ use alloc::string::ToString;
 use mc_crypto_keys::X25519Public;
 use mc_sgx_core_types::QuoteNonce;
 
-impl TryFrom<prost::EnclaveReportDataContents> for EnclaveReportDataContents {
+impl TryFrom<&prost::EnclaveReportDataContents> for EnclaveReportDataContents {
     type Error = ConversionError;
 
-    fn try_from(value: prost::EnclaveReportDataContents) -> Result<Self, Self::Error> {
+    fn try_from(value: &prost::EnclaveReportDataContents) -> Result<Self, Self::Error> {
         let nonce: QuoteNonce =
             value
                 .nonce
@@ -21,7 +21,7 @@ impl TryFrom<prost::EnclaveReportDataContents> for EnclaveReportDataContents {
                     required: QuoteNonce::SIZE,
                 })?;
         let key: X25519Public = value.key.as_slice().try_into()?;
-        let custom_identity_bytes = value.custom_identity;
+        let custom_identity_bytes = &value.custom_identity;
         let custom_identity = if custom_identity_bytes.is_empty() {
             None
         } else {
@@ -69,7 +69,7 @@ mod tests {
 
         let prost_report_data = prost::EnclaveReportDataContents::from(&report_data);
         let new_report_data =
-            EnclaveReportDataContents::try_from(prost_report_data).expect("failed to convert");
+            EnclaveReportDataContents::try_from(&prost_report_data).expect("failed to convert");
 
         assert_eq!(report_data, new_report_data);
     }
@@ -84,7 +84,7 @@ mod tests {
 
         let prost_report_data = prost::EnclaveReportDataContents::from(&report_data);
         let new_report_data =
-            EnclaveReportDataContents::try_from(prost_report_data).expect("failed to convert");
+            EnclaveReportDataContents::try_from(&prost_report_data).expect("failed to convert");
 
         assert_eq!(report_data, new_report_data);
     }
@@ -99,7 +99,7 @@ mod tests {
 
         let mut prost_report_data = prost::EnclaveReportDataContents::from(&report_data);
         let _ = prost_report_data.nonce.pop();
-        let error = EnclaveReportDataContents::try_from(prost_report_data);
+        let error = EnclaveReportDataContents::try_from(&prost_report_data);
 
         assert_matches!(error, Err(ConversionError::LengthMismatch { .. }));
     }
@@ -114,7 +114,7 @@ mod tests {
 
         let mut prost_report_data = prost::EnclaveReportDataContents::from(&report_data);
         let _ = prost_report_data.key.pop();
-        let error = EnclaveReportDataContents::try_from(prost_report_data);
+        let error = EnclaveReportDataContents::try_from(&prost_report_data);
 
         assert_matches!(error, Err(ConversionError::Key(_)));
     }
@@ -129,7 +129,7 @@ mod tests {
 
         let mut prost_report_data = prost::EnclaveReportDataContents::from(&report_data);
         prost_report_data.custom_identity.push(0x12);
-        let error = EnclaveReportDataContents::try_from(prost_report_data);
+        let error = EnclaveReportDataContents::try_from(&prost_report_data);
 
         assert_matches!(error, Err(ConversionError::LengthMismatch { .. }));
     }

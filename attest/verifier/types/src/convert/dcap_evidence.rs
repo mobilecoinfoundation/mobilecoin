@@ -5,18 +5,21 @@
 use crate::{prost, ConversionError, DcapEvidence};
 use alloc::string::ToString;
 
-impl TryFrom<prost::DcapEvidence> for DcapEvidence {
+impl TryFrom<&prost::DcapEvidence> for DcapEvidence {
     type Error = ConversionError;
 
-    fn try_from(value: prost::DcapEvidence) -> Result<Self, Self::Error> {
+    fn try_from(value: &prost::DcapEvidence) -> Result<Self, Self::Error> {
         let quote = value
             .quote
+            .as_ref()
             .ok_or_else(|| ConversionError::MissingField("quote".to_string()))?;
         let collateral = value
             .collateral
+            .as_ref()
             .ok_or_else(|| ConversionError::MissingField("collateral".to_string()))?;
         let report_data = value
             .report_data
+            .as_ref()
             .ok_or_else(|| ConversionError::MissingField("report_data".to_string()))?;
         Ok(Self {
             quote: quote.try_into()?,
@@ -73,7 +76,7 @@ mod test {
             prost::DcapEvidence::try_from(&evidence).expect("Failed to convert evidence to prost");
         let bytes = prost_evidence.encode_to_vec();
         let new_evidence = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         )
         .expect("Failed to convert prost evidence to evidence");
 
@@ -88,7 +91,7 @@ mod test {
         prost_evidence.quote = None;
         let bytes = prost_evidence.encode_to_vec();
         let error = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::MissingField(message)) if message.contains("quote"));
@@ -102,7 +105,7 @@ mod test {
         prost_evidence.collateral = None;
         let bytes = prost_evidence.encode_to_vec();
         let error = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::MissingField(message)) if message.contains("collateral"));
@@ -116,7 +119,7 @@ mod test {
         prost_evidence.report_data = None;
         let bytes = prost_evidence.encode_to_vec();
         let error = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::MissingField(message)) if message.contains("report_data"));
@@ -131,7 +134,7 @@ mod test {
         prost_quote.data[1] += 1;
         let bytes = prost_evidence.encode_to_vec();
         let error = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -149,7 +152,7 @@ mod test {
         prost_collateral.root_ca_crl[0] += 1;
         let bytes = prost_evidence.encode_to_vec();
         let error = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -167,7 +170,7 @@ mod test {
         let _ = prost_report_data.custom_identity.pop();
         let bytes = prost_evidence.encode_to_vec();
         let error = DcapEvidence::try_from(
-            prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::DcapEvidence::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::LengthMismatch { .. }));

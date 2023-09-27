@@ -14,10 +14,10 @@ use x509_cert::{
     Certificate,
 };
 
-impl TryFrom<prost::Collateral> for Collateral {
+impl TryFrom<&prost::Collateral> for Collateral {
     type Error = ConversionError;
 
-    fn try_from(value: prost::Collateral) -> Result<Self, Self::Error> {
+    fn try_from(value: &prost::Collateral) -> Result<Self, Self::Error> {
         // Note: sgx_collateral uses null bytes at the end of most arrays.
 
         let mut sgx_collateral = version_3_1_empty_collateral();
@@ -52,7 +52,7 @@ impl TryFrom<prost::Collateral> for Collateral {
         sgx_collateral.qe_identity_issuer_chain_size =
             qe_identity_issuer_chain.as_bytes().len() as u32;
 
-        let mut qe_identity = value.qe_identity;
+        let mut qe_identity = value.qe_identity.clone();
         sgx_collateral.qe_identity = qe_identity.as_mut_ptr() as *mut core::ffi::c_char;
         sgx_collateral.qe_identity_size = qe_identity.as_bytes().len() as u32;
 
@@ -161,7 +161,7 @@ mod test {
             .expect("Failed to convert collateral to prost");
         let bytes = prost_collateral.encode_to_vec();
         let new_collateral = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         )
         .expect("Failed to convert prost collateral to collateral");
 
@@ -176,7 +176,7 @@ mod test {
         prost_collateral.pck_crl_issuer_chain.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -190,7 +190,7 @@ mod test {
         prost_collateral.pck_crl.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -204,7 +204,7 @@ mod test {
         prost_collateral.root_ca_crl.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -218,7 +218,7 @@ mod test {
         prost_collateral.tcb_info_issuer_chain.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -232,7 +232,7 @@ mod test {
         prost_collateral.tcb_info.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -246,7 +246,7 @@ mod test {
         prost_collateral.qe_identity_issuer_chain.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
@@ -260,7 +260,7 @@ mod test {
         prost_collateral.qe_identity.clear();
         let bytes = prost_collateral.encode_to_vec();
         let error = Collateral::try_from(
-            prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
+            &prost::Collateral::decode(bytes.as_slice()).expect("Failed to decode prost bytes"),
         );
 
         assert_matches!(error, Err(ConversionError::InvalidContents(_)));
