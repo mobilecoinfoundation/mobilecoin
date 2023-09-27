@@ -208,10 +208,12 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                 log::debug!(self.logger, "Enclave accepted report as valid...");
                 Ok(())
             }
-            Err(ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
-                VerifierError::Verification(report_data),
-            ))) => {
-                // A verifier failed...
+            Err(
+                error @ ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
+                    VerifierError::Verification(_),
+                )),
+            ) => {
+                let report_data = VerificationReportData::try_from(&attestation_evidence)?;
                 if let Some(platform_info_blob) = report_data.platform_info_blob.as_ref() {
                     // IAS gave us a PIB
                     log::debug!(
@@ -233,14 +235,10 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                     log::debug!(self.logger, "Enclave accepted new report as valid...");
                     Ok(())
                 } else {
-                    Err(Error::ReportableEnclave(
-                        ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
-                            VerifierError::Verification(report_data),
-                        )),
-                    ))
+                    Err(error.into())
                 }
             }
-            Err(other) => Err(other.into()),
+            Err(error) => Err(error.into()),
         };
 
         if retval.is_ok() {
