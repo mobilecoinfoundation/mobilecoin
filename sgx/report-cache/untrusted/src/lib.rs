@@ -8,8 +8,10 @@ use mc_attest_core::{
     PibError, ProviderId, QuoteError, QuoteSignType, VerificationReport, VerificationReportData,
     VerifyError,
 };
+use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_attest_net::{Error as RaError, RaClient};
 use mc_attest_untrusted::{QuotingEnclave, TargetInfoError};
+use mc_attest_verifier::Error as VerifierError;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
 use mc_util_metrics::IntGauge;
@@ -192,7 +194,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             self.logger,
             "Starting enclave report cache update process..."
         );
-        let attestation_evidence = self.start_report_cache()?;
+        let mut attestation_evidence = self.start_report_cache()?;
 
         log::debug!(
             self.logger,
@@ -206,7 +208,37 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                 log::debug!(self.logger, "Enclave accepted report as valid...");
                 Ok(())
             }
-            Err(e) => Err(e.into()),
+            Err(
+                error @ ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
+                    VerifierError::Verification(_),
+                )),
+            ) => {
+                let report_data = VerificationReportData::try_from(&attestation_evidence)?;
+                if let Some(platform_info_blob) = report_data.platform_info_blob.as_ref() {
+                    // IAS gave us a PIB
+                    log::debug!(
+                        self.logger,
+                        "IAS requested TCB update, attempting to update..."
+                    );
+                    QuotingEnclave::update_tcb(platform_info_blob)?;
+                    log::debug!(
+                        self.logger,
+                        "TCB update complete, restarting reporting process"
+                    );
+                    attestation_evidence = self.start_report_cache()?;
+                    log::debug!(
+                        self.logger,
+                        "Verifying attestation evidence with enclave (again)..."
+                    );
+                    self.enclave
+                        .verify_attestation_evidence(attestation_evidence.clone())?;
+                    log::debug!(self.logger, "Enclave accepted new report as valid...");
+                    Ok(())
+                } else {
+                    Err(error.into())
+                }
+            }
+            Err(error) => Err(error.into()),
         };
 
         if retval.is_ok() {
