@@ -2686,9 +2686,7 @@ dependencies = [
  "mc-sgx-dcap-sys-types",
  "mc-sgx-dcap-types",
  "mc-sgx-types",
- "mc-util-serial",
  "p256",
- "prost",
  "sha2 0.10.7",
  "x509-cert",
 ]
@@ -2708,6 +2706,7 @@ dependencies = [
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-attest-core",
+ "mc-attest-untrusted",
  "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-common",
