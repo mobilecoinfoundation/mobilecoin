@@ -8,7 +8,6 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use der::DateTime;
 use mc_attest_core::{ReportDataMask, VerificationReport};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
@@ -133,7 +132,6 @@ where
         self,
         csprng: &mut R,
         input: NodeAuthRequestInput<KexAlgo, Cipher, DigestAlgo>,
-        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error> {
         // Read the request and return the payload and state
         let (handshake_state, payload) = self
@@ -185,7 +183,6 @@ where
         self,
         csprng: &mut R,
         input: ClientAuthRequestInput<KexAlgo, Cipher, DigestAlgo>,
-        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error> {
         let (handshake_state, _payload) = self
             .handle_request::<HandshakeNX, KexAlgo, Cipher, DigestAlgo>(

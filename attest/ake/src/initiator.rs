@@ -7,7 +7,6 @@ use crate::{
     Start, Terminated, Transition, UnverifiedReport,
 };
 use alloc::vec::Vec;
-use der::DateTime;
 use mc_attest_core::{DcapEvidence, EvidenceKind, EvidenceMessage, ReportDataMask, VerificationReport};
 use mc_attestation_verifier::Evidence;
 use mc_attest_verifier::{DcapVerifier, Verifier, DEBUG_ENCLAVE};
@@ -63,7 +62,6 @@ where
         self,
         csprng: &mut R,
         _input: ClientInitiate<KexAlgo, Cipher, DigestAlgo>,
-        _time: impl Into<Option<DateTime>>,
     ) -> Result<
         (
             AuthPending<KexAlgo, Cipher, DigestAlgo>,
@@ -109,7 +107,6 @@ where
         self,
         csprng: &mut R,
         input: NodeInitiate<KexAlgo, Cipher, DigestAlgo>,
-        _time: impl Into<Option<DateTime>>,
     ) -> Result<
         (
             AuthPending<KexAlgo, Cipher, DigestAlgo>,
@@ -156,7 +153,6 @@ where
         self,
         _csprng: &mut R,
         input: AuthResponseInput,
-        time: impl Into<Option<DateTime>>,
     ) -> Result<(Ready<Cipher>, EvidenceMessage), Self::Error> {
         let output = self
             .state
@@ -178,7 +174,7 @@ where
                             };
                             let verifier = DcapVerifier::new(
                                 input.identities,
-                                time,
+                                input.time,
                                 report_data,
                             );
                             let evidence = Evidence::new(quote.into(), collateral.into())
@@ -261,7 +257,6 @@ where
         self,
         _csprng: &mut R,
         input: UnverifiedReport,
-        _time: impl Into<Option<DateTime>>,
     ) -> Result<(Terminated, EvidenceMessage), Self::Error> {
         let output = self
             .state

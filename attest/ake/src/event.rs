@@ -5,6 +5,7 @@
 use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
+use der::DateTime;
 use mc_attest_core::{EvidenceMessage, VerificationReport};
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
@@ -288,13 +289,15 @@ impl MealyOutput for AuthResponseOutput {}
 pub struct AuthResponseInput {
     pub(crate) data: Vec<u8>,
     pub(crate) identities: Vec<TrustedIdentity>,
+    pub(crate) time: Option<DateTime>,
 }
 
 impl AuthResponseInput {
-    pub fn new(data: AuthResponseOutput, identity: impl Into<Vec<TrustedIdentity>>) -> Self {
+    pub fn new(data: AuthResponseOutput, identity: impl Into<Vec<TrustedIdentity>>, time: impl Into<Option<DateTime>>) -> Self {
         Self {
             data: data.0,
             identities: identity.into(),
+            time: time.into(),
         }
     }
 }
