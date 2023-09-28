@@ -24,7 +24,7 @@ impl TryFrom<&external::EnclaveReportDataContents> for EnclaveReportDataContents
     fn try_from(src: &external::EnclaveReportDataContents) -> Result<Self, Self::Error> {
         let bytes = encode_to_protobuf_vec(src)?;
         let prost = prost::EnclaveReportDataContents::decode(bytes.as_slice())?;
-        Ok(prost.try_into()?)
+        Ok((&prost).try_into()?)
     }
 }
 

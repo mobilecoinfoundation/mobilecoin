@@ -268,7 +268,7 @@ mod test {
         let time =
             DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");
         let verifier = DcapVerifier::new(identities, time, report_data_contents);
-        let verification = verifier.verify(evidence);
+        let verification = verifier.verify(&evidence);
         assert_eq!(verification.is_success().unwrap_u8(), 1);
     }
 }
