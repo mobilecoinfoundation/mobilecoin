@@ -9,9 +9,10 @@ use der::DateTime;
 use hex_fmt::HexFmt;
 use mc_attest_verifier_types::EnclaveReportDataContents;
 use mc_attestation_verifier::{
-    Accessor, And, AndOutput, AttributesVerifier, Evidence, EvidenceValue, EvidenceVerifier,
-    MbedTlsCertificateChainVerifier, ReportDataVerifier, TrustAnchor, TrustedIdentity,
-    VerificationMessage, VerificationOutput, Verifier, MESSAGE_INDENT,
+    choice_to_status_message, Accessor, And, AndOutput, AttributesVerifier, Evidence,
+    EvidenceValue, EvidenceVerifier, MbedTlsCertificateChainVerifier, ReportDataVerifier,
+    TrustAnchor, TrustedIdentity, VerificationMessage, VerificationOutput, Verifier,
+    MESSAGE_INDENT,
 };
 use mc_sgx_core_types::{AttributeFlags, Attributes, ReportData};
 
@@ -22,6 +23,8 @@ pub struct DcapVerifier {
         And<ReportDataHashVerifier, AttributesVerifier>,
     >,
 }
+
+type DcapVerifierOutput = AndOutput<EvidenceValue, AndOutput<ReportData, Attributes>>;
 
 impl DcapVerifier {
     /// Create a new instance of the DcapVerifier.
@@ -55,11 +58,23 @@ impl DcapVerifier {
     }
 
     /// Verify the `evidence`
-    pub fn verify(
+    pub fn verify(&self, evidence: &Evidence<Vec<u8>>) -> VerificationOutput<DcapVerifierOutput> {
+        self.verifier.verify(evidence)
+    }
+}
+
+impl VerificationMessage<DcapVerifierOutput> for DcapVerifier {
+    fn fmt_padded(
         &self,
-        evidence: Evidence<Vec<u8>>,
-    ) -> VerificationOutput<AndOutput<EvidenceValue, AndOutput<ReportData, Attributes>>> {
-        self.verifier.verify(&evidence)
+        f: &mut Formatter<'_>,
+        pad: usize,
+        result: &VerificationOutput<DcapVerifierOutput>,
+    ) -> core::fmt::Result {
+        let is_success = result.is_success();
+        let status = choice_to_status_message(is_success);
+
+        writeln!(f, "{:pad$}{status} DCAP evidence:", "")?;
+        self.verifier.fmt_padded(f, pad + MESSAGE_INDENT, result)
     }
 }
 
@@ -155,8 +170,24 @@ impl VerificationMessage<ReportData> for ReportDataHashVerifier {
 
 #[cfg(test)]
 mod test {
+    extern crate std;
     use super::*;
-    use mc_attestation_verifier::VerificationTreeDisplay;
+    use mc_attest_untrusted::DcapQuotingEnclave;
+    use mc_attestation_verifier::{TrustedMrEnclaveIdentity, VerificationTreeDisplay};
+    use mc_sgx_core_types::Report;
+    use p256::pkcs8::der::DateTime;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn report_and_report_data() -> (Report, EnclaveReportDataContents) {
+        let mut report = Report::default();
+        let report_data_contents = EnclaveReportDataContents::new(
+            [0x42u8; 16].into(),
+            [0x11u8; 32].as_slice().try_into().expect("bad key"),
+            [0xAAu8; 32],
+        );
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data_contents.sha256());
+        (report, report_data_contents)
+    }
 
     #[test]
     fn report_data_hash_verifier_succeeds() {
@@ -239,5 +270,116 @@ mod test {
         let verifier = debug_attribute_verifier(true);
         let verification = verifier.verify(&release_attributes);
         assert_eq!(verification.is_success().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn successful_verification() {
+        let (report, report_data_contents) = report_and_report_data();
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to get quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        let mr_enclave = quote.app_report_body().mr_enclave();
+        let identities =
+            &[TrustedMrEnclaveIdentity::new(mr_enclave, [] as [&str; 0], [] as [&str; 0]).into()];
+        let evidence = Evidence::new(quote, collateral).expect("Failed to get evidence");
+
+        // The certs, TCB info, and QE identity are generated at build time, so `now()`
+        // should be alright to use in testing.
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Failed to get duration since epoch");
+        let time =
+            DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");
+        let verifier = DcapVerifier::new(identities, time, report_data_contents);
+        let verification = verifier.verify(&evidence);
+        assert_eq!(verification.is_success().unwrap_u8(), 1);
+
+        let displayable = VerificationTreeDisplay::new(&verifier, verification);
+        let expected = r#"
+            - [x] DCAP evidence:
+              - [x] Both of the following must be true:
+                - [x] all of the following must be true:
+                  - [x] The TCB issuer chain was verified.
+                  - [x] The QE identity issuer chain was verified.
+                  - [x] The Quote issuer chain was verified.
+                  - [x] The TCB info was verified for the provided key
+                  - [x] The QE identity was verified for the provided key
+                  - [x] QE Report Body all of the following must be true:
+                    - [x] The MRSIGNER key hash should be 1234567890abcdeffedcba09876543211234567890abcdeffedcba0987654321
+                    - [x] The ISV product ID should be 0
+                    - [x] The expected miscellaneous select is 0x0000_0000 with mask 0xFFFF_FFFF
+                    - [x] The expected attributes is Flags: (none) Xfrm: (none) with mask Flags: 0xFFFF_FFFF_FFFF_FFFF Xfrm: LEGACY | AVX | AVX_512 | MPX | PKRU | AMX | RESERVED
+                    - [x] The ISV SVN should correspond to an `UpToDate` level with no advisories, from: [TcbLevel { tcb: Tcb { isv_svn: 0 }, tcb_date: "2021-11-10T00:00:00Z", tcb_status: UpToDate, advisory_ids: [] }]
+                  - [x] The quote was signed with the provided key
+                  - [x] Both of the following must be true:
+                    - [x] The MRENCLAVE should be 0000000000000000000000000000000000000000000000000000000000000000
+                    - [x] The allowed advisories are IDs: (none) Status: UpToDate
+                - [x] Both of the following must be true:
+                  - [x] The ReportData hash should be CDA9694852475320FD7110D9B50164369A7622A00AA7CC83DBC4D66BF078870B for:
+                    - QuoteNonce: 0x4242_4242_4242_4242_4242_4242_4242_4242
+                    - Public key:
+                      -----BEGIN PUBLIC KEY-----
+                      MCowBQYDK2VuAyEAERERERERERERERERERERERERERERERERERERERERERE=
+                      -----END PUBLIC KEY-----
+                    - Custom identity: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    - [x] The expected report data is 0xCDA9_6948_5247_5320_FD71_10D9_B501_6436_9A76_22A0_0AA7_CC83_DBC4_D66B_F078_870B_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000 with mask 0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+                  - [x] The expected attributes is Flags: (none) Xfrm: (none) with mask Flags: (none) Xfrm: (none)"#;
+        assert_eq!(format!("\n{displayable}"), textwrap::dedent(expected));
+    }
+
+    #[test]
+    fn failed_verification() {
+        let (mut report, report_data_contents) = report_and_report_data();
+
+        report.as_mut().body.report_data.d[0] += 1;
+
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to get quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        let mr_enclave = quote.app_report_body().mr_enclave();
+        let identities =
+            &[TrustedMrEnclaveIdentity::new(mr_enclave, [] as [&str; 0], [] as [&str; 0]).into()];
+        let evidence = Evidence::new(quote, collateral).expect("Failed to get evidence");
+
+        // The certs, TCB info, and QE identity are generated at build time, so `now()`
+        // should be alright to use in testing.
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Failed to get duration since epoch");
+        let time =
+            DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");
+        let verifier = DcapVerifier::new(identities, time, report_data_contents);
+        let verification = verifier.verify(&evidence);
+        assert_eq!(verification.is_success().unwrap_u8(), 0);
+
+        let displayable = VerificationTreeDisplay::new(&verifier, verification);
+        let expected = r#"
+            - [ ] DCAP evidence:
+              - [ ] Both of the following must be true:
+                - [x] all of the following must be true:
+                  - [x] The TCB issuer chain was verified.
+                  - [x] The QE identity issuer chain was verified.
+                  - [x] The Quote issuer chain was verified.
+                  - [x] The TCB info was verified for the provided key
+                  - [x] The QE identity was verified for the provided key
+                  - [x] QE Report Body all of the following must be true:
+                    - [x] The MRSIGNER key hash should be 1234567890abcdeffedcba09876543211234567890abcdeffedcba0987654321
+                    - [x] The ISV product ID should be 0
+                    - [x] The expected miscellaneous select is 0x0000_0000 with mask 0xFFFF_FFFF
+                    - [x] The expected attributes is Flags: (none) Xfrm: (none) with mask Flags: 0xFFFF_FFFF_FFFF_FFFF Xfrm: LEGACY | AVX | AVX_512 | MPX | PKRU | AMX | RESERVED
+                    - [x] The ISV SVN should correspond to an `UpToDate` level with no advisories, from: [TcbLevel { tcb: Tcb { isv_svn: 0 }, tcb_date: "2021-11-10T00:00:00Z", tcb_status: UpToDate, advisory_ids: [] }]
+                  - [x] The quote was signed with the provided key
+                  - [x] Both of the following must be true:
+                    - [x] The MRENCLAVE should be 0000000000000000000000000000000000000000000000000000000000000000
+                    - [x] The allowed advisories are IDs: (none) Status: UpToDate
+                - [ ] Both of the following must be true:
+                  - [ ] The ReportData hash should be CDA9694852475320FD7110D9B50164369A7622A00AA7CC83DBC4D66BF078870B for:
+                    - QuoteNonce: 0x4242_4242_4242_4242_4242_4242_4242_4242
+                    - Public key:
+                      -----BEGIN PUBLIC KEY-----
+                      MCowBQYDK2VuAyEAERERERERERERERERERERERERERERERERERERERERERE=
+                      -----END PUBLIC KEY-----
+                    - Custom identity: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    - [ ] The expected report data is 0xCDA9_6948_5247_5320_FD71_10D9_B501_6436_9A76_22A0_0AA7_CC83_DBC4_D66B_F078_870B_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000 with mask 0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000, but the actual report data was 0xCEA9_6948_5247_5320_FD71_10D9_B501_6436_9A76_22A0_0AA7_CC83_DBC4_D66B_F078_870B_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+                  - [x] The expected attributes is Flags: (none) Xfrm: (none) with mask Flags: (none) Xfrm: (none)"#;
+        assert_eq!(format!("\n{displayable}"), textwrap::dedent(expected));
     }
 }

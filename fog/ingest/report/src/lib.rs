@@ -3,7 +3,8 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{VerificationReport, VerifyError};
-use mc_attest_verifier::{Error as VerifierError, Verifier};
+use mc_attest_verifier::{Error as VerifierError, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_util_encodings::Error as EncodingError;
 
@@ -14,7 +15,7 @@ use mc_util_encodings::Error as EncodingError;
 /// validated and decompressed RistrettoPublic key.
 #[derive(Default, Clone, Debug)]
 pub struct IngestAttestationEvidenceVerifier {
-    verifier: Verifier,
+    identities: Vec<TrustedIdentity>,
 }
 
 impl IngestAttestationEvidenceVerifier {
@@ -23,19 +24,21 @@ impl IngestAttestationEvidenceVerifier {
     /// the "identity" object in the ingest enclave impl.
     pub fn validate_ingest_attestation_evidence(
         &self,
-        remote_report: VerificationReport,
+        remote_report: &VerificationReport,
     ) -> Result<RistrettoPublic, Error> {
-        let parsed_report = self.verifier.verify(&remote_report)?;
+        let mut verifier = Verifier::default();
+        verifier.identities(&self.identities).debug(DEBUG_ENCLAVE);
+        let parsed_report = verifier.verify(remote_report)?;
         let report_data = parsed_report.quote.report_body()?.report_data();
         let report_data_bytes: &[u8] = report_data.as_ref();
         Ok(RistrettoPublic::try_from(&report_data_bytes[32..64])?)
     }
 }
 
-impl From<&Verifier> for IngestAttestationEvidenceVerifier {
-    fn from(src: &Verifier) -> Self {
+impl From<&[TrustedIdentity]> for IngestAttestationEvidenceVerifier {
+    fn from(src: &[TrustedIdentity]) -> Self {
         Self {
-            verifier: src.clone(),
+            identities: src.to_vec(),
         }
     }
 }
