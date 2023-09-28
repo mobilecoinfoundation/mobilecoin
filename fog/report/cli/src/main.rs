@@ -19,7 +19,7 @@ use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
+use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_evidence;
 use mc_fog_report_connection::{Error, GrpcFogReportConnection};
 use mc_fog_report_resolver::FogResolver;
 use mc_fog_report_types::FogReportResponses;
@@ -159,9 +159,13 @@ fn get_unvalidated_pubkey(
         .find(|rep| rep.fog_report_id == fog_report_id)
         .expect("Didn't find report with the right report id");
     let pubkey_expiry = rep.pubkey_expiry;
-    // This parses the fog report and extracts the ingress key
-    let ingress_pubkey = try_extract_unvalidated_ingress_pubkey_from_fog_report(&rep.report)
-        .expect("Could not parse report");
+    let attestation_evidence = rep
+        .attestation_evidence
+        .as_ref()
+        .expect("Report didn't contain attestation evidence");
+    let ingress_pubkey =
+        try_extract_unvalidated_ingress_pubkey_from_fog_evidence(attestation_evidence)
+            .expect("Could not parse key from evidence");
     let pubkey =
         RistrettoPublic::try_from(&ingress_pubkey).expect("report didn't contain a valid key");
     (pubkey, pubkey_expiry)

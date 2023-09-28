@@ -20,7 +20,7 @@ use mc_connection::Connection;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::{
     ingest_common::{IngestControllerMode, IngestStateFile, IngestSummary},
-    report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report,
+    report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_evidence,
 };
 use mc_fog_ingest_enclave::{
     Error as EnclaveError, IngestEnclave, IngestSgxEnclave, NewEnclaveError,
@@ -1202,7 +1202,8 @@ where
             let report = self.enclave.get_attestation_evidence()?;
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
-            let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&report)?;
+            let found_key =
+                try_extract_unvalidated_ingress_pubkey_from_fog_evidence(&report.clone().into())?;
             if &found_key == ingress_public_key {
                 report
             } else {
@@ -1214,7 +1215,9 @@ where
                 self.update_enclave_report_cache()?;
 
                 let report = self.enclave.get_attestation_evidence()?;
-                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&report)?;
+                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
+                    &report.clone().into(),
+                )?;
                 if &found_key == ingress_public_key {
                     report
                 } else {
@@ -1243,7 +1246,7 @@ where
 
         let report_data = ReportData {
             ingest_invocation_id: state.get_ingest_invocation_id(),
-            report,
+            attestation_evidence: report.into(),
             pubkey_expiry: state.get_next_block_index() + state.get_pubkey_expiry_window(),
         };
         let report_id = self.config.fog_report_id.as_ref();

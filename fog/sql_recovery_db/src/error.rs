@@ -5,7 +5,7 @@ use displaydoc::Display;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_recovery_db_iface::RecoveryDbError;
 use mc_fog_types::common::BlockRange;
-use prost::{DecodeError, EncodeError};
+use prost::DecodeError;
 use r2d2::Error as R2d2Error;
 
 /// Enum for error types.
@@ -46,9 +46,6 @@ pub enum Error {
      * VerificationReport: {0:?}
      */
     Decode(DecodeError),
-
-    /// The data could not be encoded for storage in the database: {0:?}
-    Encode(EncodeError),
 }
 
 impl RecoveryDbError for Error {
@@ -86,11 +83,5 @@ impl From<ConnectionError> for Error {
 impl From<DecodeError> for Error {
     fn from(src: DecodeError) -> Self {
         Self::Decode(src)
-    }
-}
-
-impl From<EncodeError> for Error {
-    fn from(src: EncodeError) -> Self {
-        Self::Encode(src)
     }
 }

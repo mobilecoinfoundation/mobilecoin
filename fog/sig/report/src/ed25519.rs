@@ -46,11 +46,14 @@ mod test {
     fn roundtrip() {
         let reports = [Report {
             fog_report_id: "id".to_owned(),
-            report: VerificationReport {
-                sig: VerificationSignature::default(),
-                chain: vec![],
-                http_body: "this should probably be a json".to_owned(),
-            },
+            attestation_evidence: Some(
+                VerificationReport {
+                    sig: VerificationSignature::default(),
+                    chain: vec![],
+                    http_body: "this should probably be a json".to_owned(),
+                }
+                .into(),
+            ),
             pubkey_expiry: 0,
         }];
 

@@ -1555,13 +1555,23 @@ version = "5.0.8"
 dependencies = [
  "chrono",
  "displaydoc",
- "mc-attest-core",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
+ "mc-fog-report-types",
  "mc-fog-types",
  "mc-transaction-core",
+ "serde",
+]
+
+[[package]]
+name = "mc-fog-report-types"
+version = "5.0.5"
+dependencies = [
+ "mc-attest-verifier-types",
+ "mc-crypto-digestible",
+ "prost",
  "serde",
 ]
 

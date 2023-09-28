@@ -3647,6 +3647,7 @@ dependencies = [
  "mc-fog-kex-rng",
  "mc-fog-report-api",
  "mc-fog-report-api-test-utils",
+ "mc-fog-report-types",
  "mc-fog-types",
  "mc-fog-uri",
  "mc-transaction-core",
@@ -3867,11 +3868,14 @@ dependencies = [
 name = "mc-fog-ingest-report"
 version = "5.0.8"
 dependencies = [
+ "der",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-crypto-keys",
+ "mc-fog-report-types",
  "mc-util-encodings",
  "serde",
 ]
@@ -4297,11 +4301,11 @@ version = "5.0.8"
 dependencies = [
  "chrono",
  "displaydoc",
- "mc-attest-core",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
+ "mc-fog-report-types",
  "mc-fog-types",
  "mc-transaction-core",
  "serde",
@@ -4317,6 +4321,7 @@ dependencies = [
  "mc-api",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-verifier-types",
  "mc-consensus-api",
  "mc-fog-report-api-test-utils",
  "mc-fog-report-types",
@@ -4431,8 +4436,11 @@ dependencies = [
 name = "mc-fog-report-types"
 version = "5.0.8"
 dependencies = [
- "mc-attest-core",
+ "mc-attest-verifier-types",
+ "mc-blockchain-test-utils",
  "mc-crypto-digestible",
+ "mc-util-serial",
+ "mc-util-test-helper",
  "prost",
  "serde",
 ]
@@ -4573,6 +4581,7 @@ dependencies = [
  "mc-crypto-x509-test-vectors",
  "mc-fog-kex-rng",
  "mc-fog-recovery-db-iface",
+ "mc-fog-report-types",
  "mc-fog-test-infra",
  "mc-fog-types",
  "mc-transaction-core",
@@ -4643,6 +4652,7 @@ dependencies = [
  "digest 0.10.7",
  "hex",
  "mc-account-keys",
+ "mc-attest-verifier-types",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -4885,6 +4895,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-attest-verifier-types",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
