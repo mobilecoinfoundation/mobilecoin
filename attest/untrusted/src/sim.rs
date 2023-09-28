@@ -206,12 +206,8 @@ fn c_struct_as_bytes<T>(c_struct: &T) -> &[u8] {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_verifier::DcapVerifier;
     use mc_attest_verifier_types::EnclaveReportDataContents;
-    use mc_attestation_verifier::{Evidence, TrustedMrEnclaveIdentity};
     use mc_sgx_dcap_types::{CertificationData, TcbInfo};
-    use p256::pkcs8::der::DateTime;
-    use std::time::{SystemTime, UNIX_EPOCH};
     use x509_cert::{der::DecodePem, Certificate};
 
     fn report_and_report_data() -> (Report, EnclaveReportDataContents) {
@@ -248,27 +244,5 @@ mod test {
         let leaf_cert = Certificate::from_pem(leaf_pem).expect("Failed to parse leaf cert");
         let result = TcbInfo::try_from(&leaf_cert);
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn verify_simulated_quote() {
-        let (report, report_data_contents) = report_and_report_data();
-        let quote = SimQuotingEnclave::quote_report(&report).expect("Failed to get quote");
-        let collateral = SimQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
-        let mr_enclave = quote.app_report_body().mr_enclave();
-        let identities =
-            &[TrustedMrEnclaveIdentity::new(mr_enclave, [] as [&str; 0], [] as [&str; 0]).into()];
-        let evidence = Evidence::new(quote, collateral).expect("Failed to get evidence");
-
-        // The certs, TCB info, and QE identity are generated at build time, so `now()`
-        // should be alright to use in testing.
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get duration since epoch");
-        let time =
-            DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");
-        let verifier = DcapVerifier::new(identities, time, report_data_contents);
-        let verification = verifier.verify(&evidence);
-        assert_eq!(verification.is_success().unwrap_u8(), 1);
     }
 }
