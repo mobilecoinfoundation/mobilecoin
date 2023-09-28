@@ -21,6 +21,8 @@ pub enum Error {
     InvalidUri(UriConversionError),
     /// Protobuf deserialization: {0}
     ProtoDecode(DecodeError),
+    /// Other: {0}
+    Other(String),
 }
 
 impl AttestationError for Error {
@@ -34,6 +36,7 @@ impl AttestationError for Error {
             Error::Ake(AkeError::AttestationEvidenceVerification(_)) => false,
             Error::Ake(_) => true,
             Error::InvalidUri(_) => false,
+            Error::Other(_) => false,
         }
     }
 }

@@ -12,7 +12,7 @@ use mc_attest_ake::{
 };
 use mc_attest_core::{
     EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
-    ReportData, TargetInfo, VerificationReport,
+    ReportData, TargetInfo, VerificationReport, EvidenceKind,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -322,6 +322,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let auth_response_event = AuthResponseInput::new(
             auth_response_output_bytes.into(),
             [self.trusted_identity()?],
+            None,
         );
         let (initiator, _verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
@@ -449,12 +450,19 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let msg: Vec<u8> = msg.into();
         let auth_response_output = AuthResponseOutput::from(msg);
         let identities = [self.trusted_identity()?];
-        let auth_response_input = AuthResponseInput::new(auth_response_output, identities);
+        let auth_response_input = AuthResponseInput::new(auth_response_output, identities, None);
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, verification_report) =
+        let (initiator, evidence_message) =
             initiator.try_next(&mut csprng, auth_response_input)?;
+        let evidence_kind = evidence_message.evidence;
+        let verification_report = match evidence_kind {
+            Some(EvidenceKind::Epid(report)) => {
+                report
+            },// TODO: Is this correct?
+            _ => Err(Error::Decode("Failed to decode VerificationReport".to_owned()))?
+        };
 
         let peer_session = PeerSession::from(initiator.binding());
 

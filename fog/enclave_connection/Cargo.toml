@@ -22,6 +22,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 aes-gcm = "0.10.3"
 cookie = "0.17"
+der = "0.7.7"
 displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.12.1"
 mc-attestation-verifier = "0.4.0"

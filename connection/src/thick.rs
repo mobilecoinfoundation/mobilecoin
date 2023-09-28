@@ -14,6 +14,7 @@ use crate::{
 };
 use aes_gcm::Aes256Gcm;
 use cookie::CookieJar;
+use der::DateTime;
 use displaydoc::Display;
 use grpcio::{
     CallOption, ChannelBuilder, ClientUnaryReceiver, Environment, Error as GrpcError,
@@ -23,7 +24,7 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceMessage;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
@@ -51,7 +52,7 @@ use std::{
     hash::{Hash, Hasher},
     ops::Range,
     result::Result as StdResult,
-    sync::Arc,
+    sync::Arc, time::{SystemTime, UNIX_EPOCH},
 };
 
 /// Attestation failures a thick client can generate
@@ -69,6 +70,8 @@ pub enum ThickClientAttestationError {
     UriConversionError(UriConversionError),
     /// Credentials provider error: {0}
     CredentialsProvider(Box<dyn CredentialsProviderError + 'static>),
+    /// Other: {0}
+    Other(String),
 }
 
 impl From<GrpcError> for ThickClientAttestationError {
@@ -126,6 +129,7 @@ impl AttestationError for ThickClientAttestationError {
             Self::Ake(AkeError::AttestationEvidenceVerification(_)) => false,
             Self::Ake(_) => true,
             Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
+            Self::Other(_) => false,
         }
     }
 }
@@ -299,7 +303,7 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
         self.enclave_connection.is_some()
     }
 
-    fn attest(&mut self) -> StdResult<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> StdResult<EvidenceMessage, Self::Error> {
         trace_time!(self.logger, "ThickClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -319,14 +323,19 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
                     .map_err(ThickClientAttestationError::from)
             })?;
 
+        let now = SystemTime::now();
+        let epoch_time = now.duration_since(UNIX_EPOCH)
+            .map_err(|_| ThickClientAttestationError::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| ThickClientAttestationError::Other("Time out of range".to_owned()))?;
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, evidence_message) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 
-        Ok(verification_report)
+        Ok(evidence_message)
     }
 
     fn deattest(&mut self) {

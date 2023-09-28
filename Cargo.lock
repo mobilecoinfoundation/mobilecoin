@@ -2886,6 +2886,7 @@ version = "5.0.5"
 dependencies = [
  "aes-gcm",
  "cookie",
+ "der",
  "displaydoc",
  "grpcio",
  "mc-attest-ake",
@@ -3691,6 +3692,7 @@ version = "5.0.5"
 dependencies = [
  "aes-gcm",
  "cookie",
+ "der",
  "displaydoc",
  "grpcio",
  "mc-attest-ake",

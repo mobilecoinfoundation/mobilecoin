@@ -9,6 +9,7 @@ rust-version = { workspace = true }
 
 [dependencies]
 
+der = "0.7.7"
 mc-attest-ake = { path = "../attest/ake" }
 mc-attest-api = { path = "../attest/api" }
 mc-attest-core = { path = "../attest/core" }

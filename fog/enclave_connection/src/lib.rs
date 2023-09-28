@@ -8,10 +8,11 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
+use der::DateTime;
 use grpcio::{CallOption, Metadata, MetadataBuilder, Result as GrpcResult};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceMessage;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, Logger},
@@ -24,6 +25,7 @@ use mc_util_grpc::{BasicCredentials, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_uri::ConnectionUri;
 use retry::OperationResult;
 use sha2::Sha512;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 mod error;
 pub use error::Error;
@@ -87,7 +89,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         self.attest_cipher.is_some()
     }
 
-    fn attest(&mut self) -> Result<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> Result<EvidenceMessage, Self::Error> {
         trace_time!(self.logger, "FogClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -116,15 +118,20 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
             )
         }
 
+        let now = SystemTime::now();
+        let epoch_time = now.duration_since(UNIX_EPOCH)
+            .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| Error::Other("Time out of range".to_owned()))?;
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, evidence_message) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(evidence_message)
     }
 
     fn deattest(&mut self) {
