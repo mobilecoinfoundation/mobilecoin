@@ -66,27 +66,20 @@ debug-assertions = false
 overflow-checks = false
 
 [patch.crates-io]
-curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
-
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "7c1804bf4f95ef84a7a53be93552ddf1708135bb" }
-
-# Fix issues with recent nightlies, bump curve25519-dalek version
-ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
+cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "f04659dd5dd39fd2f02a4bf14c39a39825d1c8d3" }
 
 # Our patches for newer bindgen, no-std
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
 #   See: https://github.com/pyfisch/cbor/pull/198
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
-
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }

@@ -377,7 +377,7 @@ impl KexEphemeralPrivate for X25519EphemeralPrivate {
 
 impl FromRandom for X25519EphemeralPrivate {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> X25519EphemeralPrivate {
-        X25519EphemeralPrivate(EphemeralSecret::new(csprng))
+        X25519EphemeralPrivate(EphemeralSecret::random_from_rng(csprng))
     }
 }
 
@@ -400,7 +400,7 @@ impl PrivateKey for X25519Private {
 
 impl FromRandom for X25519Private {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> X25519Private {
-        X25519Private(StaticSecret::new(csprng))
+        X25519Private(StaticSecret::random_from_rng(csprng))
     }
 }
 
