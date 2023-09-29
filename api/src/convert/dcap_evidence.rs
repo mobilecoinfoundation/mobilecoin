@@ -2,7 +2,7 @@
 
 //! Convert to/from external::DcapEvidence
 
-use crate::{convert::encode_to_protobuf_vec, external, ConversionError};
+use crate::{external, ConversionError};
 use mc_attest_verifier_types::{prost, DcapEvidence};
 use mc_util_serial::Message;
 use protobuf::Message as ProtoMessage;
@@ -34,11 +34,13 @@ impl From<&prost::DcapEvidence> for external::DcapEvidence {
     }
 }
 
-impl TryFrom<&external::DcapEvidence> for prost::DcapEvidence {
-    type Error = ConversionError;
-    fn try_from(src: &external::DcapEvidence) -> Result<Self, Self::Error> {
-        let bytes = encode_to_protobuf_vec(src)?;
-        Ok(prost::DcapEvidence::decode(bytes.as_slice())?)
+impl From<&external::DcapEvidence> for prost::DcapEvidence {
+    fn from(src: &external::DcapEvidence) -> Self {
+        Self {
+            quote: src.quote.as_ref().map(|q| q.into()),
+            collateral: src.collateral.as_ref().map(|c| c.into()),
+            report_data: src.report_data.as_ref().map(|r| r.into()),
+        }
     }
 }
 

@@ -2,7 +2,7 @@
 
 //! Convert to/from external::Collateral
 
-use crate::{convert::encode_to_protobuf_vec, external, ConversionError};
+use crate::{external, ConversionError};
 use mc_attest_verifier_types::prost;
 use mc_sgx_dcap_types::Collateral;
 use mc_util_serial::Message;
@@ -24,9 +24,22 @@ impl TryFrom<&Collateral> for external::Collateral {
 impl TryFrom<&external::Collateral> for Collateral {
     type Error = ConversionError;
     fn try_from(src: &external::Collateral) -> Result<Self, Self::Error> {
-        let bytes = encode_to_protobuf_vec(src)?;
-        let prost = prost::Collateral::decode(bytes.as_slice())?;
+        let prost = prost::Collateral::from(src);
         Ok((&prost).try_into()?)
+    }
+}
+
+impl From<&external::Collateral> for prost::Collateral {
+    fn from(src: &external::Collateral) -> Self {
+        Self {
+            pck_crl_issuer_chain: src.pck_crl_issuer_chain.clone().into_vec(),
+            root_ca_crl: src.root_ca_crl.clone(),
+            pck_crl: src.pck_crl.clone(),
+            tcb_info_issuer_chain: src.tcb_info_issuer_chain.clone().into_vec(),
+            tcb_info: src.tcb_info.clone(),
+            qe_identity_issuer_chain: src.qe_identity_issuer_chain.clone().into_vec(),
+            qe_identity: src.qe_identity.clone(),
+        }
     }
 }
 
