@@ -33,11 +33,12 @@ impl DcapVerifier {
     /// * `trusted_identities` - The allowed identities that can be used in an
     ///   enclave. Verification will succeed if any of these match.
     /// * `time` - The time to use to verify the validity of the certificates
-    ///   and collateral. Verification will fail if this time is before or after
-    ///   any of the validity periods.
+    ///   and collateral. If time is provided, verification will fail if this
+    ///   time is before or after any of the validity periods. Otherwise, time
+    ///   validation of certificates will be skipped.
     pub fn new<I, ID>(
         trusted_identities: I,
-        time: DateTime,
+        time: impl Into<Option<DateTime>>,
         report_data: EnclaveReportDataContents,
     ) -> Self
     where
