@@ -64,7 +64,6 @@ mod error;
 pub use error::ConversionError;
 
 use mc_blockchain_types::BlockIndex;
-use protobuf::Message as ProtoMessage;
 use std::path::PathBuf;
 
 /// Helper method for getting the suggested path/filename for a given block
@@ -92,25 +91,6 @@ pub fn merged_block_num_to_s3block_path(
     path.push(base_dir);
     path.push(block_num_to_s3block_path(first_block_index));
     path
-}
-
-/// Encode a protobuf type to the protobuf representation.
-///
-/// This makes it easy to convert from a protobuf to a rust type by way of a
-/// prost implementation. While this requires converting to a protobuf stream
-/// and back again, this allows for placing most of the complex logic in the
-/// `prost` implementation and keeping the local `try_from` implementations
-/// simple.
-///
-/// For example:
-/// ```ignore
-///     let bytes = encode_to_protobuf_vec(proto_type)?;
-///     let prost = prost::TYPENAME::decode(bytes.as_slice())?;
-///     let rust_type = TYPENAME::try_from(prost)?;
-/// ```
-pub(crate) fn encode_to_protobuf_vec<T: ProtoMessage>(msg: &T) -> Result<Vec<u8>, ConversionError> {
-    let bytes = msg.write_to_bytes().map_err(|_| ConversionError::Other)?;
-    Ok(bytes)
 }
 
 #[cfg(test)]

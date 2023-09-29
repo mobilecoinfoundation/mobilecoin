@@ -2,7 +2,7 @@
 
 //! Convert to/from external::EnclaveReportDataContents
 
-use crate::{convert::encode_to_protobuf_vec, external, ConversionError};
+use crate::{external, ConversionError};
 use mc_attest_verifier_types::{prost, EnclaveReportDataContents};
 use mc_util_serial::Message;
 use protobuf::Message as ProtoMessage;
@@ -22,9 +22,18 @@ impl From<&EnclaveReportDataContents> for external::EnclaveReportDataContents {
 impl TryFrom<&external::EnclaveReportDataContents> for EnclaveReportDataContents {
     type Error = ConversionError;
     fn try_from(src: &external::EnclaveReportDataContents) -> Result<Self, Self::Error> {
-        let bytes = encode_to_protobuf_vec(src)?;
-        let prost = prost::EnclaveReportDataContents::decode(bytes.as_slice())?;
+        let prost = prost::EnclaveReportDataContents::from(src);
         Ok((&prost).try_into()?)
+    }
+}
+
+impl From<&external::EnclaveReportDataContents> for prost::EnclaveReportDataContents {
+    fn from(value: &external::EnclaveReportDataContents) -> Self {
+        Self {
+            nonce: value.nonce.clone(),
+            key: value.key.clone(),
+            custom_identity: value.custom_identity.clone(),
+        }
     }
 }
 
