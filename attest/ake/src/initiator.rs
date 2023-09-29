@@ -139,8 +139,8 @@ where
     }
 }
 
-/// AuthPending + AuthResponseInput => Ready + EvidenceMessage
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, EvidenceMessage>
+/// AuthPending + AuthResponseInput => Ready + EvidenceKind
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, EvidenceKind>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -153,7 +153,7 @@ where
         self,
         _csprng: &mut R,
         input: AuthResponseInput,
-    ) -> Result<(Ready<Cipher>, EvidenceMessage), Self::Error> {
+    ) -> Result<(Ready<Cipher>, EvidenceKind), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -188,9 +188,7 @@ where
                                             reader: result.responder_cipher,
                                             binding: result.channel_binding,
                                         },
-                                        EvidenceMessage {
-                                            evidence: Some(EvidenceKind::Dcap(dcap_evidence))
-                                        },
+                                        EvidenceKind::Dcap(dcap_evidence),
                                     ))
                                 },
                                 _ => {
@@ -233,9 +231,7 @@ where
                             reader: result.responder_cipher,
                             binding: result.channel_binding,
                         },
-                        EvidenceMessage {
-                            evidence: Some(EvidenceKind::Epid(remote_report))
-                        },
+                        EvidenceKind::Epid(remote_report)
                     ))
                 }
             }
@@ -243,8 +239,8 @@ where
     }
 }
 
-/// AuthPending + UnverifiedReport => Terminated + EvidenceMessage
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedReport, EvidenceMessage>
+/// AuthPending + UnverifiedReport => Terminated + EvidenceKind
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedReport, EvidenceKind>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -257,7 +253,7 @@ where
         self,
         _csprng: &mut R,
         input: UnverifiedReport,
-    ) -> Result<(Terminated, EvidenceMessage), Self::Error> {
+    ) -> Result<(Terminated, EvidenceKind), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -267,7 +263,7 @@ where
             HandshakeStatus::Complete(_) => {
                 if let Ok(remote_evidence) = EvidenceMessage::decode(output.payload.as_slice()) {
                     match remote_evidence.evidence {
-                        Some(EvidenceKind::Dcap(dcap_evidence)) => Ok((Terminated, EvidenceMessage { evidence: Some(EvidenceKind::Dcap(dcap_evidence)) })),
+                        Some(EvidenceKind::Dcap(dcap_evidence)) => Ok((Terminated, EvidenceKind::Dcap(dcap_evidence))),
                         _ => Err(Error::AttestationEvidenceDeserialization),
                     }
                 }
@@ -275,7 +271,7 @@ where
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
-                    Ok((Terminated, EvidenceMessage { evidence: Some(EvidenceKind::Epid(remote_report)) }))
+                    Ok((Terminated, EvidenceKind::Epid(remote_report)))
                 }
             }
         }

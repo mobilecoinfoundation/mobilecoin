@@ -6,7 +6,7 @@ use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use der::DateTime;
-use mc_attest_core::{EvidenceMessage, VerificationReport};
+use mc_attest_core::{VerificationReport, EvidenceKind};
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
@@ -341,9 +341,9 @@ impl MealyInput for UnverifiedReport {}
 /// The IAS report is the final output when authentication succeeds.
 impl MealyOutput for VerificationReport {}
 
-impl MealyInput for EvidenceMessage {}
+impl MealyInput for EvidenceKind {}
 
-impl MealyOutput for EvidenceMessage {}
+impl MealyOutput for EvidenceKind {}
 
 /// A type similar to aead::Payload used to distinguish writer inputs from
 /// outputs.
