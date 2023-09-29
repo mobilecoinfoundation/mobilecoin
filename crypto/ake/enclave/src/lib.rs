@@ -84,7 +84,7 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     ias_pending: Mutex<LruCache<IasNonce, Quote>>,
 
     /// The cached attestation evidence, if any.
-    current_attestation_evidence: Mutex<Option<VerificationReport>>,
+    current_attestation_evidence: Mutex<Option<EvidenceKind>>,
 
     /// A map of responder-ID to incomplete, outbound, AKE state.
     initiator_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
@@ -439,7 +439,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         // Find our state machine
         let initiator = self
             .initiator_auth_pending
@@ -454,15 +454,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, evidence_message) =
+        let (initiator, evidence) =
             initiator.try_next(&mut csprng, auth_response_input)?;
-        let evidence_kind = evidence_message.evidence;
-        let verification_report = match evidence_kind {
-            Some(EvidenceKind::Epid(report)) => {
-                report
-            },// TODO: Is this correct?
-            _ => Err(Error::Decode("Failed to decode VerificationReport".to_owned()))?
-        };
 
         let peer_session = PeerSession::from(initiator.binding());
 
@@ -470,7 +463,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .lock()?
             .put(peer_session.clone(), initiator);
 
-        Ok((peer_session, verification_report))
+        Ok((peer_session, evidence))
     }
 
     /// Close a peer connection
@@ -634,7 +627,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     //
 
     /// Get the cached attestation evidence if available
-    pub fn get_attestation_evidence(&self) -> Result<VerificationReport> {
+    pub fn get_attestation_evidence(&self) -> Result<EvidenceKind> {
         (*self.current_attestation_evidence.lock()?)
             .clone()
             .ok_or(Error::NoAttestationEvidenceAvailable)

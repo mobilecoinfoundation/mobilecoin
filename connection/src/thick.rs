@@ -24,7 +24,7 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::EvidenceMessage;
+use mc_attest_core::EvidenceKind;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
@@ -303,7 +303,7 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
         self.enclave_connection.is_some()
     }
 
-    fn attest(&mut self) -> StdResult<EvidenceMessage, Self::Error> {
+    fn attest(&mut self) -> StdResult<EvidenceKind, Self::Error> {
         trace_time!(self.logger, "ThickClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -330,12 +330,12 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
             .map_err(|_| ThickClientAttestationError::Other("Time out of range".to_owned()))?;
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
-        let (initiator, evidence_message) =
+        let (initiator, evidence) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 
-        Ok(evidence_message)
+        Ok(evidence)
     }
 
     fn deattest(&mut self) {
