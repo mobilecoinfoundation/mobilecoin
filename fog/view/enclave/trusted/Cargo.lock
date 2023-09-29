@@ -1482,7 +1482,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-types"
-version = "5.0.5"
+version = "5.0.8"
 dependencies = [
  "mc-attest-verifier-types",
  "mc-crypto-digestible",
