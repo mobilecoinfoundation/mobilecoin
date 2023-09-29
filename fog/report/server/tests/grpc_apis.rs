@@ -73,7 +73,7 @@ fn report_server_grpc_tests(logger: Logger) {
 
     let report1 = ReportData {
         ingest_invocation_id: Some(invoc_id1),
-        report: verification_report0.clone(),
+        attestation_evidence: verification_report0.clone().into(),
         pubkey_expiry: 102030,
     };
     let report_id1 = "";
@@ -86,7 +86,7 @@ fn report_server_grpc_tests(logger: Logger) {
 
     assert_eq!(resp.reports.len(), 1);
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_report()),
+        VerificationReport::from(resp.reports[0].get_verification_report()),
         verification_report0
     );
     assert_eq!(resp.reports[0].get_pubkey_expiry(), report1.pubkey_expiry);
@@ -94,7 +94,7 @@ fn report_server_grpc_tests(logger: Logger) {
     // Update report
     let updated_report1 = ReportData {
         ingest_invocation_id: Some(invoc_id1),
-        report: verification_report1.clone(),
+        attestation_evidence: verification_report1.clone().into(),
         pubkey_expiry: 424242,
     };
 
@@ -108,7 +108,7 @@ fn report_server_grpc_tests(logger: Logger) {
 
     assert_eq!(resp.reports.len(), 1);
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_report()),
+        VerificationReport::from(resp.reports[0].get_verification_report()),
         verification_report1
     );
     assert_eq!(
@@ -119,7 +119,7 @@ fn report_server_grpc_tests(logger: Logger) {
     // Add second report (DB contains report_bytes1 for report_id1)
     let report2 = ReportData {
         ingest_invocation_id: Some(invoc_id1),
-        report: verification_report0.clone(),
+        attestation_evidence: verification_report0.clone().into(),
         pubkey_expiry: 10203040,
     };
     let report_id2 = "report2";
@@ -133,7 +133,7 @@ fn report_server_grpc_tests(logger: Logger) {
     assert_eq!(resp.reports.len(), 2);
 
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_report()),
+        VerificationReport::from(resp.reports[0].get_verification_report()),
         verification_report1
     );
     assert_eq!(
@@ -142,7 +142,7 @@ fn report_server_grpc_tests(logger: Logger) {
     );
 
     assert_eq!(
-        VerificationReport::from(resp.reports[1].get_report()),
+        VerificationReport::from(resp.reports[1].get_verification_report()),
         verification_report0
     );
     assert_eq!(resp.reports[1].get_pubkey_expiry(), report2.pubkey_expiry);
@@ -156,7 +156,7 @@ fn report_server_grpc_tests(logger: Logger) {
 
     assert_eq!(resp.reports.len(), 1);
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_report()),
+        VerificationReport::from(resp.reports[0].get_verification_report()),
         verification_report0
     );
     assert_eq!(resp.reports[0].get_pubkey_expiry(), report2.pubkey_expiry);

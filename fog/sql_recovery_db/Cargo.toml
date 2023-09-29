@@ -19,7 +19,6 @@ name = "fog-sql-recovery-db-write-bench"
 path = "src/bin/fog_sql_recovery_db_write_bench.rs"
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
@@ -30,6 +29,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 
 mc-fog-kex-rng = { path = "../kex_rng" }
 mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-report-types = { path = "../report/types" }
 mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
@@ -49,6 +49,7 @@ serde = { version = "1.0", features = ["derive"] }
 mc-fog-test-infra = { path = "../test_infra" }
 
 [dev-dependencies]
+mc-attest-core = { path = "../../attest/core" }
 mc-fog-test-infra = { path = "../test_infra" }
 
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }

@@ -77,8 +77,11 @@ impl FogPubkeyResolver for FogResolver {
                 if report_id == report.fog_report_id {
                     let verifier =
                         IngestAttestationEvidenceVerifier::from(self.identities.as_slice());
+                    let attestation_evidence = report.attestation_evidence.as_ref().ok_or(
+                        FogPubkeyError::IngestReport("missing attestation evidence".to_string()),
+                    )?;
                     let pubkey = verifier
-                        .validate_ingest_attestation_evidence(&report.report)
+                        .validate_ingest_attestation_evidence(attestation_evidence)
                         .map_err(|e| FogPubkeyError::IngestReport(e.to_string()))?;
                     return Ok(FullyValidatedFogPubkey {
                         pubkey,

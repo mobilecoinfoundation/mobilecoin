@@ -15,6 +15,7 @@ protobuf = "2.27.1"
 
 mc-api = { path = "../../../api" }
 mc-attest-api = { path = "../../../attest/api" }
+mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
 mc-consensus-api = { path = "../../../consensus/api" }
 mc-fog-report-types = { path = "../types" }
 
