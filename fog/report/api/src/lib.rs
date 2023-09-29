@@ -27,9 +27,7 @@ impl From<Report_oneof_attestation_evidence> for AttestationEvidence {
     fn from(value: Report_oneof_attestation_evidence) -> Self {
         match value {
             Report_oneof_attestation_evidence::dcap_evidence(evidence) => {
-                prost::DcapEvidence::try_from(&evidence)
-                    .unwrap_or_default()
-                    .into()
+                prost::DcapEvidence::from(&evidence).into()
             }
             Report_oneof_attestation_evidence::verification_report(report) => {
                 VerificationReport::from(&report).into()
