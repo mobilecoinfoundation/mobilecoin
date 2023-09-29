@@ -38,37 +38,12 @@ mobilecoind:
       nginx.ingress.kubernetes.io/ssl-redirect: "true"
       nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
 
-  # TODO: enable persistence, need a pvc
-  # persistence:
-  #   enabled: false
-  #   spec:
-  #     storageClassName: fast
-  #     accessModes:
-  #     - ReadWriteOnce
-  #     resources:
-  #       requests:
-  #         storage: 128Gi
-
   configMap: {}
     # Bootstrap ledger/watcher db from public bucket
     # MC_LEDGER_DB_URL: ''
     # MC_WATCHER_DB_URL: ''
 
-  initContainers:
-  - name: migrate-ledger
-    image: '{{ .Values.mobilecoind.image.org | default .Values.image.org }}/{{ .Values.mobilecoind.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
-    imagePullPolicy: IfNotPresent
-    command: [ "/bin/bash" ]
-    args:
-    - -c
-    - |
-      set -x
-      if [ -f /mobilecoin/ledger/data.mdb ]; then
-        /usr/bin/mc-ledger-migration --ledger-db /data/ledger
-      fi
-    volumeMounts:
-    - name: data
-      mountPath: /data
+  initContainers: []
 
   nodeSelector: {}
 

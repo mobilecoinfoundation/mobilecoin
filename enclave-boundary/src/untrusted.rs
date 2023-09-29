@@ -35,7 +35,7 @@ pub fn make_variable_length_ecall(
         }
 
         let mut outbuf = vec![0u8; outbuf_used];
-        match unsafe {
+        let result = unsafe {
             ecall_fcn(
                 eid,
                 &mut retval,
@@ -46,16 +46,39 @@ pub fn make_variable_length_ecall(
                 &mut outbuf_used,
                 &mut outbuf_retry_id,
             )
-        } {
+        };
+        match result {
             sgx_status_t::SGX_SUCCESS => match retval {
                 sgx_status_t::SGX_ERROR_OUT_OF_MEMORY => continue,
                 sgx_status_t::SGX_SUCCESS => {
                     outbuf.truncate(outbuf_used);
                     break Ok(outbuf);
                 }
+                other_retval if is_fatal_sgx_status(other_retval) => {
+                    panic!(
+                        "Enclave reported fatal error: ecall retval: {:?}",
+                        other_retval
+                    );
+                }
                 other_retval => break (Err(other_retval)),
             },
+            status if is_fatal_sgx_status(status) => {
+                panic!("Enclave reported fatal error: ecall returned {:?}", status);
+            }
             status => break Err(status),
         }
+    }
+}
+
+fn is_fatal_sgx_status(status: sgx_status_t) -> bool {
+    match status {
+        // SGX Fatal runtime errors
+        sgx_status_t::SGX_ERROR_INVALID_FUNCTION
+        | sgx_status_t::SGX_ERROR_OUT_OF_TCS
+        | sgx_status_t::SGX_ERROR_ENCLAVE_CRASHED
+        | sgx_status_t::SGX_ERROR_ECALL_NOT_ALLOWED
+        | sgx_status_t::SGX_ERROR_OCALL_NOT_ALLOWED
+        | sgx_status_t::SGX_ERROR_STACK_OVERRUN => true,
+        _ => false,
     }
 }

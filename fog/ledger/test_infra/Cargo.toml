@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-test-infra"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "GPL-3.0"

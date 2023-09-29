@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -58,6 +58,7 @@ grpcio = "0.12.1"
 itertools = "0.10"
 lazy_static = "1.4"
 mc-attestation-verifier = "0.4.0"
+prometheus = "0.13"
 rand = "0.8"
 retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

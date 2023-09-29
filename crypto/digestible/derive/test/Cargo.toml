@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-digestible-derive-test"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 rust-version = { workspace = true }

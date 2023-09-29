@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-x509-utils"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 description = "Verification of X509 certificate chains"
 edition = "2021"

@@ -55,14 +55,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- end }}
 
-{{- define "fogServices.fogLedgerStores" -}}
+{{- define "fogServices.fogLedgerShardRangeGenerator" -}}
 {{- $networkName := include "fogServices.mobileCoinNetwork.network" . }}
-{{- get .Values.fogLedgerStores "override" | default (get .Values.fogLedgerStores $networkName) | toYaml }}
+{{- get .Values.fogLedgerShardRangeGenerator "override" | default (get .Values.fogLedgerShardRangeGenerator $networkName) | toYaml }}
 {{- end }}
 
-{{- define "fogServices.fogViewStores" }}
+{{- define "fogServices.fogViewShardRangeGenerator" }}
 {{- $networkName := include "fogServices.mobileCoinNetwork.network" . }}
-{{- get .Values.fogViewStores "override" | default (get .Values.fogViewStores $networkName) | toYaml }}
+{{- get .Values.fogViewShardRangeGenerator "override" | default (get .Values.fogViewShardRangeGenerator $networkName) | toYaml }}
 {{- end }}
 
 {{/* Fog Public FQDN */}}
@@ -105,17 +105,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/* Mobilecoin Network monitoring labels */}}
 {{- define "fogServices.mobileCoinNetwork.network" -}}
   {{- if eq .Values.mcCoreCommonConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace "mobilecoin-network").data.network | default "" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace "mobilecoin-network").data.network | default "none" }}
   {{- else }}
-    {{- tpl .Values.mcCoreCommonConfig.mobileCoinNetwork.network . }}
+    {{- get .Values.mcCoreCommonConfig.mobileCoinNetwork "network" }}
   {{- end }}
 {{- end }}
 
 {{- define "fogServices.mobileCoinNetwork.partner" -}}
   {{- if eq .Values.mcCoreCommonConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace "mobilecoin-network").data.partner | default "" }}
+    {{- (lookup "v1" "ConfigMap" .Release.Namespace "mobilecoin-network").data.partner | default "none" }}
   {{- else }}
-    {{- tpl .Values.mcCoreCommonConfig.mobileCoinNetwork.partner . }}
+    {{- get .Values.mcCoreCommonConfig.mobileCoinNetwork "partner" }}
   {{- end }}
 {{- end }}
 

@@ -136,7 +136,7 @@ spec:
             command:
             - "/usr/local/bin/grpc_health_probe"
             - "-addr=:3226"
-          failureThreshold: 30
+          failureThreshold: 300
           periodSeconds: 10
         livenessProbe:
           exec:
