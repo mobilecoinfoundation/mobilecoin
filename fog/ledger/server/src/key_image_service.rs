@@ -1,5 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-use crate::{DbPollSharedState, SVC_COUNTERS};
+use crate::{metrics::STORE_QUERY_REQUESTS, DbPollSharedState, SVC_COUNTERS};
 use grpcio::RpcStatus;
 use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
@@ -16,7 +16,10 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
 use mc_watcher::watcher_db::WatcherDB;
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 
 #[derive(Clone)]
 pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
@@ -51,7 +54,6 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             db_poll_shared_state,
         }
     }
-
     pub fn get_watcher(&mut self) -> WatcherDB {
         self.watcher.clone()
     }
@@ -227,8 +229,17 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageServ
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
+            let start_time = Instant::now();
+
             let response =
                 self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
+
+            let status_str = format!("{:?}", response.status);
+            let subdomain = self.client_listen_uri.subdomain().unwrap_or_default();
+            let histogram =
+                STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status_str.as_str()]);
+            histogram.observe(start_time.elapsed().as_secs_f64());
+
             send_result(ctx, sink, Ok(response), logger)
         });
     }
