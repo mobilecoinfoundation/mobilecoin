@@ -8,7 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-default = [ "mc-crypto-digestible/default" ]
+default = ["mc-crypto-digestible/default"]
 
 [dependencies]
 mc-crypto-digestible = { path = "../digestible", default_features = false }

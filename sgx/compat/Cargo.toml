@@ -12,10 +12,10 @@ rust-version = "1.68.0"
 [dependencies]
 cfg-if = "1.0"
 mc-sgx-alloc = { path = "../alloc", optional = true }
-mc-sgx-panic = { path = "../panic", optional = true }
-mc-sgx-sync = { path = "../sync", optional = true }
 mc-sgx-debug = { path = "../debug", optional = true }
+mc-sgx-panic = { path = "../panic", optional = true }
 mc-sgx-service = { path = "../service", optional = true }
+mc-sgx-sync = { path = "../sync", optional = true }
 mc-sgx-types = { path = "../types" }
 
 [features]
