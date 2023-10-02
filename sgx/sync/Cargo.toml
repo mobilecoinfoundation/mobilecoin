@@ -8,8 +8,8 @@ readme = "README.md"
 rust-version = "1.68.0"
 
 [dependencies]
-mc-sgx-types = { path = "../types" }
 mc-sgx-panic = { path = "../panic", optional = true }
+mc-sgx-types = { path = "../types" }
 
 [features]
 default = ["mc-sgx-panic"]
