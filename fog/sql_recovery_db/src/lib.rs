@@ -18,6 +18,7 @@ mod schema;
 mod sql_types;
 
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
+use ::prost::{DecodeError, Message};
 use chrono::NaiveDateTime;
 use clap::Parser;
 use diesel::{
@@ -44,7 +45,6 @@ use mc_fog_types::{
     ETxOutRecord,
 };
 use mc_util_parse::parse_duration_in_seconds;
-use prost::{DecodeError, Message};
 use proto_types::ProtoIngestedBlockData;
 use retry::{delay, Error as RetryError, OperationResult};
 use serde::Serialize;
@@ -1617,16 +1617,16 @@ fn unpack_retry_error(src: RetryError<Error>) -> Error {
 mod tests {
     use super::*;
     use chrono::prelude::*;
-    use mc_attest_core::VerificationReport;
+    use mc_attest_verifier_types::prost;
     use mc_common::{
         logger::{log, test_with_logger, Logger},
         HashSet,
     };
     use mc_crypto_keys::RistrettoPublic;
+    use mc_fog_report_types::AttestationEvidence;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_fog_types::view::FixedTxOutSearchResult;
     use mc_util_from_random::FromRandom;
-    use pem::Pem;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
 
     #[test_with_logger]
@@ -2119,7 +2119,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 20,
                 ingest_invocation_id: None,
-                attestation_evidence: VerificationReport::default().into(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -2133,7 +2133,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 40,
                 ingest_invocation_id: None,
-                attestation_evidence: VerificationReport::default().into(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -2518,18 +2518,18 @@ mod tests {
         assert_eq!(db.get_highest_known_block_index().unwrap(), Some(125));
     }
 
-    fn create_report(name: &str) -> VerificationReport {
-        let chain = pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
-            .expect("Could not parse PEM contents")
-            .into_iter()
-            .map(Pem::into_contents)
-            .collect();
-
-        VerificationReport {
-            sig: format!("{name} sig").into_bytes().into(),
-            chain,
-            http_body: format!("{name} body"),
+    fn create_attestation_evidence(name: &str) -> AttestationEvidence {
+        let report_data = prost::EnclaveReportDataContents {
+            nonce: format!("{name} nonce").into_bytes(),
+            key: format!("{name} key").into_bytes(),
+            custom_identity: format!("{name} custom_identity").into_bytes(),
+        };
+        prost::DcapEvidence {
+            quote: None,
+            collateral: None,
+            report_data: Some(report_data),
         }
+        .into()
     }
 
     #[test_with_logger]
@@ -2556,7 +2556,7 @@ mod tests {
         let report_id1 = "";
         let report1 = ReportData {
             ingest_invocation_id: Some(invoc_id1),
-            attestation_evidence: create_report(report_id1).into(),
+            attestation_evidence: create_attestation_evidence(report_id1),
             pubkey_expiry: 102030,
         };
         let key_status = db.set_report(&ingress_key, report_id1, &report1).unwrap();
@@ -2571,7 +2571,7 @@ mod tests {
         let report_id2 = "report 2";
         let report2 = ReportData {
             ingest_invocation_id: Some(invoc_id2),
-            attestation_evidence: create_report(report_id2).into(),
+            attestation_evidence: create_attestation_evidence(report_id2),
             pubkey_expiry: 10203040,
         };
         let key_status = db.set_report(&ingress_key, report_id2, &report2).unwrap();
@@ -2588,7 +2588,7 @@ mod tests {
         // Update an existing report.
         let updated_report1 = ReportData {
             ingest_invocation_id: Some(invoc_id2),
-            attestation_evidence: create_report("updated_report1").into(),
+            attestation_evidence: create_attestation_evidence("updated_report1"),
             pubkey_expiry: 424242,
         };
 
@@ -2620,7 +2620,7 @@ mod tests {
 
         let report1 = ReportData {
             ingest_invocation_id: Some(invoc_id1),
-            attestation_evidence: create_report(report_id1).into(),
+            attestation_evidence: create_attestation_evidence(report_id1),
             pubkey_expiry: 10203050,
         };
         let key_status = db.set_report(&ingress_key, report_id1, &report1).unwrap();
@@ -2634,7 +2634,7 @@ mod tests {
 
         let report1 = ReportData {
             ingest_invocation_id: Some(invoc_id1),
-            attestation_evidence: create_report(report_id1).into(),
+            attestation_evidence: create_attestation_evidence(report_id1),
             pubkey_expiry: 10203060,
         };
         let key_status = db.set_report(&ingress_key, report_id1, &report1).unwrap();
@@ -2862,7 +2862,7 @@ mod tests {
             "",
             &ReportData {
                 ingest_invocation_id: None,
-                attestation_evidence: create_report("").into(),
+                attestation_evidence: create_attestation_evidence(""),
                 pubkey_expiry: 888,
             },
         )
@@ -3263,7 +3263,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 20,
                 ingest_invocation_id: None,
-                attestation_evidence: VerificationReport::default().into(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -3500,7 +3500,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 5,
                 ingest_invocation_id: None,
-                attestation_evidence: VerificationReport::default().into(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -3575,7 +3575,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 15,
                 ingest_invocation_id: None,
-                attestation_evidence: VerificationReport::default().into(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();

@@ -50,10 +50,10 @@ mc-fog-test-infra = { path = "../test_infra" }
 
 [dev-dependencies]
 mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-fog-test-infra = { path = "../test_infra" }
 
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-pem = "3.0"
 rand = "0.8"

@@ -60,7 +60,7 @@ impl Verifier for PublicAddress {
 mod tests {
     use super::*;
     use mc_account_keys::{AccountKey, RootIdentity};
-    use mc_attest_core::VerificationReport;
+    use mc_attest_verifier_types::prost;
     use mc_crypto_keys::Ed25519Pair;
     use mc_crypto_x509_utils::X509CertificateIterable;
     use mc_fog_report_types::Report;
@@ -112,7 +112,7 @@ mod tests {
 
         let reports = vec![Report {
             fog_report_id: "1".to_owned(),
-            attestation_evidence: Some(VerificationReport::default().into()),
+            attestation_evidence: Some(prost::DcapEvidence::default().into()),
             pubkey_expiry: 100,
         }];
 
@@ -140,7 +140,7 @@ mod tests {
 
         let reports = vec![Report {
             fog_report_id: "1".to_owned(),
-            attestation_evidence: Some(VerificationReport::default().into()),
+            attestation_evidence: Some(prost::DcapEvidence::default().into()),
             pubkey_expiry: 100,
         }];
 

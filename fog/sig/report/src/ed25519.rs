@@ -36,21 +36,26 @@ mod test {
     extern crate alloc;
 
     use super::*;
-    use alloc::{borrow::ToOwned, vec};
-    use mc_attest_core::{VerificationReport, VerificationSignature};
+    use alloc::borrow::ToOwned;
+    use mc_attest_verifier_types::prost;
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
     #[test]
     fn roundtrip() {
+        let report_data = prost::EnclaveReportDataContents {
+            nonce: b"nonce".to_vec(),
+            key: b"key".to_vec(),
+            custom_identity: b"custom_identity".to_vec(),
+        };
         let reports = [Report {
             fog_report_id: "id".to_owned(),
             attestation_evidence: Some(
-                VerificationReport {
-                    sig: VerificationSignature::default(),
-                    chain: vec![],
-                    http_body: "this should probably be a json".to_owned(),
+                prost::DcapEvidence {
+                    quote: None,
+                    collateral: None,
+                    report_data: Some(report_data),
                 }
                 .into(),
             ),
