@@ -2,7 +2,7 @@
 
 //! Verify the contents of a Quote3.
 
-use crate::{DEBUG_ENCLAVE, IAS_SIGNING_ROOT_CERT_PEM};
+use crate::{DCAP_ROOT_ANCHOR, DEBUG_ENCLAVE};
 use alloc::{format, vec::Vec};
 use core::fmt::Formatter;
 use der::DateTime;
@@ -45,8 +45,8 @@ impl DcapVerifier {
         I: IntoIterator<Item = ID>,
         ID: Into<TrustedIdentity>,
     {
-        let trust_anchor = TrustAnchor::try_from_pem(IAS_SIGNING_ROOT_CERT_PEM)
-            .expect("Failed to parse root cert");
+        let trust_anchor =
+            TrustAnchor::try_from_pem(DCAP_ROOT_ANCHOR).expect("Failed to parse root cert");
         let certificate_verifier = MbedTlsCertificateChainVerifier::new(trust_anchor);
         let verifier = And::new(
             EvidenceVerifier::new(certificate_verifier, trusted_identities, time),
