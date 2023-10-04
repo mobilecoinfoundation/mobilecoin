@@ -46,7 +46,6 @@ regex = "1"
 url = "2.4.0"
 
 # mc
-mc-attest-net = { path = "../../../attest/net" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-watcher = { path = "../../../watcher" }

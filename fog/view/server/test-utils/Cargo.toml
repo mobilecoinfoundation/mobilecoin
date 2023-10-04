@@ -7,7 +7,6 @@ license = "GPL-3.0"
 
 [dependencies]
 # MC
-mc-attest-net = { path = "../../../../attest/net" }
 mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["log"] }
 mc-transaction-core = { path = "../../../../transaction/core" }
