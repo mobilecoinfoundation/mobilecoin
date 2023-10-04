@@ -67,7 +67,6 @@ parser.add_argument("action", help="""
                     """)
 parser.add_argument("--dry-run", action="store_true", help="Don't run docker, show how we would invoke docker.")
 parser.add_argument("--hw", action="store_true", help="Set SGX_MODE=HW. Default is SGX_MODE=SW")
-parser.add_argument("--ias-prod", action="store_true", help="Set IAS_MODE=PROD. Default is IAS_MODE=DEV. This affects which IAS endpoints we use.")
 parser.add_argument("--image", choices=["builder-install", "signing-tools"], default="builder-install", help="[default: builder-install] mobilecoin image to run")
 parser.add_argument("--name", nargs='?', default=None, help="The name for the container, run with prompt")
 parser.add_argument("--no-pull", action='store_true', help='Skip the `docker image pull` step.')
@@ -293,12 +292,6 @@ if args.image == 'builder-install':
                 docker_run.append(f"--device={dev}")
     else:
         docker_run.append('--env=SGX_MODE=SW')
-
-    # set IAS_MODE options
-    if args.ias_prod:
-        docker_run.append('--env=IAS_MODE=PROD')
-    else:
-        docker_run.append('--env=IAS_MODE=DEV')
 
     # Set git commit
     git_commit = get_git_commit()

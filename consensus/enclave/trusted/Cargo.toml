@@ -17,9 +17,6 @@ crate-type = ["staticlib"]
 sgx-sim = [
     "mc-attest-verifier/sgx-sim"
 ]
-ias-dev = [
-    "mc-attest-verifier/ias-dev"
-]
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

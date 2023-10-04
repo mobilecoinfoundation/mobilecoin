@@ -25,7 +25,7 @@ An example MainNet build and launch command for mobilecoind is:
 1. Build mobilecoind and mobilecoind-json
 
     ```
-    SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
+    SGX_MODE=HW CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
     ```
 
 1. Run mobilecoind, connecting to one or multiple Consensus Validator Nodes:

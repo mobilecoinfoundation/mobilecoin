@@ -194,8 +194,6 @@ spec:
               value: "debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn"
             - name: "SGX_MODE"
               value: "HW"
-            - name: "IAS_MODE"
-              value: "DEV"
             - name: LOCAL_NODE_ID
               value: "peer1.NETWORKNAME.mobilecoin.com:443"
             - name: MC_LOG_UDP_JSON

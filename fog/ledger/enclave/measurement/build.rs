@@ -5,7 +5,7 @@
 use cargo_emit::{rerun_if_env_changed, rustc_cfg};
 use mc_util_build_enclave::Builder;
 use mc_util_build_script::Environment;
-use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
+use mc_util_build_sgx::{SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
@@ -73,11 +73,7 @@ fn main() {
     builder
         .target_dir(env.target_dir().join(LEDGER_ENCLAVE_NAME).as_path())
         .config_builder
-        .debug(
-            sgx.sgx_mode() == SgxMode::Simulation
-                || sgx.ias_mode() == IasMode::Development
-                || env.profile() != "release",
-        )
+        .debug(sgx.sgx_mode() == SgxMode::Simulation || env.profile() != "release")
         .prod_id(LEDGER_ENCLAVE_PRODUCT_ID)
         .isv_security_version(LEDGER_ENCLAVE_SECURITY_VERSION)
         .tcs_num(32)
