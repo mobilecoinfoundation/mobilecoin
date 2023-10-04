@@ -125,15 +125,14 @@ where
         )
         .map_err(Error::HandshakeInit)?;
 
-        let mut serialized_report = Vec::with_capacity(input.ias_report.encoded_len());
+        let mut serialized_evidence = Vec::with_capacity(input.attestation_evidence.encoded_len());
         input
-            .ias_report
-            .encode(&mut serialized_report)
-            .expect("Invariants failure, encoded_len insufficient to encode IAS report");
+            .attestation_evidence
+            .encode(&mut serialized_evidence);
 
         parse_handshake_output(
             handshake_state
-                .write_message(csprng, &serialized_report)
+                .write_message(csprng, &serialized_evidence)
                 .map_err(Error::HandshakeWrite)?,
         )
     }

@@ -3970,6 +3970,7 @@ name = "mc-fog-ledger-connection"
 version = "5.0.5"
 dependencies = [
  "aes-gcm",
+ "der",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4695,6 +4696,7 @@ name = "mc-fog-view-connection"
 version = "5.0.5"
 dependencies = [
  "aes-gcm",
+ "der",
  "futures",
  "grpcio",
  "mc-attest-ake",

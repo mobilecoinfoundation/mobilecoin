@@ -3,13 +3,14 @@
 //! Makes requests to the fog view router service
 
 use aes_gcm::Aes256Gcm;
+use der::DateTime;
 use futures::{executor::block_on, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment};
 use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AttestAkeError, Ready, Start, Transition,
 };
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceKind;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::X25519;
@@ -25,7 +26,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::DecodeError;
 use mc_util_uri::UriConversionError;
 use sha2::Sha512;
-use std::sync::Arc;
+use std::{sync::Arc, time::{SystemTime, UNIX_EPOCH}};
 
 /// A high-level object mediating requests to the fog view router service
 pub struct FogViewRouterGrpcClient {
@@ -87,7 +88,7 @@ impl FogViewRouterGrpcClient {
         self.attest_cipher.is_some()
     }
 
-    async fn attest(&mut self) -> Result<VerificationReport, Error> {
+    async fn attest(&mut self) -> Result<EvidenceKind, Error> {
         // If we have an existing attestation, nuke it.
         self.deattest();
 
@@ -112,15 +113,21 @@ impl FogViewRouterGrpcClient {
             .ok_or(Error::ResponseNotReceived)?;
         let auth_response_msg = response.take_auth();
 
+        let now = SystemTime::now();
+        let epoch_time = now.duration_since(UNIX_EPOCH)
+            .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| Error::Other("Time out of range".to_owned()))?;
+
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, attestation_evidence) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(attestation_evidence)
     }
 
     fn deattest(&mut self) {
@@ -223,6 +230,9 @@ pub enum Error {
 
     /// Response not received
     ResponseNotReceived,
+
+    /// Other
+    Other(String),
 }
 
 impl From<DecodeError> for Error {

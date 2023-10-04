@@ -17,7 +17,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use core::cmp::max;
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -96,13 +96,13 @@ where
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: VerificationReport,
+        attestation_evidence: EvidenceKind,
     ) -> ReportableEnclaveResult<()> {
         self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
         Ok(self.ake.get_attestation_evidence()?)
     }
 }

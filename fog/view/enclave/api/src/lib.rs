@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{
-    EnclaveReportDataContents, Quote, Report, SgxError, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, Quote, Report, SgxError, TargetInfo, EvidenceKind,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -73,7 +73,7 @@ pub enum ViewEnclaveRequest {
     VerifyQuote(Quote, Report, EnclaveReportDataContents),
 
     /// Verify attestation evidence, and cache it if it is accepted
-    VerifyAttestationEvidence(VerificationReport),
+    VerifyAttestationEvidence(EvidenceKind),
 
     /// Get the cached attestation evidence if any
     GetAttestationEvidence,

@@ -34,7 +34,7 @@ use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Quote, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, IasNonce, IntelSealed, Quote, Report, TargetInfo, EvidenceKind,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -447,13 +447,13 @@ impl ReportableEnclave for SgxConsensusEnclave {
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: VerificationReport,
+        attestation_evidence: EvidenceKind,
     ) -> ReportableEnclaveResult<()> {
         self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
         Ok(self.ake.get_attestation_evidence()?)
     }
 }
@@ -585,7 +585,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         // Inject the blockchain config hash before passing off to the AKE
         let peer_id = self
             .blockchain_config

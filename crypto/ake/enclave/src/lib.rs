@@ -12,7 +12,7 @@ use mc_attest_ake::{
 };
 use mc_attest_core::{
     EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
-    ReportData, TargetInfo, VerificationReport, EvidenceKind,
+    ReportData, TargetInfo, EvidenceKind,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -712,12 +712,17 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// Verify attestation evidence
     pub fn verify_attestation_evidence(
         &self,
-        attestation_evidence: VerificationReport,
+        attestation_evidence: EvidenceKind,
     ) -> Result<()> {
+        // TODO: This needs to be replaced with dcap verification
+        let verification_report = match attestation_evidence.clone() {
+            EvidenceKind::Epid(report) => report,
+            _ => Err(Error::Decode("Failed to decide VerificationReport".to_owned()))?
+        };
         let verifier = self.get_verifier()?;
 
         // Verify signature, MRENCLAVE, report value, etc.
-        let report_data = verifier.verify(&attestation_evidence)?;
+        let report_data = verifier.verify(&verification_report)?;
 
         // Get the nonce from the IAS report
         let nonce = report_data
@@ -737,7 +742,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let _ = Verifier::default()
             .quote_body(&cached_quote)
             .nonce(nonce)
-            .verify(&attestation_evidence)?;
+            .verify(&verification_report)?;
 
         // Save the result
         *(self.current_attestation_evidence.lock()?) = Some(attestation_evidence);

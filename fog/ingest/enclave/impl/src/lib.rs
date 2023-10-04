@@ -20,7 +20,7 @@ pub use rng_store::{RngStore, StorageDataSize, StorageMetaSize};
 use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Quote, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Quote, Report, TargetInfo,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
@@ -194,13 +194,13 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ReportableEnclav
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: VerificationReport,
+        attestation_evidence: EvidenceKind,
     ) -> ReportableEnclaveResult<()> {
         self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
         Ok(self.ake.get_attestation_evidence()?)
     }
 }
@@ -385,7 +385,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         Ok(self.ake.peer_connect(peer_id, msg)?)
     }
 

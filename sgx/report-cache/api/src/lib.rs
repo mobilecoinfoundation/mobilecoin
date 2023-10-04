@@ -8,7 +8,7 @@
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, SgxError, TargetInfo,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_util_serial::{decode::Error as RmpDecodeError, encode::Error as RmpEncodeError};
@@ -91,8 +91,8 @@ pub trait ReportableEnclave {
     /// After that check has been performed, the enclave will use the
     /// attestation evidence for all requests until another attestation evidence
     /// has been successfully loaded in it's place.
-    fn verify_attestation_evidence(&self, attestation_evidence: VerificationReport) -> Result<()>;
+    fn verify_attestation_evidence(&self, attestation_evidence: EvidenceKind) -> Result<()>;
 
     /// Retrieve a copy of the cached attestation evidence.
-    fn get_attestation_evidence(&self) -> Result<VerificationReport>;
+    fn get_attestation_evidence(&self) -> Result<EvidenceKind>;
 }

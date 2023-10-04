@@ -9,7 +9,7 @@ use hyper::{
     Body, Client, Request, Response, Server,
 };
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport, EvidenceKind,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -63,13 +63,14 @@ impl ReportableEnclave for MockEnclave {
 
     fn verify_attestation_evidence(
         &self,
-        _attestation_evidence: VerificationReport,
+        _attestation_evidence: EvidenceKind,
     ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
+        // TODO: dcap
+        Ok(EvidenceKind::Epid(VerificationReport::default()))
     }
 }
 

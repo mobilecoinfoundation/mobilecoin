@@ -9,6 +9,7 @@ use crate::{
     mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
+use mc_attest_core::EvidenceKind;
 use mc_blockchain_types::{BlockData, BlockID, BlockMetadata, BlockMetadataContents};
 use mc_common::{
     logger::{log, Logger},
@@ -880,7 +881,7 @@ impl<
     }
 
     fn get_block_metadata(&self, block_id: &BlockID) -> BlockMetadata {
-        let verification_report = self
+        let attestation_evidence = self
             .enclave
             .get_attestation_evidence()
             .unwrap_or_else(|err| {
@@ -888,6 +889,11 @@ impl<
                     "Failed to fetch attestation evidence after forming block {block_id:?}: {err}"
                 )
             });
+        // TODO: replace with dcap
+        let verification_report = match attestation_evidence {
+            EvidenceKind::Epid(verification_report) => verification_report,
+            _ => panic!("Unreachable code")
+        };
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
