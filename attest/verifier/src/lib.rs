@@ -26,7 +26,7 @@ pub use crate::status::{Kind as StatusVerifier, MrEnclaveVerifier, MrSignerVerif
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
         /// The build-time generated mock IAS signing root authority
-        pub const SIM_ROOT_ANCHOR: &str =include_str!("../data/sim/root_anchor.pem");
+        pub const SIM_ROOT_ANCHOR: &str = include_str!("../data/sim/root_anchor.pem");
         /// The build-time generated mock IAS signing certificate chain
         pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
         /// The build-time generated mock IAS signing private key
