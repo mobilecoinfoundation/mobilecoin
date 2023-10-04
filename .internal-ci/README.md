@@ -78,9 +78,9 @@ This workflow is set up to trigger off certain branch patterns.
 
 Branches will trigger a build that will create a dynamic development environment and run integration tests against the environment.
 
-| Tags | SGX_MODE | IAS_MODE | Signer | Description |
-| --- | --- | --- | --- | --- |
-| `v0.0.0-my-awesome-feature.21.sha-abcd1234` | `HW` | `DEV` | CI Signed Development | For use in development environments. |
+| Tags | SGX_MODE | Signer | Description |
+| --- | --- | --- | --- |
+| `v0.0.0-my-awesome-feature.21.sha-abcd1234` | `HW` | CI Signed Development | For use in development environments. |
 
 ### Semver tags - `v2.0.0`
 
@@ -88,9 +88,9 @@ Tags will trigger a build that will create a set of release artifacts.
 
 TBD: Automatically deploy/destroy this release to the development cluster.
 
-| Tags | SGX_MODE | IAS_MODE | Signer | Description |
-| --- | --- | --- | --- | --- |
-| `v2.0.0-dev` | `HW` | `DEV` | CI Signed Development | For use in development environments. |
+| Tags | SGX_MODE | Signer | Description |
+| --- | --- | --- | --- |
+| `v2.0.0-dev` | `HW` | CI Signed Development | For use in development environments. |
 
 ### Deployment Status & Environment Info
 

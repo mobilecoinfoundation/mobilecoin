@@ -14,7 +14,7 @@ mod utils;
 pub use crate::{
     config::{ConfigBuilder, TcsPolicy},
     edger8r::{Edger8r, Error as Edger8rError},
-    env::{Error as EnvironmentError, IasMode, SgxEnvironment, SgxMode},
+    env::{Error as EnvironmentError, SgxEnvironment, SgxMode},
     libraries::SgxLibraryCollection,
     sign::SgxSign,
 };

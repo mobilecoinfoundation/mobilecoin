@@ -40,7 +40,6 @@ runs:
         [[ -f /opt/cargo/bin/cbindgen ]] && chmod 0755 /opt/cargo/bin/cbindgen
 
         # build config
-        echo 'IAS_MODE=DEV' >> $GITHUB_ENV
         echo 'SGX_MODE=SW' >> $GITHUB_ENV
         # test/run config
         echo 'RUST_BACKTRACE=1' >> $GITHUB_ENV

@@ -12,7 +12,7 @@ use mbedtls_sys::types::{
 };
 use mc_sgx_css::{Error as SignatureError, Signature};
 use mc_util_build_script::{rerun_if_path_changed, CargoBuilder, Environment};
-use mc_util_build_sgx::{ConfigBuilder, IasMode, SgxEnvironment, SgxMode, SgxSign};
+use mc_util_build_sgx::{ConfigBuilder, SgxEnvironment, SgxMode, SgxSign};
 use pkg_config::{Config, Error as PkgConfigError};
 use rand::{thread_rng, RngCore};
 use std::{
@@ -213,9 +213,6 @@ impl Builder {
         let mut features_vec = Vec::new();
         if sgx.sgx_mode() == SgxMode::Simulation {
             features_vec.push("sgx-sim".to_owned());
-        }
-        if sgx.ias_mode() == IasMode::Development {
-            features_vec.push("ias-dev".to_owned());
         }
 
         let staticlib = MetadataCommand::new()

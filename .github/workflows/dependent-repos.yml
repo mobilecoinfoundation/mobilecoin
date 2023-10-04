@@ -54,4 +54,4 @@ jobs:
             curl -O https://enclave-distribution.test.mobilecoin.com/${CONSENSUS_SIGSTRUCT_URI}
           fi
 
-          SGX_MODE=SW IAS_MODE=DEV cargo test
+          SGX_MODE=SW cargo test

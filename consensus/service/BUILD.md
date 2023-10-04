@@ -173,13 +173,12 @@ Then, when you build, you will provide both `CONSENSUS_ENCLAVE_SIGNED=$(pwd)/lib
 To build consensus, you will need to specify the following:
 
 * `SGX_MODE` (either `HW` for hardware or `SW` for simulation)
-* `IAS_MODE` (depending on which EPID policy you registered for, either `DEV` or `PROD`)
 * (Optional) Signing material, `CONSENSUS_ENCLAVE_SIGNED` and `CONSENSUS_ENCLAVE_CSS` (see [Enclave Signing Material](#enclave-signing-material) above)
 
 And then you can build with:
 
 ```
-SGX_MODE=HW IAS_MODE=DEV \
+SGX_MODE=HW \
     CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
     CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     cargo build --release -p mc-consensus-service

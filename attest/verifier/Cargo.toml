@@ -22,8 +22,6 @@ std = [
 
 # This means "use the fake SGX stuff where required"
 sgx-sim = []
-# This means "use the dev endpoint of Intel's Attestation Service"
-ias-dev = []
 
 [dependencies]
 mc-attest-core = { path = "../core", default-features = false }
