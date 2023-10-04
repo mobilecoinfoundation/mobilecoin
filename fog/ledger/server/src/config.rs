@@ -6,7 +6,6 @@
 
 use crate::sharding_strategy::EpochShardingStrategy;
 use clap::Parser;
-use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_util_parse::parse_duration_in_seconds;
@@ -28,14 +27,6 @@ pub struct LedgerRouterConfig {
     /// referencing this node.
     #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
-
-    /// PEM-formatted keypair to send with an Attestation Request.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
-    /// The IAS SPID to use when getting a quote
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
@@ -114,14 +105,6 @@ pub struct LedgerStoreConfig {
     /// Path to watcher db (lmdb) - includes block timestamps
     #[clap(long, value_parser(clap::value_parser!(PathBuf)), env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
-
-    /// IAS Api Key.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
-    /// IAS Service Provider ID.
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
 
     /// Optional admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]

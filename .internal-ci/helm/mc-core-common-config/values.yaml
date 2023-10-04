@@ -2,10 +2,6 @@
 clientAuth:
   token: ''
 
-ias:
-  key: ''
-  spid: ''
-
 mobileCoinNetwork:
   network: ''
   partner: ''

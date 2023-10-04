@@ -26,21 +26,6 @@ Configure a `values.yaml` file or pre-populate your namespace with the following
       network: testnet
     ```
 
-- `ias`
-
-    Intel spid and primary or secondary key.
-    
-    ```yaml
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: ias
-    type: Opaque
-    stringData:
-      key: <primary or secondary key>
-      spid: <spid>
-    ```
-
 - `sentry`
 
     Sentry service alert and error monitoring

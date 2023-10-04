@@ -13,7 +13,6 @@ use crate::{
 };
 use futures::executor::block_on;
 use mc_attest_api::attest_grpc::create_attested_api;
-use mc_attest_core::ProviderId;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -49,9 +48,6 @@ pub struct IngestServerConfig {
     /// Overflow will occur at ~70% utilization
     /// FIXME: The unit here should probably just be bytes
     pub omap_capacity: u64,
-
-    /// The IAS SPID to use when getting a quote
-    pub ias_spid: ProviderId,
 
     /// Local Ingest Node ID
     pub local_node_id: ResponderId,

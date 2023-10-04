@@ -276,7 +276,7 @@ where
             *self.last_sealed_key.lock().unwrap() = None;
             self.write_state_file_inner(&mut state);
 
-            // Don't hold the lock while we make network calls to IAS
+            // Don't hold the lock any longer than necessary
             drop(state);
 
             // Refresh report cache
@@ -917,7 +917,7 @@ where
         self.write_state_file_inner(&mut state);
         let result = self.get_ingest_summary_inner(&mut state);
 
-        // Don't hold the state mutex while we are talking to IAS
+        // Don't hold the state mutex any longer than necessary
         drop(state);
 
         // Update our report cache since we changed the private key

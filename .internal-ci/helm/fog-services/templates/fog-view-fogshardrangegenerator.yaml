@@ -113,8 +113,6 @@ spec:
               - configMapRef:
                   # This is pre-installed from the fog-services-config chart or Terraform
                   name: fog-view
-              - secretRef:
-                  name: ias
               startupProbe:
                 grpc:
                   port: 3225
@@ -304,8 +302,6 @@ spec:
             envFrom:
             - configMapRef:
                 name: fog-view
-            - secretRef:
-                name: ias
             env:
             - name: RUST_BACKTRACE
               value: {{ $.Values.fogView.rust.backtrace | quote }}

@@ -491,8 +491,6 @@ mod client_api_tests {
             "--admin-listen-uri=insecure-mca://0.0.0.0:9090/",
             "--sealed-block-signing-key=/tmp/key",
             "--ledger-path=/tmp/ledger",
-            "--ias-spid=22222222222222222222222222222222",
-            "--ias-api-key=asdf",
         ])
         .unwrap()
     }

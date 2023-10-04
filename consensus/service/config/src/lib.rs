@@ -17,7 +17,6 @@ pub use crate::{
 
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use clap::Parser;
-use mc_attest_core::ProviderId;
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
 use mc_transaction_core::BlockVersion;
@@ -60,14 +59,6 @@ pub struct Config {
     /// The location for the network.toml/json configuration file.
     #[clap(long = "network", env = "MC_NETWORK")]
     pub network_path: PathBuf,
-
-    /// Your Intel IAS API key.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
-    /// The Service Provider ID (SPID) associated with your Intel IAS API Key.
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
 
     /// The location on which to listen for peer traffic.
     ///
@@ -210,8 +201,6 @@ mod tests {
             )
             .unwrap(),
             network_path: PathBuf::from("network.toml"),
-            ias_api_key: "".to_string(),
-            ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
             peer_listen_uri: PeerUri::from_str("insecure-mcp://0.0.0.0:8081/").unwrap(),
             client_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
             admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),
@@ -279,8 +268,6 @@ mod tests {
                 "MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo",
             ) .unwrap(),
             network_path: PathBuf::from("network.toml"),
-            ias_api_key: "".to_string(),
-            ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
             peer_listen_uri: PeerUri::from_str("mcp://0.0.0.0:8443/?tls-chain=./public/attest/test_certs/selfsigned_mobilecoin.crt&tls-key=./public/attest/test_certs/selfsigned_mobilecoin.key").unwrap(),
             client_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
             admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),

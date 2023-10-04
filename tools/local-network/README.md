@@ -3,9 +3,6 @@
 This directory contains scripts for running a local mobilecoin consensus network and a `mobilecoind` instance.
 The enclaves are built in pre-release mode, which provides debug symbols for debugging purposes, so it is only intended to be used for development and testing purposes.
 
-To run a local network, you may provide both the `IAS_API_KEY` and `IAS_SPID`, which you can obtain by registering with the [Intel SGX Portal](https://api.portal.trustedservices.intel.com/EPID-attestation)
-These are optional, and the script will provide defaults that work for local testing in software mode.
-
 ## Quickstart
 
 The following sequence is a basic way to start a network locally.
@@ -43,8 +40,6 @@ This script starts a local mobilecoin consensus network by launching a separate 
 It relies on environment variables for configuration:
 
 - (required) `LEDGER_BASE` - Points at the ledger directory to initialize the nodes with (e.g. `./target/sample_data/ledger`).
-- (optional) `IAS_API_KEY` - IAS Api key. (Only needed for IAS prod builds)
-- (optional) `IAS_SPID` - IAS Service Provider ID. (Only needed for IAS prod builds)
 - (optional) `MC_LOG` - Log level configuration.
 - (optional) `MOB_RELEASE` - When set to 1 (default), build in release mode.
 - (optional) `LOG_BRANCH` - Enable cloud logging, tagging all logs/metrics with the provided branch name.

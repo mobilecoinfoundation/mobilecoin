@@ -116,8 +116,6 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             client_listen_uri: test_uri,
             ledger_db: ledger_path,
             watcher_db: PathBuf::from(db_tmp.path()),
-            ias_api_key: Default::default(),
-            ias_spid: Default::default(),
             admin_listen_uri: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),

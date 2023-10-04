@@ -28,8 +28,6 @@ is_set MC_BRANCH
 is_set MC_PEER_RESPONDER_ID
 is_set MC_CLIENT_RESPONDER_ID
 is_set MC_MSG_SIGNER_KEY
-is_set MC_IAS_API_KEY
-is_set MC_IAS_SPID
 
 # Default vars
 export MC_PEER_LISTEN_URI=${MC_PEER_LISTEN_URI:-"insecure-mcp://0.0.0.0:8443/"}
