@@ -34,12 +34,6 @@ on:
       DEV_FOG_REPORT_SIGNING_CERT_KEY:
         description: "Fog Report signing cert key"
         required: true
-      DEV_IAS_KEY:
-        description: "IAS"
-        required: true
-      DEV_IAS_SPID:
-        description: "IAS"
-        required: true
       DEV_KEYS_SEED_FOG:
         description: "static wallet seed"
         required: true
@@ -103,23 +97,11 @@ on:
       IP_INFO_TOKEN:
         description: "ipinfo.io token for authenticated access"
         required: true
-      MAIN_IAS_KEY:
-        description: "MainNet IAS"
-        required: true
-      MAIN_IAS_SPID:
-        description: "MainNet IAS"
-        required: true
       MAIN_TOKENS_CONFIG_V1_JSON:
         description: "MainNet signed tokens config json"
         required: true
       MAIN_TOKENS_CONFIG_V2_JSON:
         description: "MainNet signed tokens config json"
-        required: true
-      TEST_IAS_KEY:
-        description: "TestNet IAS"
-        required: true
-      TEST_IAS_SPID:
-        description: "TestNet IAS"
         required: true
       TEST_TOKENS_CONFIG_V1_JSON:
         description: "TestNet signed tokens config json"
@@ -224,15 +206,8 @@ jobs:
 
     # We're only deploying to the dev cluster here.
     # We want to still point at dev values for buckets and certs.
-    # We need "production" IAS creds to start up test/main enclaves.
     - name: Generate environment values file
       env:
-        DEV_IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
-        DEV_IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
-        MAIN_IAS_KEY: ${{ secrets.MAIN_IAS_KEY }}
-        MAIN_IAS_SPID: ${{ secrets.MAIN_IAS_SPID }}
-        TEST_IAS_KEY: ${{ secrets.TEST_IAS_KEY }}
-        TEST_IAS_SPID: ${{ secrets.TEST_IAS_SPID }}
         LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
         LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
         FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}

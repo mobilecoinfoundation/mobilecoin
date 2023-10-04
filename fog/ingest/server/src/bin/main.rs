@@ -67,7 +67,6 @@ fn main() {
     let server_config = IngestServerConfig {
         max_transactions: config.max_transactions,
         omap_capacity: config.user_capacity,
-        ias_spid: config.ias_spid,
         local_node_id: config.local_node_id.clone(),
         client_listen_uri: config.client_listen_uri.clone(),
         peer_listen_uri: config.peer_listen_uri.clone(),

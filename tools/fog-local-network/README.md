@@ -53,8 +53,6 @@ In order to use it, the following steps are necessary.
     LOGSTASH_HOST="... (get this from a team member, optional)" \
     LOG_BRANCH=eran-local \
     LEDGER_BASE=$(pwd)/ledger \
-    IAS_SPID="..." \
-    IAS_API_KEY="..." \
     python3 ../tools/fog-local-network/fog_local_network.py --network-type dense5
     ```
     Note that all of the above arguments are identical to the mobilecoin local_network.py script.
@@ -128,7 +126,6 @@ in order to control which one is ahead or behind.
 Usage
 -----
 
-1. Set `IAS_API_KEY` and `IAS_SPID` if needed, otherwise they will default to all zeros. In a DEV IAS build that is fine.
 1. Create a new Python3 virtual env: `python3 -mvenv env`
 1. Activate the virtualenv: `. ./env/bin/activate`
 1. Install requirements: `pip install --upgrade pip && pip install -r requirements.txt`

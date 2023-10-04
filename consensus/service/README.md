@@ -47,15 +47,6 @@ Follow the steps below:
     '{"threshold":3,"members":[{"type":"Node","args":"node1.test.mobilecoin.com:8443"},{"type":"Node","args":"node2.test.mobilecoin.com:8443"},{"type":"Node","args":"node3.test.mobilecoin.com:8443"},{"type":"Node","args":"node5.test.mobilecoin.com:8443"}]}'
     ```
 
-1. Obtain SPID key.
-
-    Attestation with Intel's Attestation Service (IAS) requires the nodes making the request to be linked to a developer account on their platform. When running the consensus service, you will provide both the `IAS_API_KEY` and `IAS_SPID`, which you can obtain by registering with the [Intel SGX Portal](https://api.portal.trustedservices.intel.com/EPID-attestation).
-
-    * Choose Dev for a developer network, or Prod for the TestNet.
-    * Choose Linkable (name base mode). This allows other nodes in the network to blocklist nodes who are misbehaving by submitting too many attestation requests. If you choose Unlinkable, your node will be denied peer connections.
-
-    >Note: You will provide the access qualifier when you run consensus, to indicate which Attestation endpoint to hit, via `IAS_MODE=DEV` or `IAS_MODE=PROD`
-
 1. Generate your ed25519 message-signing key.
 
     ```
@@ -161,8 +152,6 @@ SGX_MODE=HW IAS_MODE=DEV \
     --client-responder-id my_node.my_domain.com:443 \
     --peer-responder-id node1.my_domain.com:8443 \
     --network /etc/mc-network.toml \
-    --ias-api-key="${IAS_API_KEY}" \
-    --ias-spid="${IAS_SPID}" \
     --ledger-path /tmp/ledger-db-1 \
     --peer-listen-uri='mcp://0.0.0.0:8443/' \
     --msg-signer-key MC4CAQAwBQYDK2VwBCIEIGz4xR7wuPKjwM1EK0MKrc9ukTjiDqvKKREITPXPkNku \

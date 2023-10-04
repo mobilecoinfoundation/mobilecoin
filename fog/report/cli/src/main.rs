@@ -73,7 +73,7 @@ struct Config {
     pub fog_report_id: Option<String>,
 
     /// The fog authority spki, in base 64
-    /// If omitted, then NO verification of any kind (IAS, MRSIGNER, cert
+    /// If omitted, then NO verification of any kind (MRSIGNER, cert
     /// chains) will be performed.
     /// If a public address is supplied, this cannot be supplied.
     #[clap(long, short = 's', env = "MC_FOG_SPKI")]
@@ -88,7 +88,7 @@ struct Config {
     #[clap(long, short = 'v', env = "MC_SHOW_EXPIRY")]
     pub show_expiry: bool,
 
-    /// Skip all validation of the fog response, including IAS, cert checking,
+    /// Skip all validation of the fog response, cert checking,
     /// and fog authority signature.
     #[clap(long, short, env = "MC_NO_VALIDATE")]
     pub no_validate: bool,

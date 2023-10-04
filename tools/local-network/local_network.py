@@ -24,8 +24,6 @@ MOBILECOIND_PORT = 4444
 
 # TODO make these command line arguments
 LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
-IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
-IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MOB_RELEASE = os.getenv('MOB_RELEASE', '1') == '1'
 if MOB_RELEASE:
@@ -272,8 +270,6 @@ class Node:
             f'--peer-responder-id localhost:{self.peer_port}',
             f'--msg-signer-key "{msg_signer_key}"',
             f'--network {network_json_path}',
-            f'--ias-api-key={IAS_API_KEY}',
-            f'--ias-spid={IAS_SPID}',
             f'--origin-block-path {LEDGER_BASE}',
             f'--block-version {self.block_version}',
             f'--ledger-path {self.ledger_dir}',

@@ -51,8 +51,6 @@ data:
       --admin-listen-uri=insecure-mca://127.0.0.1:8001/
       --network /config/network.toml
       --ledger-path /ledger
-      --ias-spid %(ENV_PROD_IAS_SPID)s
-      --ias-api-key %(ENV_PROD_IAS_API_KEY)s
       --msg-signer-key %(ENV_NODE1_SIGNER_KEY)s
       --sealed-block-signing-key %(ENV_SEALED_BLOCK_SIGNING_KEY)s
 
@@ -210,16 +208,6 @@ spec:
               value: "AWS_PATH=s3://mobilecoin.chain/node1.NETWORKNAME.mobilecoin.com"
             - name: AWS_REGION
               value: "us-west-1"
-            - name: PROD_IAS_SPID
-              valueFrom:
-                secretKeyRef:
-                  name: prod-ias-keys
-                  key: spid
-            - name: PROD_IAS_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: prod-ias-keys
-                  key: primary-key
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:

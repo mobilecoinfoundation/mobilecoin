@@ -4,7 +4,6 @@
 //! Configuration parameters for the Fog Ingest Node
 
 use clap::Parser;
-use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
@@ -17,14 +16,6 @@ use std::{path::PathBuf, time::Duration};
 #[derive(Clone, Serialize, Parser)]
 #[clap(version)]
 pub struct IngestConfig {
-    /// The IAS SPID to use when getting a quote
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
-
-    /// PEM-formatted keypair to send with an Attestation Request.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
     /// Path to watcher db (lmdb) - includes block timestamps
     #[clap(long, env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
@@ -116,7 +107,6 @@ mod tests {
          ["/usr/bin/fog_ingest_server",
       "--ledger-db", "/fog-data/ledger",
       "--watcher-db", "/fog-data/watcher",
-     "--ias-spid", "00000000000000000000000000000000", "--ias-api-key", "00000000000000000000000000000000",
       "--client-listen-uri", "insecure-fog-ingest://0.0.0.0:3226/",
       "--peer-listen-uri", "insecure-igp://0.0.0.0:8090/",
       "--local-node-id", "fogingest2.buildtest.svc.cluster.local:443",

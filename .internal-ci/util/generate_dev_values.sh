@@ -31,28 +31,6 @@ then
   tokens_signed_json=$(cat "${TOKENS_PATH}")
 fi
 
-echo "Get config for network based semver tag" >&2
-network=$(get_network_tier "${1}")
-case "${network}" in
-  test)
-    IAS_KEY=${TEST_IAS_KEY}
-    IAS_SPID=${TEST_IAS_SPID}
-  ;;
-  main)
-    IAS_KEY=${MAIN_IAS_KEY}
-    IAS_SPID=${MAIN_IAS_SPID}
-  ;;
-  dev)
-    IAS_KEY=${DEV_IAS_KEY}
-    IAS_SPID=${DEV_IAS_SPID}
-  ;;
-  *)
-    echo "ERROR: Unknown network ${network}"
-    exit 1;
-  ;;
-esac
-
-
 cat << EOF
 global:
   node:
@@ -76,9 +54,6 @@ $(echo -n "${tokens_signed_json}" | sed 's/^/        /')
 mcCoreCommonConfig:
   ipinfo:
     token: '${IP_INFO_TOKEN}'
-  ias:
-    key: '${IAS_KEY}'
-    spid: '${IAS_SPID}'
   clientAuth:
     token: '${CLIENT_AUTH_TOKEN}'
   sentry:
