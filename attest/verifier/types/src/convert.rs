@@ -7,7 +7,6 @@ mod dcap_evidence;
 mod enclave_report_data_contents;
 mod quote3;
 
-use ::prost::DecodeError;
 use alloc::string::{String, ToString};
 use mc_crypto_keys::KeyError;
 use mc_sgx_dcap_types::{CollateralError, Quote3Error};
@@ -37,12 +36,6 @@ pub enum ConversionError {
 impl From<KeyError> for ConversionError {
     fn from(value: KeyError) -> Self {
         Self::Key(value)
-    }
-}
-
-impl From<DecodeError> for ConversionError {
-    fn from(value: DecodeError) -> Self {
-        Self::InvalidContents(value.to_string())
     }
 }
 

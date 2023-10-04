@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-test-infra"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -16,10 +16,10 @@ mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
-mc-transaction-core = {  path = "../../../transaction/core" }
+mc-transaction-core = { path = "../../../transaction/core" }
 
 # fog
-mc-fog-ledger-enclave = {  path = "../enclave" }
+mc-fog-ledger-enclave = { path = "../enclave" }
 mc-fog-ledger-enclave-api = { path = "../enclave/api" }
 mc-fog-types = { path = "../../types" }
 

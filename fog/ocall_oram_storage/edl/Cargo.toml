@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ocall-oram-storage-edl"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "fog_ocall_oram_storage_edl"

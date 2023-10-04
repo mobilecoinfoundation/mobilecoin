@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-hashes"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,7 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-default = [ "mc-crypto-digestible/default" ]
+default = ["mc-crypto-digestible/default"]
 
 [dependencies]
 mc-crypto-digestible = { path = "../digestible", default_features = false }

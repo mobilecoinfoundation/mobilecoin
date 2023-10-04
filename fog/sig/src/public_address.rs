@@ -112,7 +112,7 @@ mod tests {
 
         let reports = vec![Report {
             fog_report_id: "1".to_owned(),
-            report: VerificationReport::default(),
+            attestation_evidence: Some(VerificationReport::default().into()),
             pubkey_expiry: 100,
         }];
 
@@ -140,7 +140,7 @@ mod tests {
 
         let reports = vec![Report {
             fog_report_id: "1".to_owned(),
-            report: VerificationReport::default(),
+            attestation_evidence: Some(VerificationReport::default().into()),
             pubkey_expiry: 100,
         }];
 

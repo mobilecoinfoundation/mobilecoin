@@ -1,6 +1,6 @@
 [package]
 name = "mc-blockchain-types"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -31,6 +31,7 @@ zeroize = { version = "1", default-features = false }
 [dev-dependencies]
 mc-blockchain-test-utils = { path = "../test-utils" }
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
+mc-util-serial = { path = "../../util/serial" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 rand = "0.8"

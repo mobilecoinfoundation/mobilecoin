@@ -604,7 +604,7 @@ mod tests {
             "",
             &ReportData {
                 ingest_invocation_id: None,
-                report: create_report(""),
+                attestation_evidence: create_report("").into(),
                 pubkey_expiry: 45,
             },
         )

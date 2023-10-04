@@ -2,6 +2,7 @@
 
 //! Fog database test helpers
 
+use mc_attest_verifier_types::VerificationReport;
 use mc_blockchain_types::{Block, BlockID, BlockVersion};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
@@ -175,7 +176,7 @@ pub fn recovery_db_missed_blocks_reporting(
         &ReportData {
             pubkey_expiry: 20,
             ingest_invocation_id: None,
-            report: Default::default(),
+            attestation_evidence: VerificationReport::default().into(),
         },
     )
     .unwrap();
@@ -203,7 +204,7 @@ pub fn recovery_db_missed_blocks_reporting(
         &ReportData {
             pubkey_expiry: 25,
             ingest_invocation_id: None,
-            report: Default::default(),
+            attestation_evidence: VerificationReport::default().into(),
         },
     )
     .unwrap();

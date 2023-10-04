@@ -19,6 +19,7 @@ mod error;
 mod key_image_service;
 mod key_image_store_server;
 mod merkle_proof_service;
+mod metrics;
 mod router_admin_service;
 mod router_handlers;
 mod router_server;

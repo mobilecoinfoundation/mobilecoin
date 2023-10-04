@@ -54,7 +54,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         mkdir -p "${DOWNLOAD_DIR}"
-        gh release download v5.0.2 \
+        gh release download v5.0.8 \
             -p '${{ matrix.network.chain_id }}net-mobilecoind-linux-x86_64-*.tar.gz' \
             -O "${DOWNLOAD_DIR}/linux.tar.gz"
 

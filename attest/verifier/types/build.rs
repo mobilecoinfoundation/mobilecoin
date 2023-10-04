@@ -26,6 +26,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "#[derive(serde::Serialize, serde::Deserialize, Digestible, Eq)]",
         );
     }
-    config.compile_protos(&["attest.proto"], &["../../api/proto"])?;
+    config.compile_protos(&["external.proto"], &["../../../api/proto"])?;
     Ok(())
 }

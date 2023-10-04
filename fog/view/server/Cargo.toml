@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-server"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -26,6 +26,7 @@ displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.12.1"
 lazy_static = "1.4"
+prometheus = "0.13"
 
 # mobilecoin
 mc-api = { path = "../../../api" }
@@ -61,6 +62,7 @@ serde_json = "1.0"
 
 [dev-dependencies]
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }

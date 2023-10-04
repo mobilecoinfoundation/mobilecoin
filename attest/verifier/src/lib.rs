@@ -141,9 +141,9 @@ pub enum Error {
     Parse(VerifyError),
     /**
      * The report was properly constructed, but did not meet security
-     * requirements, report contents: {0:?}
+     * requirements, verification output: {0}
      */
-    Verification(VerificationReportData),
+    Verification(String),
 }
 
 impl From<VerifyError> for Error {

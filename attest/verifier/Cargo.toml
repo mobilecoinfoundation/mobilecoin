@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-verifier"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 description = '''
 This crate contains necessary functions and utilities to perform verification of
@@ -35,7 +35,7 @@ mc-sgx-dcap-types = "0.8.0"
 mc-sgx-types = { path = "../../sgx/types", default-features = false }
 
 cfg-if = "1.0"
-der = { version = "0.7.7", default-features = false }
+der = { version = "0.7.8", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
@@ -44,7 +44,9 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 sha2 = { version = "0.10", default-features = false }
 
 [dev-dependencies]
+mc-attest-untrusted = { path = "../untrusted", default-features = false }
 mc-util-encodings = { path = "../../util/encodings", default-features = false }
+p256 = { version = "0.13.0", default-features = false }
 textwrap = "0.11"
 
 [build-dependencies]

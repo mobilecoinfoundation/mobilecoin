@@ -52,17 +52,17 @@ fn prost_test_cases() -> Vec<ProstReport> {
     vec![
         ProstReport {
             fog_report_id: Default::default(),
-            report: prost_verification_report("foobar"),
+            attestation_evidence: Some(prost_verification_report("foobar").into()),
             pubkey_expiry: 1000,
         },
         ProstReport {
             fog_report_id: "eap".to_string(),
-            report: prost_verification_report("baz"),
+            attestation_evidence: Some(prost_verification_report("baz").into()),
             pubkey_expiry: 10000,
         },
         ProstReport {
             fog_report_id: "".to_string(),
-            report: prost_verification_report("quz"),
+            attestation_evidence: Some(prost_verification_report("quz").into()),
             pubkey_expiry: 0,
         },
     ]
@@ -85,16 +85,16 @@ fn protobuf_verification_report(name: &str) -> ProtobufVerificationReport {
 // Make some prost test cases
 fn protobuf_test_cases() -> Vec<ProtobufReport> {
     let mut rep1 = ProtobufReport::new();
-    rep1.set_report(protobuf_verification_report("asdf"));
+    rep1.set_verification_report(protobuf_verification_report("asdf"));
     rep1.set_pubkey_expiry(199);
 
     let mut rep2 = ProtobufReport::new();
     rep2.set_fog_report_id("non".to_string());
-    rep2.set_report(protobuf_verification_report("jkl"));
+    rep2.set_verification_report(protobuf_verification_report("jkl"));
     rep2.set_pubkey_expiry(11);
 
     let mut rep3 = ProtobufReport::new();
-    rep3.set_report(protobuf_verification_report(";;;"));
+    rep3.set_verification_report(protobuf_verification_report(";;;"));
     vec![rep1, rep2, rep3]
 }
 
@@ -129,7 +129,7 @@ fn round_trip_prost_report_response() {
 #[test]
 fn round_trip_protobuf_report_response() {
     let mut case = ProtobufReportResponse::new();
-    case.set_reports(protobuf::RepeatedField::from_vec(protobuf_test_cases()));
+    case.set_reports(RepeatedField::from_vec(protobuf_test_cases()));
     case.set_chain(make_chain().into());
     case.set_signature(b"report signature".to_vec());
     round_trip_protobuf::<ProtobufReportResponse, ProstReportResponse>(case);

@@ -7,7 +7,7 @@ extern crate alloc;
 // Prost generated versions
 pub mod prost {
     use mc_crypto_digestible::Digestible;
-    include!(concat!(env!("OUT_DIR"), "/attest.rs"));
+    include!(concat!(env!("OUT_DIR"), "/external.rs"));
 }
 
 mod convert;

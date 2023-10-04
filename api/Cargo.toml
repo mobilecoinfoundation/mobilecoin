@@ -1,6 +1,6 @@
 [package]
 name = "mc-api"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -29,9 +29,10 @@ bs58 = "0.4.0"
 crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 mc-sgx-core-types = "0.8.0"
+mc-sgx-dcap-types = "0.8.0"
 protobuf = "2.27.1"
 
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+curve25519-dalek = { version = "4.1.0", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
@@ -40,6 +41,8 @@ mc-util-build-script = { path = "../util/build/script" }
 cargo-emit = "0.2.1"
 
 [dev-dependencies]
+assert_matches = "1"
+mc-attest-untrusted = { path = "../attest/untrusted" }
 mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }

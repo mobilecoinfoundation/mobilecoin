@@ -22,7 +22,8 @@ use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
+    AdminServer, AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer,
+    TokenAuthenticator,
 };
 use std::sync::{Arc, RwLock};
 
@@ -32,12 +33,13 @@ where
     RC: RaClient + Send + Sync + 'static,
 {
     router_server: grpcio::Server,
-    admin_server: grpcio::Server,
+    admin_service: FogViewRouterAdminService,
     enclave: E,
     config: FogViewRouterConfig,
     logger: Logger,
     ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
+    admin_server: Option<AdminServer>,
 }
 
 /// A shard that fulfills a portion of the router's query requests.
@@ -101,9 +103,7 @@ where
                 Arc::new(AnonymousAuthenticator::default())
             };
 
-        let fog_view_router_admin_service = view_grpc::create_fog_view_router_admin_api(
-            FogViewRouterAdminService::new(shards.clone(), logger.clone()),
-        );
+        let admin_service = FogViewRouterAdminService::new(shards.clone(), logger.clone());
         log::debug!(logger, "Constructed Fog View Router Admin GRPC Service");
 
         // Health check service
@@ -126,7 +126,7 @@ where
                     streaming_uri.addr(),
                 );
 
-                grpcio::ServerBuilder::new(env.clone())
+                grpcio::ServerBuilder::new(env)
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
                     .build_using_uri(streaming_uri, logger.clone())
@@ -147,7 +147,7 @@ where
                     "Starting Fog View Router unary server on {}",
                     unary_uri.addr(),
                 );
-                grpcio::ServerBuilder::new(env.clone())
+                grpcio::ServerBuilder::new(env)
                     .register_service(fog_view_router_service)
                     .register_service(health_service)
                     .build_using_uri(unary_uri, logger.clone())
@@ -155,19 +155,15 @@ where
             }
         };
 
-        let admin_server = grpcio::ServerBuilder::new(env)
-            .register_service(fog_view_router_admin_service)
-            .build_using_uri(&config.admin_listen_uri, logger.clone())
-            .expect("Unable to build Fog View Router admin server");
-
         Self {
             router_server,
-            admin_server,
+            admin_service,
             enclave,
             config,
             logger,
             ra_client,
             report_cache_thread: None,
+            admin_server: None,
         }
     }
 
@@ -200,7 +196,23 @@ where
                 );
             }
         }
-        self.admin_server.start();
+        let config_json =
+            serde_json::to_string(&self.config).expect("failed to serialize config to JSON");
+        let get_config_json = Arc::new(move || Ok(config_json.clone()));
+        let admin_service = view_grpc::create_fog_view_router_admin_api(self.admin_service.clone());
+        // Prevent from getting dropped
+        self.admin_server = AdminServer::start(
+            None,
+            &self.config.admin_listen_uri,
+            "Fog View".to_owned(),
+            self.config.client_responder_id.to_string(),
+            Some(get_config_json),
+            vec![admin_service],
+            self.logger.clone(),
+        )
+        .expect("Failed starting fog-view admin server")
+        .into();
+
         log::info!(
             self.logger,
             "Router Admin API listening on {}",
@@ -214,7 +226,6 @@ where
             thread.stop().expect("Could not stop report cache thread");
         }
         block_on(self.router_server.shutdown()).expect("Could not stop router grpc server");
-        block_on(self.admin_server.shutdown()).expect("Could not stop admin router server");
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-sync"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 license = "GPL-3.0"
 readme = "README.md"
@@ -8,8 +8,8 @@ readme = "README.md"
 rust-version = "1.68.0"
 
 [dependencies]
-mc-sgx-types = { path = "../types" }
 mc-sgx-panic = { path = "../panic", optional = true }
+mc-sgx-types = { path = "../types" }
 
 [features]
 default = ["mc-sgx-panic"]

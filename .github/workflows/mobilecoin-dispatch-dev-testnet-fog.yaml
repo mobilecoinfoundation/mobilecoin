@@ -1,0 +1,28 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Deploy a TestNet Fog to Development cluster - placeholder
+
+name: (Manual) Deploy TestNet Fog to Dev Namespace
+
+run-name: Deploy ${{ inputs.version }} to ${{ inputs.namespace }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+
+jobs:
+  placeholder:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: dummy job
+      shell: bash
+      run: |
+        true

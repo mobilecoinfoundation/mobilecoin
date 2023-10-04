@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-test-infra"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -20,6 +20,7 @@ path = "src/bin/add_test_block.rs"
 [dependencies]
 # from public
 mc-account-keys = { path = "../../account-keys" }
+mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }

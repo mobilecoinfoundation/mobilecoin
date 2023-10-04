@@ -6,6 +6,60 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.0.8]
+
+### Changed
+
+- Previously the application running the ledger enclave would perform a periodic
+  check to see if the ledger enclave was in a good state. Now all enclave
+  runners will panic if an enclave call comes back with a fatal SGX error.
+  ([#3526])
+
+### Fixed
+
+#### Deployments
+
+- fix: shardOverlap ([#3545])
+
+### Removed
+
+#### Deployments
+
+- removed backing up of ledger database ([#3558])
+
+[#3545]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3545
+[#3549]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3549
+[#3558]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3558
+
+## [5.0.7]
+
+### Added
+
+- Healthcheck to fog ledger enclave ([#3533])
+
+### Fixed
+
+#### Deployments
+
+- fix: update shard values and defaults ([#3520])
+- fix: lmdb bootstrap uses same volume for download and destination ([#3526])
+- fix: startup probe uses 300 attempts to compensate for lmdb download times ([#3525])
+
+[#3520]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3520
+[#3525]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3525
+[#3526]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3526
+[#3533]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3530
+
+## [5.0.6]
+
+### Fixed
+
+- fix: admin server for fog view & ledger routers should expose metrics ([#3486])
+
+### Added
+
+- feat: additional metrics for fog view & ledger routers and stores ([#3486])
+
 ## [5.0.5]
 
 ### Fixed

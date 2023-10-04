@@ -45,4 +45,4 @@ pub const MICROMOB_TO_PICOMOB: u64 = 1_000_000;
 pub const MILLIMOB_TO_PICOMOB: u64 = 1_000_000_000;
 
 /// Blinding for the implicit fee outputs.
-pub const FEE_BLINDING: Scalar = Scalar::from_bits([0u8; 32]);
+pub const FEE_BLINDING: Scalar = Scalar::ZERO;

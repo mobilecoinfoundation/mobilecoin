@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use futures::executor::block_on;
+use mc_attest_verifier_types::VerificationReport;
 use mc_common::logger;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
@@ -55,7 +56,7 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
         &ReportData {
             pubkey_expiry: 6,
             ingest_invocation_id: None,
-            report: Default::default(),
+            attestation_evidence: VerificationReport::default().into(),
         },
     )
     .unwrap();
@@ -87,7 +88,7 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
         &ReportData {
             pubkey_expiry: 4,
             ingest_invocation_id: None,
-            report: Default::default(),
+            attestation_evidence: VerificationReport::default().into(),
         },
     )
     .unwrap();

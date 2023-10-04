@@ -3,6 +3,9 @@
 use crate::{
     error::{router_server_err_to_rpc_status, RouterServerError},
     fog_view_router_server::Shard,
+    metrics::{
+        AUTH_CLIENT_REQUESTS, CLIENT_QUERY_RETRIES, ROUTER_QUERY_REQUESTS, STORE_QUERY_REQUESTS,
+    },
     shard_responses_processor, SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
@@ -21,8 +24,7 @@ use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseSt
 use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
-use std::sync::Arc;
-
+use std::{sync::Arc, time::Instant};
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Router client.
@@ -95,6 +97,7 @@ pub fn handle_auth_request<E>(
 where
     E: ViewEnclaveProxy,
 {
+    AUTH_CLIENT_REQUESTS.inc();
     let (client_auth_response, _) = enclave.client_accept(auth_message.into()).map_err(|err| {
         router_server_err_to_rpc_status("Auth: e client accept", err.into(), logger)
     })?;
@@ -168,6 +171,7 @@ where
 
     let mut query_responses: Vec<MultiViewStoreQueryResponse> = Vec::with_capacity(shards.len());
     let mut remaining_tries = RETRY_COUNT;
+    let _timer = ROUTER_QUERY_REQUESTS.start_timer();
     while remaining_tries > 0 {
         let multi_view_store_query_request = enclave
             .create_multi_view_store_query_data(sealed_query.clone())
@@ -223,6 +227,7 @@ where
             )
             .await?;
         } else {
+            CLIENT_QUERY_RETRIES.inc();
             remaining_tries -= 1;
         }
     }
@@ -262,9 +267,26 @@ async fn query_shard(
     request: &MultiViewStoreQueryRequest,
     shard: Shard,
 ) -> Result<(Shard, MultiViewStoreQueryResponse), RouterServerError> {
-    let client_unary_receiver = shard.grpc_client.multi_view_store_query_async(request)?;
-    let response = client_unary_receiver.await?;
+    let start_time = Instant::now();
+    let subdomain = shard.uri.subdomain().unwrap_or("");
+    let histogram_observe = |status: &str| {
+        let status = status.chars().take(20).collect::<String>();
+        let histogram = STORE_QUERY_REQUESTS.with_label_values(&[subdomain, status.as_str()]);
+        histogram.observe(start_time.elapsed().as_secs_f64());
+    };
 
+    let client_unary_receiver = shard
+        .grpc_client
+        .multi_view_store_query_async(request)
+        .map_err(|err| {
+            histogram_observe(&err.to_string());
+            err
+        })?;
+    let response = client_unary_receiver.await.map_err(|err| {
+        histogram_observe(&err.to_string());
+        err
+    })?;
+    histogram_observe("ok");
     Ok((shard, response.try_into()?))
 }
 

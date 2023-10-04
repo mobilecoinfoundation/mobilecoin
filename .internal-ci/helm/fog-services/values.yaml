@@ -1,7 +1,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 ### Chart wide values.
 nameOverride: ''
-fullnameOverride: ''
+fullnameOverride: 'fs'
 
 ###  mc-core-common-config child chart configuration.
 #    See ../mc-core-common-config for details.
@@ -41,18 +41,24 @@ ingress:
   enabled: true
 
 #### Fog View
-fogViewStores:
+fogViewShardRangeGenerator:
+  # The dev options are set in the github workflow deployment.
+  # This is just for reference.
+  # dev:
+  #   shardSize: 10_000
+  #   exceedBlockHeightBy: 5_000
+  #   shardOverlap: 0
+  #   count: 2
   main:
     shardSize: 400_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 200_000
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 3
   test:
     shardSize: 800_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 400_000
-
-fogViewShardRangeGenerator:
-  count: 3
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 2
 
 fogViewRouter:
   podManagementPolicy: Parallel
@@ -135,10 +141,10 @@ fogView:
   resources:
     limits:
       intel.com/sgx: 5000
-      memory: 3Gi
+      memory: 5Gi
     requests:
       intel.com/sgx: 5000
-      memory: 3Gi
+      memory: 5Gi
       cpu: 1100m
 
   nodeSelector:
@@ -152,18 +158,24 @@ fogView:
 
 
 #### Fog Ledger
-fogLedgerStores:
+fogLedgerShardRangeGenerator:
+  # The dev options are set in the github workflow deployment.
+  # This is just for reference.
+  # dev:
+  #   shardSize: 10_000
+  #   exceedBlockHeightBy: 5_000
+  #   shardOverlap: 0
+  #   count: 2
   main:
     shardSize: 400_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 200_000
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 3
   test:
     shardSize: 800_000
-    exceedBlockHeightBy: 200_000
-    shardOverlap: 400_000
-
-fogLedgerShardRangeGenerator:
-  count: 3
+    exceedBlockHeightBy: 10_000
+    shardOverlap: 0
+    count: 2
 
 fogLedgerRouter:
   replicaCount: 1
@@ -198,10 +210,10 @@ fogLedgerRouter:
   resources:
     limits:
       intel.com/sgx: 5000
-      memory: 3Gi
+      memory: 5Gi
     requests:
       intel.com/sgx: 5000
-      memory: 3Gi
+      memory: 5Gi
       cpu: 1100m
 
   nodeSelector:
@@ -272,10 +284,10 @@ fogLedger:
   resources:
     limits:
       intel.com/sgx: 5000
-      memory: 3Gi
+      memory: 5Gi
     requests:
       intel.com/sgx: 5000
-      memory: 3Gi
+      memory: 5Gi
       cpu: 1100m
 
   nodeSelector:

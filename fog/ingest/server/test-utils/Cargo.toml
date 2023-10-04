@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-server-test-utils"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -9,8 +9,8 @@ rust-version = { workspace = true }
 [dependencies]
 # MC/root
 mc-attest-net = { path = "../../../../attest/net" }
-mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-blockchain-test-utils = { path = "../../../../blockchain/test-utils" }
+mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-ledger-db = { path = "../../../../ledger/db" }

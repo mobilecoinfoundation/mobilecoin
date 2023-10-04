@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-core-test-utils"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 rust-version = { workspace = true }

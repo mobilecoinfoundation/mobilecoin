@@ -6,7 +6,8 @@ use crate::TargetInfoError;
 use mc_attest_core::QuoteError;
 use mc_sgx_core_types::{Report, TargetInfo};
 use mc_sgx_dcap_ql::{Error, QeTargetInfo, TryFromReport};
-use mc_sgx_dcap_types::{QlError, Quote3};
+use mc_sgx_dcap_quoteverify::{Collateral as CollateralTrait, Error as QuoteVerifyError};
+use mc_sgx_dcap_types::{Collateral, QlError, Quote3};
 
 pub struct HwQuotingEnclave;
 
@@ -24,5 +25,10 @@ impl HwQuotingEnclave {
     /// Get the target info for the quoting enclave.
     pub fn target_info() -> Result<TargetInfo, TargetInfoError> {
         Ok(TargetInfo::for_quoting_enclave()?)
+    }
+
+    /// Get the `Collateral` for the quote.
+    pub fn collateral<Q: AsRef<[u8]>>(quote: &Quote3<Q>) -> Result<Collateral, QuoteVerifyError> {
+        quote.collateral()
     }
 }

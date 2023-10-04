@@ -23,11 +23,11 @@ spec:
         {{- include "mobilecoind.labels" . | nindent 8 }}
     spec:
       nodeSelector:
-        {{- toYaml .Values.mobilecoindNodeSelector | nindent 8 }}
+        {{- toYaml .Values.mobilecoind.nodeSelector | nindent 8 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       initContainers:
-      {{- tpl (toYaml .Values.mobilecoind.initContainers) . | nindent 6 }}
+        {{- toYaml .Values.mobilecoind.initContainers | nindent 8 }}
       containers:
       - name: mobilecoind
         image: '{{ .Values.mobilecoind.image.org | default .Values.image.org }}/{{ .Values.mobilecoind.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'

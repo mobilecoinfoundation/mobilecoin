@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ring-signature-signer"
-version = "5.0.5"
+version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -14,7 +14,7 @@ alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "curve25519-dalek/allo
 default = ["serde", "alloc", "curve25519-dalek/default"]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+curve25519-dalek = { version = "4.1.0", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
