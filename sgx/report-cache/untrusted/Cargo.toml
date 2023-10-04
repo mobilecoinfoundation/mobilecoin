@@ -13,7 +13,6 @@ retry = "2.0"
 
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
-mc-attest-net = { path = "../../../attest/net" }
 mc-attest-untrusted = { path = "../../../attest/untrusted" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }

@@ -2658,26 +2658,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-attest-net"
-version = "5.0.8"
-dependencies = [
- "cfg-if 1.0.0",
- "displaydoc",
- "mbedtls",
- "mc-attest-core",
- "mc-attest-verifier",
- "mc-common",
- "mc-sgx-build",
- "mc-util-encodings",
- "pem",
- "percent-encoding",
- "rand",
- "reqwest",
- "serde_json",
- "sha2 0.10.7",
-]
-
-[[package]]
 name = "mc-attest-trusted"
 version = "5.0.8"
 dependencies = [
@@ -2977,7 +2957,6 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-attest-net",
  "mc-attest-verifier",
  "mc-blockchain-types",
  "mc-common",
@@ -3228,7 +3207,6 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-attest-net",
  "mc-attest-verifier",
  "mc-attest-verifier-types",
  "mc-blockchain-types",
@@ -3745,7 +3723,6 @@ dependencies = [
  "hex",
  "mc-account-keys",
  "mc-api",
- "mc-attest-net",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
@@ -3910,7 +3887,6 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-attest-net",
  "mc-attest-verifier-types",
  "mc-blockchain-types",
  "mc-common",
@@ -3956,7 +3932,6 @@ dependencies = [
 name = "mc-fog-ingest-server-test-utils"
 version = "5.0.8"
 dependencies = [
- "mc-attest-net",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
@@ -4133,7 +4108,6 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-attest-net",
  "mc-attestation-verifier",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
@@ -4282,7 +4256,6 @@ dependencies = [
  "grpcio",
  "lazy_static",
  "mc-api",
- "mc-attest-net",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
@@ -4909,7 +4882,6 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-attest-net",
  "mc-attest-verifier",
  "mc-attest-verifier-types",
  "mc-blockchain-types",
@@ -4957,7 +4929,6 @@ name = "mc-fog-view-server-test-utils"
 version = "5.0.8"
 dependencies = [
  "grpcio",
- "mc-attest-net",
  "mc-attestation-verifier",
  "mc-blockchain-types",
  "mc-common",
@@ -5680,7 +5651,6 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-attest-net",
  "mc-attest-untrusted",
  "mc-attest-verifier",
  "mc-common",
