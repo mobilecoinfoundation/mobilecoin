@@ -5,8 +5,7 @@
 use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use mc_attest_core::VerificationReport;
-use mc_attest_verifier_types::EvidenceKind;
+use mc_attest_core::{EvidenceKind, VerificationReport};
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
@@ -317,24 +316,24 @@ impl MealyInput for AuthResponseInput {}
 
 /// An unverified report is used when the initiator may not know the identity of
 /// the enclave.
-pub struct UnverifiedReport {
+pub struct UnverifiedEvidence {
     pub(crate) data: Vec<u8>,
 }
 
-impl UnverifiedReport {
+impl UnverifiedEvidence {
     pub fn new(data: AuthResponseOutput) -> Self {
         Self { data: data.0 }
     }
 }
 
-impl AsRef<[u8]> for UnverifiedReport {
+impl AsRef<[u8]> for UnverifiedEvidence {
     fn as_ref(&self) -> &[u8] {
         self.data.as_ref()
     }
 }
 
 /// An authentication response from a responder
-impl MealyInput for UnverifiedReport {}
+impl MealyInput for UnverifiedEvidence {}
 
 /// The IAS report is the final output when authentication succeeds.
 impl MealyOutput for VerificationReport {}

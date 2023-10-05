@@ -11,8 +11,8 @@ use mc_attest_ake::{
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
-    ReportData, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Nonce, NonceError, Quote,
+    QuoteNonce, Report, ReportData, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -21,7 +21,6 @@ use mc_attest_enclave_api::{
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
-use mc_attest_verifier_types::EvidenceKind;
 use mc_attestation_verifier::{TrustedIdentity, TrustedMrEnclaveIdentity};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};

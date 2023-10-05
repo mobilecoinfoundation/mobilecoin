@@ -4,11 +4,11 @@
 
 use crate::{
     AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
-    Start, Terminated, Transition, UnverifiedReport,
+    Start, Terminated, Transition, UnverifiedEvidence,
 };
 use ::prost::Message;
 use alloc::vec::Vec;
-use mc_attest_core::{ReportDataMask, VerificationReport};
+use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_attest_verifier_types::{prost, EvidenceKind};
 use mc_crypto_keys::{Kex, ReprBytes};
@@ -208,7 +208,7 @@ where
 }
 
 /// AuthPending + UnverifiedReport => Terminated + VerificationReport
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedReport, VerificationReport>
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedEvidence, EvidenceKind>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -220,8 +220,8 @@ where
     fn try_next<R: CryptoRng + RngCore>(
         self,
         _csprng: &mut R,
-        input: UnverifiedReport,
-    ) -> Result<(Terminated, VerificationReport), Self::Error> {
+        input: UnverifiedEvidence,
+    ) -> Result<(Terminated, EvidenceKind), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -229,10 +229,17 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                let remote_report = VerificationReport::decode(output.payload.as_slice())
-                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+                let evidence = if let Ok(dcap_evidence) =
+                    prost::DcapEvidence::decode(output.payload.as_slice())
+                {
+                    EvidenceKind::Dcap(dcap_evidence)
+                } else {
+                    let remote_report = VerificationReport::decode(output.payload.as_slice())
+                        .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+                    EvidenceKind::VerificationReport(remote_report)
+                };
 
-                Ok((Terminated, remote_report))
+                Ok((Terminated, evidence))
             }
         }
     }
