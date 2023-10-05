@@ -4,7 +4,7 @@
 
 use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
 
-use mc_blockchain_types::{BlockData, BlockIndex, BlockSignature, VerificationReport};
+use mc_blockchain_types::{BlockData, BlockIndex, BlockSignature};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -21,6 +21,7 @@ use lmdb::{
     Cursor, Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction,
     WriteFlags,
 };
+use mc_attest_core::{EvidenceKind, EvidenceMessage};
 use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
     path::Path,
@@ -653,11 +654,11 @@ impl WatcherDB {
     /// `verification_report_block_signer` out of `verification_report` but
     /// we let the caller handle that in case the report format changes over
     /// time.
-    pub fn add_verification_report(
+    pub fn add_attestation_evidence(
         &self,
         src_url: &Url,
         verification_report_block_signer: &Ed25519Public,
-        verification_report: &VerificationReport,
+        evidence: &EvidenceKind,
         potential_block_signers: &[Ed25519Public],
     ) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
@@ -673,11 +674,11 @@ impl WatcherDB {
         }
 
         // Write the verification report for `verification_report_block_signer`.
-        self.write_verification_report(
+        self.write_attestation_evidence(
             &mut db_txn,
             src_url,
             verification_report_block_signer,
-            Some(verification_report),
+            Some(evidence),
         )?;
 
         // Write no reports for all the other block signers we missed.
@@ -688,7 +689,7 @@ impl WatcherDB {
                 continue;
             }
 
-            self.write_verification_report(&mut db_txn, src_url, block_signer, None)?;
+            self.write_attestation_evidence(&mut db_txn, src_url, block_signer, None)?;
         }
 
         // Remove all the keys we encountered from the queue - we no longer need to poll
@@ -709,26 +710,27 @@ impl WatcherDB {
 
     /// A helper for writing a single (src_url, signer) -> VerificationReport
     /// entry in the database.
-    fn write_verification_report(
+    fn write_attestation_evidence(
         &self,
         db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         signer: &Ed25519Public,
-        verification_report: Option<&VerificationReport>,
+        evidence: Option<&EvidenceKind>,
     ) -> Result<(), WatcherDBError> {
         let mut key_bytes = signer.to_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
-        let value_bytes = verification_report
-            .map(mc_util_serial::encode)
-            .unwrap_or_else(Vec::new);
+        let serializable = EvidenceMessage {
+            evidence: evidence.cloned(),
+        };
+        let value_bytes = mc_util_serial::encode(&serializable);
 
         log::trace!(
             self.logger,
-            "write_verification_report: src_url:{} signer:{} report-provided:{} report-len:{}",
+            "write_attestation_evidence: src_url:{} signer:{} evidence-provided:{} report-len:{}",
             src_url,
             hex::encode(signer.to_bytes()),
-            verification_report.is_some(),
+            evidence.is_some(),
             value_bytes.len(),
         );
 
@@ -744,7 +746,7 @@ impl WatcherDB {
             Err(lmdb::Error::KeyExist) => {
                 log::trace!(
                     self.logger,
-                    "write_verification_report: report hash already in db"
+                    "write_attestation_evidence: evidence hash already in db"
                 );
                 Ok(())
             }
@@ -762,7 +764,7 @@ impl WatcherDB {
             Err(lmdb::Error::KeyExist) => {
                 log::trace!(
                     self.logger,
-                    "write_verification_report: report already associated with signer+src_url"
+                    "write_attestation_evidence: report already associated with signer+src_url"
                 );
                 Ok(())
             }
@@ -774,17 +776,14 @@ impl WatcherDB {
     }
 
     /// Get a VerificationReport by hash.
-    fn get_verification_report_by_hash(
+    fn get_attestation_evidence_by_hash(
         &self,
         db_txn: &impl Transaction,
         hash: &[u8],
-    ) -> Result<Option<VerificationReport>, WatcherDBError> {
+    ) -> Result<Option<EvidenceKind>, WatcherDBError> {
         let value_bytes = db_txn.get(self.verification_reports_by_hash, &hash)?;
-        Ok(if value_bytes.is_empty() {
-            None
-        } else {
-            Some(mc_util_serial::decode(value_bytes)?)
-        })
+        let evidence_message: EvidenceMessage = mc_util_serial::decode(value_bytes)?;
+        Ok(evidence_message.evidence)
     }
 
     /// Get a verification report for a given block signer.
@@ -803,7 +802,7 @@ impl WatcherDB {
     pub fn get_verification_reports_for_signer(
         &self,
         block_signer: &Ed25519Public,
-    ) -> Result<HashMap<Url, Vec<Option<VerificationReport>>>, WatcherDBError> {
+    ) -> Result<HashMap<Url, Vec<Option<EvidenceKind>>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         let mut cursor = db_txn.open_ro_cursor(self.verification_reports_by_signer)?;
         let signer_key_bytes = block_signer.to_bytes().to_vec();
@@ -832,7 +831,8 @@ impl WatcherDB {
             let tx_source_url = bytes_to_url(tx_source_url_bytes)?;
 
             // Resolve the hash into the actual report.
-            let verification_report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
+            let verification_report =
+                self.get_attestation_evidence_by_hash(&db_txn, value_bytes)?;
 
             // Add to hashmap
             results
@@ -856,7 +856,7 @@ impl WatcherDB {
         &self,
         block_signer: &Ed25519Public,
         src_url: &Url,
-    ) -> Result<Vec<Option<VerificationReport>>, WatcherDBError> {
+    ) -> Result<Vec<Option<EvidenceKind>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
 
         let mut key_bytes = block_signer.to_bytes().to_vec();
@@ -867,7 +867,7 @@ impl WatcherDB {
         for (key_bytes2, value_bytes) in cursor.iter_dup_of(&key_bytes).filter_map(Result::ok) {
             assert_eq!(key_bytes, key_bytes2);
 
-            let report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
+            let report = self.get_attestation_evidence_by_hash(&db_txn, value_bytes)?;
             results.push(report);
         }
 
@@ -1089,6 +1089,7 @@ fn bytes_to_url(bytes: &[u8]) -> Result<Url, WatcherDBError> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use mc_attest_core::VerificationReport;
     use mc_blockchain_test_utils::get_blocks;
     use mc_blockchain_types::BlockVersion;
     use mc_common::logger::{test_with_logger, Logger};
@@ -1349,7 +1350,7 @@ pub mod tests {
                 // signing_key_c.
                 for _ in 0..5 {
                     watcher_db
-                        .add_verification_report(
+                        .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
                             &verification_report_a,
@@ -1421,7 +1422,7 @@ pub mod tests {
                 // it.
                 for _ in 0..5 {
                     watcher_db
-                        .add_verification_report(
+                        .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
                             &verification_report_b,
@@ -1499,7 +1500,7 @@ pub mod tests {
                 // different results
                 for _ in 0..5 {
                     watcher_db
-                        .add_verification_report(
+                        .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
                             &verification_report_a,
@@ -1508,7 +1509,7 @@ pub mod tests {
                         .unwrap();
 
                     watcher_db
-                        .add_verification_report(
+                        .add_attestation_evidence(
                             &url2,
                             &signing_key_a,
                             &verification_report_a,
@@ -1574,7 +1575,7 @@ pub mod tests {
                 for _ in 0..5 {
                     // Adds None to signing_key_b
                     watcher_db
-                        .add_verification_report(
+                        .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
                             &verification_report_a,
@@ -1584,7 +1585,7 @@ pub mod tests {
 
                     // Add verification_report_b to signing_key_b
                     watcher_db
-                        .add_verification_report(
+                        .add_attestation_evidence(
                             &url1,
                             &signing_key_b,
                             &verification_report_b,
@@ -1727,7 +1728,7 @@ pub mod tests {
             // Adding a verification report for some key that is not in the queue should not
             // affect things.
             watcher_db
-                .add_verification_report(
+                .add_attestation_evidence(
                     &url1,
                     &signing_key_c.public_key(),
                     &verification_report_a,
@@ -1749,7 +1750,7 @@ pub mod tests {
             // Adding a verification report that references one of the keys in the queue
             // should cause it to get removed.
             watcher_db
-                .add_verification_report(
+                .add_attestation_evidence(
                     &url2,
                     &signing_key_b.public_key(),
                     &verification_report_a,
@@ -1800,7 +1801,7 @@ pub mod tests {
             // Referencing signing_key_a and signing_key_b for url1 will cause them to be
             // removed from the queue but only when the correct url is used.
             watcher_db
-                .add_verification_report(
+                .add_attestation_evidence(
                     &url2,
                     &signing_key_b.public_key(),
                     &verification_report_a,
@@ -1820,7 +1821,7 @@ pub mod tests {
             );
 
             watcher_db
-                .add_verification_report(
+                .add_attestation_evidence(
                     &url1,
                     &signing_key_b.public_key(),
                     &verification_report_a,
@@ -1881,7 +1882,7 @@ pub mod tests {
                 .unwrap();
 
             watcher_db
-                .add_verification_report(
+                .add_attestation_evidence(
                     &url1,
                     block_data.signature().unwrap().signer(),
                     &verification_report_a,
@@ -1890,7 +1891,7 @@ pub mod tests {
                 .unwrap();
 
             watcher_db
-                .add_verification_report(
+                .add_attestation_evidence(
                     &url2,
                     block_data.signature().unwrap().signer(),
                     &verification_report_a,

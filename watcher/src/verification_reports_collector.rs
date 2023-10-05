@@ -102,12 +102,12 @@ impl NodeClient for ConsensusNodeClient {
                     ));
                 }
 
-                &custom_data_bytes[32..]
+                custom_data_bytes[32..].to_vec()
             }
-            _ => Err("Unexpected evidence kind".to_owned()),
+            _ => return Err("Unexpected evidence kind".to_owned()),
         };
 
-        let signer_public_key = Ed25519Public::try_from(signer_bytes)
+        let signer_public_key = Ed25519Public::try_from(signer_bytes.as_slice())
             .map_err(|err| format!("Unable to construct key: {err}"))?;
 
         Ok(signer_public_key)
@@ -391,7 +391,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
         // Store the VerificationReport in the database, and also remove
         // verification_report_block_signer and potential_signers from the polling
         // queue.
-        match self.watcher_db.add_verification_report(
+        match self.watcher_db.add_attestation_evidence(
             tx_src_url,
             &verification_report_block_signer,
             evidence,
@@ -423,7 +423,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
 mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
-    use mc_attest_core::{VerificationReport, VerificationSignature};
+    use mc_attest_core::{EvidenceMessage, VerificationReport, VerificationSignature};
     use mc_blockchain_types::BlockSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -462,7 +462,10 @@ mod tests {
         pub fn report_signer(evidence: &EvidenceKind) -> Ed25519Pair {
             // Convert the report into a 32 bytes hash so that we could construct a
             // consistent key from it.
-            let bytes = mc_util_serial::encode(evidence);
+            let serializable_evidence = EvidenceMessage {
+                evidence: Some(evidence.clone()),
+            };
+            let bytes = mc_util_serial::encode(&serializable_evidence);
             let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"verification_report");
             let priv_key = Ed25519Private::try_from(&hash[..]).unwrap();
             Ed25519Pair::from(priv_key)
@@ -484,10 +487,8 @@ mod tests {
             ))
         }
 
-        fn get_block_signer(
-            verification_report: &VerificationReport,
-        ) -> Result<Ed25519Public, String> {
-            Ok(Self::report_signer(verification_report).public_key())
+        fn get_block_signer(evidence: &EvidenceKind) -> Result<Ed25519Public, String> {
+            Ok(Self::report_signer(evidence).public_key())
         }
     }
 
