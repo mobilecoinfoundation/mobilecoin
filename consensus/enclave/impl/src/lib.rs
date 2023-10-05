@@ -34,7 +34,7 @@ use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Quote, Report, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Quote, Report, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,

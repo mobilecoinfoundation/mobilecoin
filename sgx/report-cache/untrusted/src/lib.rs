@@ -5,8 +5,8 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
-    PibError, ProviderId, QuoteError, QuoteSignType, VerificationReportData,
-    VerifyError, EvidenceKind,
+    EvidenceKind, PibError, ProviderId, QuoteError, QuoteSignType, VerificationReportData,
+    VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_attest_net::{Error as RaError, RaClient};
@@ -185,7 +185,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             report_body.mr_enclave(),
             report_body.mr_signer()
         );
-        Ok(EvidenceKind::Epid(retval))// TODO: replace with dcap
+        Ok(EvidenceKind::Epid(retval)) // TODO: replace with dcap
     }
 
     /// Update the attestation evidence cached within the enclave.

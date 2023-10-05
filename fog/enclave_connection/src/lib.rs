@@ -119,15 +119,15 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         }
 
         let now = SystemTime::now();
-        let epoch_time = now.duration_since(UNIX_EPOCH)
+        let epoch_time = now
+            .duration_since(UNIX_EPOCH)
             .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)
             .map_err(|_| Error::Other("Time out of range".to_owned()))?;
         // Process server response, check if key exchange is successful
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
-        let (initiator, evidence) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 

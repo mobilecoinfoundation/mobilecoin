@@ -12,7 +12,7 @@ pub use mc_fog_ledger_enclave_api::{
 };
 
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, SgxError, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,

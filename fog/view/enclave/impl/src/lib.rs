@@ -15,7 +15,7 @@ use crate::types::get_block_data;
 use alloc::vec::Vec;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,

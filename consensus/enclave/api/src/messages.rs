@@ -7,7 +7,7 @@ use crate::{
     WellFormedEncryptedTx,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{EnclaveReportDataContents, Quote, Report, TargetInfo, EvidenceKind};
+use mc_attest_core::{EnclaveReportDataContents, EvidenceKind, Quote, Report, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,

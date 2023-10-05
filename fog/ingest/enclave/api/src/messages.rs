@@ -2,7 +2,7 @@
 
 //! The message types used by the ingest_enclave_api.
 
-use mc_attest_core::{EnclaveReportDataContents, Quote, Report, TargetInfo, EvidenceKind};
+use mc_attest_core::{EnclaveReportDataContents, EvidenceKind, Quote, Report, TargetInfo};
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_fog_types::ingest::TxsForIngest;
 use serde::{Deserialize, Serialize};

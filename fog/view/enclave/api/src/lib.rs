@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_core::{
-    EnclaveReportDataContents, Quote, Report, SgxError, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, Quote, Report, SgxError, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,

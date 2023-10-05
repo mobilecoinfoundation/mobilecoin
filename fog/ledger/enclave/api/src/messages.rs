@@ -3,7 +3,7 @@
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::{collections::BTreeMap, vec::Vec};
-use mc_attest_core::{EnclaveReportDataContents, Quote, Report, TargetInfo, EvidenceKind};
+use mc_attest_core::{EnclaveReportDataContents, EvidenceKind, Quote, Report, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
     NonceSession, SealedClientMessage,

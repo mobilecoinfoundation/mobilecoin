@@ -13,7 +13,7 @@ pub use mc_fog_ingest_enclave_api::{
 
 use displaydoc::Display;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, SgxError, TargetInfo,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_verifier::DEBUG_ENCLAVE;

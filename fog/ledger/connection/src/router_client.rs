@@ -25,7 +25,10 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::DecodeError;
 use mc_util_uri::{ConnectionUri, UriConversionError};
 use sha2::Sha512;
-use std::{sync::Arc, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 /// A high-level object mediating requests to the fog ledger router service
 pub struct LedgerGrpcClient {
@@ -115,7 +118,8 @@ impl LedgerGrpcClient {
         let auth_response_msg = response.take_auth();
 
         let now = SystemTime::now();
-        let epoch_time = now.duration_since(UNIX_EPOCH)
+        let epoch_time = now
+            .duration_since(UNIX_EPOCH)
             .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)
             .map_err(|_| Error::Other("Time out of range".to_owned()))?;

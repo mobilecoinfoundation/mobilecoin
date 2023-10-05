@@ -13,7 +13,8 @@ pub use mock_consensus_enclave::MockConsensusEnclave;
 
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, EvidenceKind, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -62,7 +63,8 @@ impl ConsensusServiceMockEnclave {
             block_version,
             ..Default::default()
         }));
-        let attestation_evidence = EvidenceKind::Epid(mc_blockchain_test_utils::make_verification_report(csprng));
+        let attestation_evidence =
+            EvidenceKind::Epid(mc_blockchain_test_utils::make_verification_report(csprng));
         let identity = X25519Private::from_random(csprng);
 
         Self {
@@ -208,7 +210,10 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _node_id: &ResponderId,
         _msg: PeerAuthResponse,
     ) -> Result<(PeerSession, EvidenceKind)> {
-        Ok((vec![].into(), EvidenceKind::Epid(VerificationReport::default())))
+        Ok((
+            vec![].into(),
+            EvidenceKind::Epid(VerificationReport::default()),
+        ))
     }
 
     fn peer_close(&self, _msg: &PeerSession) -> Result<()> {

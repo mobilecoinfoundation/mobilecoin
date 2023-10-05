@@ -11,8 +11,8 @@ use mc_attest_ake::{
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
-    ReportData, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Nonce, NonceError, Quote,
+    QuoteNonce, Report, ReportData, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -454,8 +454,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, evidence) =
-            initiator.try_next(&mut csprng, auth_response_input)?;
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_input)?;
 
         let peer_session = PeerSession::from(initiator.binding());
 
@@ -710,14 +709,13 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Verify attestation evidence
-    pub fn verify_attestation_evidence(
-        &self,
-        attestation_evidence: EvidenceKind,
-    ) -> Result<()> {
+    pub fn verify_attestation_evidence(&self, attestation_evidence: EvidenceKind) -> Result<()> {
         // TODO: This needs to be replaced with dcap verification
         let verification_report = match attestation_evidence.clone() {
             EvidenceKind::Epid(report) => report,
-            _ => Err(Error::Decode("Failed to decide VerificationReport".to_owned()))?
+            _ => Err(Error::Decode(
+                "Failed to decide VerificationReport".to_owned(),
+            ))?,
         };
         let verifier = self.get_verifier()?;
 

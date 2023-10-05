@@ -894,7 +894,7 @@ impl<
         // TODO: replace with dcap
         let verification_report = match attestation_evidence {
             EvidenceKind::Epid(verification_report) => verification_report,
-            _ => panic!("Unreachable code")
+            _ => panic!("Unreachable code"),
         };
         let contents = BlockMetadataContents::new(
             block_id.clone(),

@@ -7,9 +7,11 @@ use crate::{
     Start, Terminated, Transition, UnverifiedReport,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{DcapEvidence, EvidenceKind, EvidenceMessage, ReportDataMask, VerificationReport};
-use mc_attestation_verifier::Evidence;
+use mc_attest_core::{
+    DcapEvidence, EvidenceKind, EvidenceMessage, ReportDataMask, VerificationReport,
+};
 use mc_attest_verifier::{DcapVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::Evidence;
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
@@ -126,9 +128,7 @@ where
         .map_err(Error::HandshakeInit)?;
 
         let mut serialized_evidence = Vec::with_capacity(input.attestation_evidence.encoded_len());
-        input
-            .attestation_evidence
-            .encode(&mut serialized_evidence);
+        input.attestation_evidence.encode(&mut serialized_evidence);
 
         parse_handshake_output(
             handshake_state
@@ -163,45 +163,41 @@ where
                 if let Ok(remote_evidence) = EvidenceMessage::decode(output.payload.as_slice()) {
                     match remote_evidence.evidence {
                         Some(EvidenceKind::Dcap(dcap_evidence)) => {
-                            let (quote, collateral, report_data) = match dcap_evidence.clone().try_into() {
-                                Ok(DcapEvidence {
-                                    quote,
-                                    collateral,
-                                    report_data,
-                                }) => (quote, collateral, report_data),
-                                _ => return Err(Error::AttestationEvidenceDeserialization),
-                            };
-                            let verifier = DcapVerifier::new(
-                                input.identities,
-                                input.time,
-                                report_data,
-                            );
+                            let (quote, collateral, report_data) =
+                                match dcap_evidence.clone().try_into() {
+                                    Ok(DcapEvidence {
+                                        quote,
+                                        collateral,
+                                        report_data,
+                                    }) => (quote, collateral, report_data),
+                                    _ => return Err(Error::AttestationEvidenceDeserialization),
+                                };
+                            let verifier =
+                                DcapVerifier::new(input.identities, input.time, report_data);
                             let evidence = Evidence::new(quote.into(), collateral.into())
                                 .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                            let verification_output = verifier.verify(evidence);
+                            let verification_output = verifier.verify(&evidence);
                             match verification_output.is_success().unwrap_u8() {
-                                1 => {
-                                    Ok((
-                                        Ready {
-                                            writer: result.initiator_cipher,
-                                            reader: result.responder_cipher,
-                                            binding: result.channel_binding,
-                                        },
-                                        EvidenceKind::Dcap(dcap_evidence),
-                                    ))
-                                },
+                                1 => Ok((
+                                    Ready {
+                                        writer: result.initiator_cipher,
+                                        reader: result.responder_cipher,
+                                        binding: result.channel_binding,
+                                    },
+                                    EvidenceKind::Dcap(dcap_evidence),
+                                )),
                                 _ => {
-                                    Err(Error::AttestationEvidenceDeserialization)// TODO: How to create VerifyError from this result
+                                    Err(Error::AttestationEvidenceDeserialization)
+                                    // TODO: How to create VerifyError from this
+                                    // result
                                 }
                             }
-                            
                         }
                         _ => Err(Error::AttestationEvidenceDeserialization),
                     }
-                }
-                else {
+                } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
-                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+                        .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
 
                     let identities = input.identities;
                     let mut verifier = Verifier::default();
@@ -230,7 +226,7 @@ where
                             reader: result.responder_cipher,
                             binding: result.channel_binding,
                         },
-                        EvidenceKind::Epid(remote_report)
+                        EvidenceKind::Epid(remote_report),
                     ))
                 }
             }
@@ -262,11 +258,12 @@ where
             HandshakeStatus::Complete(_) => {
                 if let Ok(remote_evidence) = EvidenceMessage::decode(output.payload.as_slice()) {
                     match remote_evidence.evidence {
-                        Some(EvidenceKind::Dcap(dcap_evidence)) => Ok((Terminated, EvidenceKind::Dcap(dcap_evidence))),
+                        Some(EvidenceKind::Dcap(dcap_evidence)) => {
+                            Ok((Terminated, EvidenceKind::Dcap(dcap_evidence)))
+                        }
                         _ => Err(Error::AttestationEvidenceDeserialization),
                     }
-                }
-                else {
+                } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 

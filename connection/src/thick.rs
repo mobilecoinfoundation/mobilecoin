@@ -52,7 +52,8 @@ use std::{
     hash::{Hash, Hasher},
     ops::Range,
     result::Result as StdResult,
-    sync::Arc, time::{SystemTime, UNIX_EPOCH},
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 /// Attestation failures a thick client can generate
@@ -324,14 +325,14 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
             })?;
 
         let now = SystemTime::now();
-        let epoch_time = now.duration_since(UNIX_EPOCH)
+        let epoch_time = now
+            .duration_since(UNIX_EPOCH)
             .map_err(|_| ThickClientAttestationError::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)
             .map_err(|_| ThickClientAttestationError::Other("Time out of range".to_owned()))?;
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
-        let (initiator, evidence) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 

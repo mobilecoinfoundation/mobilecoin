@@ -8,7 +8,7 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use mc_attest_core::{ReportDataMask, EvidenceKind, EvidenceMessage};
+use mc_attest_core::{EvidenceKind, EvidenceMessage, ReportDataMask};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
@@ -158,7 +158,7 @@ where
         //       This code will never run.
         let remote_report = match remote_evidence.evidence {
             Some(EvidenceKind::Epid(verification_report)) => verification_report,
-            _ => Err(Error::AttestationEvidenceDeserialization)?
+            _ => Err(Error::AttestationEvidenceDeserialization)?,
         };
 
         // Verify using given verifier, and ensure the first 32B of the report data are

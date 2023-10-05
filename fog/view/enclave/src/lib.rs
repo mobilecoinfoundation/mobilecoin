@@ -9,7 +9,7 @@ extern crate mc_fog_ocall_oram_storage_untrusted;
 use std::{path, result::Result as StdResult, sync::Arc};
 
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, SgxError, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,

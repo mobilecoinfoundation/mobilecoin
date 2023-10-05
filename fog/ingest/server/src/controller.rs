@@ -1208,8 +1208,9 @@ where
             };
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
-            let found_key =
-                try_extract_unvalidated_ingress_pubkey_from_fog_evidence(&verification_report.clone().into())?;
+            let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
+                &verification_report.clone().into(),
+            )?;
             if &found_key == ingress_public_key {
                 attestation_evidence
             } else {
@@ -1219,14 +1220,16 @@ where
                     "Refreshing enclave report cache after mismatch detected"
                 );
                 self.update_enclave_report_cache()?;
-              
+
                 let evidence = self.enclave.get_attestation_evidence()?;
                 // TODO: replace with dcap
                 let verification_report = match &evidence {
                     EvidenceKind::Epid(verification_report) => verification_report,
                     _ => Err(Error::Serialization)?,
                 };
-                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&verification_report.clone().into())?;
+                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(
+                    &verification_report.clone().into(),
+                )?;
                 if &found_key == ingress_public_key {
                     evidence
                 } else {

@@ -9,7 +9,8 @@ use hyper::{
     Body, Client, Request, Response, Server,
 };
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport, EvidenceKind,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
