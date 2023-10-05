@@ -139,7 +139,7 @@ where
 }
 
 /// AuthPending + AuthResponseInput => Ready + VerificationReport
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, VerificationReport>
+impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, EvidenceKind>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -160,37 +160,44 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
-                let remote_report = VerificationReport::decode(output.payload.as_slice())
-                    .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+                let evidence = if let Ok(dcap_evidence) = prost::DcapEvidence::decode(output.payload.as_slice()) {
+                    // HAck should verify
+                    EvidenceKind::DcapEvidence(dcap_evidence)
+                } else {
+                    let remote_report = VerificationReport::decode(output.payload.as_slice())
+                        .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
 
-                let identities = input.identities;
-                let mut verifier = Verifier::default();
-                verifier.identities(&identities).debug(DEBUG_ENCLAVE);
+                    let identities = input.identities;
+                    let mut verifier = Verifier::default();
+                    verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
-                // We are not returning the report data and instead returning the raw report
-                // since that also includes the signature and certificate chain.
-                // However, we still make sure the report contains valid data
-                // before we continue by calling `.verify`. Callers can then
-                // safely construct a VerificationReportData object out of the
-                // VerificationReport returned.
-                let _report_data = verifier
-                    .report_data(
-                        &result
-                            .remote_identity
-                            .ok_or(Error::MissingRemoteIdentity)?
-                            .map_bytes(|bytes| {
-                                ReportDataMask::try_from(bytes)
-                                    .map_err(|_| Error::BadRemoteIdentity)
-                            })?,
-                    )
-                    .verify(&remote_report)?;
+                    // We are not returning the report data and instead returning the raw report
+                    // since that also includes the signature and certificate chain.
+                    // However, we still make sure the report contains valid data
+                    // before we continue by calling `.verify`. Callers can then
+                    // safely construct a VerificationReportData object out of the
+                    // VerificationReport returned.
+                    let _report_data = verifier
+                        .report_data(
+                            &result
+                                .remote_identity
+                                .ok_or(Error::MissingRemoteIdentity)?
+                                .map_bytes(|bytes| {
+                                    ReportDataMask::try_from(bytes)
+                                        .map_err(|_| Error::BadRemoteIdentity)
+                                })?,
+                        )
+                        .verify(&remote_report)?;
+
+                    EvidenceKind::VerificationReport(remote_report)
+                };
                 Ok((
                     Ready {
                         writer: result.initiator_cipher,
                         reader: result.responder_cipher,
                         binding: result.channel_binding,
                     },
-                    remote_report,
+                    evidence,
                 ))
             }
         }

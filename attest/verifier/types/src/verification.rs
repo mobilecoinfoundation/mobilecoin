@@ -27,10 +27,14 @@ pub struct DcapEvidence {
     pub report_data: EnclaveReportDataContents,
 }
 
-#[derive(Clone, Oneof)]
+#[derive(Oneof,
+Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum EvidenceKind {
     #[prost(message, tag = "4")]
     Dcap(prost::DcapEvidence),
+    #[prost(message, tag = "5")]
+    verification_report(VerificationReport),
 }
 
 #[derive(Clone, Message)]

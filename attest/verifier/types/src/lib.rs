@@ -17,6 +17,6 @@ pub use crate::{
     convert::ConversionError,
     verification::{
         DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
-        VerificationSignature,
+        VerificationSignature, EvidenceKind
     },
 };
