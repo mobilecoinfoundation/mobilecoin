@@ -7,7 +7,7 @@ use aes_gcm::Aes256Gcm;
 use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
 use mc_attest_ake::{AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedReport};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApiClient};
-use mc_attest_core::{VerificationReport, VerificationReportData};
+use mc_attest_core::{EvidenceKind, VerificationReport, VerificationReportData};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -134,10 +134,14 @@ fn verification_report_from_node_url(
         auth_message_from_responder(env, &logger, &node_url, credentials_provider, auth_request)?;
 
     let unverified_report_event = UnverifiedReport::new(auth_response.into());
-    let (_, verification_report) = initiator
+    let (_, attestation_evidence) = initiator
         .try_next(&mut csprng, unverified_report_event)
         .map_err(|err| format!("Failed decoding verification report from {node_url}: {err}"))?;
-
+    // TODO: replace with dcap
+    let verification_report = match attestation_evidence {
+        EvidenceKind::Epid(verification_report) => verification_report,
+        _ => Err("Unreachable code")?,
+    };
     Ok(verification_report)
 }
 
