@@ -2766,6 +2766,7 @@ dependencies = [
  "mc-sgx-dcap-types",
  "mc-util-encodings",
  "mc-util-serial",
+ "mc-util-test-helper",
  "prost",
  "prost-build",
  "serde",
