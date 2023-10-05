@@ -26,7 +26,7 @@ pub use crate::status::{Kind as StatusVerifier, MrEnclaveVerifier, MrSignerVerif
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
         /// The build-time generated mock IAS signing root authority
-        pub const IAS_SIM_ROOT_ANCHOR: &str =include_str!("../data/sim/root_anchor.pem");
+        pub const SIM_ROOT_ANCHOR: &str = include_str!("../data/sim/root_anchor.pem");
         /// The build-time generated mock IAS signing certificate chain
         pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
         /// The build-time generated mock IAS signing private key
@@ -39,18 +39,24 @@ cfg_if::cfg_if! {
 
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = IAS_SIM_ROOT_ANCHOR;
+        /// Root anchor PEM file for use with IAS
+        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = SIM_ROOT_ANCHOR;
+        /// Root anchor PEM file for use with DCAP
+        pub const DCAP_ROOT_ANCHOR: &str = SIM_ROOT_ANCHOR;
     } else if #[cfg(feature = "ias-dev")] {
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        /// Root anchor PEM file for use with IAS
         pub const IAS_SIGNING_ROOT_CERT_PEM: &str = include_str!("../data/Dev_AttestationReportSigningCACert.pem");
+        /// Root anchor PEM file for use with DCAP
+        pub const DCAP_ROOT_ANCHOR: &str = include_str!("../data/DcapRootCACert.pem");
     } else {
         /// Debug enclaves in prod mode are not supported.
         pub const DEBUG_ENCLAVE: bool = false;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        /// Root anchor PEM file for use with IAS
         pub const IAS_SIGNING_ROOT_CERT_PEM: &str = include_str!("../data/AttestationReportSigningCACert.pem");
+        /// Root anchor PEM file for use with DCAP
+        pub const DCAP_ROOT_ANCHOR: &str = include_str!("../data/DcapRootCACert.pem");
     }
 }
 
