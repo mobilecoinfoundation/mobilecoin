@@ -7,7 +7,7 @@ use aes_gcm::Aes256Gcm;
 use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
 use mc_attest_ake::{AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedEvidence};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApiClient};
-use mc_attest_core::{EvidenceKind, VerificationReport, VerificationReportData};
+use mc_attest_core::{EvidenceKind, VerificationReportData};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -355,12 +355,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
                 }
             };
 
-            self.process_evidence(
-                &node_url,
-                &tx_src_url,
-                &potential_signers,
-                &evidence,
-            );
+            self.process_evidence(&node_url, &tx_src_url, &potential_signers, &evidence);
         }
     }
 
@@ -428,7 +423,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
 mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
-    use mc_attest_core::VerificationSignature;
+    use mc_attest_core::{VerificationReport, VerificationSignature};
     use mc_blockchain_types::BlockSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -452,7 +447,7 @@ mod tests {
             report_version_map.clear();
         }
 
-        pub fn current_expected_report(node_url: &ConsensusClientUri) -> VerificationReport {
+        pub fn current_expected_report(node_url: &ConsensusClientUri) -> EvidenceKind {
             let report_version_map = REPORT_VERSION.lock().unwrap();
             let report_version = report_version_map.get(node_url).copied().unwrap_or(1);
 
@@ -461,20 +456,21 @@ mod tests {
                 chain: vec![vec![report_version; 16], vec![3; 32]],
                 http_body: node_url.to_string(),
             }
+            .into()
         }
 
-        pub fn report_signer(verification_report: &VerificationReport) -> Ed25519Pair {
+        pub fn report_signer(evidence: &EvidenceKind) -> Ed25519Pair {
             // Convert the report into a 32 bytes hash so that we could construct a
             // consistent key from it.
-            let bytes = mc_util_serial::encode(verification_report);
+            let bytes = mc_util_serial::encode(evidence);
             let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"verification_report");
             let priv_key = Ed25519Private::try_from(&hash[..]).unwrap();
             Ed25519Pair::from(priv_key)
         }
 
         pub fn current_signer(node_url: &ConsensusClientUri) -> Ed25519Pair {
-            let verification_report = Self::current_expected_report(node_url);
-            Self::report_signer(&verification_report)
+            let evidence = Self::current_expected_report(node_url);
+            Self::report_signer(&evidence)
         }
     }
     impl NodeClient for TestNodeClient {
@@ -482,7 +478,7 @@ mod tests {
             source_config: &SourceConfig,
             _env: Arc<Environment>,
             _logger: Logger,
-        ) -> Result<VerificationReport, String> {
+        ) -> Result<EvidenceKind, String> {
             Ok(Self::current_expected_report(
                 &source_config.consensus_client_url().clone().unwrap(),
             ))

@@ -35,6 +35,12 @@ pub enum EvidenceKind {
     VerificationReport(VerificationReport),
 }
 
+impl From<VerificationReport> for EvidenceKind {
+    fn from(value: VerificationReport) -> Self {
+        Self::VerificationReport(value)
+    }
+}
+
 #[derive(Clone, Message)]
 pub struct EvidenceMessage {
     #[prost(oneof = "EvidenceKind", tags = "4")]
