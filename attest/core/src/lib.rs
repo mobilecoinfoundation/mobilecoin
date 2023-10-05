@@ -40,8 +40,8 @@ pub use crate::{
 };
 
 pub use mc_attest_verifier_types::{
-    DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
-    VerificationSignature, EvidenceKind,
+    DcapEvidence, EnclaveReportDataContents, EvidenceKind, EvidenceMessage, VerificationReport,
+    VerificationSignature,
 };
 
 pub use mc_sgx_core_types::{

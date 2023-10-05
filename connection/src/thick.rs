@@ -321,8 +321,7 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
 
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, evidence) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 
