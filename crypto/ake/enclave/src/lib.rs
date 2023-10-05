@@ -21,6 +21,7 @@ use mc_attest_enclave_api::{
 };
 use mc_attest_trusted::{EnclaveReport, SealAlgo};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier_types::EvidenceKind;
 use mc_attestation_verifier::{TrustedIdentity, TrustedMrEnclaveIdentity};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
@@ -453,8 +454,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, verification_report) =
+        let (initiator, attestation_evidence) =
             initiator.try_next(&mut csprng, auth_response_input)?;
+
+        let EvidenceKind::VerificationReport(verification_report) = attestation_evidence else {
+            return Err(Error::Decode("Evidence wasn't a `VerificationReport`".to_string()));
+        };
 
         let peer_session = PeerSession::from(initiator.binding());
 

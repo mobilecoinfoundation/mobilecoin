@@ -16,7 +16,7 @@ mod verification;
 pub use crate::{
     convert::ConversionError,
     verification::{
-        DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
-        VerificationSignature, EvidenceKind
+        DcapEvidence, EnclaveReportDataContents, EvidenceKind, EvidenceMessage, VerificationReport,
+        VerificationSignature,
     },
 };

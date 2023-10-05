@@ -41,7 +41,7 @@ pub use crate::{
 
 pub use mc_attest_verifier_types::{
     DcapEvidence, EnclaveReportDataContents, EvidenceMessage, VerificationReport,
-    VerificationSignature,
+    VerificationSignature, EvidenceKind,
 };
 
 pub use mc_sgx_core_types::{
