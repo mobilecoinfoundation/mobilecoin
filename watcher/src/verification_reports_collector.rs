@@ -7,7 +7,7 @@ use aes_gcm::Aes256Gcm;
 use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
 use mc_attest_ake::{AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedEvidence};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApiClient};
-use mc_attest_core::{VerificationReport, VerificationReportData};
+use mc_attest_core::{EvidenceKind, VerificationReport, VerificationReportData};
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -40,25 +40,25 @@ use url::Url;
 /// associated signer key.
 pub trait NodeClient {
     /// Get a verification report for a given client.
-    fn get_verification_report(
+    fn get_attestation_evidence(
         source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
-    ) -> Result<VerificationReport, String>;
+    ) -> Result<EvidenceKind, String>;
 
-    /// Get the block signer key out of a VerificationReport
-    fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String>;
+    /// Get the block signer key out of an attestation evidence
+    fn get_block_signer(evidence: &EvidenceKind) -> Result<Ed25519Public, String>;
 }
 
 /// An implementation of `NodeClient` that talks to a consensus node using
 /// `ThickClient`.
 pub struct ConsensusNodeClient;
 impl NodeClient for ConsensusNodeClient {
-    fn get_verification_report(
+    fn get_attestation_evidence(
         source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
-    ) -> Result<VerificationReport, String> {
+    ) -> Result<EvidenceKind, String> {
         let node_url = source_config
             .consensus_client_url()
             .clone()
@@ -80,27 +80,32 @@ impl NodeClient for ConsensusNodeClient {
         verification_report_from_node_url(env, logger, node_url, credentials_provider)
     }
 
-    /// Get the block signer key out of a VerificationReport
-    fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String> {
-        let report_data = VerificationReportData::try_from(verification_report)
-            .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
+    /// Get the block signer key out of an attestation evidence
+    fn get_block_signer(evidence: &EvidenceKind) -> Result<Ed25519Public, String> {
+        let signer_bytes = match evidence {
+            EvidenceKind::VerificationReport(report) => {
+                let report_data = VerificationReportData::try_from(report)
+                    .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
 
-        let report_body = report_data
-            .quote
-            .report_body()
-            .map_err(|err| format!("Failed getting report body: {err}"))?;
+                let report_body = report_data
+                    .quote
+                    .report_body()
+                    .map_err(|err| format!("Failed getting report body: {err}"))?;
 
-        let custom_data = report_body.report_data();
-        let custom_data_bytes: &[u8] = custom_data.as_ref();
+                let custom_data = report_body.report_data();
+                let custom_data_bytes: &[u8] = custom_data.as_ref();
 
-        if custom_data_bytes.len() != 64 {
-            return Err(format!(
-                "Unspected report data length: expected 64, got {}",
-                custom_data_bytes.len()
-            ));
-        }
+                if custom_data_bytes.len() != 64 {
+                    return Err(format!(
+                        "Unspected report data length: expected 64, got {}",
+                        custom_data_bytes.len()
+                    ));
+                }
 
-        let signer_bytes = &custom_data_bytes[32..];
+                &custom_data_bytes[32..]
+            }
+            _ => Err("Unexpected evidence kind".to_owned()),
+        };
 
         let signer_public_key = Ed25519Public::try_from(signer_bytes)
             .map_err(|err| format!("Unable to construct key: {err}"))?;
@@ -114,7 +119,7 @@ fn verification_report_from_node_url(
     logger: Logger,
     node_url: ConsensusClientUri,
     credentials_provider: AnyCredentialsProvider,
-) -> Result<VerificationReport, String> {
+) -> Result<EvidenceKind, String> {
     trace_time!(logger, "verification_report_from_node_url");
     let mut csprng = McRng::default();
 
@@ -134,11 +139,11 @@ fn verification_report_from_node_url(
         auth_message_from_responder(env, &logger, &node_url, credentials_provider, auth_request)?;
 
     let unverified_report_event = UnverifiedEvidence::new(auth_response.into());
-    let (_, verification_report) = initiator
+    let (_, evidence) = initiator
         .try_next(&mut csprng, unverified_report_event)
         .map_err(|err| format!("Failed decoding verification report from {node_url}: {err}"))?;
 
-    Ok(verification_report)
+    Ok(evidence)
 }
 
 fn auth_message_from_responder(
@@ -333,16 +338,16 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
             let node_url = source_config.consensus_client_url().clone().unwrap();
 
             // Contact node and get a VerificationReport.
-            let verification_report = match NC::get_verification_report(
+            let evidence = match NC::get_attestation_evidence(
                 source_config,
                 self.grpcio_env.clone(),
                 self.logger.clone(),
             ) {
-                Ok(report) => report,
+                Ok(evidence) => evidence,
                 Err(err) => {
                     log::error!(
                         self.logger,
-                        "Failed getting report for {}: {}",
+                        "Failed getting attestation evidence for {}: {}",
                         node_url,
                         err
                     );
@@ -350,23 +355,23 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
                 }
             };
 
-            self.process_report(
+            self.process_evidence(
                 &node_url,
                 &tx_src_url,
                 &potential_signers,
-                &verification_report,
+                &evidence,
             );
         }
     }
 
-    fn process_report(
+    fn process_evidence(
         &self,
         node_url: &ConsensusClientUri,
         tx_src_url: &Url,
         potential_signers: &[Ed25519Public],
-        verification_report: &VerificationReport,
+        evidence: &EvidenceKind,
     ) {
-        let verification_report_block_signer = match NC::get_block_signer(verification_report) {
+        let verification_report_block_signer = match NC::get_block_signer(evidence) {
             Ok(key) => {
                 // TODO: Add encode to key's Display impl
                 log::info!(
@@ -394,7 +399,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
         match self.watcher_db.add_verification_report(
             tx_src_url,
             &verification_report_block_signer,
-            verification_report,
+            evidence,
             potential_signers,
         ) {
             Ok(()) => {
@@ -473,7 +478,7 @@ mod tests {
         }
     }
     impl NodeClient for TestNodeClient {
-        fn get_verification_report(
+        fn get_attestation_evidence(
             source_config: &SourceConfig,
             _env: Arc<Environment>,
             _logger: Logger,

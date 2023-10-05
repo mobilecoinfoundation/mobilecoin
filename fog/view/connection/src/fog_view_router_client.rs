@@ -9,7 +9,7 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AttestAkeError, Ready, Start, Transition,
 };
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceKind;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::X25519;
@@ -87,7 +87,7 @@ impl FogViewRouterGrpcClient {
         self.attest_cipher.is_some()
     }
 
-    async fn attest(&mut self) -> Result<VerificationReport, Error> {
+    async fn attest(&mut self) -> Result<EvidenceKind, Error> {
         // If we have an existing attestation, nuke it.
         self.deattest();
 
@@ -115,12 +115,11 @@ impl FogViewRouterGrpcClient {
         // Process server response, check if key exchange is successful
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(evidence)
     }
 
     fn deattest(&mut self) {

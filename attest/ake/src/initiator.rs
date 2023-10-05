@@ -10,7 +10,7 @@ use ::prost::Message;
 use alloc::vec::Vec;
 use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
-use mc_attest_verifier_types::{prost, EvidenceKind};
+use mc_attest_verifier_types::prost;
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
