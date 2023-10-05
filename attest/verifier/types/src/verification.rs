@@ -41,6 +41,12 @@ impl From<VerificationReport> for EvidenceKind {
     }
 }
 
+impl From<prost::DcapEvidence> for EvidenceKind {
+    fn from(value: prost::DcapEvidence) -> Self {
+        Self::Dcap(value)
+    }
+}
+
 #[derive(Clone, Message)]
 pub struct EvidenceMessage {
     #[prost(oneof = "EvidenceKind", tags = "4")]
