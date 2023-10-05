@@ -190,7 +190,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> AttestedConnection
             .peer_connect(&self.remote_responder_id(), res.into())?;
         self.channel_id = Some(peer_session);
 
-        Ok(EvidenceKind::VerificationReport(verification_report))
+        Ok(verification_report.into())
     }
 
     fn deattest(&mut self) {

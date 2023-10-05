@@ -165,7 +165,7 @@ where
                     prost::DcapEvidence::decode(output.payload.as_slice())
                 {
                     // HAck should verify
-                    EvidenceKind::Dcap(dcap_evidence)
+                    dcap_evidence.into()
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
@@ -192,7 +192,7 @@ where
                         )
                         .verify(&remote_report)?;
 
-                    EvidenceKind::VerificationReport(remote_report)
+                    remote_report.into()
                 };
                 Ok((
                     Ready {
@@ -232,11 +232,11 @@ where
                 let evidence = if let Ok(dcap_evidence) =
                     prost::DcapEvidence::decode(output.payload.as_slice())
                 {
-                    EvidenceKind::Dcap(dcap_evidence)
+                    dcap_evidence.into()
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
-                    EvidenceKind::VerificationReport(remote_report)
+                    remote_report.into()
                 };
 
                 Ok((Terminated, evidence))
