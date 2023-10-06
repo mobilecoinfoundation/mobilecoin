@@ -10,5 +10,5 @@ rust-version = { workspace = true }
 
 [dependencies]
 hex = { version = "0.4", default-features = false }
-itertools = "0.10"
+itertools = "0.11"
 mc-sgx-css = { path = "../../sgx/css" }
