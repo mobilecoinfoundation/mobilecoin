@@ -33,14 +33,6 @@ pub enum EvidenceKind {
     Dcap(prost::DcapEvidence),
 }
 
-// We default to `EvidenceKind::Epid` as that was the original kind of
-// `VerificationReport`.
-impl Default for EvidenceKind {
-    fn default() -> Self {
-        EvidenceKind::Epid(Default::default())
-    }
-}
-
 impl From<VerificationReport> for EvidenceKind {
     fn from(report: VerificationReport) -> Self {
         EvidenceKind::Epid(report)
@@ -53,82 +45,50 @@ impl From<prost::DcapEvidence> for EvidenceKind {
     }
 }
 
-// The first tag for a `VerificationReport`, this needs to match that defined
-// in `VerificationReport`.
-const TAG_VERIFICATION_REPORT_FIRST: u32 = 1;
-
-// The last tag for a `VerificationReport`, this needs to match that defined
-// in `VerificationReport`.
-const TAG_VERIFICATION_REPORT_LAST: u32 = 3;
-
-// The tag to indicate a `DcapEvidence` variant. For backwards compatibility
-// this must be outside the range of tags used by `VerificationReport`.
-const TAG_DCAP_EVIDENCE: u32 = 4;
-
-/// In order to make `EvidenceKind` backwards compatible with the previous
-/// logic which would send `VerificationReport`'s, the protobuf tags that
-/// correspond to tags defined in `VerificationReport` will decode to the
-/// `EvidenceKind::Epid()` variant. Tags outside of a `VerificationReport`'s
-/// will be treated as other variants.
-impl Message for EvidenceKind {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
+impl EvidenceKind {
+    /// Convert [`EvidenceKind`] into a byte stream.
+    ///
+    /// This is for backwards compatibility for places that used to stream
+    /// `VerificationReport` directly.
+    /// This should not be used for new code. Prefer using serde or protobufs
+    /// for newer implementations.
+    pub fn into_bytes(&self) -> Vec<u8> {
         match self {
             EvidenceKind::Dcap(evidence) => {
-                encoding::message::encode(TAG_DCAP_EVIDENCE, evidence, buf);
-            }
-            EvidenceKind::Epid(report) => {
-                report.encode_raw(buf);
-            }
-        }
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        match tag {
-            TAG_VERIFICATION_REPORT_FIRST..=TAG_VERIFICATION_REPORT_LAST => {
-                let mut report = match self {
-                    EvidenceKind::Epid(report) => report.clone(),
-                    _ => Default::default(),
+                let decoder = DcapEvidenceDecoder {
+                    dcap: Some(evidence.clone()),
                 };
-                report.merge_field(tag, wire_type, buf, ctx)?;
-                *self = EvidenceKind::Epid(report);
-                Ok(())
+                decoder.encode_to_vec()
             }
-            TAG_DCAP_EVIDENCE => {
-                let mut evidence = prost::DcapEvidence::default();
-                encoding::message::merge(wire_type, &mut evidence, buf, ctx).map(|_| {
-                    *self = EvidenceKind::Dcap(evidence);
-                })
-            }
-            _ => encoding::skip_field(wire_type, tag, buf, ctx),
+            EvidenceKind::Epid(report) => report.encode_to_vec(),
         }
     }
 
-    fn encoded_len(&self) -> usize {
-        match self {
-            EvidenceKind::Dcap(evidence) => {
-                encoding::message::encoded_len(TAG_DCAP_EVIDENCE, evidence)
-            }
-            EvidenceKind::Epid(report) => report.encoded_len(),
+    /// Convert a byte stream into [`EvidenceKind`].
+    ///
+    /// This is for backwards compatibility for places that used to stream
+    /// `VerificationReport` directly.
+    /// This should not be used for new code. Prefer using serde or protobufs
+    /// for newer implementations.
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, DecodeError> {
+        let bytes = bytes.as_ref();
+        let dcap_evidence = DcapEvidenceDecoder::decode(bytes)?;
+        if let Some(dcap_evidence) = dcap_evidence.dcap {
+            return Ok(EvidenceKind::Dcap(dcap_evidence));
         }
+        let report = VerificationReport::decode(bytes)?;
+        Ok(EvidenceKind::Epid(report))
     }
+}
 
-    fn clear(&mut self) {
-        *self = Default::default();
-    }
+// A local only struct to make it nest a `prost::DcapEvidence` behind a tag.
+// This allows `DcapEvidence` to be used in prior locations where
+// `VerificationReport` was used. The tag is `4` to avoid collisions with the
+// `VerificationReport` tags.
+#[derive(Message)]
+struct DcapEvidenceDecoder {
+    #[prost(message, tag = 4)]
+    pub dcap: Option<prost::DcapEvidence>,
 }
 
 /// Container for holding the quote verification sent back from IAS.
@@ -376,18 +336,6 @@ mod tests {
     }
 
     #[test]
-    fn empty_evidence_kind_decodes_to_verification_report() {
-        let empty_evidence_kind = EvidenceKind::default();
-        let bytes = empty_evidence_kind.encode_to_vec();
-        let decoded_evidence_kind =
-            EvidenceKind::decode(bytes.as_slice()).expect("Failed to decode empty evidence kind");
-        assert_eq!(
-            EvidenceKind::Epid(Default::default()),
-            decoded_evidence_kind
-        );
-    }
-
-    #[test]
     fn evidence_kind_to_from_verification_report() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let string_length = rng.gen_range(1..=100);
@@ -403,14 +351,14 @@ mod tests {
 
             // For backwards compatibility `EvidenceKind` should decode directly
             // from a `VerificationReport` byte stream
-            let evidence =
-                EvidenceKind::decode(bytes.as_slice()).expect("Failed to decode to EvidenceKind");
+            let evidence = EvidenceKind::from_bytes(bytes.as_slice())
+                .expect("Failed to decode to EvidenceKind");
             assert_eq!(EvidenceKind::Epid(report.clone()), evidence);
 
             // For backwards compatibility the encoding of `EvidenceKind` when
             // it's a `VerificationReport` should be able to decode to a
             // `VerificationReport`.
-            let evidence_bytes = evidence.encode_to_vec();
+            let evidence_bytes = evidence.into_bytes();
             let decoded_report = VerificationReport::decode(evidence_bytes.as_slice())
                 .expect("Failed to decode to VerificationReport");
             assert_eq!(report, decoded_report);
@@ -441,10 +389,10 @@ mod tests {
 
         let evidence_kind = EvidenceKind::Dcap(dcap_evidence);
 
-        let bytes = evidence_kind.encode_to_vec();
+        let bytes = evidence_kind.into_bytes();
 
         let decoded_evidence_kind =
-            EvidenceKind::decode(bytes.as_slice()).expect("Failed to decode to EvidenceKind");
+            EvidenceKind::from_bytes(bytes).expect("Failed to decode to EvidenceKind");
         assert_eq!(evidence_kind, decoded_evidence_kind);
     }
 }
