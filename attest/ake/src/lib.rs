@@ -24,7 +24,7 @@ pub use crate::{
     event::{
         AuthRequestOutput, AuthResponseInput, AuthResponseOutput, Ciphertext,
         ClientAuthRequestInput, ClientInitiate, NodeAuthRequestInput, NodeInitiate, Plaintext,
-        UnverifiedReport,
+        UnverifiedAttestationEvidence,
     },
     mealy::Transition,
     state::{AuthPending, Ready, Start, Terminated},

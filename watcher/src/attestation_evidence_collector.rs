@@ -1,11 +1,13 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Worker thread for collecting verification reports from nodes.
+//! Worker thread for collecting attestation evidence from nodes.
 
 use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use aes_gcm::Aes256Gcm;
 use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
-use mc_attest_ake::{AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedReport};
+use mc_attest_ake::{
+    AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedAttestationEvidence,
+};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApiClient};
 use mc_attest_core::{VerificationReport, VerificationReportData};
 use mc_common::{
@@ -35,26 +37,27 @@ use std::{
 };
 use url::Url;
 
-/// A trait that specifies the functionality VerificationReportsCollector needs
+/// A trait that specifies the functionality AttestationEvidenceCollector needs
 /// in order to go from a ConsensusClientUri into a VerificationReport, and the
 /// associated signer key.
 pub trait NodeClient {
-    /// Get a verification report for a given client.
-    fn get_verification_report(
+    /// Get attestation evidence for a given client.
+    fn get_attestation_evidence(
         source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<VerificationReport, String>;
 
     /// Get the block signer key out of a VerificationReport
-    fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String>;
+    fn get_block_signer(attestation_evidence: &VerificationReport)
+        -> Result<Ed25519Public, String>;
 }
 
 /// An implementation of `NodeClient` that talks to a consensus node using
 /// `ThickClient`.
 pub struct ConsensusNodeClient;
 impl NodeClient for ConsensusNodeClient {
-    fn get_verification_report(
+    fn get_attestation_evidence(
         source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
@@ -77,12 +80,14 @@ impl NodeClient for ConsensusNodeClient {
                 AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
             };
 
-        verification_report_from_node_url(env, logger, node_url, credentials_provider)
+        attestation_evidence_from_node_url(env, logger, node_url, credentials_provider)
     }
 
-    /// Get the block signer key out of a VerificationReport
-    fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String> {
-        let report_data = VerificationReportData::try_from(verification_report)
+    /// Get the block signer key from the attestation evidence.
+    fn get_block_signer(
+        attestation_evidence: &VerificationReport,
+    ) -> Result<Ed25519Public, String> {
+        let report_data = VerificationReportData::try_from(attestation_evidence)
             .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
 
         let report_body = report_data
@@ -109,13 +114,13 @@ impl NodeClient for ConsensusNodeClient {
     }
 }
 
-fn verification_report_from_node_url(
+fn attestation_evidence_from_node_url(
     env: Arc<Environment>,
     logger: Logger,
     node_url: ConsensusClientUri,
     credentials_provider: AnyCredentialsProvider,
 ) -> Result<VerificationReport, String> {
-    trace_time!(logger, "verification_report_from_node_url");
+    trace_time!(logger, "attestation_evidence_from_node_url");
     let mut csprng = McRng::default();
 
     let initiator = Start::new(
@@ -133,12 +138,12 @@ fn verification_report_from_node_url(
     let auth_response =
         auth_message_from_responder(env, &logger, &node_url, credentials_provider, auth_request)?;
 
-    let unverified_report_event = UnverifiedReport::new(auth_response.into());
-    let (_, verification_report) = initiator
-        .try_next(&mut csprng, unverified_report_event)
-        .map_err(|err| format!("Failed decoding verification report from {node_url}: {err}"))?;
+    let unverified_evidence_event = UnverifiedAttestationEvidence::new(auth_response.into());
+    let (_, attestation_evidence) = initiator
+        .try_next(&mut csprng, unverified_evidence_event)
+        .map_err(|err| format!("Failed decoding attestation evidence from {node_url}: {err}"))?;
 
-    Ok(verification_report)
+    Ok(attestation_evidence)
 }
 
 fn auth_message_from_responder(
@@ -178,16 +183,16 @@ fn auth_message_from_responder(
     Ok(response)
 }
 
-/// Periodically checks the verification report poll queue in the database and
-/// attempts to contact nodes and get their verification report.
-pub struct VerificationReportsCollector<NC: NodeClient = ConsensusNodeClient> {
+/// Periodically checks the attestation evidence poll queue in the database and
+/// attempts to contact nodes and get their attestation evidence.
+pub struct AttestationEvidenceCollector<NC: NodeClient = ConsensusNodeClient> {
     join_handle: Option<thread::JoinHandle<()>>,
     stop_requested: Arc<AtomicBool>,
     _nc: PhantomData<NC>,
 }
 
-impl<NC: NodeClient> VerificationReportsCollector<NC> {
-    /// Create a new verification reports collector thread.
+impl<NC: NodeClient> AttestationEvidenceCollector<NC> {
+    /// Create a new attestation evidence collector thread.
     pub fn new(
         watcher_db: WatcherDB,
         sources: Vec<SourceConfig>,
@@ -199,9 +204,9 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
         let thread_stop_requested = stop_requested.clone();
         let join_handle = Some(
             thread::Builder::new()
-                .name("VerificationReportsCollector".into())
+                .name("AttestationEvidenceCollector".into())
                 .spawn(move || {
-                    let thread = VerificationReportsCollectorThread::<NC>::new(
+                    let thread = AttestationEvidenceCollectorThread::<NC>::new(
                         watcher_db,
                         sources,
                         poll_interval,
@@ -211,7 +216,7 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
 
                     thread.entrypoint();
                 })
-                .expect("Failed spawning VerificationReportsCollector thread"),
+                .expect("Failed spawning AttestationEvidenceCollector thread"),
         );
 
         Self {
@@ -230,13 +235,13 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
     }
 }
 
-impl<NC: NodeClient> Drop for VerificationReportsCollector<NC> {
+impl<NC: NodeClient> Drop for AttestationEvidenceCollector<NC> {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
-struct VerificationReportsCollectorThread<NC: NodeClient> {
+struct AttestationEvidenceCollectorThread<NC: NodeClient> {
     watcher_db: WatcherDB,
     sources: Vec<SourceConfig>,
     poll_interval: Duration,
@@ -246,7 +251,7 @@ struct VerificationReportsCollectorThread<NC: NodeClient> {
     _nc: PhantomData<NC>,
 }
 
-impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
+impl<NC: NodeClient> AttestationEvidenceCollectorThread<NC> {
     pub fn new(
         watcher_db: WatcherDB,
         sources: Vec<SourceConfig>,
@@ -272,23 +277,23 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
     }
 
     pub fn entrypoint(self) {
-        log::info!(self.logger, "VerificationReportsCollectorThread starting");
+        log::info!(self.logger, "AttestationEvidenceCollectorThread starting");
         loop {
             if self.stop_requested.load(Ordering::SeqCst) {
                 log::debug!(
                     self.logger,
-                    "VerificationReportsCollectorThread stop requested."
+                    "AttestationEvidenceCollectorThread stop requested."
                 );
                 break;
             }
 
             // See whats currently in the queue.
-            match self.watcher_db.get_verification_report_poll_queue() {
+            match self.watcher_db.get_attestation_evidence_poll_queue() {
                 Ok(queue) => self.process_queue(queue),
                 Err(err) => {
                     log::error!(
                         self.logger,
-                        "Failed getting verification report queue: {}",
+                        "Failed getting attestation evidence queue: {}",
                         err
                     );
                 }
@@ -332,17 +337,16 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
             }
             let node_url = source_config.consensus_client_url().clone().unwrap();
 
-            // Contact node and get a VerificationReport.
-            let verification_report = match NC::get_verification_report(
+            let attestation_evidence = match NC::get_attestation_evidence(
                 source_config,
                 self.grpcio_env.clone(),
                 self.logger.clone(),
             ) {
-                Ok(report) => report,
+                Ok(evidence) => evidence,
                 Err(err) => {
                     log::error!(
                         self.logger,
-                        "Failed getting report for {}: {}",
+                        "Failed getting attestation evidence for {}: {}",
                         node_url,
                         err
                     );
@@ -350,23 +354,23 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
                 }
             };
 
-            self.process_report(
+            self.process_attestation_evidence(
                 &node_url,
                 &tx_src_url,
                 &potential_signers,
-                &verification_report,
+                &attestation_evidence,
             );
         }
     }
 
-    fn process_report(
+    fn process_attestation_evidence(
         &self,
         node_url: &ConsensusClientUri,
         tx_src_url: &Url,
         potential_signers: &[Ed25519Public],
-        verification_report: &VerificationReport,
+        attestation_evidence: &VerificationReport,
     ) {
-        let verification_report_block_signer = match NC::get_block_signer(verification_report) {
+        let block_signer = match NC::get_block_signer(attestation_evidence) {
             Ok(key) => {
                 // TODO: Add encode to key's Display impl
                 log::info!(
@@ -388,30 +392,30 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
             }
         };
 
-        // Store the VerificationReport in the database, and also remove
-        // verification_report_block_signer and potential_signers from the polling
+        // Store the attestation evidence in the database, and also remove
+        // block_signer and potential_signers from the polling
         // queue.
-        match self.watcher_db.add_verification_report(
+        match self.watcher_db.add_attestation_evidence(
             tx_src_url,
-            &verification_report_block_signer,
-            verification_report,
+            &block_signer,
+            attestation_evidence,
             potential_signers,
         ) {
             Ok(()) => {
                 log::info!(
                     self.logger,
-                    "Captured report for {}: block signer is {}",
+                    "Captured attestation evidence for {}: block signer is {}",
                     tx_src_url,
-                    hex::encode(verification_report_block_signer.to_bytes())
+                    hex::encode(block_signer.to_bytes())
                 );
             }
             Err(err) => {
                 log::error!(
                     self.logger,
-                    "Failed writing verification report to database: {} (src_url:{} verification_report_block_signer:{} potential_signers:{:?}",
+                    "Failed writing attestation evidence to database: {} (src_url:{} block_signer:{} potential_signers:{:?}",
                     err,
                     tx_src_url,
-                    hex::encode(verification_report_block_signer.to_bytes()),
+                    hex::encode(block_signer.to_bytes()),
                     potential_signers.iter().map(|key| hex::encode(key.to_bytes())).collect::<Vec<_>>(),
                 );
             }
@@ -447,7 +451,9 @@ mod tests {
             report_version_map.clear();
         }
 
-        pub fn current_expected_report(node_url: &ConsensusClientUri) -> VerificationReport {
+        pub fn current_expected_attestation_evidence(
+            node_url: &ConsensusClientUri,
+        ) -> VerificationReport {
             let report_version_map = REPORT_VERSION.lock().unwrap();
             let report_version = report_version_map.get(node_url).copied().unwrap_or(1);
 
@@ -458,35 +464,37 @@ mod tests {
             }
         }
 
-        pub fn report_signer(verification_report: &VerificationReport) -> Ed25519Pair {
+        pub fn attestation_evidence_signer(
+            attestation_evidence: &VerificationReport,
+        ) -> Ed25519Pair {
             // Convert the report into a 32 bytes hash so that we could construct a
             // consistent key from it.
-            let bytes = mc_util_serial::encode(verification_report);
-            let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"verification_report");
+            let bytes = mc_util_serial::encode(attestation_evidence);
+            let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"attestation_evidence");
             let priv_key = Ed25519Private::try_from(&hash[..]).unwrap();
             Ed25519Pair::from(priv_key)
         }
 
         pub fn current_signer(node_url: &ConsensusClientUri) -> Ed25519Pair {
-            let verification_report = Self::current_expected_report(node_url);
-            Self::report_signer(&verification_report)
+            let attestation_evidence = Self::current_expected_attestation_evidence(node_url);
+            Self::attestation_evidence_signer(&attestation_evidence)
         }
     }
     impl NodeClient for TestNodeClient {
-        fn get_verification_report(
+        fn get_attestation_evidence(
             source_config: &SourceConfig,
             _env: Arc<Environment>,
             _logger: Logger,
         ) -> Result<VerificationReport, String> {
-            Ok(Self::current_expected_report(
+            Ok(Self::current_expected_attestation_evidence(
                 &source_config.consensus_client_url().clone().unwrap(),
             ))
         }
 
         fn get_block_signer(
-            verification_report: &VerificationReport,
+            attestation_evidence: &VerificationReport,
         ) -> Result<Ed25519Public, String> {
-            Ok(Self::report_signer(verification_report).public_key())
+            Ok(Self::attestation_evidence_signer(attestation_evidence).public_key())
         }
     }
 
@@ -517,7 +525,7 @@ mod tests {
             // Node 3 is omitted on purpose to ensure it gets no data.
         ];
 
-        let _verification_reports_collector = VerificationReportsCollector::<TestNodeClient>::new(
+        let _attestation_evidence_collector = AttestationEvidenceCollector::<TestNodeClient>::new(
             watcher_db.clone(),
             sources,
             Duration::from_millis(100),
@@ -550,19 +558,19 @@ mod tests {
         // No data should be available for any of the signers.
         assert_eq!(
             watcher_db
-                .get_verification_reports_for_signer(&signer1.public_key())
+                .attestation_evidence_for_signer(&signer1.public_key())
                 .unwrap(),
             HashMap::default()
         );
         assert_eq!(
             watcher_db
-                .get_verification_reports_for_signer(&signer2.public_key())
+                .attestation_evidence_for_signer(&signer2.public_key())
                 .unwrap(),
             HashMap::default()
         );
         assert_eq!(
             watcher_db
-                .get_verification_reports_for_signer(&signer3.public_key())
+                .attestation_evidence_for_signer(&signer3.public_key())
                 .unwrap(),
             HashMap::default()
         );
@@ -578,11 +586,13 @@ mod tests {
         let mut tries = 30;
         let expected_reports = HashMap::from_iter(vec![(
             tx_src_url1.clone(),
-            vec![Some(TestNodeClient::current_expected_report(&node1_url))],
+            vec![Some(TestNodeClient::current_expected_attestation_evidence(
+                &node1_url,
+            ))],
         )]);
         loop {
             let reports = watcher_db
-                .get_verification_reports_for_signer(&signer1.public_key())
+                .attestation_evidence_for_signer(&signer1.public_key())
                 .unwrap();
             if reports == expected_reports {
                 break;
@@ -606,15 +616,17 @@ mod tests {
         let mut tries = 30;
         let expected_reports_signer1 = HashMap::from_iter(vec![(
             tx_src_url1.clone(),
-            vec![Some(TestNodeClient::current_expected_report(&node1_url))],
+            vec![Some(TestNodeClient::current_expected_attestation_evidence(
+                &node1_url,
+            ))],
         )]);
         let expected_reports_signer2 = HashMap::from_iter(vec![(tx_src_url1.clone(), vec![None])]);
         loop {
             let reports_1 = watcher_db
-                .get_verification_reports_for_signer(&signer1.public_key())
+                .attestation_evidence_for_signer(&signer1.public_key())
                 .unwrap();
             let reports_2 = watcher_db
-                .get_verification_reports_for_signer(&signer2.public_key())
+                .attestation_evidence_for_signer(&signer2.public_key())
                 .unwrap();
             if reports_1 == expected_reports_signer1 && reports_2 == expected_reports_signer2 {
                 break;
@@ -653,14 +665,16 @@ mod tests {
         let mut tries = 30;
         let expected_reports_updated_signer1 = HashMap::from_iter(vec![(
             tx_src_url1.clone(),
-            vec![Some(TestNodeClient::current_expected_report(&node1_url))],
+            vec![Some(TestNodeClient::current_expected_attestation_evidence(
+                &node1_url,
+            ))],
         )]);
         loop {
             let signer1_reports = watcher_db
-                .get_verification_reports_for_signer(&signer1.public_key())
+                .attestation_evidence_for_signer(&signer1.public_key())
                 .unwrap();
             let updated_signer1_reports = watcher_db
-                .get_verification_reports_for_signer(&updated_signer1.public_key())
+                .attestation_evidence_for_signer(&updated_signer1.public_key())
                 .unwrap();
             if signer1_reports == expected_reports_signer1
                 && updated_signer1_reports == expected_reports_updated_signer1
@@ -694,17 +708,19 @@ mod tests {
             (tx_src_url1, vec![None]),
             (
                 tx_src_url2,
-                vec![Some(TestNodeClient::current_expected_report(&node2_url))],
+                vec![Some(TestNodeClient::current_expected_attestation_evidence(
+                    &node2_url,
+                ))],
             ),
         ]);
         let expected_reports_signer3 = HashMap::default();
         loop {
             let reports_signer2 = watcher_db
-                .get_verification_reports_for_signer(&signer2.public_key())
+                .attestation_evidence_for_signer(&signer2.public_key())
                 .unwrap();
 
             let reports_signer3 = watcher_db
-                .get_verification_reports_for_signer(&signer3.public_key())
+                .attestation_evidence_for_signer(&signer3.public_key())
                 .unwrap();
 
             if expected_reports_signer2 == reports_signer2

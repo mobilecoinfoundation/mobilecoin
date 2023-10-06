@@ -4,7 +4,7 @@
 
 use crate::{
     AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
-    Start, Terminated, Transition, UnverifiedReport,
+    Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
 use alloc::vec::Vec;
 use mc_attest_core::{ReportDataMask, VerificationReport};
@@ -198,7 +198,8 @@ where
 }
 
 /// AuthPending + UnverifiedReport => Terminated + VerificationReport
-impl<KexAlgo, Cipher, DigestAlgo> Transition<Terminated, UnverifiedReport, VerificationReport>
+impl<KexAlgo, Cipher, DigestAlgo>
+    Transition<Terminated, UnverifiedAttestationEvidence, VerificationReport>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
@@ -210,7 +211,7 @@ where
     fn try_next<R: CryptoRng + RngCore>(
         self,
         _csprng: &mut R,
-        input: UnverifiedReport,
+        input: UnverifiedAttestationEvidence,
     ) -> Result<(Terminated, VerificationReport), Self::Error> {
         let output = self
             .state
