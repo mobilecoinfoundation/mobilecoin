@@ -911,7 +911,7 @@ dependencies = [
  "clap 4.3.19",
  "criterion-plot",
  "is-terminal",
- "itertools",
+ "itertools 0.10.5",
  "num-traits",
  "once_cell",
  "oorandom",
@@ -932,7 +932,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
 dependencies = [
  "cast",
- "itertools",
+ "itertools 0.10.5",
 ]
 
 [[package]]
@@ -2228,6 +2228,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -3890,7 +3899,7 @@ dependencies = [
  "futures",
  "grpcio",
  "hex",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "mc-api",
  "mc-attest-api",
@@ -4110,7 +4119,7 @@ dependencies = [
  "displaydoc",
  "futures",
  "grpcio",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "mc-account-keys",
  "mc-api",
@@ -4806,7 +4815,7 @@ name = "mc-fog-view-enclave-impl"
 version = "5.0.8"
 dependencies = [
  "aligned-cmov",
- "itertools",
+ "itertools 0.11.0",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
@@ -6243,7 +6252,7 @@ name = "mc-util-parse"
 version = "5.0.8"
 dependencies = [
  "hex",
- "itertools",
+ "itertools 0.11.0",
  "mc-sgx-css",
 ]
 
@@ -6299,7 +6308,7 @@ name = "mc-util-test-helper"
 version = "5.0.8"
 dependencies = [
  "clap 4.3.19",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
@@ -7080,7 +7089,7 @@ checksum = "59230a63c37f3e18569bdb90e4a89cbf5bf8b06fea0b84e65ea10cc4df47addd"
 dependencies = [
  "difflib",
  "float-cmp",
- "itertools",
+ "itertools 0.10.5",
  "normalize-line-endings",
  "predicates-core",
  "regex",
@@ -7095,7 +7104,7 @@ dependencies = [
  "anstyle",
  "difflib",
  "float-cmp",
- "itertools",
+ "itertools 0.10.5",
  "normalize-line-endings",
  "predicates-core",
  "regex",
@@ -7245,7 +7254,7 @@ checksum = "8bdf592881d821b83d471f8af290226c8d51402259e9bb5be7f9f8bdebbb11ac"
 dependencies = [
  "bytes 1.1.0",
  "heck",
- "itertools",
+ "itertools 0.11.0",
  "log",
  "multimap",
  "once_cell",
@@ -7266,7 +7275,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "265baba7fabd416cf5078179f7d2cbeca4ce7a9041111900675ea7c4cb8a4c32"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "syn 2.0.28",
