@@ -4,7 +4,7 @@
 
 use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
 
-use mc_blockchain_types::{BlockData, BlockIndex, BlockSignature, VerificationReport};
+use mc_blockchain_types::{BlockData, BlockIndex, BlockSignature};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -21,6 +21,7 @@ use lmdb::{
     Cursor, Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction,
     WriteFlags,
 };
+use mc_attest_core::EvidenceKind;
 use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
     path::Path,
@@ -659,7 +660,7 @@ impl WatcherDB {
         &self,
         src_url: &Url,
         block_signer: &Ed25519Public,
-        attestation_evidence: &VerificationReport,
+        attestation_evidence: &EvidenceKind,
         potential_block_signers: &[Ed25519Public],
     ) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
@@ -712,14 +713,14 @@ impl WatcherDB {
         db_txn: &mut RwTransaction<'_>,
         src_url: &Url,
         signer: &Ed25519Public,
-        attestation_evidence: Option<&VerificationReport>,
+        attestation_evidence: Option<&EvidenceKind>,
     ) -> Result<(), WatcherDBError> {
         let mut key_bytes = signer.to_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
         let value_bytes = attestation_evidence
-            .map(mc_util_serial::encode)
-            .unwrap_or_else(Vec::new);
+            .map(|e| e.into_bytes())
+            .unwrap_or_default();
 
         log::trace!(
             self.logger,
@@ -776,12 +777,12 @@ impl WatcherDB {
         &self,
         db_txn: &impl Transaction,
         hash: &[u8],
-    ) -> Result<Option<VerificationReport>, WatcherDBError> {
+    ) -> Result<Option<EvidenceKind>, WatcherDBError> {
         let value_bytes = db_txn.get(self.attestation_evidence_by_hash, &hash)?;
         Ok(if value_bytes.is_empty() {
             None
         } else {
-            Some(mc_util_serial::decode(value_bytes)?)
+            Some(EvidenceKind::from_bytes(value_bytes)?)
         })
     }
 
@@ -801,7 +802,7 @@ impl WatcherDB {
     pub fn attestation_evidence_for_signer(
         &self,
         block_signer: &Ed25519Public,
-    ) -> Result<HashMap<Url, Vec<Option<VerificationReport>>>, WatcherDBError> {
+    ) -> Result<HashMap<Url, Vec<Option<EvidenceKind>>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         let mut cursor = db_txn.open_ro_cursor(self.attestation_evidence_by_signer)?;
         let signer_key_bytes = block_signer.to_bytes().to_vec();
@@ -854,7 +855,7 @@ impl WatcherDB {
         &self,
         block_signer: &Ed25519Public,
         src_url: &Url,
-    ) -> Result<Vec<Option<VerificationReport>>, WatcherDBError> {
+    ) -> Result<Vec<Option<EvidenceKind>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
 
         let mut key_bytes = block_signer.to_bytes().to_vec();
@@ -1088,8 +1089,9 @@ fn bytes_to_url(bytes: &[u8]) -> Result<Url, WatcherDBError> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use mc_attest_verifier_types::prost;
     use mc_blockchain_test_utils::get_blocks;
-    use mc_blockchain_types::BlockVersion;
+    use mc_blockchain_types::{BlockVersion, VerificationReport};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
     use mc_util_from_random::FromRandom;
@@ -1351,7 +1353,7 @@ pub mod tests {
                         .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
-                            &verification_report_a,
+                            &verification_report_a.clone().into(),
                             &[signing_key_b],
                         )
                         .unwrap();
@@ -1362,7 +1364,7 @@ pub mod tests {
                             .unwrap(),
                         HashMap::from_iter([(
                             url1.clone(),
-                            vec![Some(verification_report_a.clone())]
+                            vec![Some(verification_report_a.clone().into())]
                         )])
                     );
 
@@ -1384,7 +1386,7 @@ pub mod tests {
                         watcher_db
                             .attestation_evidence_for_signer_and_url(&signing_key_a, &url1)
                             .unwrap(),
-                        [Some(verification_report_a.clone())],
+                        [Some(verification_report_a.clone().into())],
                     );
 
                     assert_eq!(
@@ -1423,7 +1425,7 @@ pub mod tests {
                         .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
-                            &verification_report_b,
+                            &verification_report_b.clone().into(),
                             &[signing_key_b],
                         )
                         .unwrap();
@@ -1436,8 +1438,8 @@ pub mod tests {
                             url1.clone(),
                             // Note order is hash dependent
                             vec![
-                                Some(verification_report_b.clone()),
-                                Some(verification_report_a.clone())
+                                Some(verification_report_b.clone().into()),
+                                Some(verification_report_a.clone().into())
                             ]
                         )])
                     );
@@ -1462,8 +1464,8 @@ pub mod tests {
                             .unwrap(),
                         // Note order is hash dependent
                         [
-                            Some(verification_report_b.clone()),
-                            Some(verification_report_a.clone())
+                            Some(verification_report_b.clone().into()),
+                            Some(verification_report_a.clone().into())
                         ]
                     );
 
@@ -1491,7 +1493,7 @@ pub mod tests {
             }
 
             // While this should never happen in the real world, test that the database
-            // supports adding the same verification report to two different
+            // supports adding the same attestation evidence to two different
             // URLs.
             {
                 let watcher_db = setup_watcher_db(&urls, logger.clone());
@@ -1503,7 +1505,7 @@ pub mod tests {
                         .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
-                            &verification_report_a,
+                            &verification_report_a.clone().into(),
                             &[signing_key_b],
                         )
                         .unwrap();
@@ -1512,7 +1514,7 @@ pub mod tests {
                         .add_attestation_evidence(
                             &url2,
                             &signing_key_a,
-                            &verification_report_a,
+                            &verification_report_a.clone().into(),
                             &[signing_key_b],
                         )
                         .unwrap();
@@ -1522,8 +1524,14 @@ pub mod tests {
                             .attestation_evidence_for_signer(&signing_key_a)
                             .unwrap(),
                         HashMap::from_iter([
-                            (url1.clone(), vec![Some(verification_report_a.clone())]),
-                            (url2.clone(), vec![Some(verification_report_a.clone())]),
+                            (
+                                url1.clone(),
+                                vec![Some(verification_report_a.clone().into())]
+                            ),
+                            (
+                                url2.clone(),
+                                vec![Some(verification_report_a.clone().into())]
+                            ),
                         ])
                     );
 
@@ -1548,14 +1556,14 @@ pub mod tests {
                         watcher_db
                             .attestation_evidence_for_signer_and_url(&signing_key_a, &url1)
                             .unwrap(),
-                        [Some(verification_report_a.clone())]
+                        [Some(verification_report_a.clone().into())]
                     );
 
                     assert_eq!(
                         watcher_db
                             .attestation_evidence_for_signer_and_url(&signing_key_a, &url2)
                             .unwrap(),
-                        [Some(verification_report_a.clone())]
+                        [Some(verification_report_a.clone().into())]
                     );
 
                     assert_eq!(
@@ -1567,8 +1575,8 @@ pub mod tests {
                 }
             }
 
-            // Add a None attestation evidence and then add an actual verification report to
-            // some key.
+            // Add a None attestation evidence and then add an actual attestation evidence
+            // to some key.
             {
                 let watcher_db = setup_watcher_db(&urls, logger.clone());
 
@@ -1578,7 +1586,7 @@ pub mod tests {
                         .add_attestation_evidence(
                             &url1,
                             &signing_key_a,
-                            &verification_report_a,
+                            &verification_report_a.clone().into(),
                             &[signing_key_b],
                         )
                         .unwrap();
@@ -1588,7 +1596,7 @@ pub mod tests {
                         .add_attestation_evidence(
                             &url1,
                             &signing_key_b,
-                            &verification_report_b,
+                            &verification_report_b.clone().into(),
                             &[signing_key_c],
                         )
                         .unwrap();
@@ -1599,7 +1607,7 @@ pub mod tests {
                             .unwrap(),
                         HashMap::from_iter([(
                             url1.clone(),
-                            vec![Some(verification_report_a.clone())]
+                            vec![Some(verification_report_a.clone().into())]
                         ),])
                     );
 
@@ -1609,7 +1617,7 @@ pub mod tests {
                             .unwrap(),
                         HashMap::from_iter([(
                             url1.clone(),
-                            vec![Some(verification_report_b.clone()), None]
+                            vec![Some(verification_report_b.clone().into()), None]
                         ),])
                     );
 
@@ -1731,7 +1739,7 @@ pub mod tests {
                 .add_attestation_evidence(
                     &url1,
                     &signing_key_c.public_key(),
-                    &verification_report_a,
+                    &verification_report_a.clone().into(),
                     &[],
                 )
                 .unwrap();
@@ -1753,7 +1761,7 @@ pub mod tests {
                 .add_attestation_evidence(
                     &url2,
                     &signing_key_b.public_key(),
-                    &verification_report_a,
+                    &verification_report_a.clone().into(),
                     &[],
                 )
                 .unwrap();
@@ -1804,7 +1812,7 @@ pub mod tests {
                 .add_attestation_evidence(
                     &url2,
                     &signing_key_b.public_key(),
-                    &verification_report_a,
+                    &verification_report_a.clone().into(),
                     &[signing_key_a.public_key()],
                 )
                 .unwrap();
@@ -1824,7 +1832,7 @@ pub mod tests {
                 .add_attestation_evidence(
                     &url1,
                     &signing_key_b.public_key(),
-                    &verification_report_a,
+                    &verification_report_a.into(),
                     &[signing_key_a.public_key()],
                 )
                 .unwrap();
@@ -1885,7 +1893,7 @@ pub mod tests {
                 .add_attestation_evidence(
                     &url1,
                     block_data.signature().unwrap().signer(),
-                    &verification_report_a,
+                    &verification_report_a.clone().into(),
                     &[],
                 )
                 .unwrap();
@@ -1894,7 +1902,7 @@ pub mod tests {
                 .add_attestation_evidence(
                     &url2,
                     block_data.signature().unwrap().signer(),
-                    &verification_report_a,
+                    &verification_report_a.clone().into(),
                     &[],
                 )
                 .unwrap();
@@ -1929,8 +1937,14 @@ pub mod tests {
             assert_eq!(
                 verification_reports,
                 HashMap::from_iter(vec![
-                    (url1.clone(), vec![Some(verification_report_a.clone())]),
-                    (url2.clone(), vec![Some(verification_report_a.clone())]),
+                    (
+                        url1.clone(),
+                        vec![Some(verification_report_a.clone().into())]
+                    ),
+                    (
+                        url2.clone(),
+                        vec![Some(verification_report_a.clone().into())]
+                    ),
                 ])
             );
         }
@@ -1973,7 +1987,7 @@ pub mod tests {
                 verification_reports,
                 HashMap::from_iter(vec![(
                     url2.clone(),
-                    vec![Some(verification_report_a.clone())]
+                    vec![Some(verification_report_a.clone().into())]
                 ),])
             );
         }
@@ -1986,5 +2000,58 @@ pub mod tests {
                 (url2, Some(blocks_data.last().unwrap().block().index)),
             ])
         );
+    }
+
+    #[test_with_logger]
+    fn reading_and_writing_different_attestation_evidence_variants(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let urls = [url1.clone()];
+
+            let signing_key_a = Ed25519Pair::from_random(&mut rng).public_key();
+
+            let verification_report = VerificationReport {
+                sig: vec![1u8; 32].into(),
+                chain: vec![vec![2; 16], vec![3; 32]],
+                http_body: "test body a".to_owned(),
+            };
+
+            let report_data = prost::EnclaveReportDataContents {
+                nonce: vec![5u8; 16],
+                key: vec![6u8; 32],
+                custom_identity: vec![7u8; 32],
+            };
+
+            let dcap_evidence = prost::DcapEvidence {
+                quote: None,
+                collateral: None,
+                report_data: Some(report_data),
+            };
+
+            let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+            watcher_db
+                .add_attestation_evidence(
+                    &url1,
+                    &signing_key_a,
+                    &verification_report.clone().into(),
+                    &[],
+                )
+                .unwrap();
+
+            watcher_db
+                .add_attestation_evidence(&url1, &signing_key_a, &dcap_evidence.clone().into(), &[])
+                .unwrap();
+
+            assert_eq!(
+                watcher_db
+                    .attestation_evidence_for_signer(&signing_key_a)
+                    .unwrap(),
+                HashMap::from_iter([(
+                    url1,
+                    vec![Some(verification_report.into()), Some(dcap_evidence.into())]
+                )])
+            );
+        })
     }
 }
