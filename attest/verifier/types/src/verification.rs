@@ -6,7 +6,7 @@ use crate::prost;
 use ::prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
-    DecodeError, Message, Oneof,
+    DecodeError, Message,
 };
 use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
@@ -27,16 +27,68 @@ pub struct DcapEvidence {
     pub report_data: EnclaveReportDataContents,
 }
 
-#[derive(Clone, Oneof)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum EvidenceKind {
-    #[prost(message, tag = "4")]
+    Epid(VerificationReport),
     Dcap(prost::DcapEvidence),
 }
 
-#[derive(Clone, Message)]
-pub struct EvidenceMessage {
-    #[prost(oneof = "EvidenceKind", tags = "4")]
-    pub evidence: Option<EvidenceKind>,
+impl From<VerificationReport> for EvidenceKind {
+    fn from(report: VerificationReport) -> Self {
+        EvidenceKind::Epid(report)
+    }
+}
+
+impl From<prost::DcapEvidence> for EvidenceKind {
+    fn from(evidence: prost::DcapEvidence) -> Self {
+        EvidenceKind::Dcap(evidence)
+    }
+}
+
+impl EvidenceKind {
+    /// Convert [`EvidenceKind`] into a byte stream.
+    ///
+    /// This is for backwards compatibility for places that used to stream
+    /// `VerificationReport` directly.
+    /// This should not be used for new code. Prefer using serde or protobufs
+    /// for newer implementations.
+    pub fn into_bytes(&self) -> Vec<u8> {
+        match self {
+            EvidenceKind::Dcap(evidence) => {
+                let decoder = DcapEvidenceDecoder {
+                    dcap: Some(evidence.clone()),
+                };
+                decoder.encode_to_vec()
+            }
+            EvidenceKind::Epid(report) => report.encode_to_vec(),
+        }
+    }
+
+    /// Convert a byte stream into [`EvidenceKind`].
+    ///
+    /// This is for backwards compatibility for places that used to stream
+    /// `VerificationReport` directly.
+    /// This should not be used for new code. Prefer using serde or protobufs
+    /// for newer implementations.
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, DecodeError> {
+        let bytes = bytes.as_ref();
+        let dcap_evidence = DcapEvidenceDecoder::decode(bytes)?;
+        if let Some(dcap_evidence) = dcap_evidence.dcap {
+            return Ok(EvidenceKind::Dcap(dcap_evidence));
+        }
+        let report = VerificationReport::decode(bytes)?;
+        Ok(EvidenceKind::Epid(report))
+    }
+}
+
+// A local only struct to make it nest a `prost::DcapEvidence` behind a tag.
+// This allows `DcapEvidence` to be used in prior locations where
+// `VerificationReport` was used. The tag is `4` to avoid collisions with the
+// `VerificationReport` tags.
+#[derive(Message)]
+struct DcapEvidenceDecoder {
+    #[prost(message, tag = 4)]
+    pub dcap: Option<prost::DcapEvidence>,
 }
 
 /// Container for holding the quote verification sent back from IAS.
@@ -242,6 +294,9 @@ impl EnclaveReportDataContents {
 mod tests {
     use super::*;
     use alloc::{format, vec};
+    use mc_attest_untrusted::DcapQuotingEnclave;
+    use mc_sgx_core_types::Report;
+    use mc_util_test_helper::Rng;
 
     #[test]
     fn test_signature_debug() {
@@ -278,5 +333,66 @@ mod tests {
             report_data_without_custom_id.sha256(),
             report_data_with_zeroed_custom_id.sha256()
         );
+    }
+
+    #[test]
+    fn evidence_kind_to_from_verification_report() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let string_length = rng.gen_range(1..=100);
+            let chain_len = rng.gen_range(2..42);
+            let report = VerificationReport {
+                sig: mc_util_test_helper::random_bytes_vec(32, &mut rng).into(),
+                chain: (1..=chain_len)
+                    .map(|n| mc_util_test_helper::random_bytes_vec(n as usize, &mut rng))
+                    .collect(),
+                http_body: mc_util_test_helper::random_str(string_length, &mut rng),
+            };
+            let bytes = report.encode_to_vec();
+
+            // For backwards compatibility `EvidenceKind` should decode directly
+            // from a `VerificationReport` byte stream
+            let evidence = EvidenceKind::from_bytes(bytes.as_slice())
+                .expect("Failed to decode to EvidenceKind");
+            assert_eq!(EvidenceKind::Epid(report.clone()), evidence);
+
+            // For backwards compatibility the encoding of `EvidenceKind` when
+            // it's a `VerificationReport` should be able to decode to a
+            // `VerificationReport`.
+            let evidence_bytes = evidence.into_bytes();
+            let decoded_report = VerificationReport::decode(evidence_bytes.as_slice())
+                .expect("Failed to decode to VerificationReport");
+            assert_eq!(report, decoded_report);
+        })
+    }
+
+    #[test]
+    fn evidence_kind_dcap_encode_and_decode() {
+        let report_data = EnclaveReportDataContents::new(
+            [0x20u8; 16].into(),
+            [0x63u8; 32].as_slice().try_into().expect("bad key"),
+            [0xAEu8; 32],
+        );
+        let mut report = Report::default();
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
+
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        let dcap_evidence = prost::DcapEvidence {
+            quote: Some((&quote).into()),
+            collateral: Some(
+                (&collateral)
+                    .try_into()
+                    .expect("Failed to convert collateral"),
+            ),
+            report_data: Some((&report_data).into()),
+        };
+
+        let evidence_kind = EvidenceKind::Dcap(dcap_evidence);
+
+        let bytes = evidence_kind.into_bytes();
+
+        let decoded_evidence_kind =
+            EvidenceKind::from_bytes(bytes).expect("Failed to decode to EvidenceKind");
+        assert_eq!(evidence_kind, decoded_evidence_kind);
     }
 }
