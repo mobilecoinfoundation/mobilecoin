@@ -78,7 +78,7 @@ impl Message for EvidenceKind {
     {
         match self {
             EvidenceKind::Dcap(evidence) => {
-                encoding::message::encode(4, evidence, buf);
+                encoding::message::encode(TAG_DCAP_EVIDENCE, evidence, buf);
             }
             EvidenceKind::Epid(report) => {
                 report.encode_raw(buf);
