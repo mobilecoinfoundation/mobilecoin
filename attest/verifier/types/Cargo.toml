@@ -28,6 +28,7 @@ x509-cert = { version = "0.2.3", default-features = false, features = ["pem"] }
 [dev-dependencies]
 assert_matches = "1.5.0"
 mc-attest-untrusted = { path = "../../untrusted", default-features = false }
+mc-util-test-helper = { path = "../../../util/test-helper" }
 
 [build-dependencies]
 prost-build = "0.12"
