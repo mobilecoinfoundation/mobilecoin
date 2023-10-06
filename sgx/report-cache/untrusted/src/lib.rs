@@ -213,7 +213,12 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                     VerifierError::Verification(_),
                 )),
             ) => {
-                let report_data = VerificationReportData::try_from(&attestation_evidence)?;
+                // TODO: replace with dcap
+                let verification_report = match &attestation_evidence {
+                    EvidenceKind::Epid(verification_report) => verification_report,
+                    _ => Err(Error::Verify(VerifyError::Unknown))?,
+                };
+                let report_data = VerificationReportData::try_from(verification_report)?;
                 if let Some(platform_info_blob) = report_data.platform_info_blob.as_ref() {
                     // IAS gave us a PIB
                     log::debug!(

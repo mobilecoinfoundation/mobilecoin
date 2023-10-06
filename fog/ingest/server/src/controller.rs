@@ -1227,7 +1227,7 @@ where
                     EvidenceKind::Epid(verification_report) => verification_report,
                     _ => Err(Error::Serialization)?,
                 };
-                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(
+                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
                     &verification_report.clone().into(),
                 )?;
                 if &found_key == ingress_public_key {

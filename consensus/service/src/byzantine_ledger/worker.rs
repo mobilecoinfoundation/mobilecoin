@@ -1620,7 +1620,12 @@ mod tests {
             broadcast,
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
-        let report = enclave.get_attestation_evidence().unwrap();
+        let attestation_evidence = enclave.get_attestation_evidence().unwrap();
+        // TODO: replace with dcap
+        let report = match attestation_evidence {
+            EvidenceKind::Epid(verification_report) => verification_report,
+            _ => panic!("Unreachable code"),
+        };
 
         let tx_manager = TxManagerImpl::new(
             enclave.clone(),
