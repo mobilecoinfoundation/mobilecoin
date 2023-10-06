@@ -8,7 +8,7 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use mc_attest_core::{EvidenceKind, EvidenceMessage, ReportDataMask};
+use mc_attest_core::{EvidenceKind, ReportDataMask};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
@@ -151,7 +151,7 @@ where
         verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
         // Parse the received attestation evidence
-        let remote_evidence = EvidenceMessage::decode(payload.as_slice())
+        let remote_evidence = EvidenceKind::decode(payload.as_slice())
             .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
         // TODO: This will be replaced with dcap evidence serialization.

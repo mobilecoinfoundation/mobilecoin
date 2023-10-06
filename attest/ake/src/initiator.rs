@@ -7,9 +7,7 @@ use crate::{
     Start, Terminated, Transition, UnverifiedReport,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{
-    DcapEvidence, EvidenceKind, EvidenceMessage, ReportDataMask, VerificationReport,
-};
+use mc_attest_core::{DcapEvidence, EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_attestation_verifier::Evidence;
 use mc_crypto_keys::{Kex, ReprBytes};
@@ -160,9 +158,9 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
-                if let Ok(remote_evidence) = EvidenceMessage::decode(output.payload.as_slice()) {
+                if let Ok(remote_evidence) = EvidenceKind::decode(output.payload.as_slice()) {
                     match remote_evidence.evidence {
-                        Some(EvidenceKind::Dcap(dcap_evidence)) => {
+                        EvidenceKind::Dcap(dcap_evidence) => {
                             let (quote, collateral, report_data) = match (&dcap_evidence).try_into()
                             {
                                 Ok(DcapEvidence {
@@ -256,9 +254,9 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                if let Ok(remote_evidence) = EvidenceMessage::decode(output.payload.as_slice()) {
+                if let Ok(remote_evidence) = EvidenceKind::decode(output.payload.as_slice()) {
                     match remote_evidence.evidence {
-                        Some(EvidenceKind::Dcap(dcap_evidence)) => {
+                        EvidenceKind::Dcap(dcap_evidence) => {
                             Ok((Terminated, EvidenceKind::Dcap(dcap_evidence)))
                         }
                         _ => Err(Error::AttestationEvidenceDeserialization),
