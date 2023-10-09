@@ -9,7 +9,8 @@ use mc_attest_ake::{
     AuthRequestOutput, ClientInitiate, Start, Transition, UnverifiedAttestationEvidence,
 };
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApiClient};
-use mc_attest_core::{VerificationReport, VerificationReportData};
+use mc_attest_core::{EvidenceKind, VerificationReport, VerificationReportData};
+use mc_attest_verifier_types::prost;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
@@ -38,7 +39,7 @@ use std::{
 use url::Url;
 
 /// A trait that specifies the functionality AttestationEvidenceCollector needs
-/// in order to go from a ConsensusClientUri into a VerificationReport, and the
+/// in order to go from a ConsensusClientUri into a EvidenceKind, and the
 /// associated signer key.
 pub trait NodeClient {
     /// Get attestation evidence for a given client.
@@ -46,11 +47,10 @@ pub trait NodeClient {
         source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
-    ) -> Result<VerificationReport, String>;
+    ) -> Result<EvidenceKind, String>;
 
-    /// Get the block signer key out of a VerificationReport
-    fn get_block_signer(attestation_evidence: &VerificationReport)
-        -> Result<Ed25519Public, String>;
+    /// Get the block signer key out of a EvidenceKind
+    fn get_block_signer(attestation_evidence: &EvidenceKind) -> Result<Ed25519Public, String>;
 }
 
 /// An implementation of `NodeClient` that talks to a consensus node using
@@ -61,7 +61,7 @@ impl NodeClient for ConsensusNodeClient {
         source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
-    ) -> Result<VerificationReport, String> {
+    ) -> Result<EvidenceKind, String> {
         let node_url = source_config
             .consensus_client_url()
             .clone()
@@ -84,34 +84,56 @@ impl NodeClient for ConsensusNodeClient {
     }
 
     /// Get the block signer key from the attestation evidence.
-    fn get_block_signer(
-        attestation_evidence: &VerificationReport,
-    ) -> Result<Ed25519Public, String> {
-        let report_data = VerificationReportData::try_from(attestation_evidence)
-            .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
-
-        let report_body = report_data
-            .quote
-            .report_body()
-            .map_err(|err| format!("Failed getting report body: {err}"))?;
-
-        let custom_data = report_body.report_data();
-        let custom_data_bytes: &[u8] = custom_data.as_ref();
-
-        if custom_data_bytes.len() != 64 {
-            return Err(format!(
-                "Unspected report data length: expected 64, got {}",
-                custom_data_bytes.len()
-            ));
+    fn get_block_signer(attestation_evidence: &EvidenceKind) -> Result<Ed25519Public, String> {
+        match attestation_evidence {
+            EvidenceKind::Epid(report) => get_block_signer_from_verification_report(report),
+            EvidenceKind::Dcap(evidence) => get_block_signer_from_dcap_evidence(evidence),
         }
-
-        let signer_bytes = &custom_data_bytes[32..];
-
-        let signer_public_key = Ed25519Public::try_from(signer_bytes)
-            .map_err(|err| format!("Unable to construct key: {err}"))?;
-
-        Ok(signer_public_key)
     }
+}
+
+fn get_block_signer_from_verification_report(
+    verification_report: &VerificationReport,
+) -> Result<Ed25519Public, String> {
+    let report_data = VerificationReportData::try_from(verification_report)
+        .map_err(|err| format!("Failed constructing VerificationReportData: {err}"))?;
+
+    let report_body = report_data
+        .quote
+        .report_body()
+        .map_err(|err| format!("Failed getting report body: {err}"))?;
+
+    let custom_data = report_body.report_data();
+    let custom_data_bytes: &[u8] = custom_data.as_ref();
+
+    if custom_data_bytes.len() != 64 {
+        return Err(format!(
+            "Unspected report data length: expected 64, got {}",
+            custom_data_bytes.len()
+        ));
+    }
+
+    let signer_bytes = &custom_data_bytes[32..];
+
+    let signer_public_key = Ed25519Public::try_from(signer_bytes)
+        .map_err(|err| format!("Unable to construct key: {err}"))?;
+
+    Ok(signer_public_key)
+}
+
+/// Get the block signer key from a [`prost::DcapEvidence`].
+pub fn get_block_signer_from_dcap_evidence(
+    dcap_evidence: &prost::DcapEvidence,
+) -> Result<Ed25519Public, String> {
+    let report_data = dcap_evidence.report_data.as_ref().ok_or_else(|| {
+        format!("Failed getting report data from dcap evidence: {dcap_evidence:?}")
+    })?;
+
+    let signer_bytes = report_data.custom_identity.as_slice();
+    let signer_public_key = Ed25519Public::try_from(signer_bytes)
+        .map_err(|err| format!("Unable to construct key: {err}"))?;
+
+    Ok(signer_public_key)
 }
 
 fn attestation_evidence_from_node_url(
@@ -119,7 +141,7 @@ fn attestation_evidence_from_node_url(
     logger: Logger,
     node_url: ConsensusClientUri,
     credentials_provider: AnyCredentialsProvider,
-) -> Result<VerificationReport, String> {
+) -> Result<EvidenceKind, String> {
     trace_time!(logger, "attestation_evidence_from_node_url");
     let mut csprng = McRng::default();
 
@@ -143,7 +165,7 @@ fn attestation_evidence_from_node_url(
         .try_next(&mut csprng, unverified_evidence_event)
         .map_err(|err| format!("Failed decoding attestation evidence from {node_url}: {err}"))?;
 
-    Ok(attestation_evidence)
+    Ok(attestation_evidence.into())
 }
 
 fn auth_message_from_responder(
@@ -368,16 +390,13 @@ impl<NC: NodeClient> AttestationEvidenceCollectorThread<NC> {
         node_url: &ConsensusClientUri,
         tx_src_url: &Url,
         potential_signers: &[Ed25519Public],
-        attestation_evidence: &VerificationReport,
+        attestation_evidence: &EvidenceKind,
     ) {
         let block_signer = match NC::get_block_signer(attestation_evidence) {
             Ok(key) => {
-                // TODO: Add encode to key's Display impl
                 log::info!(
                     self.logger,
-                    "Verification report from {} has block signer {}",
-                    node_url,
-                    hex::encode(key.to_bytes())
+                    "Verification report from {node_url} has block signer {key}",
                 );
                 key
             }
@@ -428,6 +447,7 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_attest_core::VerificationSignature;
+    use mc_attest_verifier_types::prost;
     use mc_blockchain_types::BlockSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -435,7 +455,9 @@ mod tests {
     use serial_test::serial;
     use std::{str::FromStr, sync::Mutex, thread::sleep};
 
-    // A contraption that allows us to return a specific VerificationReport for a
+    const IAS_OK: &str = include_str!("../../api/tests/data/ias_ok.json");
+
+    // A contraption that allows us to return a specific EvidenceKind for a
     // given ConsensusClientUri while also allowing the tests to control it.
     // Due to the global scope of this, mandated by the NodeClient trait, the tests
     // have to run in serial.
@@ -453,7 +475,7 @@ mod tests {
 
         pub fn current_expected_attestation_evidence(
             node_url: &ConsensusClientUri,
-        ) -> VerificationReport {
+        ) -> EvidenceKind {
             let report_version_map = REPORT_VERSION.lock().unwrap();
             let report_version = report_version_map.get(node_url).copied().unwrap_or(1);
 
@@ -462,14 +484,13 @@ mod tests {
                 chain: vec![vec![report_version; 16], vec![3; 32]],
                 http_body: node_url.to_string(),
             }
+            .into()
         }
 
-        pub fn attestation_evidence_signer(
-            attestation_evidence: &VerificationReport,
-        ) -> Ed25519Pair {
+        pub fn attestation_evidence_signer(attestation_evidence: &EvidenceKind) -> Ed25519Pair {
             // Convert the report into a 32 bytes hash so that we could construct a
             // consistent key from it.
-            let bytes = mc_util_serial::encode(attestation_evidence);
+            let bytes = attestation_evidence.into_bytes();
             let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"attestation_evidence");
             let priv_key = Ed25519Private::try_from(&hash[..]).unwrap();
             Ed25519Pair::from(priv_key)
@@ -485,15 +506,13 @@ mod tests {
             source_config: &SourceConfig,
             _env: Arc<Environment>,
             _logger: Logger,
-        ) -> Result<VerificationReport, String> {
+        ) -> Result<EvidenceKind, String> {
             Ok(Self::current_expected_attestation_evidence(
                 &source_config.consensus_client_url().clone().unwrap(),
             ))
         }
 
-        fn get_block_signer(
-            attestation_evidence: &VerificationReport,
-        ) -> Result<Ed25519Public, String> {
+        fn get_block_signer(attestation_evidence: &EvidenceKind) -> Result<Ed25519Public, String> {
             Ok(Self::attestation_evidence_signer(attestation_evidence).public_key())
         }
     }
@@ -576,7 +595,7 @@ mod tests {
         );
 
         // Add a block signature for signer1, this should get the background thread to
-        // get the VerificationReport from node1 and put it into the database.
+        // get the EvidenceKind from node1 and put it into the database.
         let signed_block_a1 =
             BlockSignature::from_block_and_keypair(blocks[0].block(), &signer1).unwrap();
         watcher_db
@@ -737,5 +756,55 @@ mod tests {
             tries -= 1;
             sleep(Duration::from_millis(100));
         }
+    }
+
+    #[test]
+    fn consensus_node_block_signer_from_dcap_evidence() {
+        // For DCAP evidence the signer key is the custom_identity.
+        let report_data = prost::EnclaveReportDataContents {
+            nonce: vec![1; 16],
+            key: vec![2; 32],
+            custom_identity: vec![0x7B; 32],
+        };
+
+        let dcap_evidence = prost::DcapEvidence {
+            quote: None,
+            collateral: None,
+            report_data: Some(report_data.clone()),
+        };
+
+        let dcap_evidence_signer = ConsensusNodeClient::get_block_signer(&dcap_evidence.into())
+            .expect("Failed to get the block signer from the dcap evidence");
+
+        let signer_bytes: &[u8] = dcap_evidence_signer.as_ref();
+
+        assert_eq!(signer_bytes, report_data.custom_identity.as_slice());
+    }
+
+    #[test]
+    fn consensus_node_block_signer_from_verification_report() {
+        let verification_report = VerificationReport {
+            sig: VerificationSignature::from(vec![1; 32]),
+            chain: vec![vec![1; 16], vec![3; 32]],
+            http_body: IAS_OK.trim().to_string(),
+        };
+
+        // For the legacy verification report the signer key is in the quote's
+        // report_data. The first 32 bytes are the kex key, the last 32 bytes
+        // are the signer key.
+        let report_data = VerificationReportData::try_from(&verification_report)
+            .expect("Failed constructing VerificationReportData")
+            .quote
+            .report_body()
+            .expect("Failed getting report body")
+            .report_data();
+        let report_data_bytes: &[u8] = report_data.as_ref();
+
+        let report_signer = ConsensusNodeClient::get_block_signer(&verification_report.into())
+            .expect("Failed to get the block signer from the verification report");
+
+        let signer_bytes: &[u8] = report_signer.as_ref();
+
+        assert_eq!(signer_bytes, &report_data_bytes[32..]);
     }
 }
