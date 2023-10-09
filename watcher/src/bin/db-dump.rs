@@ -109,7 +109,7 @@ fn display_report_status(
     let signer = signer.unwrap();
 
     let reports = watcher_db
-        .get_verification_reports_for_signer(&signer)
+        .attestation_evidence_for_signer(&signer)
         .expect("get_verification_reports_for_signer failed");
 
     // Should only have one URL associated with this signer
