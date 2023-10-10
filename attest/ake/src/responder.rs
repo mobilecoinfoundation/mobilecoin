@@ -8,7 +8,7 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use mc_attest_core::{EvidenceKind, ReportDataMask};
+use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
@@ -151,19 +151,8 @@ where
         verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
         // Parse the received attestation evidence
-        let remote_evidence =
-            mc_attest_verifier_types::prost::DcapEvidence::decode(payload.as_slice())
-                .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-        let remote_evidence: EvidenceKind = remote_evidence
-            .try_into()
+        let remote_report = VerificationReport::decode(payload.as_slice())
             .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-
-        // TODO: This will be replaced with dcap evidence serialization.
-        //       This code will never run.
-        let remote_report = match remote_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => Err(Error::AttestationEvidenceDeserialization)?,
-        };
 
         // Verify using given verifier, and ensure the first 32B of the report data are
         // the identity pubkey.
