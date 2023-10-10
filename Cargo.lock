@@ -6410,6 +6410,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
+ "mc-attest-verifier-types",
  "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",

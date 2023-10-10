@@ -321,26 +321,26 @@ impl From<AuthResponseInput> for Vec<u8> {
 /// An authentication response input to a responder
 impl MealyInput for AuthResponseInput {}
 
-/// An unverified report is used when the initiator may not know the identity of
-/// the enclave.
-pub struct UnverifiedReport {
+/// An unverified attestation evidence is used when the initiator may not
+/// know the identity of the enclave.
+pub struct UnverifiedAttestationEvidence {
     pub(crate) data: Vec<u8>,
 }
 
-impl UnverifiedReport {
+impl UnverifiedAttestationEvidence {
     pub fn new(data: AuthResponseOutput) -> Self {
         Self { data: data.0 }
     }
 }
 
-impl AsRef<[u8]> for UnverifiedReport {
+impl AsRef<[u8]> for UnverifiedAttestationEvidence {
     fn as_ref(&self) -> &[u8] {
         self.data.as_ref()
     }
 }
 
 /// An authentication response from a responder
-impl MealyInput for UnverifiedReport {}
+impl MealyInput for UnverifiedAttestationEvidence {}
 
 /// The IAS report is the final output when authentication succeeds.
 impl MealyOutput for VerificationReport {}

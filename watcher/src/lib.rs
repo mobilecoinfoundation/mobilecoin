@@ -4,11 +4,11 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
+pub mod attestation_evidence_collector;
 pub mod block_data_store;
 pub mod config;
 pub mod error;
 pub mod metrics;
-pub mod verification_reports_collector;
 pub mod watcher;
 pub mod watcher_db;
 pub use url::Url;
