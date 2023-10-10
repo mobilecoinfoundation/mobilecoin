@@ -126,12 +126,13 @@ where
         )
         .map_err(Error::HandshakeInit)?;
 
-        let dcap_evidence = match input.attestation_evidence {
-            EvidenceKind::Dcap(dcap_evidence) => dcap_evidence,
+        // TODO: replace with dcap
+        let verification_report = match input.attestation_evidence {
+            EvidenceKind::Epid(verification_report) => verification_report,
             _ => Err(Error::AttestationEvidenceSerialization)?,
         };
-        let mut serialized_evidence = Vec::with_capacity(dcap_evidence.encoded_len());
-        dcap_evidence
+        let mut serialized_evidence = Vec::with_capacity(verification_report.encoded_len());
+        verification_report
             .encode(&mut serialized_evidence)
             .map_err(|_| Error::AttestationEvidenceSerialization)?;
 
