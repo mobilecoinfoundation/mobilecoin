@@ -7,7 +7,7 @@ use crate::{
     Start, Terminated, Transition, UnverifiedReport,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{DcapEvidence, EvidenceKind, EnclaveReportDataContents, ReportDataMask, VerificationReport};
+use mc_attest_core::{EvidenceKind, EnclaveReportDataContents, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_attestation_verifier::Evidence;
 use mc_crypto_keys::{Kex, ReprBytes};
@@ -186,7 +186,7 @@ where
                                 reader: result.responder_cipher,
                                 binding: result.channel_binding,
                             },
-                            EvidenceKind::Dcap(remote_evidence),
+                            remote_evidence,
                         )),
                         _ => {
                             Err(Error::AttestationEvidenceDeserialization)
