@@ -3,13 +3,13 @@
 //! Initiator-specific transition functions
 
 use crate::{
-    AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
-    Start, Terminated, Transition, UnverifiedAttestationEvidence,
+    alloc::string::ToString, AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate,
+    Error, NodeInitiate, Ready, Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
 use alloc::vec::Vec;
 use mc_attest_core::{EnclaveReportDataContents, EvidenceKind, ReportDataMask, VerificationReport};
-use mc_attest_verifier::{DcapVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::Evidence;
+use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{Evidence, VerificationTreeDisplay};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
@@ -188,24 +188,25 @@ where
                     let evidence = Evidence::new(quote, collateral)
                         .map_err(|_| Error::AttestationEvidenceDeserialization)?;
                     let verification_output = verifier.verify(&evidence);
-                    match verification_output.is_success().unwrap_u8() {
-                        1 => Ok((
+                    if verification_output.is_success().into() {
+                        Ok((
                             Ready {
                                 writer: result.initiator_cipher,
                                 reader: result.responder_cipher,
                                 binding: result.channel_binding,
                             },
                             remote_evidence,
-                        )),
-                        _ => {
-                            Err(Error::AttestationEvidenceDeserialization)
-                            // TODO: How to create VerifyError from this
-                            // result
-                        }
+                        ))
+                    } else {
+                        let display_tree =
+                            VerificationTreeDisplay::new(&verifier, verification_output);
+                        Err(Error::AttestationEvidenceVerification(
+                            VerifierError::Verification(display_tree.to_string()),
+                        ))
                     }
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
-                        .map_err(|_e| Error::AttestationEvidenceDeserialization)?;
+                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
                     let identities = input.identities;
                     let mut verifier = Verifier::default();
