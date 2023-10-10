@@ -126,8 +126,13 @@ where
         )
         .map_err(Error::HandshakeInit)?;
 
-        let mut serialized_evidence = Vec::with_capacity(input.attestation_evidence.encoded_len());
-        input.attestation_evidence.encode(&mut serialized_evidence);
+        let dcap_evidence = match input.attestation_evidence {
+           EvidenceKind::Dcap(dcap_evidence) => dcap_evidence,
+           _ => Err(Error::AttestationEvidenceSerialization)?,
+        };
+        let mut serialized_evidence = Vec::with_capacity(dcap_evidence.encoded_len());
+        dcap_evidence.encode(&mut serialized_evidence)
+            .map_err(|_| Error::AttestationEvidenceSerialization)?;
 
         parse_handshake_output(
             handshake_state
@@ -255,13 +260,8 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                if let Ok(remote_evidence) = EvidenceKind::decode(output.payload.as_slice()) {
-                    match remote_evidence.evidence {
-                        EvidenceKind::Dcap(dcap_evidence) => {
-                            Ok((Terminated, EvidenceKind::Dcap(dcap_evidence)))
-                        }
-                        _ => Err(Error::AttestationEvidenceDeserialization),
-                    }
+                if let Ok(remote_evidence) = mc_attest_verifier_types::prost::DcapEvidence::decode(output.payload.as_slice()) {
+                    Ok((Terminated, EvidenceKind::Dcap(remote_evidence)))
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_| Error::AttestationEvidenceDeserialization)?;
