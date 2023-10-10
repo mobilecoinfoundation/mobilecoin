@@ -151,9 +151,11 @@ where
         verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
         // Parse the received attestation evidence
-        let remote_evidence = mc_attest_verifier_types::prost::DcapEvidence::decode(payload.as_slice())
-            .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-        let remote_evidence: EvidenceKind = remote_evidence.try_into()
+        let remote_evidence =
+            mc_attest_verifier_types::prost::DcapEvidence::decode(payload.as_slice())
+                .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+        let remote_evidence: EvidenceKind = remote_evidence
+            .try_into()
             .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
         // TODO: This will be replaced with dcap evidence serialization.
