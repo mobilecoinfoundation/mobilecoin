@@ -6,7 +6,6 @@ use crate::{
     alloc::string::ToString, AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate,
     Error, NodeInitiate, Ready, Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
-use alloc::vec::Vec;
 use mc_attest_core::{EnclaveReportDataContents, EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
 use mc_attestation_verifier::{Evidence, VerificationTreeDisplay};
@@ -127,20 +126,18 @@ where
         .map_err(Error::HandshakeInit)?;
 
         // TODO: replace with dcap
-        let verification_report = match input.attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => Err(Error::AttestationEvidenceSerialization)?,
-        };
-        let mut serialized_evidence = Vec::with_capacity(verification_report.encoded_len());
-        verification_report
-            .encode(&mut serialized_evidence)
-            .map_err(|_| Error::AttestationEvidenceSerialization)?;
+        match input.attestation_evidence {
+            EvidenceKind::Epid(_) => {
+                let serialized_evidence = input.attestation_evidence.into_bytes();
 
-        parse_handshake_output(
-            handshake_state
-                .write_message(csprng, &serialized_evidence)
-                .map_err(Error::HandshakeWrite)?,
-        )
+                parse_handshake_output(
+                    handshake_state
+                        .write_message(csprng, &serialized_evidence)
+                        .map_err(Error::HandshakeWrite)?,
+                )
+            },
+            _ => Err(Error::AttestationEvidenceSerialization)?,
+        }
     }
 }
 
@@ -166,10 +163,8 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
-                if let Ok(remote_evidence) =
-                    mc_attest_verifier_types::prost::DcapEvidence::decode(output.payload.as_slice())
+                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice())
                 {
-                    let remote_evidence: EvidenceKind = remote_evidence.into();
                     let (quote, collateral, report_data) = match remote_evidence.clone() {
                         EvidenceKind::Dcap(mc_attest_verifier_types::prost::DcapEvidence {
                             quote: Some(quote),
@@ -266,10 +261,9 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                if let Ok(remote_evidence) =
-                    mc_attest_verifier_types::prost::DcapEvidence::decode(output.payload.as_slice())
+                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice())
                 {
-                    Ok((Terminated, EvidenceKind::Dcap(remote_evidence)))
+                    Ok((Terminated, remote_evidence))
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_| Error::AttestationEvidenceDeserialization)?;
