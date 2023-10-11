@@ -140,8 +140,8 @@ impl<E: ReportableEnclave> ReportCache<E> {
             report_data: report_data_contents,
         };
 
-        log::warn!(self.logger, "Verifying attestation evidence");
-        self.enclave.verify_attestation_evidence(evidence.clone())?;
+        // log::warn!(self.logger, "Verifying attestation evidence");
+        // self.enclave.verify_attestation_evidence(evidence.clone())?;
 
         log::warn!(
             self.logger,

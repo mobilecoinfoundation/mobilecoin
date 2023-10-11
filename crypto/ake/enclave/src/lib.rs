@@ -674,7 +674,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         let mut quote_pending = self.quote_pending.lock()?;
 
-        let report = quote_pending.pop(nonce).ok_or(Error::InvalidState)?;
+        let report = quote_pending.pop(nonce).ok_or(Error::InvalidState).map_err(|e| Error::Decode(format!("We tried to pop more than once {nonce}")))?;
 
         // Ensure the quote contains our report, and is sane.
         let quote_report_body = quote.app_report_body();
