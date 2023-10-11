@@ -124,20 +124,13 @@ where
             None,
         )
         .map_err(Error::HandshakeInit)?;
+        let serialized_evidence = input.attestation_evidence.into_bytes();
 
-        // TODO: replace with dcap
-        match input.attestation_evidence {
-            EvidenceKind::Epid(_) => {
-                let serialized_evidence = input.attestation_evidence.into_bytes();
-
-                parse_handshake_output(
-                    handshake_state
-                        .write_message(csprng, &serialized_evidence)
-                        .map_err(Error::HandshakeWrite)?,
-                )
-            },
-            _ => Err(Error::AttestationEvidenceSerialization)?,
-        }
+        parse_handshake_output(
+            handshake_state
+                .write_message(csprng, &serialized_evidence)
+                .map_err(Error::HandshakeWrite)?,
+        )
     }
 }
 
@@ -163,8 +156,7 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
-                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice())
-                {
+                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice()) {
                     let (quote, collateral, report_data) = match remote_evidence.clone() {
                         EvidenceKind::Dcap(mc_attest_verifier_types::prost::DcapEvidence {
                             quote: Some(quote),
@@ -261,8 +253,7 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice())
-                {
+                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice()) {
                     Ok((Terminated, remote_evidence))
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
