@@ -3,18 +3,20 @@
 //! Initiator-specific transition functions
 
 use crate::{
-    alloc::string::ToString, AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate,
+    AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate,
     Error, NodeInitiate, Ready, Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
-use mc_attest_core::{EnclaveReportDataContents, EvidenceKind, ReportDataMask, VerificationReport};
+use alloc::{string::ToString, vec::Vec};
+use der::DateTime;
+use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
-use mc_attestation_verifier::{Evidence, VerificationTreeDisplay};
-use mc_crypto_keys::{Kex, ReprBytes};
+use mc_attest_verifier_types::DcapEvidence;
+use mc_attestation_verifier::{Evidence, VerificationTreeDisplay, TrustedIdentity};
+use mc_crypto_keys::{Kex, KexPublic};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, NoiseDigest, ProtocolName,
 };
-use mc_sgx_dcap_types::{Collateral, Quote3};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
@@ -156,66 +158,24 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
+                let remote_identity = result
+                    .remote_identity
+                    .as_ref()
+                    .ok_or(Error::MissingRemoteIdentity)?;
                 if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice()) {
-                    let (quote, collateral, report_data) = match remote_evidence.clone() {
-                        EvidenceKind::Dcap(mc_attest_verifier_types::prost::DcapEvidence {
-                            quote: Some(quote),
-                            collateral: Some(collateral),
-                            report_data: Some(report_data),
-                        }) => (quote, collateral, report_data),
-                        _ => Err(Error::AttestationEvidenceDeserialization)?,
-                    };
-                    let quote = Quote3::try_from(&quote)
-                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                    let collateral = Collateral::try_from(&collateral)
-                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                    let report_data = EnclaveReportDataContents::try_from(&report_data)
-                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                    let verifier = DcapVerifier::new(input.identities, input.time, report_data);
-                    let evidence = Evidence::new(quote, collateral)
-                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                    let verification_output = verifier.verify(&evidence);
-                    if verification_output.is_success().into() {
-                        Ok((
-                            Ready {
-                                writer: result.initiator_cipher,
-                                reader: result.responder_cipher,
-                                binding: result.channel_binding,
-                            },
-                            remote_evidence,
-                        ))
-                    } else {
-                        let display_tree =
-                            VerificationTreeDisplay::new(&verifier, verification_output);
-                        Err(Error::AttestationEvidenceVerification(
-                            VerifierError::Verification(display_tree.to_string()),
-                        ))
-                    }
+                    verify_evidence_kind(remote_evidence.clone(), &input.identities, input.time, remote_identity)?;
+                    Ok((
+                        Ready {
+                            writer: result.initiator_cipher,
+                            reader: result.responder_cipher,
+                            binding: result.channel_binding,
+                        },
+                        remote_evidence,
+                    ))
                 } else {
                     let remote_report = VerificationReport::decode(output.payload.as_slice())
                         .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-
-                    let identities = input.identities;
-                    let mut verifier = Verifier::default();
-                    verifier.identities(&identities).debug(DEBUG_ENCLAVE);
-
-                    // We are not returning the report data and instead returning the raw report
-                    // since that also includes the signature and certificate chain.
-                    // However, we still make sure the report contains valid data
-                    // before we continue by calling `.verify`. Callers can then
-                    // safely construct a VerificationReportData object out of the
-                    // VerificationReport returned.
-                    let _report_data = verifier
-                        .report_data(
-                            &result
-                                .remote_identity
-                                .ok_or(Error::MissingRemoteIdentity)?
-                                .map_bytes(|bytes| {
-                                    ReportDataMask::try_from(bytes)
-                                        .map_err(|_| Error::BadRemoteIdentity)
-                                })?,
-                        )
-                        .verify(&remote_report)?;
+                    verify_verification_report(&remote_report, &input.identities, remote_identity)?;
                     Ok((
                         Ready {
                             writer: result.initiator_cipher,
@@ -264,4 +224,69 @@ where
             }
         }
     }
+}
+
+fn verify_evidence_kind<PubKey: KexPublic>(
+    attestation_evidence: EvidenceKind,
+    identities: &Vec<TrustedIdentity>,
+    time: Option<DateTime>,
+    remote_identity: &PubKey,
+) -> Result<(), Error> {
+    match attestation_evidence {
+        EvidenceKind::Dcap(dcap_evidence) => {
+            let dcap_evidence:DcapEvidence = (&dcap_evidence).try_into()
+                .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+            verify_dcap_evidence(dcap_evidence, identities, time)
+        },
+        EvidenceKind::Epid(verification_report) => verify_verification_report(&verification_report, identities, remote_identity),
+    }
+}
+
+fn verify_dcap_evidence(
+    dcap_evidence: DcapEvidence,
+    identities: &Vec<TrustedIdentity>,
+    time: Option<DateTime>,
+) -> Result<(), Error> {
+    let (quote, collateral, report_data) = match dcap_evidence {
+        DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        } => (quote, collateral, report_data),
+    };
+    let verifier = DcapVerifier::new(identities, time, report_data);
+    let evidence = Evidence::new(quote, collateral)
+        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+    let verification_output = verifier.verify(&evidence);
+    if verification_output.is_success().into() {
+        Ok(())
+    } else {
+        let display_tree =
+            VerificationTreeDisplay::new(&verifier, verification_output);
+        Err(Error::AttestationEvidenceVerification(
+            VerifierError::Verification(display_tree.to_string()),
+        ))
+    }
+}
+
+fn verify_verification_report<PubKey: KexPublic>(
+    report: &VerificationReport,
+    identities: &Vec<TrustedIdentity>,
+    remote_identity: &PubKey,
+) -> Result<(), Error> {
+    let mut verifier = Verifier::default();
+    verifier.identities(identities).debug(DEBUG_ENCLAVE);
+
+    // We are not returning the report data and instead returning the raw report
+    // since that also includes the signature and certificate chain.
+    // However, we still make sure the report contains valid data
+    // before we continue by calling `.verify`. Callers can then
+    // safely construct a VerificationReportData object out of the
+    // VerificationReport returned.
+    let _report_data = verifier
+        .report_data(&remote_identity.map_bytes(|bytes| {
+            ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
+        })?)
+        .verify(report)?;
+    Ok(())
 }
