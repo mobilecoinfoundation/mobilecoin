@@ -125,11 +125,11 @@ impl<E: ReportableEnclave> ReportCache<E> {
                 )),
                 other_ti_err => other_ti_err,
             })?;
-        log::debug!(self.logger, "Getting EREPORT from node enclave...");
+        log::warn!(self.logger, "Getting EREPORT from node enclave...");
         let (report, report_data_contents) = self.enclave.new_ereport(qe_info)?;
-        log::debug!(self.logger, "Quoting report...");
+        log::warn!(self.logger, "Quoting report...");
         let quote = DcapQuotingEnclave::quote_report(&report)?;
-        log::debug!(self.logger, "Double-checking quoted report with enclave...");
+        log::warn!(self.logger, "Double-checking quoted report with enclave...");
 
         let report_body = quote.app_report_body();
         let mr_signer = report_body.mr_signer();
@@ -140,9 +140,10 @@ impl<E: ReportableEnclave> ReportCache<E> {
             report_data: report_data_contents,
         };
 
+        log::warn!(self.logger, "Verifying attestation evidence");
         self.enclave.verify_attestation_evidence(evidence.clone())?;
 
-        log::info!(
+        log::warn!(
             self.logger,
             "Measurements: MrEnclave: {} MrSigner: {}",
             mr_enclave,
@@ -154,13 +155,13 @@ impl<E: ReportableEnclave> ReportCache<E> {
 
     /// Update the attestation evidence cached within the enclave.
     pub fn update_enclave_report_cache(&self) -> Result<(), Error> {
-        log::debug!(
+        log::warn!(
             self.logger,
             "Starting enclave report cache update process..."
         );
         let attestation_evidence = self.start_report_cache()?;
 
-        log::debug!(
+        log::warn!(
             self.logger,
             "Verifying attestation evidence with enclave..."
         );
@@ -186,7 +187,9 @@ impl ReportCacheThread {
         let logger = logger.new(o!("mc.enclave_type" => std::any::type_name::<E>()));
 
         let report_cache = ReportCache::new(enclave, logger.clone());
+        log::warn!(logger, "Du Hast");
         report_cache.update_enclave_report_cache()?;
+        log::warn!(logger, "No Hast");
 
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();

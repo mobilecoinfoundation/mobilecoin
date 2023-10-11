@@ -30,6 +30,7 @@ use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
 use sha2::Sha512;
+use alloc::format;
 
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
@@ -651,12 +652,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         let mut report_data = ReportData::default();
         let report_data_bytes: &mut [u8] = report_data.as_mut();
-        let identity_bytes: &[u8] = report_contents.key().as_ref();
-        report_data_bytes[..identity_bytes.len()].copy_from_slice(identity_bytes);
-        if let Some(id) = report_contents.custom_identity() {
-            report_data_bytes[identity_bytes.len()..identity_bytes.len() + id.len()]
-                .copy_from_slice(id);
-        }
+        let identity_bytes = report_contents.sha256();
+        report_data_bytes[..identity_bytes.len()].copy_from_slice(&identity_bytes);
 
         // Actually get the EREPORT
         let report = Report::new(Some(&qe_info), Some(&report_data))?;
@@ -690,7 +687,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let verifier = self.get_verifier(report_data)?;
 
         // Verify signature, MRENCLAVE, report value, etc.
-        let evidence = Evidence::new(quote, collateral)?;
+        let evidence = Evidence::new(quote, collateral.clone()).map_err(|e| 
+            Error::Encode(format!("Failed to build the evidence {e}. The collateral was {collateral:?}."))
+        )?;
         let verification = verifier.verify(&evidence);
 
         if verification.is_failure().into() {

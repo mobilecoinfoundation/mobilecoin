@@ -19,3 +19,12 @@ rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"'
 [cargo-new]
 name = "MobileCoin"
 email = ""
+
+
+[patch.crates-io]
+mc-sgx-dcap-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "3c0680506d9aeee6a61999a06d086e62eb6b530e" }
+mc-sgx-core-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "3c0680506d9aeee6a61999a06d086e62eb6b530e" }
+mc-sgx-dcap-ql = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "3c0680506d9aeee6a61999a06d086e62eb6b530e" }
+mc-sgx-dcap-quoteverify = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "3c0680506d9aeee6a61999a06d086e62eb6b530e" }
+mc-sgx-core-sys-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "3c0680506d9aeee6a61999a06d086e62eb6b530e" }
+mc-sgx-dcap-sys-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "3c0680506d9aeee6a61999a06d086e62eb6b530e" }
