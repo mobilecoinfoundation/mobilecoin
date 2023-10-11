@@ -3,15 +3,15 @@
 //! Initiator-specific transition functions
 
 use crate::{
-    AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate,
-    Error, NodeInitiate, Ready, Start, Terminated, Transition, UnverifiedAttestationEvidence,
+    AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
+    Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
 use alloc::{string::ToString, vec::Vec};
 use der::DateTime;
 use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
 use mc_attest_verifier_types::DcapEvidence;
-use mc_attestation_verifier::{Evidence, VerificationTreeDisplay, TrustedIdentity};
+use mc_attestation_verifier::{Evidence, TrustedIdentity, VerificationTreeDisplay};
 use mc_crypto_keys::{Kex, KexPublic};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
@@ -163,7 +163,12 @@ where
                     .as_ref()
                     .ok_or(Error::MissingRemoteIdentity)?;
                 if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice()) {
-                    verify_evidence_kind(remote_evidence.clone(), &input.identities, input.time, remote_identity)?;
+                    verify_evidence_kind(
+                        remote_evidence.clone(),
+                        &input.identities,
+                        input.time,
+                        remote_identity,
+                    )?;
                     Ok((
                         Ready {
                             writer: result.initiator_cipher,
@@ -234,11 +239,14 @@ fn verify_evidence_kind<PubKey: KexPublic>(
 ) -> Result<(), Error> {
     match attestation_evidence {
         EvidenceKind::Dcap(dcap_evidence) => {
-            let dcap_evidence:DcapEvidence = (&dcap_evidence).try_into()
+            let dcap_evidence: DcapEvidence = (&dcap_evidence)
+                .try_into()
                 .map_err(|_| Error::AttestationEvidenceDeserialization)?;
             verify_dcap_evidence(dcap_evidence, identities, time)
-        },
-        EvidenceKind::Epid(verification_report) => verify_verification_report(&verification_report, identities, remote_identity),
+        }
+        EvidenceKind::Epid(verification_report) => {
+            verify_verification_report(&verification_report, identities, remote_identity)
+        }
     }
 }
 
@@ -247,22 +255,21 @@ fn verify_dcap_evidence(
     identities: &Vec<TrustedIdentity>,
     time: Option<DateTime>,
 ) -> Result<(), Error> {
-    let (quote, collateral, report_data) = match dcap_evidence {
-        DcapEvidence {
-            quote,
-            collateral,
-            report_data,
-        } => (quote, collateral, report_data),
-    };
+    let DcapEvidence {
+        quote,
+        collateral,
+        report_data,
+    } = dcap_evidence;
+    let (quote, collateral, report_data) = (quote, collateral, report_data);
+
     let verifier = DcapVerifier::new(identities, time, report_data);
-    let evidence = Evidence::new(quote, collateral)
-        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+    let evidence =
+        Evidence::new(quote, collateral).map_err(|_| Error::AttestationEvidenceDeserialization)?;
     let verification_output = verifier.verify(&evidence);
     if verification_output.is_success().into() {
         Ok(())
     } else {
-        let display_tree =
-            VerificationTreeDisplay::new(&verifier, verification_output);
+        let display_tree = VerificationTreeDisplay::new(&verifier, verification_output);
         Err(Error::AttestationEvidenceVerification(
             VerifierError::Verification(display_tree.to_string()),
         ))

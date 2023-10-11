@@ -29,6 +29,7 @@ use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
+    time::{SystemTimeProvider, TimeProvider},
     trace_time,
 };
 use mc_consensus_api::{
@@ -53,7 +54,6 @@ use std::{
     ops::Range,
     result::Result as StdResult,
     sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 /// Attestation failures a thick client can generate
@@ -324,9 +324,8 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
                     .map_err(ThickClientAttestationError::from)
             })?;
 
-        let now = SystemTime::now();
-        let epoch_time = now
-            .duration_since(UNIX_EPOCH)
+        let epoch_time = SystemTimeProvider::default()
+            .since_epoch()
             .map_err(|_| ThickClientAttestationError::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)
             .map_err(|_| ThickClientAttestationError::Other("Time out of range".to_owned()))?;

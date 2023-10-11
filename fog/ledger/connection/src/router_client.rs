@@ -9,7 +9,10 @@ use mc_attest_ake::{
 };
 use mc_attest_core::EvidenceKind;
 use mc_attestation_verifier::TrustedIdentity;
-use mc_common::logger::{log, o, Logger};
+use mc_common::{
+    logger::{log, o, Logger},
+    time::{SystemTimeProvider, TimeProvider},
+};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_fog_api::{
@@ -25,10 +28,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::DecodeError;
 use mc_util_uri::{ConnectionUri, UriConversionError};
 use sha2::Sha512;
-use std::{
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::sync::Arc;
 
 /// A high-level object mediating requests to the fog ledger router service
 pub struct LedgerGrpcClient {
@@ -117,9 +117,8 @@ impl LedgerGrpcClient {
             .ok_or(Error::ResponseNotReceived)?;
         let auth_response_msg = response.take_auth();
 
-        let now = SystemTime::now();
-        let epoch_time = now
-            .duration_since(UNIX_EPOCH)
+        let epoch_time = SystemTimeProvider::default()
+            .since_epoch()
             .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)
             .map_err(|_| Error::Other("Time out of range".to_owned()))?;
