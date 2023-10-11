@@ -6,7 +6,7 @@ use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use der::DateTime;
-use mc_attest_core::{EvidenceKind, VerificationReport};
+use mc_attest_core::EvidenceKind;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
@@ -175,7 +175,7 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
+    /// This is the local node's attestation evidence.
     pub(crate) attestation_evidence: EvidenceKind,
 
     /// The auth request input, including payload, if any
@@ -222,7 +222,7 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
+    /// This is the local node's attestation evidence.
     pub(crate) attestation_evidence: EvidenceKind,
     /// The identities that the initiator's IAS report must conform to
     pub(crate) identities: Vec<TrustedIdentity>,
@@ -341,11 +341,6 @@ impl AsRef<[u8]> for UnverifiedAttestationEvidence {
 
 /// An authentication response from a responder
 impl MealyInput for UnverifiedAttestationEvidence {}
-
-/// The IAS report is the final output when authentication succeeds.
-impl MealyOutput for VerificationReport {}
-
-impl MealyInput for EvidenceKind {}
 
 impl MealyOutput for EvidenceKind {}
 
