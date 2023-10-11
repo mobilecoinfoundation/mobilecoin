@@ -91,9 +91,8 @@ impl ResponderTransitionMixin for Start {
     {
         // TODO: This will be replaced with dcap evidence serialization.
         //       This code will never run.
-        let ias_report = match attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => Err(Error::AttestationEvidenceSerialization)?,
+        let EvidenceKind::Epid(ias_report) = attestation_evidence else {
+            return Err(Error::AttestationEvidenceSerialization);
         };
         // Encrypt the local report for output
         let mut report_bytes = Vec::with_capacity(ias_report.encoded_len());
