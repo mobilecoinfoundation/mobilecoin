@@ -206,14 +206,9 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(_) => {
-                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice()) {
-                    Ok((Terminated, remote_evidence))
-                } else {
-                    let remote_report = VerificationReport::decode(output.payload.as_slice())
-                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-
-                    Ok((Terminated, EvidenceKind::Epid(remote_report)))
-                }
+                let remote_evidence = EvidenceKind::from_bytes(output.payload.as_slice())
+                    .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+                Ok((Terminated, remote_evidence))
             }
         }
     }
