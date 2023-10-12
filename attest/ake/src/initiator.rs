@@ -17,7 +17,6 @@ use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, NoiseDigest, ProtocolName,
 };
-use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper function to create the output for an initiate
