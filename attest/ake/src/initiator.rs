@@ -249,6 +249,10 @@ fn verify_dcap_evidence(
         report_data,
     } = dcap_evidence;
 
+    if remote_identity.map_bytes(|bytes| bytes != report_data.key().to_bytes().as_slice()) {
+        return Err(Error::BadRemoteIdentity);
+    }
+
     let verifier = DcapVerifier::new(identities, time, report_data);
     let evidence =
         Evidence::new(quote, collateral).map_err(|_| Error::AttestationEvidenceDeserialization)?;
