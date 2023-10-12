@@ -162,34 +162,22 @@ where
                     .remote_identity
                     .as_ref()
                     .ok_or(Error::MissingRemoteIdentity)?;
-                if let Ok(remote_evidence) = EvidenceKind::from_bytes(output.payload.as_slice()) {
-                    verify_evidence_kind(
-                        remote_evidence.clone(),
-                        &input.identities,
-                        input.time,
-                        remote_identity,
-                    )?;
-                    Ok((
-                        Ready {
-                            writer: result.initiator_cipher,
-                            reader: result.responder_cipher,
-                            binding: result.channel_binding,
-                        },
-                        remote_evidence,
-                    ))
-                } else {
-                    let remote_report = VerificationReport::decode(output.payload.as_slice())
-                        .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-                    verify_verification_report(&remote_report, &input.identities, remote_identity)?;
-                    Ok((
-                        Ready {
-                            writer: result.initiator_cipher,
-                            reader: result.responder_cipher,
-                            binding: result.channel_binding,
-                        },
-                        EvidenceKind::Epid(remote_report),
-                    ))
-                }
+                let remote_evidence = EvidenceKind::from_bytes(output.payload.as_slice())
+                    .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+                verify_evidence_kind(
+                    remote_evidence.clone(),
+                    &input.identities,
+                    input.time,
+                    remote_identity,
+                )?;
+                Ok((
+                    Ready {
+                        writer: result.initiator_cipher,
+                        reader: result.responder_cipher,
+                        binding: result.channel_binding,
+                    },
+                    remote_evidence,
+                ))
             }
         }
     }
