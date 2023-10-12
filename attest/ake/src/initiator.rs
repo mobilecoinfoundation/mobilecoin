@@ -12,7 +12,7 @@ use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
 use mc_attest_verifier_types::DcapEvidence;
 use mc_attestation_verifier::{Evidence, TrustedIdentity, VerificationTreeDisplay};
-use mc_crypto_keys::{Kex, KexPublic};
+use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, NoiseDigest, ProtocolName,
@@ -225,7 +225,7 @@ fn verify_evidence_kind<PubKey: KexPublic>(
             let dcap_evidence: DcapEvidence = (&dcap_evidence)
                 .try_into()
                 .map_err(|_| Error::AttestationEvidenceDeserialization)?;
-            verify_dcap_evidence(dcap_evidence, identities, time)
+            verify_dcap_evidence(dcap_evidence, identities, time, remote_identity)
         }
         EvidenceKind::Epid(verification_report) => {
             verify_verification_report(&verification_report, identities, remote_identity)
@@ -233,10 +233,11 @@ fn verify_evidence_kind<PubKey: KexPublic>(
     }
 }
 
-fn verify_dcap_evidence(
+fn verify_dcap_evidence<PubKey: KexPublic>(
     dcap_evidence: DcapEvidence,
     identities: &Vec<TrustedIdentity>,
     time: Option<DateTime>,
+    remote_identity: &PubKey,
 ) -> Result<(), Error> {
     let DcapEvidence {
         quote,
