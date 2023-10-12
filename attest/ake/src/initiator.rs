@@ -248,7 +248,6 @@ fn verify_dcap_evidence(
         collateral,
         report_data,
     } = dcap_evidence;
-    let (quote, collateral, report_data) = (quote, collateral, report_data);
 
     let verifier = DcapVerifier::new(identities, time, report_data);
     let evidence =
