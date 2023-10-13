@@ -5,7 +5,7 @@
 #![allow(clippy::result_large_err)]
 use displaydoc::Display;
 use mc_attest_core::{
-    EvidenceKind, PibError, ProviderId, QuoteError, QuoteSignType, VerificationReportData,
+    PibError, ProviderId, QuoteError, QuoteSignType, VerificationReport, VerificationReportData,
     VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
@@ -125,7 +125,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         }
     }
 
-    pub fn start_report_cache(&self) -> Result<EvidenceKind, Error> {
+    pub fn start_report_cache(&self) -> Result<VerificationReport, Error> {
         log::debug!(
             self.logger,
             "Starting remote attestation report process, getting QE enclave targeting info..."
@@ -185,7 +185,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             report_body.mr_enclave(),
             report_body.mr_signer()
         );
-        Ok(EvidenceKind::Epid(retval)) // TODO: replace with dcap
+        Ok(retval) // TODO: replace with dcap
     }
 
     /// Update the attestation evidence cached within the enclave.
@@ -213,12 +213,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                     VerifierError::Verification(_),
                 )),
             ) => {
-                // TODO: replace with dcap
-                let verification_report = match &attestation_evidence {
-                    EvidenceKind::Epid(verification_report) => verification_report,
-                    _ => Err(Error::Verify(VerifyError::Unknown))?,
-                };
-                let report_data = VerificationReportData::try_from(verification_report)?;
+                let report_data = VerificationReportData::try_from(&attestation_evidence)?;
                 if let Some(platform_info_blob) = report_data.platform_info_blob.as_ref() {
                     // IAS gave us a PIB
                     log::debug!(
@@ -248,18 +243,16 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
 
         if retval.is_ok() {
             // TODO: replace with dcap
-            if let EvidenceKind::Epid(verification_report) = attestation_evidence {
-                let ias_report_data = VerificationReportData::try_from(&verification_report)?;
-                let timestamp = ias_report_data.parse_timestamp()?;
+            let ias_report_data = VerificationReportData::try_from(&attestation_evidence)?;
+            let timestamp = ias_report_data.parse_timestamp()?;
 
-                self.report_timestamp_gauge.set(timestamp.timestamp());
+            self.report_timestamp_gauge.set(timestamp.timestamp());
 
-                log::info!(
-                    self.logger,
-                    "Enclave accepted report as valid, report generated at {:?}...",
-                    timestamp
-                );
-            }
+            log::info!(
+                self.logger,
+                "Enclave accepted report as valid, report generated at {:?}...",
+                timestamp
+            );
         }
 
         retval

@@ -35,6 +35,7 @@ use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
     EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Quote, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -447,13 +448,13 @@ impl ReportableEnclave for SgxConsensusEnclave {
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: EvidenceKind,
+        attestation_evidence: VerificationReport,
     ) -> ReportableEnclaveResult<()> {
         self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         Ok(self.ake.get_attestation_evidence()?)
     }
 }

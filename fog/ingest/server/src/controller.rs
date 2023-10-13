@@ -9,7 +9,6 @@ use crate::{
     error::{IngestServiceError as Error, PeerBackupError, RestoreStateError, SetPeersError},
     server::IngestServerConfig,
 };
-use mc_attest_core::EvidenceKind;
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_net::RaClient;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
@@ -1201,15 +1200,10 @@ where
         // Get a report and check that it makes sense with what we think is happening
         let evidence = {
             let attestation_evidence = self.enclave.get_attestation_evidence()?;
-            // TODO: replace with dcap
-            let verification_report = match &attestation_evidence {
-                EvidenceKind::Epid(verification_report) => verification_report,
-                _ => Err(Error::Serialization)?,
-            };
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
             let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
-                &verification_report.clone().into(),
+                &attestation_evidence.clone().into(),
             )?;
             if &found_key == ingress_public_key {
                 attestation_evidence
@@ -1222,13 +1216,8 @@ where
                 self.update_enclave_report_cache()?;
 
                 let evidence = self.enclave.get_attestation_evidence()?;
-                // TODO: replace with dcap
-                let verification_report = match &evidence {
-                    EvidenceKind::Epid(verification_report) => verification_report,
-                    _ => Err(Error::Serialization)?,
-                };
                 let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
-                    &verification_report.clone().into(),
+                    &evidence.clone().into(),
                 )?;
                 if &found_key == ingress_public_key {
                     evidence
@@ -1256,15 +1245,9 @@ where
             }
         };
 
-        // TODO: replace with dcap
-        let verification_report = match evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => Err(Error::Serialization)?,
-        };
-
         let report_data = ReportData {
             ingest_invocation_id: state.get_ingest_invocation_id(),
-            attestation_evidence: verification_report.into(),
+            attestation_evidence: evidence.into(),
             pubkey_expiry: state.get_next_block_index() + state.get_pubkey_expiry_window(),
         };
         let report_id = self.config.fog_report_id.as_ref();

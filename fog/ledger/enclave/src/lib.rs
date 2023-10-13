@@ -12,7 +12,7 @@ pub use mc_fog_ledger_enclave_api::{
 };
 
 use mc_attest_core::{
-    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, SgxError, TargetInfo,
+    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -65,7 +65,7 @@ impl ReportableEnclave for LedgerSgxEnclave {
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: EvidenceKind,
+        attestation_evidence: VerificationReport,
     ) -> ReportableEnclaveResult<()> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyAttestationEvidence(
             attestation_evidence,
@@ -74,7 +74,7 @@ impl ReportableEnclave for LedgerSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetAttestationEvidence)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

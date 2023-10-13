@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use mc_attest_core::EvidenceKind;
 use mc_blockchain_types::{
     AttestationEvidence, BlockData, BlockMetadata, BlockMetadataContents, QuorumSet,
 };
@@ -42,15 +41,10 @@ impl<E: ReportableEnclave> BlockMetadataProvider for ConsensusMetadataProvider<E
             .enclave
             .get_attestation_evidence()
             .expect("failed to get AVR");
-        // TODO: replace with dcap
-        let verification_report = match attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => panic!("Unreachable code"),
-        };
         let contents = BlockMetadataContents::new(
             block_data.block().id.clone(),
             self.quorum_set.clone(),
-            AttestationEvidence::VerificationReport(verification_report),
+            AttestationEvidence::VerificationReport(attestation_evidence),
             self.responder_id.clone(),
         );
         Some(

@@ -21,6 +21,7 @@ use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use mc_attest_core::{
     EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Quote, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
@@ -194,13 +195,13 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> ReportableEnclav
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: EvidenceKind,
+        attestation_evidence: VerificationReport,
     ) -> ReportableEnclaveResult<()> {
         self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         Ok(self.ake.get_attestation_evidence()?)
     }
 }

@@ -12,7 +12,7 @@ use mc_attest_ake::{
 };
 use mc_attest_core::{
     EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Nonce, NonceError, Quote,
-    QuoteNonce, Report, ReportData, TargetInfo,
+    QuoteNonce, Report, ReportData, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -84,7 +84,7 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     ias_pending: Mutex<LruCache<IasNonce, Quote>>,
 
     /// The cached attestation evidence, if any.
-    current_attestation_evidence: Mutex<Option<EvidenceKind>>,
+    current_attestation_evidence: Mutex<Option<VerificationReport>>,
 
     /// A map of responder-ID to incomplete, outbound, AKE state.
     initiator_auth_pending: Mutex<LruCache<ResponderId, AuthPending<X25519, Aes256Gcm, Sha512>>>,
@@ -258,7 +258,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                attestation_evidence,
+                EvidenceKind::Epid(attestation_evidence),
             )
         };
 
@@ -350,7 +350,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                attestation_evidence,
+                EvidenceKind::Epid(attestation_evidence),
             )
         };
 
@@ -385,7 +385,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Construct the initializer input.
         let node_init = {
-            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(local_identity, attestation_evidence)
+            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(
+                local_identity,
+                EvidenceKind::Epid(attestation_evidence),
+            )
         };
 
         // Initialize
@@ -415,7 +418,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             NodeAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                attestation_evidence,
+                EvidenceKind::Epid(attestation_evidence),
                 [self.trusted_identity()?],
             )
         };
@@ -626,7 +629,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     //
 
     /// Get the cached attestation evidence if available
-    pub fn get_attestation_evidence(&self) -> Result<EvidenceKind> {
+    pub fn get_attestation_evidence(&self) -> Result<VerificationReport> {
         (*self.current_attestation_evidence.lock()?)
             .clone()
             .ok_or(Error::NoAttestationEvidenceAvailable)
@@ -709,18 +712,14 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     }
 
     /// Verify attestation evidence
-    pub fn verify_attestation_evidence(&self, attestation_evidence: EvidenceKind) -> Result<()> {
-        // TODO: This needs to be replaced with dcap verification
-        let verification_report = match attestation_evidence.clone() {
-            EvidenceKind::Epid(report) => report,
-            _ => Err(Error::Decode(
-                "Failed to decide VerificationReport".to_owned(),
-            ))?,
-        };
+    pub fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: VerificationReport,
+    ) -> Result<()> {
         let verifier = self.get_verifier()?;
 
         // Verify signature, MRENCLAVE, report value, etc.
-        let report_data = verifier.verify(&verification_report)?;
+        let report_data = verifier.verify(&attestation_evidence)?;
 
         // Get the nonce from the IAS report
         let nonce = report_data
@@ -740,7 +739,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let _ = Verifier::default()
             .quote_body(&cached_quote)
             .nonce(nonce)
-            .verify(&verification_report)?;
+            .verify(&attestation_evidence)?;
 
         // Save the result
         *(self.current_attestation_evidence.lock()?) = Some(attestation_evidence);

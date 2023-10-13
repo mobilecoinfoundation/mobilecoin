@@ -329,7 +329,6 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
-    use mc_attest_core::EvidenceKind;
     use mc_blockchain_types::{AttestationEvidence, BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
@@ -549,11 +548,6 @@ mod tests {
 
         let enclave = ConsensusServiceMockEnclave::new(BLOCK_VERSION, &mut rng);
         let attestation_evidence = enclave.attestation_evidence.clone();
-        // TODO: replace with dcap
-        let verification_report = match attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => panic!("Unreachable code"),
-        };
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -852,7 +846,7 @@ mod tests {
         assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
         assert_eq!(
             metadata.contents().attestation_evidence(),
-            &AttestationEvidence::VerificationReport(verification_report)
+            &AttestationEvidence::VerificationReport(attestation_evidence)
         );
     }
 
@@ -935,11 +929,6 @@ mod tests {
 
         let enclave = ConsensusServiceMockEnclave::new(BlockVersion::MAX, &mut rng);
         let attestation_evidence = enclave.attestation_evidence.clone();
-        // TODO: replace with dcap
-        let verification_report = match attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => panic!("Unreachable code"),
-        };
 
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
@@ -1180,7 +1169,7 @@ mod tests {
         assert_eq!(metadata.contents().quorum_set(), &local_quorum_set);
         assert_eq!(
             metadata.contents().attestation_evidence(),
-            &AttestationEvidence::VerificationReport(verification_report)
+            &AttestationEvidence::VerificationReport(attestation_evidence)
         );
     }
 }

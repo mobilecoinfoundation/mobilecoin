@@ -6,6 +6,7 @@
 
 use mc_attest_core::{
     EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::*;
 use mc_blockchain_types::{Block, BlockContents, BlockSignature};
@@ -94,9 +95,9 @@ mock! {
 
         fn verify_quote(&self, quote: Quote, qe_report: Report, report_data: EnclaveReportDataContents) -> SgxReportResult<IasNonce>;
 
-        fn verify_attestation_evidence(&self, attestation_evidence: EvidenceKind) -> SgxReportResult<()>;
+        fn verify_attestation_evidence(&self, attestation_evidence: VerificationReport) -> SgxReportResult<()>;
 
-        fn get_attestation_evidence(&self) -> SgxReportResult<EvidenceKind>;
+        fn get_attestation_evidence(&self) -> SgxReportResult<VerificationReport>;
     }
 }
 

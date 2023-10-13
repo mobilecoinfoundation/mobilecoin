@@ -9,7 +9,6 @@ use crate::{
     mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
-use mc_attest_core::EvidenceKind;
 use mc_blockchain_types::{
     AttestationEvidence, BlockData, BlockID, BlockMetadata, BlockMetadataContents,
 };
@@ -891,15 +890,10 @@ impl<
                     "Failed to fetch attestation evidence after forming block {block_id:?}: {err}"
                 )
             });
-        // TODO: replace with dcap
-        let verification_report = match attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => panic!("Unreachable code"),
-        };
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
-            AttestationEvidence::VerificationReport(verification_report),
+            AttestationEvidence::VerificationReport(attestation_evidence),
             self.scp_node.node_id().responder_id,
         );
 
@@ -1621,11 +1615,6 @@ mod tests {
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
         let attestation_evidence = enclave.get_attestation_evidence().unwrap();
-        // TODO: replace with dcap
-        let report = match attestation_evidence {
-            EvidenceKind::Epid(verification_report) => verification_report,
-            _ => panic!("Unreachable code"),
-        };
 
         let tx_manager = TxManagerImpl::new(
             enclave.clone(),
@@ -1750,7 +1739,7 @@ mod tests {
         assert_eq!(&block.id, contents.block_id());
         assert_eq!(&quorum_set, contents.quorum_set());
         assert_eq!(
-            &AttestationEvidence::VerificationReport(report),
+            &AttestationEvidence::VerificationReport(attestation_evidence),
             contents.attestation_evidence()
         );
         assert_eq!(&local_node_id.responder_id, contents.responder_id());

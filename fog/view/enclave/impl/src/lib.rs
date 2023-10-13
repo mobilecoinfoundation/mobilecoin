@@ -15,7 +15,7 @@ use crate::types::get_block_data;
 use alloc::vec::Vec;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{
-    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
+    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
@@ -150,13 +150,13 @@ where
 
     fn verify_attestation_evidence(
         &self,
-        attestation_evidence: EvidenceKind,
+        attestation_evidence: VerificationReport,
     ) -> ReportableEnclaveResult<()> {
         self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         Ok(self.ake.get_attestation_evidence()?)
     }
 }

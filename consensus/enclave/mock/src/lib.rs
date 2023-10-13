@@ -45,7 +45,7 @@ pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
-    pub attestation_evidence: EvidenceKind,
+    pub attestation_evidence: VerificationReport,
     pub identity: X25519Private,
 }
 
@@ -63,8 +63,7 @@ impl ConsensusServiceMockEnclave {
             block_version,
             ..Default::default()
         }));
-        let attestation_evidence =
-            EvidenceKind::Epid(mc_blockchain_test_utils::make_verification_report(csprng));
+        let attestation_evidence = mc_blockchain_test_utils::make_verification_report(csprng);
         let identity = X25519Private::from_random(csprng);
 
         Self {
@@ -117,12 +116,12 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
 
     fn verify_attestation_evidence(
         &self,
-        _attestation_evidence: EvidenceKind,
+        _attestation_evidence: VerificationReport,
     ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<EvidenceKind> {
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
         Ok(self.attestation_evidence.clone())
     }
 }
