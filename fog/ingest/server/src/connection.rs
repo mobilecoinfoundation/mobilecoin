@@ -9,7 +9,7 @@ use crate::{
 use core::fmt::{Display, Formatter, Result as FmtResult};
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceKind;
 use mc_attest_enclave_api::PeerSession;
 use mc_common::{
     logger::{log, o, Logger},
@@ -147,17 +147,17 @@ impl<Enclave: IngestEnclaveProxy> AttestedConnection for PeerConnection<Enclave>
         self.channel_id.is_some()
     }
 
-    fn attest(&mut self) -> StdResult<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> StdResult<EvidenceKind, Self::Error> {
         self.deattest();
         let req = self.enclave.peer_init(&self.remote_responder_id())?;
         let res = self.attested_api_client.auth(&req.into())?;
-        let (peer_session, verification_report) = self
+        let (peer_session, attestation_evidence) = self
             .enclave
             .peer_connect(&self.remote_responder_id(), res.into())?;
 
         self.channel_id = Some(peer_session);
 
-        Ok(verification_report)
+        Ok(attestation_evidence)
     }
 
     fn deattest(&mut self) {

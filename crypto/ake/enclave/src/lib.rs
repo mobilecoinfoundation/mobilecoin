@@ -11,8 +11,8 @@ use mc_attest_ake::{
     ClientInitiate, NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, IntelSealed, Nonce, NonceError, Quote, QuoteNonce, Report,
-    ReportData, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, IntelSealed, Nonce, NonceError, Quote,
+    QuoteNonce, Report, ReportData, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, NonceAuthRequest,
@@ -258,7 +258,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                attestation_evidence,
+                EvidenceKind::Epid(attestation_evidence),
             )
         };
 
@@ -322,6 +322,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let auth_response_event = AuthResponseInput::new(
             auth_response_output_bytes.into(),
             [self.trusted_identity()?],
+            None,
         );
         let (initiator, _verification_report) =
             initiator.try_next(&mut csprng, auth_response_event)?;
@@ -349,7 +350,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                attestation_evidence,
+                EvidenceKind::Epid(attestation_evidence),
             )
         };
 
@@ -384,7 +385,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Construct the initializer input.
         let node_init = {
-            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(local_identity, attestation_evidence)
+            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(
+                local_identity,
+                EvidenceKind::Epid(attestation_evidence),
+            )
         };
 
         // Initialize
@@ -414,7 +418,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             NodeAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
                 AuthRequestOutput::from(req),
                 local_identity,
-                attestation_evidence,
+                EvidenceKind::Epid(attestation_evidence),
                 [self.trusted_identity()?],
             )
         };
@@ -438,7 +442,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         // Find our state machine
         let initiator = self
             .initiator_auth_pending
@@ -449,12 +453,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let msg: Vec<u8> = msg.into();
         let auth_response_output = AuthResponseOutput::from(msg);
         let identities = [self.trusted_identity()?];
-        let auth_response_input = AuthResponseInput::new(auth_response_output, identities);
+        let auth_response_input = AuthResponseInput::new(auth_response_output, identities, None);
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, verification_report) =
-            initiator.try_next(&mut csprng, auth_response_input)?;
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_input)?;
 
         let peer_session = PeerSession::from(initiator.binding());
 
@@ -462,7 +465,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .lock()?
             .put(peer_session.clone(), initiator);
 
-        Ok((peer_session, verification_report))
+        Ok((peer_session, evidence))
     }
 
     /// Close a peer connection

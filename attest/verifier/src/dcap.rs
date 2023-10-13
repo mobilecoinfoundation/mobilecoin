@@ -175,9 +175,9 @@ mod test {
     use super::*;
     use mc_attest_untrusted::DcapQuotingEnclave;
     use mc_attestation_verifier::{TrustedMrEnclaveIdentity, VerificationTreeDisplay};
+    use mc_common::time::{SystemTimeProvider, TimeProvider};
     use mc_sgx_core_types::Report;
     use p256::pkcs8::der::DateTime;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn report_and_report_data() -> (Report, EnclaveReportDataContents) {
         let mut report = Report::default();
@@ -285,8 +285,8 @@ mod test {
 
         // The certs, TCB info, and QE identity are generated at build time, so `now()`
         // should be alright to use in testing.
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
+        let now = SystemTimeProvider::default()
+            .since_epoch()
             .expect("Failed to get duration since epoch");
         let time =
             DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");
@@ -342,8 +342,8 @@ mod test {
 
         // The certs, TCB info, and QE identity are generated at build time, so `now()`
         // should be alright to use in testing.
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
+        let now = SystemTimeProvider::default()
+            .since_epoch()
             .expect("Failed to get duration since epoch");
         let time =
             DateTime::from_unix_duration(now).expect("Failed to convert duration to DateTime");

@@ -882,7 +882,7 @@ impl<
     }
 
     fn get_block_metadata(&self, block_id: &BlockID) -> BlockMetadata {
-        let verification_report = self
+        let attestation_evidence = self
             .enclave
             .get_attestation_evidence()
             .unwrap_or_else(|err| {
@@ -893,7 +893,7 @@ impl<
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
-            AttestationEvidence::VerificationReport(verification_report),
+            AttestationEvidence::VerificationReport(attestation_evidence),
             self.scp_node.node_id().responder_id,
         );
 
@@ -1614,7 +1614,7 @@ mod tests {
             broadcast,
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
-        let report = enclave.get_attestation_evidence().unwrap();
+        let attestation_evidence = enclave.get_attestation_evidence().unwrap();
 
         let tx_manager = TxManagerImpl::new(
             enclave.clone(),
@@ -1739,7 +1739,7 @@ mod tests {
         assert_eq!(&block.id, contents.block_id());
         assert_eq!(&quorum_set, contents.quorum_set());
         assert_eq!(
-            &AttestationEvidence::VerificationReport(report),
+            &AttestationEvidence::VerificationReport(attestation_evidence),
             contents.attestation_evidence()
         );
         assert_eq!(&local_node_id.responder_id, contents.responder_id());

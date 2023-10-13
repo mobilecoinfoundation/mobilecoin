@@ -2562,14 +2562,17 @@ dependencies = [
  "aead",
  "aes-gcm",
  "cargo-emit",
+ "der",
  "digest 0.10.7",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-crypto-keys",
  "mc-crypto-noise",
+ "mc-sgx-dcap-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
@@ -2906,6 +2909,7 @@ version = "5.0.8"
 dependencies = [
  "aes-gcm",
  "cookie",
+ "der",
  "displaydoc",
  "grpcio",
  "mc-attest-ake",
@@ -3712,6 +3716,7 @@ version = "5.0.8"
 dependencies = [
  "aes-gcm",
  "cookie",
+ "der",
  "displaydoc",
  "grpcio",
  "mc-attest-ake",
@@ -3993,6 +3998,7 @@ name = "mc-fog-ledger-connection"
 version = "5.0.8"
 dependencies = [
  "aes-gcm",
+ "der",
  "displaydoc",
  "futures",
  "grpcio",
@@ -4725,6 +4731,7 @@ name = "mc-fog-view-connection"
 version = "5.0.8"
 dependencies = [
  "aes-gcm",
+ "der",
  "futures",
  "grpcio",
  "mc-attest-ake",

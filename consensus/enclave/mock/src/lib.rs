@@ -13,7 +13,8 @@ pub use mock_consensus_enclave::MockConsensusEnclave;
 
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -44,7 +45,7 @@ pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
     pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
-    pub verification_report: VerificationReport,
+    pub attestation_evidence: VerificationReport,
     pub identity: X25519Private,
 }
 
@@ -62,14 +63,14 @@ impl ConsensusServiceMockEnclave {
             block_version,
             ..Default::default()
         }));
-        let verification_report = mc_blockchain_test_utils::make_verification_report(csprng);
+        let attestation_evidence = mc_blockchain_test_utils::make_verification_report(csprng);
         let identity = X25519Private::from_random(csprng);
 
         Self {
             signing_keypair,
             minting_trust_root_keypair,
             blockchain_config,
-            verification_report,
+            attestation_evidence,
             identity,
         }
     }
@@ -121,7 +122,7 @@ impl ReportableEnclave for ConsensusServiceMockEnclave {
     }
 
     fn get_attestation_evidence(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(self.verification_report.clone())
+        Ok(self.attestation_evidence.clone())
     }
 }
 
@@ -207,8 +208,11 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         _node_id: &ResponderId,
         _msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
-        Ok((vec![].into(), VerificationReport::default()))
+    ) -> Result<(PeerSession, EvidenceKind)> {
+        Ok((
+            vec![].into(),
+            EvidenceKind::Epid(VerificationReport::default()),
+        ))
     }
 
     fn peer_close(&self, _msg: &PeerSession) -> Result<()> {

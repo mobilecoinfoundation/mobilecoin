@@ -36,7 +36,7 @@ mod test {
     //! Unit tests for Attested Key Exchange
     use super::*;
     use aes_gcm::Aes256Gcm;
-    use mc_attest_core::Quote;
+    use mc_attest_core::{EvidenceKind, Quote};
     use mc_attest_net::{Client, RaClient};
     use mc_attestation_verifier::{TrustedIdentity, TrustedMrSignerIdentity};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
@@ -74,6 +74,9 @@ mod test {
         let attestation_evidence = ra_client
             .verify_quote(&quote, None)
             .expect("Could not sign our bogus report");
+
+        // TODO: replace with dcap
+        let attestation_evidence = EvidenceKind::Epid(attestation_evidence);
 
         let report_body = quote
             .report_body()
@@ -113,7 +116,7 @@ mod test {
 
         // initiator = authpending, responder = ready
 
-        let auth_response_input = AuthResponseInput::new(auth_response_output, identities);
+        let auth_response_input = AuthResponseInput::new(auth_response_output, identities, None);
         let (initiator, _) = initiator
             .try_next(&mut csprng, auth_response_input)
             .expect("Initiator not process auth response");

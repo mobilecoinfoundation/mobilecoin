@@ -27,7 +27,7 @@ pub struct DcapEvidence {
     pub report_data: EnclaveReportDataContents,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum EvidenceKind {
     Epid(VerificationReport),
     Dcap(prost::DcapEvidence),

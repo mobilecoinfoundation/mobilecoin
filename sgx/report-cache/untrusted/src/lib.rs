@@ -185,7 +185,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             report_body.mr_enclave(),
             report_body.mr_signer()
         );
-        Ok(retval)
+        Ok(retval) // TODO: replace with dcap
     }
 
     /// Update the attestation evidence cached within the enclave.
@@ -242,6 +242,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         };
 
         if retval.is_ok() {
+            // TODO: replace with dcap
             let ias_report_data = VerificationReportData::try_from(&attestation_evidence)?;
             let timestamp = ias_report_data.parse_timestamp()?;
 

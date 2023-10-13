@@ -8,13 +8,15 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
+use der::DateTime;
 use grpcio::{CallOption, Metadata, MetadataBuilder, Result as GrpcResult};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::EvidenceKind;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, Logger},
+    time::{SystemTimeProvider, TimeProvider},
     trace_time,
 };
 use mc_connection::{AttestationError, AttestedConnection, Connection};
@@ -87,7 +89,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         self.attest_cipher.is_some()
     }
 
-    fn attest(&mut self) -> Result<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> Result<EvidenceKind, Self::Error> {
         trace_time!(self.logger, "FogClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -116,15 +118,19 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
             )
         }
 
+        let epoch_time = SystemTimeProvider::default()
+            .since_epoch()
+            .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| Error::Other("Time out of range".to_owned()))?;
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone());
-        let (initiator, verification_report) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(evidence)
     }
 
     fn deattest(&mut self) {

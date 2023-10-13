@@ -13,7 +13,8 @@ pub use mc_fog_ingest_enclave_api::{
 
 use displaydoc::Display;
 use mc_attest_core::{
-    EnclaveReportDataContents, IasNonce, Quote, Report, SgxError, TargetInfo, VerificationReport,
+    EnclaveReportDataContents, EvidenceKind, IasNonce, Quote, Report, SgxError, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_verifier::DEBUG_ENCLAVE;
@@ -266,7 +267,7 @@ impl IngestEnclave for IngestSgxEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

@@ -165,7 +165,7 @@ fn attestation_evidence_from_node_url(
         .try_next(&mut csprng, unverified_evidence_event)
         .map_err(|err| format!("Failed decoding attestation evidence from {node_url}: {err}"))?;
 
-    Ok(attestation_evidence.into())
+    Ok(attestation_evidence)
 }
 
 fn auth_message_from_responder(

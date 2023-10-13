@@ -37,14 +37,14 @@ impl<E: ReportableEnclave> ConsensusMetadataProvider<E> {
 
 impl<E: ReportableEnclave> BlockMetadataProvider for ConsensusMetadataProvider<E> {
     fn get_metadata(&self, block_data: &BlockData) -> Option<BlockMetadata> {
-        let verification_report = self
+        let attestation_evidence = self
             .enclave
             .get_attestation_evidence()
             .expect("failed to get AVR");
         let contents = BlockMetadataContents::new(
             block_data.block().id.clone(),
             self.quorum_set.clone(),
-            AttestationEvidence::VerificationReport(verification_report),
+            AttestationEvidence::VerificationReport(attestation_evidence),
             self.responder_id.clone(),
         );
         Some(

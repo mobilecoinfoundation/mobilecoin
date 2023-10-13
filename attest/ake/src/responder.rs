@@ -8,7 +8,7 @@ use crate::{
     state::{Ready, Start},
 };
 use alloc::vec::Vec;
-use mc_attest_core::{ReportDataMask, VerificationReport};
+use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
@@ -36,7 +36,7 @@ trait ResponderTransitionMixin {
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
-        ias_report: VerificationReport,
+        attestatio_evidence: EvidenceKind,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
@@ -82,13 +82,18 @@ impl ResponderTransitionMixin for Start {
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
-        ias_report: VerificationReport,
+        attestation_evidence: EvidenceKind,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
         Cipher: NoiseCipher,
         DigestAlgo: NoiseDigest,
     {
+        // TODO: This will be replaced with dcap evidence serialization.
+        //       This code will never run.
+        let EvidenceKind::Epid(ias_report) = attestation_evidence else {
+            return Err(Error::AttestationEvidenceSerialization);
+        };
         // Encrypt the local report for output
         let mut report_bytes = Vec::with_capacity(ias_report.encoded_len());
         ias_report
@@ -144,9 +149,10 @@ where
         let mut verifier = Verifier::default();
         verifier.identities(&identities).debug(DEBUG_ENCLAVE);
 
-        // Parse the received IAS report
+        // Parse the received attestation evidence
         let remote_report = VerificationReport::decode(payload.as_slice())
             .map_err(|_| Error::AttestationEvidenceDeserialization)?;
+
         // Verify using given verifier, and ensure the first 32B of the report data are
         // the identity pubkey.
         verifier
@@ -160,7 +166,7 @@ where
             )
             .verify(&remote_report)?;
 
-        Self::handle_response(csprng, handshake_state, input.ias_report)
+        Self::handle_response(csprng, handshake_state, input.attestation_evidence)
     }
 }
 
@@ -189,6 +195,6 @@ where
                 &input.data.data,
                 input.local_identity,
             )?;
-        Self::handle_response(csprng, handshake_state, input.ias_report)
+        Self::handle_response(csprng, handshake_state, input.attestation_evidence)
     }
 }
