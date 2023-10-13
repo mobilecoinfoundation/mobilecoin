@@ -38,7 +38,7 @@ ENV PCE_LOGIC_VERSION=1.15.100.3-focal1
 
 # Install  packages
 RUN  apt-get update \
-  && apt-get install -y \
+  && apt-get --no-install-recommends install -y \
       sgx-aesm-service=${AESM_VERSION} \
       libsgx-epid=${AESM_VERSION} \
       libsgx-ae-epid=${AESM_VERSION} \
@@ -51,6 +51,10 @@ RUN  apt-get update \
       libsgx-launch=${AESM_VERSION} \
       libsgx-urts=${AESM_VERSION} \
       libsgx-pce-logic=${PCE_LOGIC_VERSION} \
+      libsgx-ae-qe3=${PCE_LOGIC_VERSION} \
+      libsgx-ae-id-enclave=${PCE_LOGIC_VERSION} \
+      libsgx-qe3-logic=${PCE_LOGIC_VERSION} \
+      libsgx-dcap-ql=${PCE_LOGIC_VERSION} \
   && apt-get clean \
   && rm -r /var/lib/apt/lists
 
