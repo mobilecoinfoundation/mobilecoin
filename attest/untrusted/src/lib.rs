@@ -9,7 +9,7 @@ use mc_attest_core::{
 };
 use mc_sgx_dcap_types::QlError;
 use mc_sgx_types::{
-    sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote,
+    sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote, sgx_init_quote,
     sgx_report_attestation_status, sgx_status_t,
 };
 
@@ -67,8 +67,13 @@ impl QuotingEnclave {
     }
 
     pub fn target_info() -> Result<(TargetInfo, EpidGroupId), TargetInfoError> {
-        let gid = Self::epid_group_id()?;
-        Ok((DcapQuotingEnclave::target_info()?, gid))
+        let mut qe_info = TargetInfo::default();
+        let mut gid = EpidGroupId::default();
+        match unsafe { sgx_init_quote(qe_info.as_mut(), gid.as_mut()) } {
+            sgx_status_t::SGX_SUCCESS => Ok((qe_info, gid)),
+            sgx_status_t::SGX_ERROR_BUSY => Err(TargetInfoError::QeBusy),
+            other_status => Err(TargetInfoError::Sgx(other_status.into())),
+        }
     }
 
     pub fn epid_group_id() -> Result<EpidGroupId, SgxError> {
