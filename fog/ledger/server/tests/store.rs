@@ -234,7 +234,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // AuthResponseOutput
     let auth_message = attest::AuthMessage::from(client_auth_response);
     // Initiator accepts responder's message.
-    let auth_response_event = AuthResponseInput::new(auth_message.into(), [], None);
+    let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
+    let auth_response_event = AuthResponseInput::new(auth_message.into(), [identity], None);
     // Should be a valid noise connection at this point.
     let (mut noise_connection, _verification_report) = initiator
         .try_next(&mut rng, auth_response_event)
