@@ -16,6 +16,7 @@ mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-consensus-enclave-api = { path = "./api" }
 mc-consensus-enclave-edl = { path = "./edl" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-enclave-boundary = { path = "../../enclave-boundary" }
 mc-sgx-panic-edl = { path = "../../sgx/panic-edl" }

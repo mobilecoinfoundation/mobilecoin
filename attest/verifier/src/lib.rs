@@ -22,6 +22,7 @@ pub use crate::dcap::DcapVerifier;
 extern crate alloc;
 
 pub use crate::status::{Kind as StatusVerifier, MrEnclaveVerifier, MrSignerVerifier};
+use mc_attestation_verifier::Error as AttestationVerifierError;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
@@ -129,7 +130,7 @@ trait Verify<T>: Clone {
 }
 
 /// An enumeration of errors which a [`Verifier`] can produce.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /**
      * The user-provided array of trust anchor PEM contains an invalid
@@ -145,9 +146,13 @@ pub enum Error {
     BadSignature,
     /// There was an error parsing the JSON contents: {0}
     Parse(VerifyError),
+
+    /// Attestation verifier error: {0}
+    AttestationVerify(AttestationVerifierError),
+
     /**
-     * The report was properly constructed, but did not meet security
-     * requirements, verification output: {0}
+     * The evidence was properly constructed, but did not meet security
+     * requirements:\n{0}
      */
     Verification(String),
 }
@@ -155,6 +160,12 @@ pub enum Error {
 impl From<VerifyError> for Error {
     fn from(src: VerifyError) -> Error {
         Error::Parse(src)
+    }
+}
+
+impl From<AttestationVerifierError> for Error {
+    fn from(src: AttestationVerifierError) -> Self {
+        Error::AttestationVerify(src)
     }
 }
 

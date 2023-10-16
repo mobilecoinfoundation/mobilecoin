@@ -2,9 +2,8 @@
 
 use std::sync::Arc;
 
-use mc_blockchain_types::{
-    AttestationEvidence, BlockData, BlockMetadata, BlockMetadataContents, QuorumSet,
-};
+use mc_attest_verifier_types::prost;
+use mc_blockchain_types::{BlockData, BlockMetadata, BlockMetadataContents, QuorumSet};
 use mc_common::ResponderId;
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_sync::BlockMetadataProvider;
@@ -40,11 +39,13 @@ impl<E: ReportableEnclave> BlockMetadataProvider for ConsensusMetadataProvider<E
         let attestation_evidence = self
             .enclave
             .get_attestation_evidence()
-            .expect("failed to get AVR");
+            .expect("failed to get attestation evidence");
+        let prost_evidence = prost::DcapEvidence::try_from(&attestation_evidence)
+            .expect("failed to convert to prost evidence");
         let contents = BlockMetadataContents::new(
             block_data.block().id.clone(),
             self.quorum_set.clone(),
-            AttestationEvidence::VerificationReport(attestation_evidence),
+            prost_evidence.into(),
             self.responder_id.clone(),
         );
         Some(

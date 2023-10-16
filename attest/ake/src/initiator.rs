@@ -6,11 +6,12 @@ use crate::{
     AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
     Start, Terminated, Transition, UnverifiedAttestationEvidence,
 };
+use ::prost::Message;
 use alloc::{string::ToString, vec::Vec};
 use der::DateTime;
 use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
 use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
-use mc_attest_verifier_types::DcapEvidence;
+use mc_attest_verifier_types::{prost, DcapEvidence};
 use mc_attestation_verifier::{Evidence, TrustedIdentity, VerificationTreeDisplay};
 use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
 use mc_crypto_noise::{
@@ -125,7 +126,10 @@ where
             None,
         )
         .map_err(Error::HandshakeInit)?;
-        let serialized_evidence = input.attestation_evidence.into_bytes();
+
+        let prost_evidence = prost::DcapEvidence::try_from(&input.dcap_evidence)
+            .map_err(|_| Error::AttestationEvidenceSerialization)?;
+        let serialized_evidence = prost_evidence.encode_to_vec();
 
         parse_handshake_output(
             handshake_state

@@ -11,7 +11,6 @@ use crate::{
     router_admin_service::FogViewRouterAdminService,
 };
 use futures::executor::block_on;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
@@ -27,17 +26,15 @@ use mc_util_grpc::{
 };
 use std::sync::{Arc, RwLock};
 
-pub struct FogViewRouterServer<E, RC>
+pub struct FogViewRouterServer<E>
 where
     E: ViewEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     router_server: grpcio::Server,
     admin_service: FogViewRouterAdminService,
     enclave: E,
     config: FogViewRouterConfig,
     logger: Logger,
-    ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
     admin_server: Option<AdminServer>,
 }
@@ -69,20 +66,18 @@ impl Shard {
     }
 }
 
-impl<E, RC> FogViewRouterServer<E, RC>
+impl<E> FogViewRouterServer<E>
 where
     E: ViewEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     /// Creates a new view router server instance
     pub fn new(
         config: FogViewRouterConfig,
         enclave: E,
-        ra_client: RC,
         shards: Arc<RwLock<Vec<Shard>>>,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
-    ) -> FogViewRouterServer<E, RC>
+    ) -> FogViewRouterServer<E>
     where
         E: ViewEnclaveProxy,
     {
@@ -161,7 +156,6 @@ where
             enclave,
             config,
             logger,
-            ra_client,
             report_cache_thread: None,
             admin_server: None,
         }
@@ -172,9 +166,7 @@ where
         self.report_cache_thread = Some(
             ReportCacheThread::start(
                 self.enclave.clone(),
-                self.ra_client.clone(),
-                self.config.ias_spid,
-                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
                 self.logger.clone(),
             )
             .expect("failed starting report cache thread"),
@@ -229,10 +221,9 @@ where
     }
 }
 
-impl<E, RC> Drop for FogViewRouterServer<E, RC>
+impl<E> Drop for FogViewRouterServer<E>
 where
     E: ViewEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         self.stop();

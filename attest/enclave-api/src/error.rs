@@ -6,7 +6,7 @@ use alloc::string::{String, ToString};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
-use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, QuoteError, SgxError};
+use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, SgxError};
 use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_noise::CipherError;
 use mc_sgx_compat::sync::PoisonError;
@@ -17,7 +17,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /// An enumeration of errors which can occur inside an enclave, in connection to
 /// attestation or AKE
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /// Enclave not initialized
     NotInit,
@@ -42,9 +42,6 @@ pub enum Error {
      * mismatch.
      */
     Nonce(NonceError),
-
-    /// The local quote could not be verified: {0}
-    Quote(QuoteError),
 
     /// The local attestation evidence could not be verified: {0}
     Verify(VerifierError),
@@ -109,12 +106,6 @@ impl From<SgxError> for Error {
 impl From<NonceError> for Error {
     fn from(src: NonceError) -> Error {
         Error::Nonce(src)
-    }
-}
-
-impl From<QuoteError> for Error {
-    fn from(src: QuoteError) -> Error {
-        Error::Quote(src)
     }
 }
 
