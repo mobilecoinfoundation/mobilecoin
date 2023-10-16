@@ -46,6 +46,7 @@ zeroize = "1"
 [dev-dependencies]
 rand = "0.8"
 
+mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }

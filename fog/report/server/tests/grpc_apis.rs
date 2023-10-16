@@ -3,7 +3,7 @@
 // Exercise report server grpc APIs and check for expected behavior
 
 use grpcio::ChannelBuilder;
-use mc_attest_core::VerificationReport;
+use mc_attest_verifier_types::prost;
 use mc_common::logger::{test_with_logger, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::{report::ReportRequest as ProtobufReportRequest, report_grpc};
@@ -60,20 +60,33 @@ fn report_server_grpc_tests(logger: Logger) {
         .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 123)
         .unwrap();
 
-    let verification_report0 = VerificationReport {
-        sig: Default::default(),
-        chain: vec![b"asdf".to_vec(), b"jkl;".to_vec()],
-        http_body: "body".to_string(),
+    let enclave_report_data_0 = prost::EnclaveReportDataContents {
+        nonce: b"first".to_vec(),
+        key: b"one".to_vec(),
+        custom_identity: b"uno".to_vec(),
     };
-    let verification_report1 = VerificationReport {
-        sig: Default::default(),
-        chain: vec![b"jkl;".to_vec(), b"asdf".to_vec()],
-        http_body: "different body".to_string(),
+
+    let dcap_evidence_0 = prost::DcapEvidence {
+        quote: None,
+        collateral: None,
+        report_data: Some(enclave_report_data_0),
+    };
+
+    let enclave_report_data_1 = prost::EnclaveReportDataContents {
+        nonce: b"second".to_vec(),
+        key: b"two".to_vec(),
+        custom_identity: b"dos".to_vec(),
+    };
+
+    let dcap_evidence_1 = prost::DcapEvidence {
+        quote: None,
+        collateral: None,
+        report_data: Some(enclave_report_data_1),
     };
 
     let report1 = ReportData {
         ingest_invocation_id: Some(invoc_id1),
-        attestation_evidence: verification_report0.clone().into(),
+        attestation_evidence: dcap_evidence_0.clone().into(),
         pubkey_expiry: 102030,
     };
     let report_id1 = "";
@@ -86,15 +99,15 @@ fn report_server_grpc_tests(logger: Logger) {
 
     assert_eq!(resp.reports.len(), 1);
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_verification_report()),
-        verification_report0
+        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
+        dcap_evidence_0
     );
     assert_eq!(resp.reports[0].get_pubkey_expiry(), report1.pubkey_expiry);
 
     // Update report
     let updated_report1 = ReportData {
         ingest_invocation_id: Some(invoc_id1),
-        attestation_evidence: verification_report1.clone().into(),
+        attestation_evidence: dcap_evidence_1.clone().into(),
         pubkey_expiry: 424242,
     };
 
@@ -108,8 +121,8 @@ fn report_server_grpc_tests(logger: Logger) {
 
     assert_eq!(resp.reports.len(), 1);
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_verification_report()),
-        verification_report1
+        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
+        dcap_evidence_1
     );
     assert_eq!(
         resp.reports[0].get_pubkey_expiry(),
@@ -119,7 +132,7 @@ fn report_server_grpc_tests(logger: Logger) {
     // Add second report (DB contains report_bytes1 for report_id1)
     let report2 = ReportData {
         ingest_invocation_id: Some(invoc_id1),
-        attestation_evidence: verification_report0.clone().into(),
+        attestation_evidence: dcap_evidence_0.clone().into(),
         pubkey_expiry: 10203040,
     };
     let report_id2 = "report2";
@@ -133,8 +146,8 @@ fn report_server_grpc_tests(logger: Logger) {
     assert_eq!(resp.reports.len(), 2);
 
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_verification_report()),
-        verification_report1
+        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
+        dcap_evidence_1
     );
     assert_eq!(
         resp.reports[0].get_pubkey_expiry(),
@@ -142,8 +155,8 @@ fn report_server_grpc_tests(logger: Logger) {
     );
 
     assert_eq!(
-        VerificationReport::from(resp.reports[1].get_verification_report()),
-        verification_report0
+        prost::DcapEvidence::from(resp.reports[1].get_dcap_evidence()),
+        dcap_evidence_0
     );
     assert_eq!(resp.reports[1].get_pubkey_expiry(), report2.pubkey_expiry);
 
@@ -156,8 +169,8 @@ fn report_server_grpc_tests(logger: Logger) {
 
     assert_eq!(resp.reports.len(), 1);
     assert_eq!(
-        VerificationReport::from(resp.reports[0].get_verification_report()),
-        verification_report0
+        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
+        dcap_evidence_0
     );
     assert_eq!(resp.reports[0].get_pubkey_expiry(), report2.pubkey_expiry);
 }

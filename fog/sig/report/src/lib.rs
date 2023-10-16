@@ -21,19 +21,19 @@ pub fn context() -> &'static [u8] {
 }
 
 /// A trait which private keyholders can implement to allow them to sign a
-/// list of IAS verification reports with appropriate domain separators.
+/// list of Fog reports with appropriate domain separators.
 pub trait Signer {
     /// The signature output type
     type Sig: SignatureEncoding + Clone;
     /// A printable error type
     type Error: Debug + Display;
 
-    /// Sign a list of IAS verification report.
+    /// Sign a list of Fog reporst.
     fn sign_reports(&self, reports: &[Report]) -> Result<Self::Sig, Self::Error>;
 }
 
 /// A trait which public keys can implement to allow them to verify a signature
-/// over a list of IAS verification reports with appropriate domain separators.
+/// over a list of Fog reports with appropriate domain separators.
 pub trait Verifier {
     /// The signature output type
     type Sig: SignatureEncoding + Clone;

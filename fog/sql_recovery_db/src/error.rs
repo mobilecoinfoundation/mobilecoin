@@ -42,8 +42,8 @@ pub enum Error {
     OverlappingMissedBlocksRange(BlockRange, BlockRange),
 
     /**
-     * The data in the database could not be decoded as a
-     * VerificationReport: {0:?}
+     * The data in the database could not be decoded as
+     * AttestationEvidence: {0:?}
      */
     Decode(DecodeError),
 }
