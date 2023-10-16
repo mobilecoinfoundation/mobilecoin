@@ -13,7 +13,7 @@ use mbedtls_sys::types::{
     size_t,
 };
 use mc_util_build_script::Environment;
-use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode};
+use mc_util_build_sgx::{SgxEnvironment, SgxMode};
 use p256::{
     ecdsa::{signature::Signer, Signature, SigningKey},
     pkcs8::{EncodePrivateKey, LineEnding},
@@ -91,10 +91,6 @@ fn main() {
 
     if sgx.sgx_mode() == SgxMode::Simulation {
         cargo_emit::rustc_cfg!("feature=\"sgx-sim\"");
-    }
-
-    if sgx.ias_mode() == IasMode::Development {
-        cargo_emit::rustc_cfg!("feature=\"ias-dev\"");
     }
 
     if should_generating_sim_files(&data_path) {

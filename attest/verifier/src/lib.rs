@@ -44,13 +44,6 @@ cfg_if::cfg_if! {
         pub const IAS_SIGNING_ROOT_CERT_PEM: &str = SIM_ROOT_ANCHOR;
         /// Root anchor PEM file for use with DCAP
         pub const DCAP_ROOT_ANCHOR: &str = SIM_ROOT_ANCHOR;
-    } else if #[cfg(feature = "ias-dev")] {
-        /// Whether or not enclaves should be run and validated in debug mode
-        pub const DEBUG_ENCLAVE: bool = true;
-        /// Root anchor PEM file for use with IAS
-        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = include_str!("../data/Dev_AttestationReportSigningCACert.pem");
-        /// Root anchor PEM file for use with DCAP
-        pub const DCAP_ROOT_ANCHOR: &str = include_str!("../data/DcapRootCACert.pem");
     } else {
         /// Debug enclaves in prod mode are not supported.
         pub const DEBUG_ENCLAVE: bool = false;
@@ -445,9 +438,7 @@ mod test {
     use mc_attestation_verifier::{Advisories, AdvisoryStatus};
     use mc_util_encodings::FromHex;
 
-    const TEST_ANCHORS: &[&str] = &[include_str!(
-        "../data/Dev_AttestationReportSigningCACert.pem"
-    )];
+    const TEST_ANCHORS: &[&str] = &[include_str!("../data/AttestationReportSigningCACert.pem")];
 
     /// This function provides a recorded response using SW_HARDENING_NEEDED for
     /// the INTEL-SA-00334 (LVI) advisory

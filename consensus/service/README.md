@@ -140,12 +140,10 @@ Follow the steps below:
 
 An example run command is the below.
 
->Note: The environment variables, `SGX_MODE`, `IAS_MODE`, `CONSENSUS_ENCLAVE_CSS` and `CONSENSUS_ENCLAVE_SIGNED` indicate important parameters to the SGX Enclave build. Please see [BUILD.md](./BUILD.md) for more details.
-
->Note: Running in `IAS_MODE=DEV` runs a debug enclave.
+>Note: The environment variables, `SGX_MODE`, `CONSENSUS_ENCLAVE_CSS` and `CONSENSUS_ENCLAVE_SIGNED` indicate important parameters to the SGX Enclave build. Please see [BUILD.md](./BUILD.md) for more details.
 
 ```
-SGX_MODE=HW IAS_MODE=DEV \
+SGX_MODE=HW \
     CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
     cargo run --release -p mc-consensus-service -- \

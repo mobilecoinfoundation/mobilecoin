@@ -18,9 +18,6 @@ pipeline {
           // SGX Compile mode
           env.SGX_MODE = "HW"
 
-          // Intel Attestation Service compile/runtime mode
-          env.IAS_MODE = "DEV"
-
           // Network name, results in node names like nodeX.$NETWORK.mobilecoin.com
           env.NETWORK = "cd"
 

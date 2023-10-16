@@ -47,7 +47,7 @@ In order to use it, the following steps are necessary.
 
 5) Start a local network, for example:
     ```
-    SGX_MODE=SW IAS_MODE=DEV \
+    SGX_MODE=SW \
     MC_LOG="trace,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
     GRAFANA_PASSWORD="... (get this from a team member, optional) \"
     LOGSTASH_HOST="... (get this from a team member, optional)" \
@@ -72,7 +72,7 @@ In order to use it, the following steps are necessary.
         --fog-authority-root $(${CARGO_TARGET_DIR:-target}/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
 
     # Run the distribution script. This takes awhile and you should see transactions going through by looking at the logs.
-    SGX_MODE=SW IAS_MODE=DEV MC_LOG=debug \
+    SGX_MODE=SW MC_LOG=debug \
     INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
@@ -91,7 +91,7 @@ In order to use it, the following steps are necessary.
 
 8) When its done, wait for consensus to complete processing the transactions (by looking at the logs). Afterwards you should be able to successfully run the test client:
     ```
-    SGX_MODE=SW IAS_MODE=DEV MC_LOG=trace \
+    SGX_MODE=SW MC_LOG=trace \
     INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
