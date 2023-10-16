@@ -159,7 +159,7 @@ where
         } = dcap_evidence;
 
         let verifier = DcapVerifier::new(identities, None, report_data);
-        let evidence = Evidence::new(quote, collateral).expect("Failed to get evidence");
+        let evidence = Evidence::new(quote, collateral).map_err(mc_attest_verifier::Error::from)?;
 
         let verification = verifier.verify(&evidence);
         if verification.is_failure().into() {
