@@ -102,8 +102,6 @@ spec:
               - name: mgmt-http
                 containerPort: 8000
               envFrom:
-              - secretRef:
-                  name: ias
               - configMapRef:
                   # This is installed from the fog-services-config chart or Terraform
                   name: fog-ledger
@@ -349,8 +347,6 @@ spec:
             - name: mgmt-http
               containerPort: 8000
             envFrom:
-            - secretRef:
-                name: ias
             - configMapRef:
                 # Configmap is created by fog-services chart, or Terraform
                 name: fog-ledger

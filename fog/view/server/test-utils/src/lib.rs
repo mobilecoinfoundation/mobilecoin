@@ -83,9 +83,7 @@ impl RouterTestEnvironment {
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
-            ias_api_key: Default::default(),
             shard_uris,
-            ias_spid: Default::default(),
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
@@ -123,8 +121,6 @@ impl RouterTestEnvironment {
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
-            ias_api_key: Default::default(),
-            ias_spid: Default::default(),
             shard_uris,
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
@@ -233,8 +229,6 @@ impl RouterTestEnvironment {
                     client_listen_uri: uri.clone(),
                     client_auth_token_secret: None,
                     omap_capacity,
-                    ias_spid: Default::default(),
-                    ias_api_key: Default::default(),
                     admin_listen_uri: Default::default(),
                     client_auth_token_max_lifetime: Default::default(),
                     sharding_strategy,

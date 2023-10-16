@@ -129,8 +129,6 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
                 shard_uris: vec![],
-                ias_spid: Default::default(),
-                ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
@@ -350,8 +348,6 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 client_listen_uri: store_uri.clone(),
                 ledger_db: db_full_path.to_path_buf(),
                 watcher_db: watcher_dir.clone(),
-                ias_api_key: Default::default(),
-                ias_spid: Default::default(),
                 admin_listen_uri: Some(store_admin_uri),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
@@ -395,8 +391,6 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 client_responder_id: client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
-                ias_spid: Default::default(),
-                ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
@@ -584,8 +578,6 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
                 .responder_id()
                 .expect("Couldn't get responder ID for router"),
             shard_uris: vec![],
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
@@ -746,8 +738,6 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
                 .responder_id()
                 .expect("Couldn't get responder ID for router"),
             shard_uris: vec![],
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
@@ -910,8 +900,6 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 client_listen_uri: store_uri.clone(),
                 ledger_db: db_full_path.to_path_buf(),
                 watcher_db: watcher_dir.clone(),
-                ias_api_key: Default::default(),
-                ias_spid: Default::default(),
                 admin_listen_uri: Some(store_admin_uri),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
@@ -955,8 +943,6 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
                 shard_uris: vec![store_uri],
-                ias_spid: Default::default(),
-                ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,

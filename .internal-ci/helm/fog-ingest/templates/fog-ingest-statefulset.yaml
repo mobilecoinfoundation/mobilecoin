@@ -68,8 +68,6 @@ spec:
         - configMapRef:
             name: fog-ingest
         - secretRef:
-            name: ias
-        - secretRef:
             name: ipinfo
             optional: true
         env:

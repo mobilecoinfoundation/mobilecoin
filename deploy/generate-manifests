@@ -20,10 +20,6 @@ while (( "$#" )); do
             usage
             exit 0
             ;;
-        -k|--ias-api-key)
-            IAS_KEY="${2}"
-            shift 2
-            ;;
         -n|--namespace)
             NAMESPACE="${2}"
             shift 2

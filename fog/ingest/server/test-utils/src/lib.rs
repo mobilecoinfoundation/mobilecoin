@@ -213,7 +213,6 @@ impl IngestServerTestHelper {
             .collect();
 
         let config = IngestServerConfig {
-            ias_spid: Default::default(),
             local_node_id,
             peer_listen_uri: peer_listen_uri.clone(),
             peers,

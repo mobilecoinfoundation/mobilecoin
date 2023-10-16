@@ -14,8 +14,6 @@ data:
       --pubkey-expiry-window %(ENV_FOG_PUBKEY_EXPIRY_WINDOW)s
       --peers {{ include "fogIngest.peerURLs" . }}
       --local-node-id %(ENV_LOCAL_NODE_ID)s
-      --ias-spid %(ENV_IAS_SPID)s
-      --ias-api-key %(ENV_IAS_API_KEY)s
       --ledger-db /fog-data/ledger
       --watcher-db /fog-data/watcher
       --client-listen-uri insecure-fog-ingest://0.0.0.0:3226/

@@ -53,9 +53,6 @@ mcCoreCommonConfig:
   enabled: false
   # clientAuth:
   #   token: ''
-  # ias:
-  #   key: ''
-  #   spid: ''
   # mobileCoinNetwork:
   #   network: ''
   #   partner: ''

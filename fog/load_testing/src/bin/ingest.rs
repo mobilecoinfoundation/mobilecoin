@@ -156,10 +156,6 @@ impl Drop for AutoKillChild {
 struct TestConfig {
     // path to ingest server binary to launch
     pub ingest_server_binary: PathBuf,
-    // ias-spid to use
-    pub ias_spid: Option<String>,
-    // ias-api-key to use
-    pub ias_api_key: Option<String>,
     // how many txos to put in a block
     pub chunk_size: usize,
     // how many blocks to do (repetitions of the timing test)
@@ -241,14 +237,6 @@ fn load_test(config: &TestConfig, test_params: TestParams, logger: Logger) -> Te
             .args(["--watcher-db", watcher_db_path.path().to_str().unwrap()])
             .args(["--client-listen-uri", client_listen_uri.as_ref()])
             .args(["--peer-listen-uri", peer_listen_uri.as_ref()])
-            .args([
-                "--ias-spid",
-                &config.ias_spid.clone().unwrap_or("0".repeat(32)),
-            ])
-            .args([
-                "--ias-api-key",
-                &config.ias_api_key.clone().unwrap_or("0".repeat(32)),
-            ])
             .args(["--local-node-id", &local_node_id.to_string()])
             .args(["--peers", peer_listen_uri.as_ref()])
             .args(["--state-file", state_file_path.to_str().unwrap()])
@@ -426,10 +414,6 @@ fn load_test(config: &TestConfig, test_params: TestParams, logger: Logger) -> Te
 struct LoadTestOptions {
     #[clap(long, env = "MC_USER_CAPACITY")]
     user_capacity: Option<Vec<u64>>,
-    #[clap(long, env = "MC_IAS_SPID")]
-    ias_spid: Option<String>,
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    ias_api_key: Option<String>,
     #[clap(long, env = "MC_CHUNK_SIZE", default_value = "250")]
     chunk_size: usize,
     #[clap(long, env = "MC_REPETITONS", default_value = "100")]
@@ -446,8 +430,6 @@ fn main() {
 
     let config = TestConfig {
         ingest_server_binary: get_bin_path("fog_ingest_server"),
-        ias_spid: opt.ias_spid.clone(),
-        ias_api_key: opt.ias_api_key.clone(),
         chunk_size: opt.chunk_size,
         repetitions: opt.repetitions,
     };

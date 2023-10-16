@@ -13,8 +13,6 @@ data:
     command=/usr/bin/fog_view_server
       --client-listen-uri insecure-fog-view-store://0.0.0.0:3225/?responder-id=%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-view-store.{{ .Release.Namespace }}:3225
       --client-responder-id "%(ENV_HOSTNAME)s.{{ include "fogServices.fullname" . }}-fog-view-store.{{ .Release.Namespace }}:3225"
-      --ias-spid %(ENV_IAS_SPID)s
-      --ias-api-key %(ENV_IAS_API_KEY)s
       --admin-listen-uri insecure-mca://127.0.0.1:8001/
 
     stdout_logfile=/dev/fd/1
