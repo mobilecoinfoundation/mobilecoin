@@ -9,7 +9,6 @@ members = [
     "attest/ake",
     "attest/api",
     "attest/core",
-    "attest/net",
     "attest/trusted",
     "attest/untrusted",
     "attest/verifier",

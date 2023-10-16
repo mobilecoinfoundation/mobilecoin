@@ -8,7 +8,6 @@ rust-version = { workspace = true }
 
 [dependencies]
 # MC/root
-mc-attest-net = { path = "../../../../attest/net" }
 mc-blockchain-test-utils = { path = "../../../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
