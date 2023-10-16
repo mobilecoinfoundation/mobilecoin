@@ -178,6 +178,7 @@ where
         // Initialize report cache
         let report_cache = Arc::new(Mutex::new(ReportCache::new(
             enclave.clone(),
+            &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
             logger.clone(),
         )));
 

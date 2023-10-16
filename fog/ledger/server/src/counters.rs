@@ -1,9 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_util_metrics::{Histogram, IntCounter, OpMetrics};
+use mc_util_metrics::{Histogram, IntCounter, IntGauge, OpMetrics};
 
 lazy_static::lazy_static! {
           pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("fog_ledger");
+          // Ledger enclave attestation evidence timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+          pub static ref ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_attestation_evidence_timestamp");
           // Time it takes to perform the enclave add_records call.
           pub static ref ENCLAVE_ADD_KEY_IMAGE_DATA_TIME: Histogram = OP_COUNTERS.histogram("enclave_add_records_time");
           // Number of blocks added (to the enclave) since startup.

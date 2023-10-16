@@ -18,9 +18,14 @@ use mc_ledger_db::{
 use mc_rand::McRng;
 use mc_sgx_report_cache_untrusted::ReportCache;
 use mc_transaction_core::{AccountKey, BlockVersion, FeeMap};
+use mc_util_metrics::IntGauge;
 use mc_util_serial::encode;
 use sha2::Sha512;
 use std::str::FromStr;
+
+lazy_static::lazy_static! {
+    pub static ref DUMMY_INT_GAUGE: IntGauge = IntGauge::new("foo".to_string(), "bar".to_string()).unwrap();
+}
 
 /// Test that we can exercise client_tx_propose and that it passes and fails
 /// as expected.
@@ -47,7 +52,7 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
         blockchain_config,
     );
 
-    let report_cache = ReportCache::new(enclave.clone(), logger);
+    let report_cache = ReportCache::new(enclave.clone(), &DUMMY_INT_GAUGE, logger);
     report_cache.start_report_cache().unwrap();
     report_cache.update_enclave_report_cache().unwrap();
 

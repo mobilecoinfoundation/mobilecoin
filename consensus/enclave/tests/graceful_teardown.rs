@@ -9,9 +9,14 @@ use mc_consensus_enclave_api::BlockchainConfig;
 use mc_fog_test_infra::get_enclave_path;
 use mc_sgx_report_cache_untrusted::ReportCache;
 use mc_transaction_core::{BlockVersion, FeeMap};
+use mc_util_metrics::IntGauge;
 use std::str::FromStr;
 
 const NUM_TRIALS: usize = 3;
+
+lazy_static::lazy_static! {
+    pub static ref DUMMY_INT_GAUGE: IntGauge = IntGauge::new("foo".to_string(), "bar".to_string()).unwrap();
+}
 
 /// Test that we can create and destroy the consensus enclave repeatedly without
 /// crashing. Given the amount of unsafe C code involved, this is worth testing.
@@ -37,7 +42,7 @@ fn consensus_enclave_graceful_teardown(logger: Logger) {
             blockchain_config.clone(),
         );
 
-        let report_cache = ReportCache::new(enclave.clone(), logger.clone());
+        let report_cache = ReportCache::new(enclave.clone(), &DUMMY_INT_GAUGE, logger.clone());
         report_cache.start_report_cache().unwrap();
         report_cache.update_enclave_report_cache().unwrap();
     }

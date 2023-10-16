@@ -19,8 +19,8 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, db_fetcher::DbFetcher, sharding_strategy::ShardingStrategy,
-    DbPollSharedState, KeyImageService,
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
+    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
 };
 
 pub struct KeyImageStoreServer<E, SS>
@@ -173,8 +173,12 @@ where
     /// Starts the server
     pub fn start(&mut self) {
         self.report_cache_thread = Some(
-            ReportCacheThread::start(self.enclave.clone(), self.logger.clone())
-                .expect("failed starting report cache thread"),
+            ReportCacheThread::start(
+                self.enclave.clone(),
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
+                self.logger.clone(),
+            )
+            .expect("failed starting report cache thread"),
         );
 
         self.server.start();

@@ -6,6 +6,7 @@
 
 use crate::{
     config::{FogViewRouterConfig, RouterClientListenUri},
+    counters,
     fog_view_router_service::FogViewRouterService,
     router_admin_service::FogViewRouterAdminService,
 };
@@ -163,8 +164,12 @@ where
     /// Starts the server
     pub fn start(&mut self) {
         self.report_cache_thread = Some(
-            ReportCacheThread::start(self.enclave.clone(), self.logger.clone())
-                .expect("failed starting report cache thread"),
+            ReportCacheThread::start(
+                self.enclave.clone(),
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
+                self.logger.clone(),
+            )
+            .expect("failed starting report cache thread"),
         );
         self.router_server.start();
         match &self.config.client_listen_uri {

@@ -24,7 +24,7 @@ use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerRouterConfig, router_admin_service::LedgerRouterAdminService,
+    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
     router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
 
@@ -170,8 +170,12 @@ where
     /// Starts the server
     pub fn start(&mut self) {
         self.report_cache_thread = Some(
-            ReportCacheThread::start(self.enclave.clone(), self.logger.clone())
-                .expect("failed starting report cache thread"),
+            ReportCacheThread::start(
+                self.enclave.clone(),
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
+                self.logger.clone(),
+            )
+            .expect("failed starting report cache thread"),
         );
 
         self.router_server.start();

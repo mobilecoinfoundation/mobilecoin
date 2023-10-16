@@ -29,7 +29,6 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_rand::{CryptoRng, RngCore};
 use mc_util_grpc::AnonymousAuthenticator;
-use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
 use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
@@ -137,14 +136,6 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             watcher_path: db_tmp,
         }
     }
-}
-
-lazy_static::lazy_static! {
-    pub static ref TEST_OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_service");
-}
-
-lazy_static::lazy_static! {
-    pub static ref TEST_ENCLAVE_REPORT_TIMESTAMP: IntGauge = TEST_OP_COUNTERS.gauge("enclave_report_timestamp");
 }
 
 #[test_with_logger]

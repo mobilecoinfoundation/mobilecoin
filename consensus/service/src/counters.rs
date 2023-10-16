@@ -99,6 +99,9 @@ lazy_static::lazy_static! {
     // Time it takes to validate a transaction
     pub static ref VALIDATE_TX_TIME: Histogram = OP_COUNTERS.histogram("validate_tx_time");
 
+    // Consensus enclave attestation evidence timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    pub static ref ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_attestation_evidence_timestamp");
+
     // Number of times a ProposeMintConfigTx call has been initiated.
     pub static ref PROPOSE_MINT_CONFIG_TX_INITIATED: IntCounter = OP_COUNTERS.counter("propose_mint_config_tx_initiated");
 

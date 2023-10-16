@@ -8,6 +8,7 @@ use mc_attest_core::{DcapEvidence, QuoteError, VerifyError};
 use mc_attest_untrusted::{DcapQuotingEnclave, TargetInfoError};
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
+use mc_util_metrics::IntGauge;
 use retry::{delay::Fibonacci, retry, OperationResult};
 use std::{
     io::Error as IOError,
@@ -16,7 +17,7 @@ use std::{
         Arc,
     },
     thread::{sleep, Builder as ThreadBuilder, JoinHandle},
-    time::{Duration, Instant},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 /// How long to wait between report refreshes.
@@ -94,12 +95,21 @@ impl From<mc_sgx_dcap_quoteverify::Error> for Error {
 
 pub struct ReportCache<E: ReportableEnclave> {
     enclave: E,
+    attestation_evidence_timestamp_gauge: &'static IntGauge,
     logger: Logger,
 }
 
 impl<E: ReportableEnclave> ReportCache<E> {
-    pub fn new(enclave: E, logger: Logger) -> Self {
-        Self { enclave, logger }
+    pub fn new(
+        enclave: E,
+        attestation_evidence_timestamp_gauge: &'static IntGauge,
+        logger: Logger,
+    ) -> Self {
+        Self {
+            enclave,
+            attestation_evidence_timestamp_gauge,
+            logger,
+        }
     }
 
     pub fn start_report_cache(&self) -> Result<DcapEvidence, Error> {
@@ -178,11 +188,16 @@ pub struct ReportCacheThread {
 impl ReportCacheThread {
     pub fn start<E: ReportableEnclave + Send + 'static>(
         enclave: E,
+        attestation_evidence_timestamp_gauge: &'static IntGauge,
         logger: Logger,
     ) -> Result<Self, Error> {
         let logger = logger.new(o!("mc.enclave_type" => std::any::type_name::<E>()));
 
-        let report_cache = ReportCache::new(enclave, logger.clone());
+        let report_cache = ReportCache::new(
+            enclave,
+            attestation_evidence_timestamp_gauge,
+            logger.clone(),
+        );
         report_cache.update_enclave_report_cache()?;
 
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -218,7 +233,7 @@ impl ReportCacheThread {
     ) {
         log::debug!(logger, "Report cache thread started");
 
-        let mut last_refreshed_at = Instant::now();
+        let mut last_refreshed_at = SystemTime::now();
 
         loop {
             if stop_requested.load(Ordering::SeqCst) {
@@ -226,12 +241,25 @@ impl ReportCacheThread {
                 break;
             }
 
-            let now = Instant::now();
-            if now - last_refreshed_at > REPORT_REFRESH_INTERVAL {
+            if last_refreshed_at.elapsed().unwrap_or_default() > REPORT_REFRESH_INTERVAL {
                 log::info!(logger, "Report refresh internal exceeded, refreshing...");
                 match report_cache.update_enclave_report_cache() {
                     Ok(()) => {
-                        last_refreshed_at = now;
+                        last_refreshed_at = SystemTime::now();
+                        match last_refreshed_at.duration_since(UNIX_EPOCH) {
+                            Ok(timestamp) => {
+                                report_cache
+                                    .attestation_evidence_timestamp_gauge
+                                    .set(timestamp.as_secs() as i64);
+                            }
+                            Err(err) => {
+                                log::error!(
+                                    logger,
+                                    "Failed to get timestamp for attestation evidence: {:?}",
+                                    err
+                                );
+                            }
+                        }
                     }
                     Err(err) => {
                         log::error!(logger, "update_enclave_report_cache failed: {:?}", err);

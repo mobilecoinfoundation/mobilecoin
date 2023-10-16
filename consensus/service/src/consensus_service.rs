@@ -255,6 +255,7 @@ impl<
         let ret = {
             self.report_cache_thread = Some(ReportCacheThread::start(
                 self.enclave.clone(),
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
                 self.logger.clone(),
             )?);
             self.start_admin_rpc_server()?;

@@ -145,8 +145,12 @@ where
     /// Start the server, which starts all the worker threads
     pub fn start(&mut self) {
         self.report_cache_thread = Some(
-            ReportCacheThread::start(self.enclave.clone(), self.logger.clone())
-                .expect("failed starting report cache thread"),
+            ReportCacheThread::start(
+                self.enclave.clone(),
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
+                self.logger.clone(),
+            )
+            .expect("failed starting report cache thread"),
         );
 
         self.db_poll_thread.start();
