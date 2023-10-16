@@ -26,8 +26,8 @@ look something like this:
  1. Untrusted provides the results to the enclave ("how" is undefined in this crate).
  1. Enclave calls `Report::new()` providing it the enclave's identity as `report_data`.
  1. Enclave returns the `Report` and `EnclaveReportDataContents` to the untrusted code.
- 1. Untrusted uses `DcapQuotingEnclave::quote_report()` to communicate with the quoting enclave and get a quoted for the Enclave.
+ 1. Untrusted uses `DcapQuotingEnclave::quote_report()` to communicate with the quoting enclave and get a quote for the Enclave.
  1. Untrusted uses `DcapQuotingEnclave::collateral()` to get the other attestation evidence for the `Quote`.
- 1. Untrusted sends the `DcapEvidence`, the combined; `Quote`, `EnclaveReportDataContents` and `Collateral` to the Enclave.
+ 1. Untrusted sends the `DcapEvidence`, the combined `Quote`, `EnclaveReportDataContents` and `Collateral` to the Enclave.
  1. Enclave verifies the signatures of the given evidence and that the `EnclaveReportDataContents` is that contained in the `Quote`.
  1. Enclave caches the `DcapEvidence` and provides it upon demand to clients.
