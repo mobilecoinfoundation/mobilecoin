@@ -128,7 +128,7 @@ impl<Enclave: IngestEnclaveProxy> PartialEq for PeerConnection<Enclave> {
 
 impl<Enclave: IngestEnclaveProxy> PartialOrd for PeerConnection<Enclave> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }
 

@@ -476,6 +476,6 @@ impl<CP: CredentialsProvider> Ord for ThickClient<CP> {
 
 impl<CP: CredentialsProvider> PartialOrd for ThickClient<CP> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }

@@ -160,7 +160,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> PartialEq for PeerConnecti
 
 impl<Enclave: ConsensusEnclave + Clone + Send + Sync> PartialOrd for PeerConnection<Enclave> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }
 

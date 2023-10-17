@@ -55,7 +55,7 @@ impl<'a, T: 'a + ?Sized> Copy for FfiRefPtr<'a, T> {}
 impl<'a, T: 'a + ?Sized> Clone for FfiRefPtr<'a, T> {
     #[inline]
     fn clone(&self) -> Self {
-        Self(self.0, Default::default())
+        *self
     }
 }
 
@@ -218,7 +218,7 @@ impl<'a, T: 'a + ?Sized> Copy for FfiOptRefPtr<'a, T> {}
 impl<'a, T: 'a + ?Sized> Clone for FfiOptRefPtr<'a, T> {
     #[inline]
     fn clone(&self) -> Self {
-        Self(self.0, Default::default())
+        *self
     }
 }
 

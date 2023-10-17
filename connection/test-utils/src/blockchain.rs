@@ -77,7 +77,7 @@ impl<L: Ledger + Sync> PartialEq for MockBlockchainConnection<L> {
 
 impl<L: Ledger + Sync> PartialOrd for MockBlockchainConnection<L> {
     fn partial_cmp(&self, other: &MockBlockchainConnection<L>) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }
 
