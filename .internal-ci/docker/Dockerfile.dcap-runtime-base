@@ -23,7 +23,7 @@ RUN  apt-get update \
 COPY .internal-ci/docker/support/intel-sgx-archive-keyring.gpg /etc/apt/trusted.gpg.d/
 RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ focal main" > /etc/apt/sources.list.d/intel-sgx.list
 
-ARG SGX_SDK_VERSION=2.20.100.4-focal1
+ARG SGX_SDK_VERSION=2.21.100.1-focal1
 ENV SGX_SDK_VERSION=${SGX_SDK_VERSION}
 
 # Explicitly call out *all* dependency versions. This is because the Intel
@@ -37,7 +37,7 @@ RUN  apt-get update \
   && rm -r /var/lib/apt/lists
 
 # Install DCAP libraries
-ARG DCAP_VERSION=1.17.100.4-focal1
+ARG DCAP_VERSION=1.18.100.1-focal1
 ENV DCAP_VERSION=${DCAP_VERSION}
 
 # Explicitly call out *all* dependency versions. This is because the Intel
