@@ -739,7 +739,7 @@ impl<
                     let entry = self
                         .unavailable_tx_hashes
                         .entry(from_responder_id.clone())
-                        .or_insert_with(BTreeSet::default);
+                        .or_default();
                     entry.extend(tx_hashes);
                     return false;
                 }

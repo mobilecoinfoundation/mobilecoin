@@ -366,7 +366,7 @@ impl ShardProxyServer {
         let server = Server::bind(address).serve(make_service);
         let graceful = server.with_graceful_shutdown(Self::shutdown(rx));
 
-        let server_handle = tokio::spawn(async move { graceful.await });
+        let server_handle = tokio::spawn(graceful);
 
         Self {
             server_handle: Some(server_handle),

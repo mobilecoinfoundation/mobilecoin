@@ -612,7 +612,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         );
 
         // Try to get a block
-        let queries = [0..1];
+        let queries = [0..1; 1];
         let result = client.get_blocks(&queries).unwrap();
         // Check that we got 1 block, as expected
         assert_eq!(result.blocks.len(), 1);
@@ -627,7 +627,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         assert_eq!(result.global_txo_count, ledger.num_txos().unwrap());
 
         // Try to get two blocks
-        let queries = [1..3];
+        let queries = [1..3; 1];
         let result = client.get_blocks(&queries).unwrap();
 
         // Check that we got 2 blocks, as expected

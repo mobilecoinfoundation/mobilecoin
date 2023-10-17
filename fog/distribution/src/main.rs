@@ -836,7 +836,7 @@ fn get_membership_proofs(
         .collect();
     let proofs = ledger_db.get_tx_out_proof_of_memberships(&indexes).unwrap();
 
-    utxos.iter().cloned().zip(proofs.into_iter()).collect()
+    utxos.iter().cloned().zip(proofs).collect()
 }
 
 /// Get ring mixins for a transaction from the ledger
@@ -864,7 +864,7 @@ fn get_rings(
         .unwrap();
 
     // Create an iterator that returns (index, proof) elements.
-    let mut indexes_and_proofs_iterator = sampled_indices_vec.into_iter().zip(proofs.into_iter());
+    let mut indexes_and_proofs_iterator = sampled_indices_vec.into_iter().zip(proofs);
 
     // Convert that into a Vec<Vec<TxOut, TxOutMembershipProof>>
     let mut rings_with_proofs = Vec::new();

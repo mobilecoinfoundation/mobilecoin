@@ -1474,7 +1474,7 @@ mod tests {
 
     #[test]
     fn calculate_updated_missed_block_ranges_multiple_indices_returns_block_range_with_indices() {
-        let indices = vec![(5, 11), (34, 40), (1, 3)];
+        let indices = [(5, 11), (34, 40), (1, 3)];
         let mut missed_block_ranges = Vec::new();
 
         for (start_block, end_block) in indices.iter() {

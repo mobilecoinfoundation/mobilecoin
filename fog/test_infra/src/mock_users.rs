@@ -73,9 +73,7 @@ pub fn test_block_to_inputs_and_expected_outputs(
     let mut result_delta: Delta = Default::default();
 
     for (ref upriv, ref txo) in pairs.iter() {
-        let user_result_set = result_delta
-            .entry(upriv.clone())
-            .or_insert_with(HashSet::default);
+        let user_result_set = result_delta.entry(upriv.clone()).or_default();
 
         let fog_tx_out = FogTxOut::try_from(txo).unwrap();
         let meta = FogTxOutMetadata {
@@ -204,7 +202,7 @@ impl UserPool {
             let user_id = &self.users[user_idx].0;
             result
                 .entry(user_id.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(make_random_tx(rng, acct_server_pubkey, &user_id.get_hint()));
         }
         result

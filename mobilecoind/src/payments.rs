@@ -425,10 +425,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .collect();
             let proofs = self.get_membership_proofs(&outputs)?;
 
-            all_selected_utxos
-                .into_iter()
-                .zip(proofs.into_iter())
-                .collect()
+            all_selected_utxos.into_iter().zip(proofs).collect()
         };
         log::trace!(logger, "Got membership proofs");
 
@@ -654,7 +651,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .collect();
             let proofs = self.get_membership_proofs(&outputs)?;
 
-            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+            selected_utxos.into_iter().zip(proofs).collect()
         };
         log::trace!(logger, "Got membership proofs");
 
@@ -764,7 +761,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
             let tx_outs: Vec<TxOut> = inputs.iter().map(|utxo| utxo.tx_out.clone()).collect();
             let proofs = self.get_membership_proofs(&tx_outs)?;
-            inputs.iter().cloned().zip(proofs.into_iter()).collect()
+            inputs.iter().cloned().zip(proofs).collect()
         };
         log::trace!(logger, "Got membership proofs");
 
@@ -1060,10 +1057,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .ledger_db
             .get_tx_out_proof_of_memberships(&mixin_indices)?;
 
-        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = mixins
-            .into_iter()
-            .zip(membership_proofs.into_iter())
-            .collect();
+        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> =
+            mixins.into_iter().zip(membership_proofs).collect();
 
         // Group mixins and proofs into individual rings.
         let result: Vec<Vec<(_, _)>> = mixins_with_proofs
