@@ -301,8 +301,7 @@ extern "C" {
     ///  1. Application Code
     ///  2. Untrusted generated_enclave_api(eid, retval, inbuf, ...) function
     ///  3. Trusted, generated_enclave_api(inbuf, ...) ECALL
-    ///  4. Target enclave_api(inbuf, ...) method inside rust in the
-    ///     enclave.
+    ///  4. Target enclave_api(inbuf, ...) method inside rust in the enclave.
     pub fn ingest_enclave_call(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,

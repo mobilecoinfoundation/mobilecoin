@@ -102,7 +102,6 @@ impl Display for LengthMismatch {
     }
 }
 
-////
 // Suggested Implementations:
 // These macros provide instances of what can be thought of as "blanket
 // implementations" on a per-type basis.
@@ -112,7 +111,6 @@ impl Display for LengthMismatch {
 // There are two types of suggested impls:
 // - Impls of other traits in terms of ReprBytes
 // - Impls of ReprBytes in terms of other traits
-////
 
 /// Derive [ReprBytes] from [AsRef<[u8]>], [TryFrom<&[u8]>], and Size as a
 /// typenum. This is expected to be the right implementation for almost all

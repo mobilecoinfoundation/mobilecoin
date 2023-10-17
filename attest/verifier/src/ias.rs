@@ -50,13 +50,12 @@ impl IasReportVerifier {
         // Here's the background information for this code:
         //
         //  1. An X509 certificate can be signed by only one issuer.
-        //  2. mbedtls' certificates-list API demands certs in the RFC5246
-        //     order (endpoint cert first, every other cert signed the
-        //     cert preceeding it in the list).
-        //  3. I don't recall Intel's specification mentioning certificate
-        //     ordering at all (meaning they can change it w/o warning).
-        //  4. mbedtls' certificates-list API isn't actually exposed to us,
-        //     anyways.
+        //  2. mbedtls' certificates-list API demands certs in the RFC5246 order
+        //     (endpoint cert first, every other cert signed the cert preceeding it in
+        //     the list).
+        //  3. I don't recall Intel's specification mentioning certificate ordering at
+        //     all (meaning they can change it w/o warning).
+        //  4. mbedtls' certificates-list API isn't actually exposed to us, anyways.
         //
         // As a result, we need to find the cert which signed the data (this
         // doubles as the signature check), then find a way back up the

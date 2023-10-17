@@ -103,15 +103,15 @@ fn write_incorrect_encrypted_sender_memos() {
             let sender_memo_bytes: [u8; 64] = encrypted_sender_memo.clone().into();
 
             let encrypted_sender_memo_data = IncorrectEncryptedSenderMemoData {
-                /// Report the recipient_public_address as the
-                /// sender_public_address. This results in a memo that won't be
-                /// correct.
+                // Report the recipient_public_address as the
+                // sender_public_address. This results in a memo that won't be
+                // correct.
                 incorrect_sender_public_address_hex_proto_bytes: hex::encode(
                     mc_util_serial::encode(&recipient_public_address.clone()),
                 ),
-                /// Report the sender's view_public_key as the
-                /// recipient_view_public_key.  This results in a memo that
-                /// won't be correct.
+                // Report the sender's view_public_key as the
+                // recipient_view_public_key.  This results in a memo that
+                // won't be correct.
                 incorrect_recipient_view_public_key_hex_raw_bytes: hex::encode(
                     sender_public_address.view_public_key().to_bytes(),
                 ),

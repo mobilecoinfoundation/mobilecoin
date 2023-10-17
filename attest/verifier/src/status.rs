@@ -1171,10 +1171,9 @@ mod test {
             AdvisoryStatus::ConfigurationNeeded,
         ));
 
-        let Kind::Enclave(mr_enclave_verifier) = verifier
-            else {
-                panic!("Should be a mr enclave verifier");
-            };
+        let Kind::Enclave(mr_enclave_verifier) = verifier else {
+            panic!("Should be a mr enclave verifier");
+        };
         assert_eq!(
             mr_enclave_verifier.advisories,
             Advisories::new(["one", "two", "three"], AdvisoryStatus::ConfigurationNeeded)
@@ -1194,8 +1193,7 @@ mod test {
             AdvisoryStatus::SWHardeningNeeded,
         ));
 
-        let Kind::Enclave(mr_enclave_verifier) = verifier
-        else {
+        let Kind::Enclave(mr_enclave_verifier) = verifier else {
             panic!("Should be a mr enclave verifier");
         };
         assert_eq!(
@@ -1219,10 +1217,9 @@ mod test {
             AdvisoryStatus::ConfigurationNeeded,
         ));
 
-        let Kind::Signer(mr_signer_verifier) = verifier
-            else {
-                panic!("Should be a mr signer verifier");
-            };
+        let Kind::Signer(mr_signer_verifier) = verifier else {
+            panic!("Should be a mr signer verifier");
+        };
         assert_eq!(
             mr_signer_verifier.advisories,
             Advisories::new(["who", "what", "when"], AdvisoryStatus::ConfigurationNeeded)
@@ -1244,10 +1241,9 @@ mod test {
             AdvisoryStatus::SWHardeningNeeded,
         ));
 
-        let Kind::Signer(mr_signer_verifier) = verifier
-            else {
-                panic!("Should be a mr signer verifier");
-            };
+        let Kind::Signer(mr_signer_verifier) = verifier else {
+            panic!("Should be a mr signer verifier");
+        };
         assert_eq!(
             mr_signer_verifier.advisories,
             Advisories::new(

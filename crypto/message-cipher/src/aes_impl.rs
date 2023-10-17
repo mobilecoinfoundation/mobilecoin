@@ -111,9 +111,9 @@ impl<C: AeadInPlace + KeyInit> MessageCipher for AeadMessageCipher<C> {
     }
 }
 
-////
+//
 // Details
-////
+//
 
 /// A representation of a nonce suitable for e.g. AES, supporting inc(),
 /// copy_to_slice(), and other functions
@@ -150,10 +150,6 @@ impl<L: ArrayLength<u8>> Nonce<L> {
         &self.bytes
     }
 }
-
-////
-// Tests
-////
 
 #[cfg(test)]
 mod tests {
