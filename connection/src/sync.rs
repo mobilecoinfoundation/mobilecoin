@@ -111,9 +111,7 @@ impl<C: Connection> PartialEq for SyncConnection<C> {
 
 impl<C: Connection> PartialOrd for SyncConnection<C> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let self_g = self.read();
-        let other_g = other.read();
-        self_g.deref().partial_cmp(other_g.deref())
+        Some(self.cmp(other))
     }
 }
 

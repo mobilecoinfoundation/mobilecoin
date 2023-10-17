@@ -316,6 +316,6 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> Ord for EnclaveConnection<U, G> {
 
 impl<U: ConnectionUri, G: EnclaveGrpcChannel> PartialOrd for EnclaveConnection<U, G> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }

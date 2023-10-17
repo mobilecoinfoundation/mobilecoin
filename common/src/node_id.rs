@@ -70,7 +70,7 @@ impl Eq for NodeID {}
 
 impl PartialOrd for NodeID {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.public_key.partial_cmp(&other.public_key)
+        Some(self.cmp(other))
     }
 }
 

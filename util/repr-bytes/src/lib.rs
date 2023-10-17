@@ -388,8 +388,7 @@ macro_rules! derive_core_cmp_from_as_ref {
     ($mytype:ty, $asref:ty) => {
         impl PartialOrd for $mytype {
             fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
-                <Self as AsRef<$asref>>::as_ref(self)
-                    .partial_cmp(<Self as AsRef<$asref>>::as_ref(other))
+                Some(self.cmp(other))
             }
         }
 
