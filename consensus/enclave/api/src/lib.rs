@@ -177,27 +177,6 @@ impl PartialOrd for WellFormedTxContext {
     }
 }
 
-#[cfg(test)]
-mod well_formed_tx_context_tests {
-    use crate::WellFormedTxContext;
-    use alloc::{vec, vec::Vec};
-
-    #[test]
-    /// WellFormedTxContext should be sorted by priority, descending.
-    fn test_ordering() {
-        let a = WellFormedTxContext::new(100, Default::default(), 0, vec![], vec![], vec![]);
-        let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
-        let c = WellFormedTxContext::new(88, Default::default(), 0, vec![], vec![], vec![]);
-
-        let mut contexts = vec![a, b, c];
-        contexts.sort();
-
-        let priorities: Vec<_> = contexts.iter().map(|context| context.priority).collect();
-        let expected = vec![557, 100, 88];
-        assert_eq!(priorities, expected);
-    }
-}
-
 /// An intermediate struct for holding data required to perform the two-step
 /// is-well-formed test. This is returned by `txs_propose` and allows untrusted
 /// to gather data required for the in-enclave well-formedness test that takes
@@ -356,3 +335,24 @@ pub trait ConsensusEnclave: ReportableEnclave {
 /// This marker trait can be implemented for the untrusted-side representation
 /// of the enclave.
 pub trait ConsensusEnclaveProxy: ConsensusEnclave + Clone + Send + Sync + 'static {}
+
+#[cfg(test)]
+mod well_formed_tx_context_tests {
+    use crate::WellFormedTxContext;
+    use alloc::{vec, vec::Vec};
+
+    #[test]
+    /// WellFormedTxContext should be sorted by priority, descending.
+    fn test_ordering() {
+        let a = WellFormedTxContext::new(100, Default::default(), 0, vec![], vec![], vec![]);
+        let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
+        let c = WellFormedTxContext::new(88, Default::default(), 0, vec![], vec![], vec![]);
+
+        let mut contexts = vec![a, b, c];
+        contexts.sort();
+
+        let priorities: Vec<_> = contexts.iter().map(|context| context.priority).collect();
+        let expected = vec![557, 100, 88];
+        assert_eq!(priorities, expected);
+    }
+}
