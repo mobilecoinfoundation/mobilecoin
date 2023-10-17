@@ -9,6 +9,7 @@
 //
 // Alloc feature must be enabled to get APIs associated to catching panics
 // and rethrowing them, because in Rust those APIs use the Box type.
+#![allow(internal_features)]
 #![feature(lang_items)] // for eh_personality
 #![feature(thread_local)]
 
