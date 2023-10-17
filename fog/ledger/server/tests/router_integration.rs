@@ -73,7 +73,7 @@ fn add_block_to_ledger(
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
-    watcher: &mut WatcherDB,
+    watcher: &WatcherDB,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);
     let block_data = mc_ledger_db::test_utils::add_block_to_ledger(
@@ -102,7 +102,7 @@ fn add_block_to_ledger(
     block_index + 1
 }
 
-fn populate_ledger(blocks_config: &BlockConfig, ledger: &mut LedgerDB, watcher: &mut WatcherDB) {
+fn populate_ledger(blocks_config: &BlockConfig, ledger: &mut LedgerDB, watcher: &WatcherDB) {
     let mut rng = thread_rng();
 
     let alice = AccountKey::random_with_fog(&mut rng);
@@ -145,9 +145,9 @@ fn create_store(
     );
 
     let mut ledger = recreate_ledger_db(ledger_db_path);
-    let mut watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
+    let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
-    populate_ledger(blocks_config, &mut ledger, &mut watcher);
+    populate_ledger(blocks_config, &mut ledger, &watcher);
 
     let mut store = KeyImageStoreServer::new_from_config(
         config,
@@ -193,9 +193,9 @@ fn create_router(
     .unwrap();
 
     let mut ledger = recreate_ledger_db(ledger_db_path);
-    let mut watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
+    let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
-    populate_ledger(blocks_config, &mut ledger, &mut watcher);
+    populate_ledger(blocks_config, &mut ledger, &watcher);
 
     let config = LedgerRouterConfig {
         chain_id: "local".to_string(),

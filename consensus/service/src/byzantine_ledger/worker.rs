@@ -1591,7 +1591,7 @@ mod tests {
 
                 create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     &tx_out,
                     &sender,
                     &recipient.default_subaddress(),
