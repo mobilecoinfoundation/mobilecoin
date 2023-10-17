@@ -982,7 +982,7 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, token_id),
                 fpr,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1066,7 +1066,7 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1159,7 +1159,7 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1237,7 +1237,7 @@ pub mod transaction_builder_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
 
@@ -1274,7 +1274,7 @@ pub mod transaction_builder_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
 
@@ -1340,7 +1340,7 @@ pub mod transaction_builder_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
 
@@ -2824,7 +2824,7 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, token_id),
                 fpr,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
             transaction_builder.add_input(input_credentials);
@@ -3441,7 +3441,7 @@ pub mod transaction_builder_tests {
 
         for block_version in 3..=*BlockVersion::MAX {
             let block_version = BlockVersion::try_from(block_version).unwrap();
-            let memo_builder = EmptyMemoBuilder::default();
+            let memo_builder = EmptyMemoBuilder;
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -3576,7 +3576,7 @@ pub mod transaction_builder_tests {
         // Builds a transaction using a particular amount in place of tx_out1, returning
         // result of `.build()`
         let mut test_fn = |block_version, tx_out1_amount| -> Result<_, _> {
-            let memo_builder = EmptyMemoBuilder::default();
+            let memo_builder = EmptyMemoBuilder;
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,

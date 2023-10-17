@@ -216,7 +216,7 @@ impl<
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(config.client_tracking_capacity)));
         // Return
@@ -435,7 +435,7 @@ impl<
         );
 
         // Peers currently do not support request authentication.
-        let peer_authenticator = Arc::new(AnonymousAuthenticator::default());
+        let peer_authenticator = Arc::new(AnonymousAuthenticator);
 
         // Initialize services.
         let enclave = Arc::new(self.enclave.clone());

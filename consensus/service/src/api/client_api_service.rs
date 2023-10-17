@@ -557,7 +557,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -629,7 +629,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -680,7 +680,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -762,7 +762,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -825,7 +825,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -896,7 +896,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -947,7 +947,7 @@ mod client_api_tests {
              _responder_id: Option<&ResponderId>| {},
         );
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1000,7 +1000,7 @@ mod client_api_tests {
              _responder_id: Option<&ResponderId>| {},
         );
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1053,11 +1053,8 @@ mod client_api_tests {
              _responder_id: Option<&ResponderId>| {},
         );
 
-        let authenticator = TokenAuthenticator::new(
-            [1; 32],
-            Duration::from_secs(60),
-            SystemTimeProvider::default(),
-        );
+        let authenticator =
+            TokenAuthenticator::new([1; 32], Duration::from_secs(60), SystemTimeProvider);
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1122,7 +1119,7 @@ mod client_api_tests {
             .return_const(Ok(()));
 
         let is_serving_fn = Arc::new(|| -> bool { true });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1195,7 +1192,7 @@ mod client_api_tests {
             )));
 
         let is_serving_fn = Arc::new(|| -> bool { true });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1249,7 +1246,7 @@ mod client_api_tests {
         let ledger = MockLedger::new();
         let mint_tx_manager = MockMintTxManager::new();
         let is_serving_fn = Arc::new(|| -> bool { false });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1305,7 +1302,7 @@ mod client_api_tests {
         let ledger = MockLedger::new();
         let mint_tx_manager = MockMintTxManager::new();
         let is_serving_fn = Arc::new(|| -> bool { true });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1366,11 +1363,8 @@ mod client_api_tests {
         let mint_tx_manager = MockMintTxManager::new();
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = TokenAuthenticator::new(
-            [1; 32],
-            Duration::from_secs(60),
-            SystemTimeProvider::default(),
-        );
+        let authenticator =
+            TokenAuthenticator::new([1; 32], Duration::from_secs(60), SystemTimeProvider);
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1433,7 +1427,7 @@ mod client_api_tests {
             .return_const(Ok(()));
 
         let is_serving_fn = Arc::new(|| -> bool { true });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1516,7 +1510,7 @@ mod client_api_tests {
             )));
 
         let is_serving_fn = Arc::new(|| -> bool { true });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1575,7 +1569,7 @@ mod client_api_tests {
         let ledger = MockLedger::new();
         let mint_tx_manager = MockMintTxManager::new();
         let is_serving_fn = Arc::new(|| -> bool { false });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1636,7 +1630,7 @@ mod client_api_tests {
         let ledger = MockLedger::new();
         let mint_tx_manager = MockMintTxManager::new();
         let is_serving_fn = Arc::new(|| -> bool { true });
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1702,11 +1696,8 @@ mod client_api_tests {
         let mint_tx_manager = MockMintTxManager::new();
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = TokenAuthenticator::new(
-            [1; 32],
-            Duration::from_secs(60),
-            SystemTimeProvider::default(),
-        );
+        let authenticator =
+            TokenAuthenticator::new([1; 32], Duration::from_secs(60), SystemTimeProvider);
 
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(4096)));
 
@@ -1780,7 +1771,7 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         const LRU_CAPACITY: usize = 4096;
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(LRU_CAPACITY)));

@@ -96,7 +96,7 @@ impl LedgerGrpcClient {
         // If we have an existing attestation, nuke it.
         self.deattest();
 
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let initiator = Start::new(self.uri.responder_id()?.to_string());
 
@@ -117,7 +117,7 @@ impl LedgerGrpcClient {
             .ok_or(Error::ResponseNotReceived)?;
         let auth_response_msg = response.take_auth();
 
-        let epoch_time = SystemTimeProvider::default()
+        let epoch_time = SystemTimeProvider
             .since_epoch()
             .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)

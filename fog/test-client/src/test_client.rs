@@ -311,7 +311,7 @@ impl TestClient {
                 .map_err(TestClientError::CheckBalance)
         })?;
 
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         assert!(target_address.fog_report_url().is_some());
 
         let fee = self.get_minimum_fee(token_id, source_client)?;
@@ -731,7 +731,7 @@ impl TestClient {
         self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
 
-        let mut rng = McRng::default();
+        let mut rng = McRng;
 
         // Note: McRng does not implement rand::Rng because rand historically
         // has not been no_std

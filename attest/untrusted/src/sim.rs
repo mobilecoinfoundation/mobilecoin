@@ -30,7 +30,7 @@ impl SimQuotingEnclave {
         let sgx_quote = sgx_quote(report.body(), &cert_data);
         let mut quote_bytes = c_struct_as_bytes(&sgx_quote).to_vec();
 
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         let signing_key = SigningKey::random(&mut rng);
         // Per <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A75%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C687%2C0%5D>
         // the signature is only over the header and report body of the quote.

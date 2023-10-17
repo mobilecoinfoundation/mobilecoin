@@ -467,7 +467,7 @@ impl Client {
             block_version,
             input_credentials,
             fog_resolver,
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )?;
 
         let change_destination = ReservedSubaddresses::from(&self.account_key);
@@ -597,12 +597,8 @@ impl Client {
 
         // Make transaction builder
         // TODO: Use RTH memos
-        let mut tx_builder = TransactionBuilder::new(
-            block_version,
-            fee,
-            fog_resolver,
-            EmptyMemoBuilder::default(),
-        )?;
+        let mut tx_builder =
+            TransactionBuilder::new(block_version, fee, fog_resolver, EmptyMemoBuilder)?;
         tx_builder.set_tombstone_block(tombstone_block);
 
         tx_builder.set_fee_map(self.get_fee_map(true)?);

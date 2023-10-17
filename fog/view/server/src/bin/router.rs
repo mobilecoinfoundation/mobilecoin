@@ -70,13 +70,8 @@ fn main() {
     }
     let shards = Arc::new(RwLock::new(shards));
 
-    let mut router_server = FogViewRouterServer::new(
-        config,
-        sgx_enclave,
-        shards,
-        SystemTimeProvider::default(),
-        logger,
-    );
+    let mut router_server =
+        FogViewRouterServer::new(config, sgx_enclave, shards, SystemTimeProvider, logger);
     router_server.start();
 
     loop {

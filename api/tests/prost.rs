@@ -68,7 +68,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
         block_version,
         input_credentials,
         fpr.clone(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
     builder
@@ -87,7 +87,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
         block_version,
         input_credentials,
         fpr.clone(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
     builder
@@ -109,7 +109,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
         block_version,
         input_credentials,
         fpr.clone(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
     builder

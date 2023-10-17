@@ -151,13 +151,8 @@ impl RouterTestEnvironment {
             config.omap_capacity,
             logger.clone(),
         );
-        let mut router_server = FogViewRouterServer::new(
-            config,
-            enclave,
-            shards,
-            SystemTimeProvider::default(),
-            logger.clone(),
-        );
+        let mut router_server =
+            FogViewRouterServer::new(config, enclave, shards, SystemTimeProvider, logger.clone());
         router_server.start();
         router_server
     }
@@ -248,7 +243,7 @@ impl RouterTestEnvironment {
                     config.clone(),
                     enclave,
                     db.clone(),
-                    SystemTimeProvider::default(),
+                    SystemTimeProvider,
                     sharding_strategy.clone(),
                     logger.clone(),
                 );

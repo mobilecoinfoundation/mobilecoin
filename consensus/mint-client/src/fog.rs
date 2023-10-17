@@ -46,8 +46,7 @@ impl FogContext {
         let validated_fog_pubkey = self.resolve_one_fog_url(public_address)?;
 
         Ok((
-            FogHint::from(public_address)
-                .encrypt(&validated_fog_pubkey.pubkey, &mut McRng::default()),
+            FogHint::from(public_address).encrypt(&validated_fog_pubkey.pubkey, &mut McRng),
             validated_fog_pubkey.pubkey_expiry,
         ))
     }

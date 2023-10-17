@@ -76,7 +76,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
     pub fn new(logger: Logger) -> Self {
         Self {
             ake: Default::default(),
-            egress_key: Mutex::new(RistrettoPrivate::from_random(&mut McRng::default())),
+            egress_key: Mutex::new(RistrettoPrivate::from_random(&mut McRng)),
             rng_store: Mutex::new(None),
             logger,
         }
@@ -92,7 +92,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
         egress_key: &RistrettoPrivate,
         rng_store: &mut RngStore<OSC>,
     ) -> Option<Vec<ETxOutRecord>> {
-        let mut rng = McRng::default();
+        let mut rng = McRng;
 
         let mut new_tx_rows = Vec::new();
 
@@ -326,7 +326,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
                 // Once we have done this, we can try to ingest again.
                 // If the capacity of the rng store is large enough to hold one block,
                 // then this will not be an infinite loop.
-                *egress_key = RistrettoPrivate::from_random(&mut McRng::default());
+                *egress_key = RistrettoPrivate::from_random(&mut McRng);
                 let public_key =
                     CompressedRistrettoPublic::from(&RistrettoPublic::from(&*egress_key));
                 new_kex_rng_pubkey = Some(KexRngPubkey {
@@ -344,8 +344,8 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
         let mut rng_store_lk = self.rng_store.lock()?;
         let rng_store = rng_store_lk.as_mut().expect("enclave was not initialized");
 
-        *ingress_key = RistrettoPrivate::from_random(&mut McRng::default());
-        *egress_key = RistrettoPrivate::from_random(&mut McRng::default());
+        *ingress_key = RistrettoPrivate::from_random(&mut McRng);
+        *egress_key = RistrettoPrivate::from_random(&mut McRng);
         rng_store.clear();
         Ok(())
     }
@@ -355,7 +355,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
         let mut rng_store_lk = self.rng_store.lock()?;
         let rng_store = rng_store_lk.as_mut().expect("enclave was not initialized");
 
-        *egress_key = RistrettoPrivate::from_random(&mut McRng::default());
+        *egress_key = RistrettoPrivate::from_random(&mut McRng);
         rng_store.clear();
         Ok(())
     }

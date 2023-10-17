@@ -149,10 +149,8 @@ impl SgxConsensusEnclave {
     pub fn new(logger: Logger) -> Self {
         Self {
             ake: Default::default(),
-            locally_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng::default())),
-            well_formed_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(
-                &mut McRng::default(),
-            )),
+            locally_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng)),
+            well_formed_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng)),
             logger,
             blockchain_config: Default::default(),
             ct_min_fee_map: Default::default(),
@@ -612,7 +610,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Convert to TxContext
         let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
             let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
-            let mut rng = McRng::default();
+            let mut rng = McRng;
 
             Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
         };
@@ -641,7 +639,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let txs = mc_util_serial::decode::<TxList>(&data)?.txs;
 
         // Convert to TxContexts
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         txs.into_iter()
             .map(|tx| {
                 let tx_bytes = mc_util_serial::encode(&tx);
@@ -703,7 +701,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_token_id = TokenId::from(tx.prefix.fee_token_id);
 
         // Validate.
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let minimum_fee = ct_min_fee_map
             .get(&fee_token_id)
             .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
@@ -771,7 +769,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         inputs: FormBlockInputs,
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         let config = self
             .blockchain_config
             .get()

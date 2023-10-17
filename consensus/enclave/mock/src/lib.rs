@@ -277,7 +277,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         // root_elements contains the root hash of the Merkle tree of all TxOuts in the
         // ledger that were used to validate the tranasctions.
         let mut root_elements = Vec::new();
-        let mut rng = McRng::default();
+        let mut rng = McRng;
 
         for (tx, proofs) in transactions_with_proofs.iter() {
             mc_transaction_core::validation::validate(

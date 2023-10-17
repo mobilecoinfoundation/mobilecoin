@@ -68,17 +68,17 @@ impl NodeClient for ConsensusNodeClient {
             .ok_or_else(|| "No consensus client url".to_owned())?;
 
         // Construct a credentials_provider based on our configuration.
-        let credentials_provider =
-            if let Some(secret) = source_config.consensus_client_auth_token_secret() {
-                let username = node_url.username();
-                let token_generator =
-                    TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider::default());
-                let token_credentials_provider =
-                    TokenBasicCredentialsProvider::new(username, token_generator);
-                AnyCredentialsProvider::Token(token_credentials_provider)
-            } else {
-                AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
-            };
+        let credentials_provider = if let Some(secret) =
+            source_config.consensus_client_auth_token_secret()
+        {
+            let username = node_url.username();
+            let token_generator = TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider);
+            let token_credentials_provider =
+                TokenBasicCredentialsProvider::new(username, token_generator);
+            AnyCredentialsProvider::Token(token_credentials_provider)
+        } else {
+            AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
+        };
 
         attestation_evidence_from_node_url(env, logger, node_url, credentials_provider)
     }
@@ -143,7 +143,7 @@ fn attestation_evidence_from_node_url(
     credentials_provider: AnyCredentialsProvider,
 ) -> Result<EvidenceKind, String> {
     trace_time!(logger, "attestation_evidence_from_node_url");
-    let mut csprng = McRng::default();
+    let mut csprng = McRng;
 
     let initiator = Start::new(
         node_url

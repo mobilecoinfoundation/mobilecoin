@@ -609,7 +609,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -732,7 +732,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -843,7 +843,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -873,7 +873,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1103,7 +1103,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1133,7 +1133,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1334,7 +1334,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1368,7 +1368,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1401,7 +1401,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1661,7 +1661,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1680,7 +1680,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1753,7 +1753,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1772,7 +1772,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1864,7 +1864,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1887,7 +1887,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1971,7 +1971,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1990,7 +1990,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2081,7 +2081,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2115,7 +2115,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2206,7 +2206,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2235,7 +2235,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2326,7 +2326,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2345,7 +2345,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2437,7 +2437,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2470,7 +2470,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2554,7 +2554,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2617,7 +2617,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2828,7 +2828,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2891,7 +2891,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3106,7 +3106,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3170,7 +3170,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3386,7 +3386,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3440,7 +3440,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 

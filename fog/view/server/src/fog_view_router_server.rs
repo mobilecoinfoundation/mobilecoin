@@ -95,7 +95,7 @@ where
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         let admin_service = FogViewRouterAdminService::new(shards.clone(), logger.clone());

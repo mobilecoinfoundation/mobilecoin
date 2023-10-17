@@ -94,7 +94,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         // If we have an existing attestation, nuke it.
         self.deattest();
 
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let initiator = Start::new(self.uri.responder_id()?.to_string());
 
@@ -118,7 +118,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
             )
         }
 
-        let epoch_time = SystemTimeProvider::default()
+        let epoch_time = SystemTimeProvider
             .since_epoch()
             .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
         let time = DateTime::from_unix_duration(epoch_time)
