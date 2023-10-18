@@ -1,7 +1,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 ### Chart wide values.
-nameOverride: ''
-fullnameOverride: 'fs'
+nameOverride: ""
+fullnameOverride: "fs"
 
 ###  mc-core-common-config child chart configuration.
 #    See ../mc-core-common-config for details.
@@ -18,18 +18,18 @@ blockHeighRetrieval:
   # .Network is retreived from mobilecoin-network configmap
   urlNetworkTemplate: "https://readonly-fs-{{ .Network }}net.mobilecoin.com/wallet/v2"
   # Uses static URL instead of urlNetworkTemplate
-  url: ''
+  url: ""
   queryInterval: 5m
   requestBody: '{"method": "get_network_status", "jsonrpc": "2.0", "id": 1}'
   responseJQ: .result.network_status.network_block_height
 
 imagePullSecrets:
-- name: docker-credentials
+  - name: docker-credentials
 
 # Pods share the image tag.
 image:
   org: mobilecoin
-  tag: '' # Overrides the image tag whose default is the chart appVersion.
+  tag: "" # Overrides the image tag whose default is the chart appVersion.
 
 global:
   certManagerClusterIssuer: letsencrypt-production-http
@@ -74,13 +74,13 @@ fogViewRouter:
       cpu: 1100m
 
   nodeSelector:
-    sgx-enabled-node: 'true'
+    sgx-enabled-node: "true"
 
   tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
+    - key: sgx
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
 
   # disable affinity rules for single node testing
   affinityEnabled: true
@@ -90,17 +90,17 @@ fogViewRouter:
     backtrace: full
     log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
   podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
+    fluentbit.io/include: "true" # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: "true"
   image:
-    org: ''
+    org: ""
     name: fogview
     pullPolicy: Always
 
 fogView:
   replicaCount: 1
   image:
-    org: ''
+    org: ""
     name: fogview
     pullPolicy: Always
 
@@ -130,8 +130,8 @@ fogView:
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
+    fluentbit.io/include: "true" # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: "true"
 
   # disable affinity rules for single node testing
   affinityEnabled: true
@@ -148,14 +148,13 @@ fogView:
       cpu: 1100m
 
   nodeSelector:
-    sgx-enabled-node: 'true'
+    sgx-enabled-node: "true"
 
   tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
-
+    - key: sgx
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
 
 #### Fog Ledger
 fogLedgerShardRangeGenerator:
@@ -176,8 +175,12 @@ fogLedgerShardRangeGenerator:
     exceedBlockHeightBy: 10_000
     shardOverlap: 0
     count: 2
-
 fogLedgerRouter:
+  routerTemplates:
+    - responderID: responder-id.x.mobilecoin.io
+      replicas: 3
+    - responderID: responder-id.y.mobilecoin.io
+      replicas: 2
   replicaCount: 1
   podManagementPolicy: Parallel
 
@@ -185,11 +188,11 @@ fogLedgerRouter:
   topologySpreadConstraintsEnabled: true
 
   podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
+    fluentbit.io/include: "true" # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: "true"
 
   image:
-    org: ''
+    org: ""
     name: fog-ledger
     pullPolicy: Always
 
@@ -202,7 +205,7 @@ fogLedgerRouter:
     spec:
       storageClassName: fast
       accessModes:
-        - 'ReadWriteOnce'
+        - "ReadWriteOnce"
       resources:
         requests:
           storage: 512Gi
@@ -217,18 +220,18 @@ fogLedgerRouter:
       cpu: 1100m
 
   nodeSelector:
-    sgx-enabled-node: 'true'
+    sgx-enabled-node: "true"
 
   tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
+    - key: sgx
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
 
 fogLedger:
   replicaCount: 1
   image:
-    org: ''
+    org: ""
     name: fog-ledger
     pullPolicy: Always
 
@@ -247,7 +250,7 @@ fogLedger:
     spec:
       storageClassName: fast
       accessModes:
-        - 'ReadWriteOnce'
+        - "ReadWriteOnce"
       resources:
         requests:
           storage: 512Gi
@@ -277,8 +280,8 @@ fogLedger:
         haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
 
   podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
+    fluentbit.io/include: "true" # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: "true"
 
   ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
   resources:
@@ -291,19 +294,19 @@ fogLedger:
       cpu: 1100m
 
   nodeSelector:
-    sgx-enabled-node: 'true'
+    sgx-enabled-node: "true"
 
   tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
+    - key: sgx
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
 
 ### Fog Report Service
 fogReport:
   replicaCount: 2
   image:
-    org: ''
+    org: ""
     name: fogreport
     pullPolicy: Always
 
@@ -315,34 +318,34 @@ fogReport:
     secret:
       external: true
       name: fog-report-signing-cert
-    crt: ''
-    key: ''
+    crt: ""
+    key: ""
   ingress:
     common:
       annotations:
-        haproxy.org/server-ssl: 'false'             # The backend (server) is http
-        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/server-ssl: "false" # The backend (server) is http
+        haproxy.org/timeout-client: 239s # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
         haproxy.org/timeout-http-keep-alive: 120s
-        haproxy.org/abortonclose: 'true'
+        haproxy.org/abortonclose: "true"
         haproxy.org/backend-config-snippet: |-
           http-reuse aggressive
 
     grpc:
       annotations:
-        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+        haproxy.org/server-proto: "h2" # Force GRPC/H2 mode
 
     http:
       annotations:
-        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+        haproxy.org/path-rewrite: '/gw/(.*) /\1' # Strip the /gw prefix
 
   podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
+    fluentbit.io/include: "true" # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: "true"
 
   nodeSelector:
-    builder-node: 'false'
-    sgx-enabled-node: 'false'
+    builder-node: "false"
+    sgx-enabled-node: "false"
 
   affinity: {}
   tolerations: []
@@ -353,16 +356,14 @@ fogReport:
     name: fog-report
     data:
       # https://docs.diesel.rs/diesel/r2d2/struct.Builder.html
-      POSTGRES_IDLE_TIMEOUT: '60'
-      POSTGRES_MAX_LIFETIME: '120'
-      POSTGRES_CONNECTION_TIMEOUT: '5'
-      POSTGRES_MAX_CONNECTIONS: '3'
-
-
+      POSTGRES_IDLE_TIMEOUT: "60"
+      POSTGRES_MAX_LIFETIME: "120"
+      POSTGRES_CONNECTION_TIMEOUT: "5"
+      POSTGRES_MAX_CONNECTIONS: "3"
 
 grpcGateway:
   image:
-    org: ''
+    org: ""
     name: go-grpc-gateway
     pullPolicy: Always
   resources: {}
@@ -372,4 +373,4 @@ grpcGateway:
 
 jaegerTracing:
   enabled: true
-  collector: 'dns:///jaeger-collector:14250'
+  collector: "dns:///jaeger-collector:14250"
