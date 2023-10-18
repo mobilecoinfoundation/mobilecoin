@@ -73,7 +73,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- $publicFQDNConfig := lookup "v1" "ConfigMap" .Release.Namespace "fog-public-fqdn" }}
 {{- if $publicFQDNConfig }}
-{{- $domainname = index $publicFQDNConfig.data "domainname" }}
+{{- $domainname = index $publicFQDNConfig.data .responderIDLookupKey }}
 {{- end }}
 {{- $domainname }}
 {{- end }}

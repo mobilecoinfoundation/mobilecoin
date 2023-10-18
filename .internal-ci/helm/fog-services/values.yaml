@@ -179,13 +179,12 @@ fogLedgerShardRangeGenerator:
 
 fogLedgerRouter:
   routerTemplates:
-  - responderID: responder-id.x.mobilecoin.io
+  - responderIDLookupKey: mobilecoin
     replicas: 3
-  - responderID: responder-id.y.mobilecoin.io
+  - responderIDLookupKey: signal
     replicas: 2
-  replicaCount: 1
-  podManagementPolicy: Parallel
 
+  podManagementPolicy: Parallel
   affinityEnabled: true
   topologySpreadConstraintsEnabled: true
 
