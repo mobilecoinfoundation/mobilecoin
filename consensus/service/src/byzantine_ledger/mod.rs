@@ -597,7 +597,7 @@ mod tests {
             let recipient = AccountKey::random(&mut rng);
             let tx1 = create_transaction(
                 BLOCK_VERSION,
-                &mut ledger,
+                &ledger,
                 &block_contents.outputs[0],
                 &sender,
                 &recipient.default_subaddress(),
@@ -608,7 +608,7 @@ mod tests {
             let recipient = AccountKey::random(&mut rng);
             let tx2 = create_transaction(
                 BLOCK_VERSION,
-                &mut ledger,
+                &ledger,
                 &block_contents.outputs[1],
                 &sender,
                 &recipient.default_subaddress(),
@@ -619,7 +619,7 @@ mod tests {
             let recipient = AccountKey::random(&mut rng);
             let tx3 = create_transaction(
                 BLOCK_VERSION,
-                &mut ledger,
+                &ledger,
                 &block_contents.outputs[2],
                 &sender,
                 &recipient.default_subaddress(),

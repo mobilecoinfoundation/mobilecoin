@@ -86,7 +86,7 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let tx = create_transaction(
         block_version,
-        &mut ledger,
+        &ledger,
         &tx_out,
         &sender,
         &recipient.default_subaddress(),

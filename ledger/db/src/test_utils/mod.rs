@@ -50,7 +50,7 @@ impl TxOutputsOrdering for InverseTxOutputsOrdering {
 /// * `rng` - The randomness used by this function
 pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
     block_version: BlockVersion,
-    ledger: &mut L,
+    ledger: &L,
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
@@ -93,7 +93,7 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
 /// * `rng` - The randomness used by this function
 pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     block_version: BlockVersion,
-    ledger: &mut L,
+    ledger: &L,
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
@@ -132,7 +132,7 @@ pub fn create_transaction_with_amount_and_comparer<
     O: TxOutputsOrdering,
 >(
     block_version: BlockVersion,
-    ledger: &mut L,
+    ledger: &L,
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
@@ -172,7 +172,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
     O: TxOutputsOrdering,
 >(
     block_version: BlockVersion,
-    ledger: &mut L,
+    ledger: &L,
     tx_out: &TxOut,
     sender: &AccountKey,
     recipients: &[&PublicAddress],

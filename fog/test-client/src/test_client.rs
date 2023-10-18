@@ -291,7 +291,7 @@ impl TestClient {
     fn transfer(
         &self,
         source_client: &mut Client,
-        target_client: &mut Client,
+        target_client: &Client,
         token_id: TokenId,
     ) -> Result<TransferData, TestClientError> {
         self.tx_info.clear();
@@ -586,8 +586,7 @@ impl TestClient {
         )?;
 
         let transfer_start = std::time::SystemTime::now();
-        let transfer_data =
-            self.transfer(&mut source_client_lk, &mut target_client_lk, token_id)?;
+        let transfer_data = self.transfer(&mut source_client_lk, &target_client_lk, token_id)?;
 
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)

@@ -1167,7 +1167,7 @@ mod tests {
 
             let tx = create_transaction(
                 block_version,
-                &mut ledger,
+                &ledger,
                 &tx_out,
                 &sender,
                 &recipient.default_subaddress(),
@@ -1254,7 +1254,7 @@ mod tests {
 
             let tx = create_transaction(
                 block_version,
-                &mut ledger,
+                &ledger,
                 &tx_out,
                 &sender,
                 &recipient.default_subaddress(),
@@ -1396,7 +1396,7 @@ mod tests {
 
                     create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &tx_out,
                         &sender,
                         &recipient.default_subaddress(),
@@ -1535,7 +1535,7 @@ mod tests {
 
                     create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &tx_out,
                         &sender,
                         &recipient.default_subaddress(),
@@ -1567,7 +1567,7 @@ mod tests {
 
                     let tx = create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &spendable_output,
                         &sender,
                         &recipient.default_subaddress(),
@@ -1735,7 +1735,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1751,7 +1751,7 @@ mod tests {
 
                 create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1846,7 +1846,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1863,7 +1863,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1960,7 +1960,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -2066,7 +2066,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -2154,7 +2154,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -3192,7 +3192,7 @@ mod tests {
 
                     create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &tx_out,
                         &sender,
                         &recipient.default_subaddress(),

@@ -265,7 +265,7 @@ where
     /// but with checks for idle state, and updates to sealed backups
     pub fn set_ingress_private_key(&self, msg: EnclaveMessage<PeerSession>) -> Result<(), Error> {
         // Lock our state for this entire call
-        let mut state = self.get_state();
+        let state = self.get_state();
         if !state.is_idle() {
             return Err(Error::ServerNotIdle);
         }
@@ -275,7 +275,7 @@ where
         if set_ingress_private_key_result.did_private_key_change {
             // Seal the new private keys we ended up with to disk
             *self.last_sealed_key.lock().unwrap() = None;
-            self.write_state_file_inner(&mut state);
+            self.write_state_file_inner(&state);
 
             // Don't hold the lock any longer than necessary
             drop(state);
@@ -307,7 +307,7 @@ where
         log::info!(self.logger, "Setting new key in controller");
         let mut state = self.get_state();
         self.new_keys_inner(&mut state)?;
-        Ok(self.get_ingest_summary_inner(&mut state))
+        Ok(self.get_ingest_summary_inner(&state))
     }
 
     // Does work of new_keys but takes MutexGuard for controller_state as argument
@@ -440,7 +440,7 @@ where
                 log::trace!(self.logger, "publish report");
                 let mut retry_seconds = 1;
                 loop {
-                    match self.publish_report(&ingress_pubkey, &mut state) {
+                    match self.publish_report(&ingress_pubkey, &state) {
                         Ok(ingress_key_status) => {
                             // If our key is retired, and the index we want to scan is past expiry,
                             // early return. Note, we don't even NEED to scan
@@ -685,7 +685,7 @@ where
         let mut state = self.get_state();
         if state.is_active() {
             log::info!(self.logger, "We are already active! Early return");
-            return Ok(self.get_ingest_summary_inner(&mut state));
+            return Ok(self.get_ingest_summary_inner(&state));
         }
 
         // A valid report cache is required to initiate an outgoing attested connection.
@@ -814,7 +814,7 @@ where
         // no blocks come after we activate. This is needed because in some tests,
         // the only transactions sent are fog transactions, so there can't be
         // a block unless this key is published before the next block comes.
-        let key_status = self.publish_report(&our_pubkey, &mut state)?;
+        let key_status = self.publish_report(&our_pubkey, &state)?;
 
         // If our key is retired, and the index we want to scan is past expiry, early
         // return. Note, we don't even NEED to scan when block.index ==
@@ -888,7 +888,7 @@ where
         self.update_enclave_report_cache()?;
 
         // Lock the state for the duration of this call
-        let mut state = self.get_state();
+        let state = self.get_state();
         if !state.is_idle() {
             return Err(Error::ServerNotIdle);
         }
@@ -915,8 +915,8 @@ where
         );
 
         *self.last_sealed_key.lock().unwrap() = None;
-        self.write_state_file_inner(&mut state);
-        let result = self.get_ingest_summary_inner(&mut state);
+        self.write_state_file_inner(&state);
+        let result = self.get_ingest_summary_inner(&state);
 
         // Don't hold the state mutex any longer than necessary
         drop(state);
@@ -1003,14 +1003,11 @@ where
 
     /// Get the IngestSummary object
     pub fn get_ingest_summary(&self) -> IngestSummary {
-        self.get_ingest_summary_inner(&mut self.get_state())
+        self.get_ingest_summary_inner(&self.get_state())
     }
 
     // Helper for get_ingest_summary that takes an existing lock on our state
-    fn get_ingest_summary_inner(
-        &self,
-        state: &mut MutexGuard<IngestControllerState>,
-    ) -> IngestSummary {
+    fn get_ingest_summary_inner(&self, state: &MutexGuard<IngestControllerState>) -> IngestSummary {
         let mut result = state.get_ingest_summary();
         let ingress_pubkey = CompressedRistrettoPublic::from(
             &self
@@ -1188,7 +1185,7 @@ where
     fn publish_report(
         &self,
         ingress_public_key: &CompressedRistrettoPublic,
-        state: &mut MutexGuard<IngestControllerState>,
+        state: &MutexGuard<IngestControllerState>,
     ) -> Result<IngressPublicKeyStatus, Error> {
         // Get a report and check that it makes sense with what we think is happening
         let evidence = {
@@ -1277,12 +1274,12 @@ where
     // a block, or when the state is actively changed.
     // This is a no-op if there is no state file configured.
     fn write_state_file(&self) {
-        self.write_state_file_inner(&mut self.get_state())
+        self.write_state_file_inner(&self.get_state())
     }
 
     // Helper for write_state_file which takes an already existing lock on the state
     // mutex
-    fn write_state_file_inner(&self, state: &mut MutexGuard<IngestControllerState>) {
+    fn write_state_file_inner(&self, state: &MutexGuard<IngestControllerState>) {
         // This ensures that if the server goes down, we know at what block it stopped
         // and we know where to start up if we start up again.
         if let Some(state_file) = self.config.state_file.as_ref() {

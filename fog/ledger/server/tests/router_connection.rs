@@ -79,7 +79,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         let db_full_path = ledger_dir.path();
         let mut ledger = recreate_ledger_db(db_full_path);
 
-        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
         // Populate ledger with some data
         add_block_to_ledger(
@@ -88,7 +88,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             &recipients,
             &[],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -96,7 +96,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             &recipients,
             &[KeyImage::from(1)],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         let num_blocks = add_block_to_ledger(
             block_version,
@@ -104,7 +104,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             &recipients,
             &[KeyImage::from(2)],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
 
         {
@@ -275,7 +275,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
         let mut ledger = recreate_ledger_db(db_full_path);
 
         // Make WatcherDB
-        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
         // Populate ledger with some data
         // Origin block cannot have key images
@@ -285,7 +285,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &[],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -293,7 +293,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &keys[0..2],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -301,7 +301,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &keys[3..6],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         let num_blocks = add_block_to_ledger(
             block_version,
@@ -309,7 +309,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &keys[6..9],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
 
         // Populate watcher with Signature and Timestamp for block 1
@@ -515,7 +515,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
-    let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+    let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
     // Populate ledger with some data
     // Origin block cannot have key images
@@ -525,7 +525,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &[alice.default_subaddress()],
         &[],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -533,7 +533,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &[alice.default_subaddress(), bob.default_subaddress()],
         &[KeyImage::from(1)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -545,7 +545,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         ],
         &[KeyImage::from(2)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     let num_blocks = add_block_to_ledger(
         BlockVersion::MAX,
@@ -553,7 +553,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &recipients,
         &[KeyImage::from(3)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
 
     {
@@ -675,7 +675,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
-    let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+    let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
     // Populate ledger with some data
     // Origin block cannot have key images
@@ -685,7 +685,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &[alice.default_subaddress()],
         &[],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -693,7 +693,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &[alice.default_subaddress(), bob.default_subaddress()],
         &[KeyImage::from(1)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -705,7 +705,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         ],
         &[KeyImage::from(2)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -713,7 +713,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &recipients,
         &[KeyImage::from(3)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
 
     {
@@ -827,7 +827,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
         let mut ledger = recreate_ledger_db(db_full_path);
 
         // Make WatcherDB
-        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
         // Populate ledger with some data
         // Origin block cannot have key images
@@ -837,7 +837,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &[],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -845,7 +845,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &keys[0..2],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -853,7 +853,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &keys[3..6],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         let num_blocks = add_block_to_ledger(
             block_version,
@@ -861,7 +861,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &keys[6..9],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
 
         // Populate watcher with Signature and Timestamp for block 1
@@ -1071,7 +1071,7 @@ fn add_block_to_ledger(
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
-    watcher: &mut WatcherDB,
+    watcher: &WatcherDB,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);
     let block_data = mc_ledger_db::test_utils::add_block_to_ledger(
