@@ -17,6 +17,8 @@ pub struct HasherBuilder {
 
 impl Default for HasherBuilder {
     fn default() -> Self {
+        // in wasm McRng is a type alias so one cannot assign it as a default value.
+        #[allow(clippy::default_constructed_unit_structs)]
         let mut rng = McRng::default();
         let k0 = rng.next_u64();
         let k1 = rng.next_u64();

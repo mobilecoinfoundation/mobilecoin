@@ -15,8 +15,4 @@ mc-crypto-digestible = { path = "../digestible", default_features = false }
 
 digest = { version = "0.10.1", default-features = false }
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-blake2 = { version = "0.10.2", default-features = false, features = ["simd"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-blake2 = { version = "0.10.2", default-features = false }
+blake2 = { version = "0.10.6", default-features = false }

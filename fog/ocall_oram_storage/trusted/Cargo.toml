@@ -24,10 +24,6 @@ lazy_static = { version = "1.4", features = ["spin_no_std"] }
 rand_core = { version = "0.6", default-features = false }
 subtle = { version = "2", default-features = false }
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-blake2 = { version = "0.10.6", default-features = false, features = ["simd"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 blake2 = { version = "0.10.6", default-features = false }
 
 [dev-dependencies]

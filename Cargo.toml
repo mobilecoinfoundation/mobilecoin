@@ -185,8 +185,10 @@ exclude = [
     "util/serial",
 ]
 
+resolver = "2"
+
 [workspace.package]
-rust-version = "1.68.0"
+rust-version = "1.74.0"
 
 [profile.dev]
 opt-level = 0

@@ -152,6 +152,7 @@ impl ASTNode {
     // This is only test code that doesn't get shipped.
     #[inline(never)]
     #[allow(clippy::transmute_ptr_to_ptr)]
+    #[allow(invalid_reference_casting)]
     pub fn find_incomplete_child_mut(&mut self) -> Option<&mut ASTNode> {
         self.find_incomplete_child().map(|x| {
             // Safety:
