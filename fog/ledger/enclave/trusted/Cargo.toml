@@ -4,7 +4,7 @@ version = "5.0.8"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
-rust-version = "1.68.0"
+rust-version = "1.74.0"
 
 # Declare as an empty workspace to not confuse cargo.
 [workspace]
