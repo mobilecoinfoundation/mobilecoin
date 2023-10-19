@@ -11,5 +11,5 @@ rust-version = "1.68.0"
 [dependencies]
 mc-sgx-css = { path = "../css" }
 
-clap = { version = "4.3", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 hex_fmt = "0.3"

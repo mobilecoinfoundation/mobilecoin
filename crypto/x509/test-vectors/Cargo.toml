@@ -22,6 +22,6 @@ mc-util-build-script = { path = "../../../util/build/script" }
 [dependencies]
 mc-crypto-keys = { path = "../../keys" }
 
-clap = { version = "4.3", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 pem = "3.0"
 x509-signature = "0.5"
