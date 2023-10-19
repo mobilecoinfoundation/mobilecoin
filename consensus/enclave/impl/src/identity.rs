@@ -14,7 +14,7 @@ pub struct Ed25519Identity {
 impl Default for Ed25519Identity {
     fn default() -> Self {
         Self {
-            signing_keypair: Mutex::new(Ed25519Pair::from_random(&mut McRng::default())),
+            signing_keypair: Mutex::new(Ed25519Pair::from_random(&mut McRng)),
         }
     }
 }

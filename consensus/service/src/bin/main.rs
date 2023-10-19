@@ -124,7 +124,7 @@ fn main() -> Result<(), ConsensusServiceError> {
         local_ledger,
         Arc::new(tx_manager),
         Arc::new(mint_tx_manager),
-        Arc::new(SystemTimeProvider::default()),
+        Arc::new(SystemTimeProvider),
         logger.clone(),
     );
     consensus_service

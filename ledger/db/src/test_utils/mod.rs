@@ -187,7 +187,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
         block_version,
         Amount::new(fee, sender_amount.token_id),
         MockFogResolver::default(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
 

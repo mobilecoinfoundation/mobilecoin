@@ -91,7 +91,7 @@ where
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         // Health check service

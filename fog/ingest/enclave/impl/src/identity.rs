@@ -17,7 +17,7 @@ pub struct RistrettoIdentity {
 impl Default for RistrettoIdentity {
     fn default() -> Self {
         Self {
-            private_key: Mutex::new(RistrettoPrivate::from_random(&mut McRng::default())),
+            private_key: Mutex::new(RistrettoPrivate::from_random(&mut McRng)),
         }
     }
 }

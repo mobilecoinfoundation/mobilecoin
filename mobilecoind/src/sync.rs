@@ -780,7 +780,7 @@ mod test {
             BlockVersion::MAX,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let mut tx_outs = Vec::new();

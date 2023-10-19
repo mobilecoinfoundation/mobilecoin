@@ -366,7 +366,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 ledger.clone(),
                 watcher.clone(),
                 EpochShardingStrategy::default(),
-                SystemTimeProvider::default(),
+                SystemTimeProvider,
                 logger.clone(),
             );
 
@@ -918,7 +918,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 ledger.clone(),
                 watcher.clone(),
                 EpochShardingStrategy::default(),
-                SystemTimeProvider::default(),
+                SystemTimeProvider,
                 logger.clone(),
             );
 

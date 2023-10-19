@@ -282,7 +282,7 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             block_version,
             Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
 
@@ -382,7 +382,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             block_version,
             Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
 
@@ -477,7 +477,7 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             block_version,
             Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
 
@@ -584,7 +584,7 @@ fn test_sci_tx_summary_verification() {
         block_version,
         input_credentials,
         fog_resolver.clone(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
 
@@ -611,7 +611,7 @@ fn test_sci_tx_summary_verification() {
         block_version,
         Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         fog_resolver,
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
 
@@ -707,7 +707,7 @@ fn test_sci_three_way_tx_summary_verification() {
         block_version,
         input_credentials,
         fog_resolver.clone(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
 
@@ -734,7 +734,7 @@ fn test_sci_three_way_tx_summary_verification() {
         block_version,
         Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         fog_resolver,
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
 

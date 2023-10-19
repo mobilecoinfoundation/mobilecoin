@@ -59,7 +59,7 @@ where
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         Self::new(

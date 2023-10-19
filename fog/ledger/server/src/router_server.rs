@@ -75,10 +75,10 @@ where
                 Arc::new(TokenAuthenticator::new(
                     *shared_secret,
                     config.client_auth_token_max_lifetime,
-                    SystemTimeProvider::default(),
+                    SystemTimeProvider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         let env = Arc::new(

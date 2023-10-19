@@ -165,7 +165,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally
         shared_state.clone(),
-        Arc::new(AnonymousAuthenticator::default()),
+        Arc::new(AnonymousAuthenticator),
         logger.clone(),
     );
 

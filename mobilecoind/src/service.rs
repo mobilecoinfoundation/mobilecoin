@@ -3272,7 +3272,7 @@ mod test {
             BLOCK_VERSION,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let TxOutContext {
@@ -6228,7 +6228,7 @@ mod test {
             BLOCK_VERSION,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let TxOutContext { tx_out, .. } = transaction_builder
@@ -6341,7 +6341,7 @@ mod test {
             BLOCK_VERSION,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let TxOutContext { tx_out, .. } = transaction_builder

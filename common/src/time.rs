@@ -43,7 +43,7 @@ cfg_if::cfg_if! {
             fn default() -> Self {
                 Self {
                     cur_since_epoch: Arc::new(Mutex::new(
-                        SystemTimeProvider::default()
+                        SystemTimeProvider
                             .since_epoch()
                             .expect("failed getting initial value for cur_since_epoch"),
                     )),

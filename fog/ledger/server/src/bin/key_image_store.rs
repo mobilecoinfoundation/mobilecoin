@@ -47,7 +47,7 @@ fn main() {
             db,
             watcher,
             sharding_strategy,
-            SystemTimeProvider::default(),
+            SystemTimeProvider,
             logger.clone(),
         ),
     };

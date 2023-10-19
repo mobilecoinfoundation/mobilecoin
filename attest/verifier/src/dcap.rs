@@ -285,7 +285,7 @@ mod test {
 
         // The certs, TCB info, and QE identity are generated at build time, so `now()`
         // should be alright to use in testing.
-        let now = SystemTimeProvider::default()
+        let now = SystemTimeProvider
             .since_epoch()
             .expect("Failed to get duration since epoch");
         let time =
@@ -342,7 +342,7 @@ mod test {
 
         // The certs, TCB info, and QE identity are generated at build time, so `now()`
         // should be alright to use in testing.
-        let now = SystemTimeProvider::default()
+        let now = SystemTimeProvider
             .since_epoch()
             .expect("Failed to get duration since epoch");
         let time =

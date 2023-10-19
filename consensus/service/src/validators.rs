@@ -584,7 +584,7 @@ mod combine_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 MockFogResolver::default(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
             transaction_builder.add_input(input_credentials);
@@ -647,7 +647,7 @@ mod combine_tests {
                         block_version,
                         Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                         MockFogResolver::default(),
-                        EmptyMemoBuilder::default(),
+                        EmptyMemoBuilder,
                     )
                     .unwrap();
 
@@ -756,7 +756,7 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -800,7 +800,7 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -868,7 +868,7 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -964,7 +964,7 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -1009,7 +1009,7 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -1078,7 +1078,7 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
+                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);

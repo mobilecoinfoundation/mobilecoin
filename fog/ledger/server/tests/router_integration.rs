@@ -155,7 +155,7 @@ fn create_store(
         ledger,
         watcher,
         EpochShardingStrategy::new(block_range),
-        SystemTimeProvider::default(),
+        SystemTimeProvider,
         logger,
     );
     store.start();

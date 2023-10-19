@@ -31,7 +31,7 @@ lazy_static::lazy_static! {
 /// as expected.
 #[test_with_logger]
 fn consensus_enclave_client_tx_propose(logger: Logger) {
-    let mut rng = McRng::default();
+    let mut rng = McRng;
 
     let responder_id = ResponderId::from_str("127.0.0.1:3000").unwrap();
     let block_version = BlockVersion::MAX;

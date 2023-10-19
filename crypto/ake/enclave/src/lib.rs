@@ -122,7 +122,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Self {
             peer_self_id: Mutex::new(None),
             client_self_id: Mutex::new(None),
-            kex_identity: X25519Private::from_random(&mut McRng::default()),
+            kex_identity: X25519Private::from_random(&mut McRng),
             custom_identity,
             quote_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
             current_attestation_evidence: Mutex::new(None),
@@ -260,7 +260,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         };
 
         // Advance the state machine
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
         // For the first message, nonce is a zero
         let session_id = NonceSession::new(responder.binding().to_owned(), 0);
@@ -286,7 +286,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     /// connection to the enclave described by `backend_id`. Rather, this
     /// enclave serves as a client to this other backend enclave.
     pub fn backend_init(&self, backend_id: ResponderId) -> Result<NonceAuthRequest> {
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let initiator = Start::new(backend_id.to_string());
 
@@ -313,7 +313,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .pop(&backend_id)
             .ok_or(Error::NotFound)?;
 
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let auth_response_output_bytes: Vec<u8> = backend_auth_response.into();
         let auth_response_event = AuthResponseInput::new(
@@ -352,7 +352,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         };
 
         // Advance the state machine
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
         let session_id = ClientSession::from(responder.binding());
 
@@ -377,7 +377,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let dcap_evidence = self.get_attestation_evidence()?;
 
         // Fire up the state machine.
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let initiator = Start::new(peer_id.to_string());
 
         // Construct the initializer input.
@@ -417,7 +417,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         };
 
         // Advance the state machine
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
         let session_id = PeerSession::from(responder.binding());
 
@@ -449,7 +449,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let auth_response_input = AuthResponseInput::new(auth_response_output, identities, None);
 
         // Advance the state machine to ready (or failure)
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_input)?;
 
         let peer_session = PeerSession::from(initiator.binding());
@@ -633,7 +633,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut quote_pending = self.quote_pending.lock()?;
 
         let quote_nonce = loop {
-            let mut csprng = McRng::default();
+            let mut csprng = McRng;
             let quote_nonce = QuoteNonce::new(&mut csprng)?;
             if quote_pending.contains(&quote_nonce) {
                 continue;

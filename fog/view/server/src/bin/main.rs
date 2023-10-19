@@ -56,7 +56,7 @@ fn main() {
         config.clone(),
         sgx_enclave,
         recovery_db,
-        SystemTimeProvider::default(),
+        SystemTimeProvider,
         sharding_strategy,
         logger.clone(),
     );

@@ -296,7 +296,7 @@ mod test {
         }
 
         let enclave = MockEnclave::default();
-        let authenticator = Arc::new(AnonymousAuthenticator::default());
+        let authenticator = Arc::new(AnonymousAuthenticator);
         let mut ledger_server_node = MerkleProofService::new(
             "local".to_string(),
             mock_ledger.clone(),
@@ -355,7 +355,7 @@ mod test {
         }
 
         let enclave = MockEnclave::default();
-        let authenticator = Arc::new(AnonymousAuthenticator::default());
+        let authenticator = Arc::new(AnonymousAuthenticator);
         let mut ledger_server_node = MerkleProofService::new(
             "local".to_string(),
             mock_ledger,
