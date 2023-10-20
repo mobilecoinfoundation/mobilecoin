@@ -28,8 +28,8 @@ mc-watcher-api = { path = "../watcher/api" }
 bs58 = "0.4.0"
 crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
-mc-sgx-core-types = "0.8.0"
-mc-sgx-dcap-types = "0.8.0"
+mc-sgx-core-types = "0.9.0"
+mc-sgx-dcap-types = "0.9.0"
 protobuf = "2.27.1"
 
 curve25519-dalek = { version = "4.1.0", default-features = false }

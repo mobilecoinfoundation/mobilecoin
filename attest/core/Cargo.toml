@@ -28,9 +28,9 @@ std = [
 mc-attest-verifier-types = { path = "../verifier/types" }
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
-mc-sgx-core-types = "0.8.0"
+mc-sgx-core-types = "0.9.0"
 mc-sgx-css = { path = "../../sgx/css" }
-mc-sgx-dcap-types = "0.8.0"
+mc-sgx-dcap-types = "0.9.0"
 mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", features = ["hex_fmt"] }
