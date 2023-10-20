@@ -21,7 +21,7 @@ mc-util-serial = { path = "../../../util/serial" }
 
 aes-gcm = "0.10.1"
 digest = "0.10"
-mc-attestation-verifier = "0.4.0"
+mc-attestation-verifier = "0.4.1"
 sha2 = { version = "0.10", default-features = false }
 
 [build-dependencies]
