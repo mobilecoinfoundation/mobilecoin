@@ -2,7 +2,9 @@ name: Check that repositories submoduling us will still build after this PR
 
 on:
   pull_request:
-    branches: [ "master" ]
+    branches:
+      - master
+      - main
 
 env:
   CARGO_TERM_COLOR: always
