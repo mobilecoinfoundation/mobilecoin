@@ -8,7 +8,6 @@ rust-version = { workspace = true }
 [dependencies]
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-connection = { path = "../../connection" }
-mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-uri = { path = "../../util/uri" }

@@ -1016,7 +1016,6 @@ dependencies = [
  "mc-common",
  "mc-crypto-digestible",
  "mc-sgx-core-types",
- "mc-sgx-css",
  "mc-sgx-dcap-types",
  "mc-sgx-types",
  "mc-util-build-script",
@@ -1368,7 +1367,6 @@ name = "mc-crypto-digestible-signature"
 version = "5.0.8"
 dependencies = [
  "mc-crypto-digestible",
- "schnorrkel-og",
  "signature",
 ]
 
@@ -1460,7 +1458,6 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "ed25519-dalek",
- "mc-account-keys-types",
  "mc-core-types",
  "mc-crypto-digestible",
  "mc-crypto-hashes",

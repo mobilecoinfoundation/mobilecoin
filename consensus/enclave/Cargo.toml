@@ -16,7 +16,6 @@ mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-consensus-enclave-api = { path = "./api" }
 mc-consensus-enclave-edl = { path = "./edl" }
-mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-enclave-boundary = { path = "../../enclave-boundary" }
 mc-sgx-panic-edl = { path = "../../sgx/panic-edl" }
@@ -37,6 +36,7 @@ pkg-config = "0.3"
 [dev-dependencies]
 mc-attest-ake = { path = "../../attest/ake" }
 mc-attest-api = { path = "../../attest/api" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-fog-test-infra = { path = "../../fog/test_infra" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-rand = "1.0"

@@ -52,16 +52,15 @@ mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
-mc-fog-ingest-client = { path = "../client" }
 mc-fog-ingest-enclave = { path = "../enclave" }
 mc-fog-ingest-enclave-api = { path = "../enclave/api" }
-mc-fog-ingest-enclave-measurement = { path = "../enclave/measurement" }
 mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 [dev-dependencies]
+mc-fog-ingest-client = { path = "../client" }
 mc-fog-ingest-server-test-utils = { path = "test-utils" }
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-build-info = { path = "../../../util/build/info" }

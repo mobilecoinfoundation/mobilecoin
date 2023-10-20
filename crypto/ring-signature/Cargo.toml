@@ -25,7 +25,6 @@ ed25519-dalek = { version = "2.0.0", default-features = false }
 hex_fmt = { version = "0.3", optional = true }
 
 # MobileCoin dependencies
-mc-account-keys-types = { path = "../../account-keys/types", default-features = false }
 mc-core-types = { path = "../../core/types", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes", default-features = false }
