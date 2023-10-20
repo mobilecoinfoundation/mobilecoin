@@ -82,4 +82,4 @@ mc-util-uri = { path = "../../../util/uri" }
 portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"
-yare = "1.0.2"
+yare = "2.0.0"

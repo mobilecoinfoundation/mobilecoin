@@ -4081,7 +4081,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-serial",
  "mc-watcher-api",
- "yare",
+ "yare 2.0.0",
 ]
 
 [[package]]
@@ -4696,7 +4696,7 @@ dependencies = [
  "mc-watcher-api",
  "prost",
  "serde",
- "yare",
+ "yare 1.0.2",
 ]
 
 [[package]]
@@ -4929,7 +4929,7 @@ dependencies = [
  "rand_core",
  "serde",
  "serde_json",
- "yare",
+ "yare 2.0.0",
 ]
 
 [[package]]
@@ -9650,7 +9650,16 @@ version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df119f412cd2150ab3e88ebee015a615b00140ff81acd07746262df4a4678c47"
 dependencies = [
- "yare-macro",
+ "yare-macro 1.0.1",
+]
+
+[[package]]
+name = "yare"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d84be877e6a6cde26dd843583544f46e193a5b324b585c4914167a47ee3245ab"
+dependencies = [
+ "yare-macro 2.0.0",
 ]
 
 [[package]]
@@ -9662,6 +9671,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "yare-macro"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74e7573777bff194739148d7ffe000c9c652f1db6dafbb7d3b8475551bd4189d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.28",
 ]
 
 [[package]]
