@@ -72,9 +72,9 @@ v2.0.0-dev
 
 This workflow is set up to trigger off certain branch patterns.
 
-*NOTE:* The branch must contain some change to a source-code file for the CI to be triggered (i.e. branching off `master` to create a feature branch environment without any changes will not trigger CI)
+*NOTE:* The branch must contain some change to a source-code file for the CI to be triggered (i.e. branching off `main` to create a feature branch environment without any changes will not trigger CI)
 
-### Branches - `feature/*, release/*, master`
+### Branches - `feature/*, release/*, main`
 
 Branches will trigger a build that will create a dynamic development environment and run integration tests against the environment.
 

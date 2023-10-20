@@ -21,7 +21,7 @@ jobs:
     - name: Generate version metadata
       id: meta
       env:
-        # Use the ref name from the payload. The GITHUB_REF_NAME will always be "master"
+        # Use the ref name from the payload. The GITHUB_REF_NAME will always be "main"
         DELETE_REF_NAME: ${{ github.event.ref }}
       run: |
         .internal-ci/util/metadata.sh
