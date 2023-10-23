@@ -12,7 +12,6 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-untrusted = { path = "../../../attest/untrusted" }
 mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
-mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common" }
 mc-consensus-enclave-api = { path = "../api" }

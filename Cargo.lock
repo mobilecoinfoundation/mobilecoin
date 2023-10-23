@@ -2624,7 +2624,6 @@ dependencies = [
  "mc-common",
  "mc-crypto-digestible",
  "mc-sgx-core-types",
- "mc-sgx-css",
  "mc-sgx-dcap-types",
  "mc-sgx-types",
  "mc-util-build-script",
@@ -2921,7 +2920,6 @@ version = "5.0.8"
 dependencies = [
  "mc-blockchain-types",
  "mc-connection",
- "mc-consensus-enclave-api",
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-util-uri",
@@ -3076,7 +3074,6 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-untrusted",
  "mc-attest-verifier-types",
- "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
@@ -3412,7 +3409,6 @@ name = "mc-crypto-digestible-signature"
 version = "5.0.8"
 dependencies = [
  "mc-crypto-digestible",
- "schnorrkel-og",
  "signature",
 ]
 
@@ -3535,7 +3531,6 @@ dependencies = [
  "ed25519-dalek",
  "hex_fmt",
  "mc-account-keys",
- "mc-account-keys-types",
  "mc-core-types",
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
@@ -3600,7 +3595,6 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
- "x509-signature",
 ]
 
 [[package]]
@@ -3743,7 +3737,6 @@ dependencies = [
  "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
- "mc-util-keyfile",
  "mc-util-parse",
  "mc-util-uri",
  "mc-watcher",
@@ -3901,7 +3894,6 @@ dependencies = [
  "mc-fog-ingest-client",
  "mc-fog-ingest-enclave",
  "mc-fog-ingest-enclave-api",
- "mc-fog-ingest-enclave-measurement",
  "mc-fog-ingest-server-test-utils",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
@@ -4135,7 +4127,6 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-build-script",
  "mc-util-build-sgx",
- "mc-util-cli",
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-grpc",
@@ -4365,11 +4356,9 @@ dependencies = [
  "displaydoc",
  "grpcio",
  "mc-account-keys",
- "mc-attest-core",
  "mc-common",
  "mc-fog-report-api",
  "mc-fog-report-types",
- "mc-fog-report-validation",
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
@@ -4550,7 +4539,6 @@ name = "mc-fog-sig-report"
 version = "5.0.8"
 dependencies = [
  "displaydoc",
- "mc-attest-core",
  "mc-attest-verifier-types",
  "mc-crypto-digestible-signature",
  "mc-crypto-keys",
@@ -4693,7 +4681,6 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-util-test-with-data",
- "mc-watcher-api",
  "prost",
  "serde",
  "yare 1.0.2",
@@ -4746,7 +4733,6 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-verifier",
  "mc-common",
- "mc-crypto-ake-enclave",
  "mc-crypto-keys",
  "mc-enclave-boundary",
  "mc-fog-ocall-oram-storage-edl",
@@ -4779,7 +4765,6 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
- "mc-crypto-ake-enclave",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-fog-recovery-db-iface",
@@ -4916,7 +4901,6 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-grpc",
- "mc-util-metered-channel",
  "mc-util-metrics",
  "mc-util-parse",
  "mc-util-serial",
@@ -5127,7 +5111,6 @@ version = "4.1.0-pre0"
 dependencies = [
  "base64 0.21.2",
  "displaydoc",
- "mc-api",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-scp-types",
@@ -5739,7 +5722,6 @@ version = "5.0.8"
 dependencies = [
  "mc-util-test-vector",
  "serde",
- "serde-big-array",
 ]
 
 [[package]]
@@ -5771,7 +5753,6 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-oblivious-traits",
  "mc-test-vectors-definitions",
- "mc-transaction-builder",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-serial",
@@ -5931,7 +5912,6 @@ dependencies = [
  "mc-crypto-ring-signature",
  "mc-crypto-ring-signature-signer",
  "mc-transaction-core",
- "mc-transaction-extra",
  "mc-transaction-summary",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -8162,16 +8142,6 @@ version = "1.0.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e422a44e74ad4001bdc8eede9a4570ab52f71190e9c076d14369f38b9200537"
 dependencies = [
- "serde_derive",
-]
-
-[[package]]
-name = "serde-big-array"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18b20e7752957bbe9661cff4e0bb04d183d0948cdab2ea58cdb9df36a61dfe62"
-dependencies = [
- "serde",
  "serde_derive",
 ]
 

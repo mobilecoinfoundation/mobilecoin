@@ -50,7 +50,6 @@ mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-util-cli = { path = "../../../util/cli" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }
-mc-util-metered-channel = { path = "../../../util/metered-channel" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
