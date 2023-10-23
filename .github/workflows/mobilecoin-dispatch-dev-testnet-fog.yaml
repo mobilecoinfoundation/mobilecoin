@@ -295,7 +295,7 @@ jobs:
           queryInterval: 5m
         fogViewShardRangeGenerator:
           override: &stores
-            shardSize: 800_000
+            shardSize: 400_000
             exceedBlockHeightBy: 10_000
             shardOverlap: 0
             count: 2
