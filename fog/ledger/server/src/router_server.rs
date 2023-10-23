@@ -25,8 +25,9 @@ use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
+    config::LedgerRouterConfig, counters, metrics::MetricsUpdateThread,
+    router_admin_service::LedgerRouterAdminService, router_service::LedgerRouterService,
+    BlockService, MerkleProofService, UntrustedTxOutService,
 };
 
 pub struct LedgerRouterServer<E, RC>
@@ -42,7 +43,9 @@ where
     enclave: E,
     ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
+    metrics_update_thread: Option<MetricsUpdateThread>,
     logger: Logger,
+    ledger: LedgerDB,
     admin_server: Option<AdminServer>,
 }
 
@@ -136,7 +139,7 @@ where
         // Init block service
         let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
             config.chain_id.clone(),
-            ledger,
+            ledger.clone(),
             watcher,
             client_authenticator,
             logger.clone(),
@@ -168,7 +171,9 @@ where
             enclave,
             ra_client,
             report_cache_thread: None,
+            metrics_update_thread: None,
             logger,
+            ledger,
             admin_server: None,
         }
     }
@@ -184,6 +189,11 @@ where
                 self.logger.clone(),
             )
             .expect("failed starting report cache thread"),
+        );
+
+        self.metrics_update_thread = Some(
+            MetricsUpdateThread::start(self.ledger.clone(), self.logger.clone())
+                .expect("failed starting metrics update thread"),
         );
 
         self.router_server.start();

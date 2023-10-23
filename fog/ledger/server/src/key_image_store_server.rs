@@ -21,7 +21,7 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 
 use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher, metrics::MetricsUpdateThread,
     sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
 };
 
@@ -37,6 +37,8 @@ where
     enclave: E,
     ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
+    metrics_update_thread: Option<MetricsUpdateThread>,
+    ledger: LedgerDB,
     ias_spid: ProviderId,
     logger: Logger,
 }
@@ -183,6 +185,8 @@ where
             ra_client,
             ias_spid,
             report_cache_thread: None,
+            metrics_update_thread: None,
+            ledger: key_image_service.get_ledger(),
             logger,
         }
     }
@@ -198,6 +202,11 @@ where
                 self.logger.clone(),
             )
             .expect("failed starting report cache thread"),
+        );
+
+        self.metrics_update_thread = Some(
+            MetricsUpdateThread::start(self.ledger.clone(), self.logger.clone())
+                .expect("failed starting metrics update thread"),
         );
 
         self.server.start();
