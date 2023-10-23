@@ -112,7 +112,6 @@ jobs:
             TF: placeholder
           signingCert:
             crt: |-
-              i
         $(echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}" | sed 's/^/      /')
             key: |-
         $(echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}" | sed 's/^/      /')
