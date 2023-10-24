@@ -1,6 +1,6 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
-# MobileCoin Core projects - Deploy a TestNet Fog to Development cluster - placeholder
+# MobileCoin Core projects - Deploy a TestNet Fog - Deploy core apps to the development namespace.
 
 name: (Manual) Deploy TestNet Fog to Dev Namespace
 
@@ -17,12 +17,303 @@ on:
         description: "Chart Version"
         type: string
         required: true
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: choice
+        required: true
+        default: blue
+        options:
+        - blue
+        - green
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: true
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+
+env:
+  FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
+  VALUES_BASE_PATH: .tmp/values
 
 jobs:
-  placeholder:
+  setup:
     runs-on: [self-hosted, Linux, small]
     steps:
-    - name: dummy job
-      shell: bash
+    - name: Create namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: namespace-create
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Generate mc-core-common-config values
       run: |
-        true
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/mc-core-common-config-values.yaml"
+
+        clientAuth:
+          token: ""
+        ias:
+          key: ${{ secrets.TEST_IAS_KEY }}
+          spid: ${{ secrets.TEST_IAS_SPID }}
+        ipinfo:
+          token: ${{ secrets.IP_INFO_TOKEN }}
+        mobileCoinNetwork:
+          network: test
+          partner: ${{ inputs.namespace }}
+        mobilecoind:
+          nodes:
+          - client: node1.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
+          - client: node2.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/
+          - client: node3.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.test.mobilecoin.com/
+          - client: node4.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node4.test.mobilecoin.com/
+          - client: node5.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node5.test.mobilecoin.com/
+          - client: node6.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node6.test.mobilecoin.com/
+          - client: node7.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node7.test.mobilecoin.com/
+          - client: node8.test.mobilecoin.com:443
+            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node8.test.mobilecoin.com/
+          - client: node1.consensus.mob.staging.namda.net:443
+            txSourceUrl: https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node1.consensus.mob.staging.namda.net/
+          - client: node2.consensus.mob.staging.namda.net:443
+            txSourceUrl: https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node2.consensus.mob.staging.namda.net/
+          threshold: "7"
+        sentry:
+          consensus-sentry-dsn: ''
+          fog-ingest-sentry-dsn: ''
+          fog-ledger-sentry-dsn: ''
+          fog-report-sentry-dsn: ''
+          fog-view-sentry-dsn: ''
+          ledger-distribution-sentry-dsn: ''
+        EOF
+
+    - name: Generate fog-services-config values
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-services-config-values.yaml"
+        fogLedger:
+          configMap:
+            MC_LEDGER_DB_URL: https://mctesteu1ledger.blob.core.windows.net/test/mcd/ledger/data.mdb
+            MC_OMAP_CAPACITY: "2097152"
+            MC_WATCHER_DB_URL: https://mctesteu1ledger.blob.core.windows.net/test/mcd/watcher/data.mdb
+        fogPublicFQDN:
+          domainname: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          fogReportSANs: ""
+        fogReport:
+          configMap:
+            TF: placeholder
+          signingCert:
+            crt: |-
+        $(echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}" | sed 's/^/      /')
+            key: |-
+        $(echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}" | sed 's/^/      /')
+        fogView:
+          configMap:
+            MC_OMAP_CAPACITY: "4194304"
+        fogRecoveryDatabaseReader:
+          configMap:
+            enabled: true
+          database: recovery
+
+    - name: Generate fog-ingest-config values
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-config-values.yaml"
+
+        fogIngest:
+          MC_LEDGER_DB_URL: https://mctesteu1ledger.blob.core.windows.net/test/mcd/ledger/data.mdb
+          MC_WATCHER_DB_URL: https://mctesteu1ledger.blob.core.windows.net/test/mcd/watcher/data.mdb
+        fogRecoveryDatabase:
+          configMap:
+            enabled: true
+          secret:
+            enabled: true
+          password: '${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}'
+          database: recovery
+
+    - name: Deploy core-common-config setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: mc-core-common-config
+        chart_version: ${{ inputs.version }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/mc-core-common-config-values.yaml
+        release_name: mc-core-common-config
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Deploy fog-services-config setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-services-config
+        chart_version: ${{ inputs.version }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-services-config-values.yaml
+        release_name: fog-services-config
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Deploy fog-ingest-config setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ingest-config
+        chart_version: ${{ inputs.version }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ingest-config-values.yaml
+        release_name: fog-ingest-config
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Deploy PostgreSQL instance
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: https://charts.bitnami.com/bitnami
+        chart_name: postgresql
+        chart_version: 11.9.13
+        chart_set: |
+          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
+          --set=global.postgresql.auth.database=recovery
+          --set=architecture=replication
+        chart_wait_timeout: 5m
+        release_name: fog-recovery-postgresql
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  restore-db-from-archive:
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - setup
+    container:
+      image: mobilecoin/gha-s3-pg-helper:v0
+    steps:
+    - name: restore-db
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: eu-central-1
+        BUCKET: mobilecoin.eu.development.chain
+        PGDATABASE: postgres
+        PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
+        PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
+        PGUSER: postgres
+        VERSION: ${{ inputs.version }}
+      run: |
+        # Copy sql from S3
+        aws s3 cp --only-show-errors \
+          "s3://${BUCKET}/prebuilt/testnet/sql/mc-testnet-fog-recovery_dump-20231004.sql" \
+          /tmp/fog_recovery.sql
+
+        # Restore to PG
+        psql < /tmp/fog_recovery.sql
+
+  fog-ingest-deploy:
+    needs:
+    - restore-db-from-archive
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Deploy fog-ingest
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ingest
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        release_name: fog-ingest-${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Run fog-recovery database migrations
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          fog-sql-recovery-db-migrations
+
+    # - name: Activate primary ingest
+    #   uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+    #   with:
+    #     action: fog-ingest-activate
+    #     ingest_color: ${{ inputs.ingest_color }}
+    #     namespace: ${{ inputs.namespace }}
+    #     rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+    #     rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+    #     rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    # - name: Delete retired flipside ingest (if exists)
+    #   uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+    #   with:
+    #     action: helm-release-delete
+    #     namespace: ${{ inputs.namespace }}
+    #     release_name: fog-ingest-${{ env.FLIPSIDE }}
+    #     rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+    #     rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+    #     rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  fog-services-deploy:
+    needs:
+    - fog-ingest-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Generate fog-services values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-services-values.yaml"
+        global:
+          certManagerClusterIssuer: google-public-ca
+        blockHeighRetrieval:
+          url: 'https://node1.test.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
+          responseJQ: '.index'
+          requestBody: ' '
+          queryInterval: 5m
+        fogViewShardRangeGenerator:
+          override: &stores
+            shardSize: 400_000
+            exceedBlockHeightBy: 10_000
+            shardOverlap: 0
+            count: 2
+        fogLedgerShardRangeGenerator:
+          override: *stores
+        EOF
+
+    - name: Deploy fog-services
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-services
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-services-values.yaml
+        release_name: fog-services
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
