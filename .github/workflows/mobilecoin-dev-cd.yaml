@@ -35,7 +35,7 @@ jobs:
 # Generate environment information
 ############################################
   generate-metadata:
-    if: "! startsWith(github.head_ref, 'dependabot/')"
+    if: ${{ ! startsWith(github.head_ref, 'dependabot/') }}
     name: 👾 Environment Info 👾
     runs-on: [self-hosted, Linux, small]
     outputs:
@@ -80,11 +80,11 @@ jobs:
       MINTING_TRUST_ROOT_PUBLIC_KEY_PEM: ${{ github.workspace }}/.tmp/minting_trust_root.public.pem
     steps:
     - name: Checkout
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       uses: actions/checkout@v3
 
     - name: Write environment values
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       env:
         ENCLAVE_SIGNING_KEY: ${{ secrets.DEV_ENCLAVE_SIGNING_KEY }}
         MINTING_TRUST_ROOT_PUBLIC: ${{ secrets.DEV_MINTING_TRUST_ROOT_PUBLIC }}
@@ -94,7 +94,7 @@ jobs:
         echo "${MINTING_TRUST_ROOT_PUBLIC}" > "${MINTING_TRUST_ROOT_PUBLIC_KEY_PEM}"
 
     - name: Cache rust build binaries
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       id: rust_artifact_cache
       uses: ./.github/actions/mobilecoin-cache-rust-binaries
       with:
@@ -173,12 +173,12 @@ jobs:
         done
 
     - name: Check artifacts
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       run: |
         ls -alR rust_build_artifacts
 
     - name: Upload artifacts
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       uses: actions/upload-artifact@v3
       with:
         name: rust-binaries
@@ -192,17 +192,17 @@ jobs:
       image: golang:1.18.5
     steps:
     - name: Checkout
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       uses: actions/checkout@v3
 
     - name: Add protobuf-compiler
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       run: |
         apt update
         apt install -y protobuf-compiler zstd
 
     - name: Cache go build binaries
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       id: go_artifact_cache
       uses: ./.github/actions/mobilecoin-cache-go-binaries
       with:
@@ -220,12 +220,12 @@ jobs:
         cp go-grpc-gateway ../go_build_artifacts/
 
     - name: check artifacts
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       run: |
         ls -alR go_build_artifacts
 
     - name: Upload Artifacts
-      if: "! contains(github.event.head_commit.message, '[skip build]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
       uses: actions/upload-artifact@v3
       with:
         name: go-binaries
@@ -367,13 +367,14 @@ jobs:
         - mc-core-dev-env-setup
         - mobilecoind
         - watcher
+        - fog-report
     steps:
     - name: Checkout
-      if: "! contains(github.event.head_commit.message, '[skip charts]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip charts]') }}
       uses: actions/checkout@v3
 
     - name: Package and publish chart
-      if: "! contains(github.event.head_commit.message, '[skip charts]')"
+      if: ${{ ! contains(github.event.head_commit.message, '[skip charts]') }}
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-publish

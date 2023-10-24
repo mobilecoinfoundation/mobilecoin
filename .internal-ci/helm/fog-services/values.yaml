@@ -301,6 +301,7 @@ fogLedger:
 
 ### Fog Report Service
 fogReport:
+  enabled: false
   replicaCount: 2
   image:
     org: ''
