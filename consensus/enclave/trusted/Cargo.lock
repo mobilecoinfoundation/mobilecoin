@@ -137,7 +137,7 @@ version = "0.66.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2b84e06fc203107bfbad243f4aba2af864eb7db3b1cf46ea0a023b0b433d2a7"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.1",
  "cexpr",
  "clang-sys",
  "lazy_static",
@@ -168,9 +168,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.3.3"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
+checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 dependencies = [
  "serde",
 ]
@@ -1005,7 +1005,7 @@ name = "mc-attest-core"
 version = "5.0.8"
 dependencies = [
  "base64",
- "bitflags 2.3.3",
+ "bitflags 2.4.1",
  "cargo-emit",
  "chrono",
  "digest",
@@ -1592,7 +1592,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d243fa7499d18a9e84cb87c452d727a03c64c841709336d619fb4f9f7e4da892"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.1",
  "displaydoc",
  "getrandom",
  "hex",
