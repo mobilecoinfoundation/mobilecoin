@@ -53,11 +53,23 @@ fn main() {
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-    let mut router_server =
-        LedgerRouterServer::new(config, enclave, ias_client, ledger_db, watcher_db, logger);
+    let mut router_server = LedgerRouterServer::new(
+        config,
+        enclave,
+        ias_client,
+        ledger_db.clone(),
+        watcher_db,
+        logger.clone(),
+    );
     router_server.start();
 
     loop {
+        // The ledger database is read by this service, but updated by another service.
+        // In order to keep this service's metrics up to date, we need to update them
+        // periodically.
+        if let Err(e) = ledger_db.update_metrics() {
+            log::error!(logger, "Error updating ledger metrics: {:?}", e);
+        }
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
