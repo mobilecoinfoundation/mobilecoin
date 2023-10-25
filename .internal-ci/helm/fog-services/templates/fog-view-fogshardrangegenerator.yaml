@@ -154,7 +154,9 @@ spec:
                     key: token
                     optional: true
               - name: MC_CLIENT_RESPONDER_ID
-                value: {{ include "fogServices.fogPublicFQDN" (merge $ (dict "responderIDLookupKey" $template.responderIDLookupKey)) }}:443
+                {{- $addVals := dict "responderIDLookupKey" $template.responderIDLookupKey }}
+                {{- $args := mustMerge $ $addVals}}
+                value: {{ include "fogServices.fogPublicFQDN" $args }}:443
               - name: MC_CLIENT_LISTEN_URI
                 value: insecure-fog-view://0.0.0.0:3225/
               - name: FOG_VIEW_SENTRY_DSN

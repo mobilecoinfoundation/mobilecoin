@@ -146,7 +146,9 @@ spec:
                     key: token
                     optional: true
               - name: CLIENT_RESPONDER_ID
-                value: {{ include "fogServices.fogPublicFQDN" (merge $ (dict "responderIDLookupKey" $template.responderIDLookupKey)) }}:443
+                {{- $addVals := dict "responderIDLookupKey" $template.responderIDLookupKey }}
+                {{- $args := mustMerge $ $addVals}}
+                value: {{ include "fogServices.fogPublicFQDN" $args }}:443
               startupProbe:
                 grpc:
                   port: 3228
