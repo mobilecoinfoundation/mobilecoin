@@ -1,11 +1,11 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 {{- $count := (include "fogServices.fogViewShardRangeGenerator" . | fromYaml).count }}
 {{- $stacks := until (int $count) }}
-{{- range $stacks }}
+{{- range $stack := $stacks }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" $ }}-fog-view-{{ . }}
+  name: {{ include "fogServices.fullname" $ }}-fog-view-{{ $stack }}
   labels:
     {{- include "fogServices.labels" $ | nindent 4 }}
 spec:
@@ -22,14 +22,15 @@ spec:
   {{- end }}
   router:
     template:
-      containerName: fog-view-router
+    {{- range $template := $.Values.fogLedgerRouter.routerTemplates }}
+    - containerName: fog-view-router
       spec:
         podManagementPolicy: {{ $.Values.fogViewRouter.podManagementPolicy }}
-        replicas: {{ $.Values.fogViewRouter.replicaCount }}
+        replicas: {{ $template.replicas }}
         selector:
           matchLabels:
             app: fog-view-router
-            stack: fog-view-{{ . }}
+            stack: fog-view-{{ $stack }}
             {{- include "fogServices.selectorLabels" $ | nindent 12 }}
         serviceName: {{ include "fogServices.fullname" $ }}-fog-view-router
         template:
@@ -38,7 +39,7 @@ spec:
               {{- toYaml $.Values.fogViewRouter.podAnnotations | nindent 14 }}
             labels:
               app: fog-view-router
-              stack: fog-view-{{ . }}
+              stack: fog-view-{{ $stack }}
               {{- include "fogServices.labels" $ | nindent 14 }}
           spec:
             # Prevent endpoint creation until all shards for this router are ready
@@ -72,7 +73,7 @@ spec:
                     - key: stack
                       operator: In
                       values:
-                      - fog-view-{{ . }}
+                      - fog-view-{{ $stack }}
                   topologyKey: topology.kubernetes.io/zone
                 preferredDuringSchedulingIgnoredDuringExecution:
                 - podAffinityTerm:
@@ -81,7 +82,7 @@ spec:
                       - key: stack
                         operator: In
                         values:
-                        - fog-view-{{ . }}
+                        - fog-view-{{ $stack }}
                     topologyKey: "kubernetes.io/hostname"
                   weight: 1
             {{- end }}
@@ -152,7 +153,7 @@ spec:
                     key: token
                     optional: true
               - name: MC_CLIENT_RESPONDER_ID
-                value: {{ include "fogServices.fogPublicFQDN" $ }}:443
+                value: {{ include "fogServices.fogPublicFQDN" (merge $ (dict "responderIDLookupKey" $template.responderIDLookupKey)) }}:443
               - name: MC_CLIENT_LISTEN_URI
                 value: insecure-fog-view://0.0.0.0:3225/
               - name: FOG_VIEW_SENTRY_DSN
@@ -223,7 +224,7 @@ spec:
                 - --reporter.type=grpc
                 - --agent.tags=cluster=undefined,container.name=fog-view-router,deployment.name={{ include "fogServices.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
             {{- end }}
-
+    {{- end }}
   store:
     containerName: fog-view-store
     servicePort: 80
@@ -234,7 +235,7 @@ spec:
       selector:
         matchLabels:
           app: fog-view-store
-          stack: fog-view-{{ . }}
+          stack: fog-view-{{ $stack }}
           {{- include "fogServices.selectorLabels" $ | nindent 10 }}
       serviceName: {{ include "fogServices.fullname" $ }}-fog-view-store
       template:
@@ -243,7 +244,7 @@ spec:
             {{- toYaml $.Values.fogView.podAnnotations | nindent 12 }}
           labels:
             app: fog-view-store
-            stack: fog-view-{{ . }}
+            stack: fog-view-{{ $stack }}
             {{- include "fogServices.labels" $ | nindent 12 }}
         spec:
           {{- if $.Values.fogView.topologySpreadConstraintsEnabled }}
@@ -264,7 +265,7 @@ spec:
                   - key: stack
                     operator: In
                     values:
-                    - fog-view-{{ . }}
+                    - fog-view-{{ $stack }}
                 topologyKey: topology.kubernetes.io/zone
               preferredDuringSchedulingIgnoredDuringExecution:
               - podAffinityTerm:
@@ -273,7 +274,7 @@ spec:
                     - key: stack
                       operator: In
                       values:
-                      - fog-view-{{ . }}
+                      - fog-view-{{ $stack }}
                   topologyKey: "kubernetes.io/hostname"
                 weight: 1
           {{- end }}

@@ -64,6 +64,12 @@ fogViewRouter:
   podManagementPolicy: Parallel
   replicaCount: 1
 
+  routerTemplates:
+  - responderIDLookupKey: mobilecoin
+    replicas: 1
+  - responderIDLookupKey: signal
+    replicas: 1
+
   resources:
     limits:
       intel.com/sgx: 5000
@@ -180,9 +186,9 @@ fogLedgerShardRangeGenerator:
 fogLedgerRouter:
   routerTemplates:
   - responderIDLookupKey: mobilecoin
-    replicas: 3
+    replicas: 1
   - responderIDLookupKey: signal
-    replicas: 2
+    replicas: 1
 
   podManagementPolicy: Parallel
   affinityEnabled: true
