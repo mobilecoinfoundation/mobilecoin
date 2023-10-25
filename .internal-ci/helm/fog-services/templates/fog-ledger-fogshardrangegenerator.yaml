@@ -25,7 +25,8 @@ spec:
     shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
     templates:
     {{- range $template := $.Values.fogLedgerRouter.routerTemplates }}
-    - containerName: fog-ledger-router
+    - templateID: {{ $template.templateID }}
+      containerName: fog-ledger-router
       spec:
         podManagementPolicy: {{ $.Values.fogLedgerRouter.podManagementPolicy }}
         replicas: {{ $template.replicas }}

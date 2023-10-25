@@ -23,7 +23,8 @@ spec:
   router:
     templates:
     {{- range $template := $.Values.fogLedgerRouter.routerTemplates }}
-    - containerName: fog-view-router
+    - templateID: {{ $template.templateID }}
+      containerName: fog-view-router
       spec:
         podManagementPolicy: {{ $.Values.fogViewRouter.podManagementPolicy }}
         replicas: {{ $template.replicas }}
