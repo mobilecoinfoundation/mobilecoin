@@ -21,7 +21,7 @@ spec:
   blockCountReqBody: {{ .requestBody | quote }}
   {{- end }}
   router:
-    template:
+    templates:
     {{- range $template := $.Values.fogLedgerRouter.routerTemplates }}
     - containerName: fog-view-router
       spec:
