@@ -1,4 +1,5 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- if .Values.fogReport.enabled }}
 {{- if .Values.ingress.enabled }}
 {{- $hosts := split "\n" (include "fogServices.fogReportHosts" . | trim) }}
 apiVersion: networking.k8s.io/v1
@@ -34,4 +35,5 @@ spec:
             port:
               name: report-grpc
   {{- end }}
+{{- end }}
 {{- end }}

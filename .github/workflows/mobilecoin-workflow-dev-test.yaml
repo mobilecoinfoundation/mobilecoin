@@ -93,10 +93,12 @@ jobs:
     env:
       SRC_KEYS_DIR: /tmp/sample_data/keys
       SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys
+      SRC_FOG_B_KEYS_DIR: /tmp/sample_data/fog_keys_b
       V2_DST_KEYS_DIR: /tmp/2-testing/keys
       V2_DST_FOG_KEYS_DIR: /tmp/2-testing/fog_keys
       V3_DST_KEYS_DIR: /tmp/3-testing/keys
       V3_DST_FOG_KEYS_DIR: /tmp/3-testing/fog_keys
+      V3_DST_FOG_B_KEYS_DIR: /tmp/3-testing/fog_keys_b
       START_KEYS: '494'
       END_KEYS: '499'
     steps:
@@ -128,6 +130,7 @@ jobs:
         command: |
           INITIALIZE_LEDGER="true" \
           FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
+          FOG_REPORT_B_URL="fog://fog-b.${{ inputs.namespace }}.development.mobilecoin.com:443" \
           /util/generate_origin_data.sh
 
     - name: Test - fog-distribution
@@ -196,7 +199,7 @@ jobs:
             --start ${{ env.START_KEYS }} \
             --end ${{ env.END_KEYS }}
 
-    - name: Setup - block-v3 - Copy subset of fog keys
+    - name: Setup - block-v3 - Copy subset of fog keys - fog-report-a
       if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -210,6 +213,23 @@ jobs:
           /util/copy_account_keys.sh \
             --src ${{ env.SRC_FOG_KEYS_DIR }} \
             --dst ${{ env.V3_DST_FOG_KEYS_DIR }} \
+            --start ${{ env.START_KEYS }} \
+            --end ${{ env.END_KEYS }}
+
+    - name: Setup - block-v3 - Copy subset of fog keys - fog-report-b
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /util/copy_account_keys.sh \
+            --src ${{ env.SRC_FOG_B_KEYS_DIR }} \
+            --dst ${{ env.V3_DST_FOG_B_KEYS_DIR }} \
             --start ${{ env.START_KEYS }} \
             --end ${{ env.END_KEYS }}
 
@@ -278,7 +298,7 @@ jobs:
             --fee 1024 \
             --token-id 8192
 
-    - name: Test - block-v3 - fog-test-client token ids 0,8192
+    - name: Test - block-v3 - fog-test-client fog-report-a, token ids 0,8192
       if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -291,4 +311,19 @@ jobs:
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
+            --token-ids 0,8192
+
+    - name: Test - block-v3 - fog-test-client fog-report-b, token ids 0,8192
+      if: inputs.testing_block_v3
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: toolbox-exec
+        ingest_color: ${{ inputs.ingest_color }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        command: |
+          /test/fog-test-client.sh \
+            --key-dir ${{ env.V3_DST_FOG_B_KEYS_DIR }} \
             --token-ids 0,8192

@@ -1,25 +1,23 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- if .Values.fogReport.enabled }}
+# Copyright (c) 2018-2023 The MobileCoin Foundation
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-report
+  name: {{ include "fog-report.fullname" . }}
+  annotations:
+    sidecar.jaegertracing.io/inject: {{ .Values.jaegerTracing.enabled | quote }}
   labels:
-    app: fog-report
-    {{- include "fogServices.labels" . | nindent 4 }}
+    {{- include "fog-report.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.fogReport.replicaCount }}
   selector:
     matchLabels:
-      app: fog-report
-      {{- include "fogServices.selectorLabels" . | nindent 6 }}
+      {{- include "fog-report.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         {{- toYaml .Values.fogReport.podAnnotations | nindent 8 }}
       labels:
-        app: fog-report
-        {{- include "fogServices.labels" . | nindent 8 }}
+        {{- include "fog-report.labels" . | nindent 8 }}
     spec:
       # Try to balance pods across zones
       topologySpreadConstraints:
@@ -30,9 +28,8 @@ spec:
         labelSelector:
           matchLabels:
             # match on this helm chart install
-            app: fog-report
-            helm.sh/chart: {{ include "fogServices.chart" . }}
-            {{- include "fogServices.selectorLabels" . | nindent 12 }}
+            helm.sh/chart: {{ include "fog-report.chart" . }}
+            {{- include "fog-report.selectorLabels" . | nindent 12 }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       initContainers:
@@ -58,65 +55,59 @@ spec:
           containerPort: 8000
         envFrom:
         - configMapRef:
-            name: fog-report
+            name: {{ include "fog-report.fullname" . }}
         env:
-        - name: "RUST_BACKTRACE"
+        - name: MC_TELEMETRY
+          value: {{ .Values.jaegerTracing.enabled | quote }}
+        - name: RUST_BACKTRACE
           value: {{ .Values.fogReport.rust.backtrace | quote }}
-        - name: "RUST_LOG"
+        - name: RUST_LOG
           value: {{ .Values.fogReport.rust.log | quote }}
-        - name: "FOG_REPORT_SENTRY_DSN"
+        - name: MC_SENTRY_DSN
           valueFrom:
             configMapKeyRef:
-              name: sentry
+              name: {{ .Values.fogReport.externalConfigMaps.sentry.name }}
               key: fog-report-sentry-dsn
+              optional: true
         # Maps to Sentry Environment
         - name: MC_BRANCH
-          valueFrom:
-            configMapKeyRef:
-              name: mobilecoin-network
-              key: network
+          value: {{ .Values.mobilecoin.network }}
         - name: MC_CHAIN_ID
-          valueFrom:
-            configMapKeyRef:
-              name: mobilecoin-network
-              key: network
+          value: {{ .Values.mobilecoin.network }}
         - name: FOGDB_HOST
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-reader-0-postgresql
+              name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
               key: postgresql-hostname
         - name: FOGDB_USER
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-reader-0-postgresql
+              name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
               key: postgresql-username
         - name: FOGDB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: fog-recovery-postgresql
+              name: {{ .Values.fogReport.externalSecrets.postgresReader.name }}
               key: postgresql-password
         - name: FOGDB_DATABASE
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-reader-0-postgresql
+              name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
               key: postgresql-database
         - name: FOGDB_SSL_OPTIONS
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-reader-0-postgresql
+              name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
               key: postgresql-ssl-options
         - name: DATABASE_URL
           value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
-                # Hold liveness and readiness until this probe passes.
         startupProbe:
           exec:
             command:
             - "/usr/local/bin/grpc_health_probe"
             - "-addr=:3222"
-          # Wait 5 min for startup
           failureThreshold: 30
           periodSeconds: 10
-        # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
         livenessProbe:
           exec:
             command:
@@ -124,7 +115,6 @@ spec:
             - "-addr=:3222"
           failureThreshold: 5
           periodSeconds: 30
-        # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
         readinessProbe:
           exec:
             command:
@@ -155,42 +145,6 @@ spec:
           containerPort: 8222
         resources:
           {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
-{{- if eq .Values.jaegerTracing.enabled true }}
-      - name: jaeger-agent
-        image: jaegertracing/jaeger-agent:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-          - containerPort: 5775
-            name: zk-compact-trft
-            protocol: UDP
-          - containerPort: 5778
-            name: config-rest
-            protocol: TCP
-          - containerPort: 6831
-            name: jg-compact-trft
-            protocol: UDP
-          - containerPort: 6832
-            name: jg-binary-trft
-            protocol: UDP
-          - containerPort: 14271
-            name: admin-http
-            protocol: TCP
-        env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
-        args:
-          - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
-          - --reporter.type=grpc
-          - --agent.tags=cluster=undefined,container.name=fog-report,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
-{{- end }}
       nodeSelector:
         {{- toYaml .Values.fogReport.nodeSelector | nindent 8 }}
       tolerations:
@@ -200,14 +154,13 @@ spec:
       volumes:
       - name: signing-cert
         secret:
-          secretName: fog-report-signing-cert
+          secretName: {{ .Values.fogReport.externalSecrets.signingCert.name }}
       - name: supervisor-conf
         projected:
           sources:
           - configMap:
-              name: {{ include "fogServices.fullname" . }}-supervisord-daemon
+              name: {{ include "fog-report.fullname" . }}-supervisord-daemon
           - configMap:
-              name: {{ include "fogServices.fullname" . }}-supervisord-fog-report
+              name: {{ include "fog-report.fullname" . }}-supervisord-fog-report
           - configMap:
-              name: {{ include "fogServices.fullname" . }}-supervisord-admin
-{{- end }}
+              name: {{ include "fog-report.fullname" . }}-supervisord-admin
