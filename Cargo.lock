@@ -346,9 +346,9 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
 name = "base64"
-version = "0.21.2"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
+checksum = "35636a1494ede3b646cc98f74f8e62c773a38a659ebc777a2cf26b9b74171df9"
 
 [[package]]
 name = "base64ct"
@@ -2611,7 +2611,7 @@ dependencies = [
 name = "mc-attest-core"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "bincode",
  "bitflags 2.4.1",
  "cargo-emit",
@@ -2745,7 +2745,7 @@ name = "mc-attest-verifier-types"
 version = "5.0.8"
 dependencies = [
  "assert_matches",
- "base64 0.21.2",
+ "base64 0.21.5",
  "displaydoc",
  "hex",
  "hex_fmt",
@@ -3194,7 +3194,7 @@ dependencies = [
 name = "mc-consensus-service"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "chrono",
  "clap 4.4.6",
  "curve25519-dalek",
@@ -3259,7 +3259,7 @@ dependencies = [
 name = "mc-consensus-service-config"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "clap 4.4.6",
  "displaydoc",
  "hex",
@@ -3433,7 +3433,7 @@ dependencies = [
 name = "mc-crypto-keys"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "curve25519-dalek",
  "digest 0.10.7",
  "displaydoc",
@@ -4330,7 +4330,7 @@ dependencies = [
 name = "mc-fog-report-cli"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "clap 4.4.6",
  "grpcio",
  "hex",
@@ -5109,7 +5109,7 @@ dependencies = [
 name = "mc-light-client-verifier"
 version = "4.1.0-pre0"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "displaydoc",
  "mc-blockchain-types",
  "mc-common",
@@ -6050,7 +6050,7 @@ dependencies = [
 name = "mc-util-encodings"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "displaydoc",
  "hex",
  "mc-util-repr-bytes",
@@ -6091,7 +6091,7 @@ dependencies = [
 name = "mc-util-grpc"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "clap 4.4.6",
  "cookie",
  "displaydoc",
@@ -6151,7 +6151,7 @@ version = "5.0.8"
 name = "mc-util-keyfile"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "clap 4.4.6",
  "displaydoc",
  "hex",
@@ -6310,7 +6310,7 @@ version = "5.0.8"
 name = "mc-util-uri"
 version = "5.0.8"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "displaydoc",
  "hex",
  "mc-common",
@@ -6933,7 +6933,7 @@ version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed3127afbfc30b4cad60c34aeb741fb562a808642b81142bcf4afb73142da960"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "serde",
 ]
 
@@ -7510,7 +7510,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "046cd98826c46c2ac8ddecae268eb5c2e58628688a5fc7a2643704a73faba95b"
 dependencies = [
  "async-compression",
- "base64 0.21.2",
+ "base64 0.21.5",
  "bytes 1.1.0",
  "encoding_rs",
  "futures-core",
@@ -8203,7 +8203,7 @@ version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ca3b16a3d82c4088f343b7480a93550b3eabe1a358569c2dfe38bbcead07237"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "chrono",
  "hex",
  "serde",
@@ -9119,7 +9119,7 @@ version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4b45063f47caea744e48f5baa99169bd8bd9b882d80a99941141327bbb00f99"
 dependencies = [
- "base64 0.21.2",
+ "base64 0.21.5",
  "log",
  "once_cell",
  "rustls 0.21.7",
