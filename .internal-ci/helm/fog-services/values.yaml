@@ -66,8 +66,10 @@ fogViewRouter:
 
   routerTemplates:
   - responderIDLookupKey: mobilecoin
+    templateID: mb
     replicas: 1
   - responderIDLookupKey: sg
+    templateID: sg
     replicas: 1
 
   resources:
@@ -186,8 +188,10 @@ fogLedgerShardRangeGenerator:
 fogLedgerRouter:
   routerTemplates:
   - responderIDLookupKey: mobilecoin
+    templateID: mb
     replicas: 1
   - responderIDLookupKey: sg
+    templateID: sg
     replicas: 1
 
   podManagementPolicy: Parallel
