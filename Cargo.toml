@@ -228,8 +228,8 @@ lto = "thin"
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
 
 # mbedtls patched to allow certificate verification with a profile
-mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "98d3af413c1e23ea89cc5f41ab4dddb1944405af" }
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "5436653a89742e4d0701f61c95388ed0b7f5c06d" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "5436653a89742e4d0701f61c95388ed0b7f5c06d" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
