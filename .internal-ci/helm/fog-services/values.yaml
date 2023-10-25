@@ -178,9 +178,13 @@ fogLedgerShardRangeGenerator:
     count: 2
 
 fogLedgerRouter:
-  replicaCount: 1
-  podManagementPolicy: Parallel
+  routerTemplates:
+  - responderIDLookupKey: mobilecoin
+    replicas: 3
+  - responderIDLookupKey: signal
+    replicas: 2
 
+  podManagementPolicy: Parallel
   affinityEnabled: true
   topologySpreadConstraintsEnabled: true
 

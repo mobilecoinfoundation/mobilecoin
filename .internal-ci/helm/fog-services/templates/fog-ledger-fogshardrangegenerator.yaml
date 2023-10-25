@@ -1,11 +1,11 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 {{- $count := (include "fogServices.fogLedgerShardRangeGenerator" .| fromYaml).count }}
 {{- $stacks := until (int $count) }}
-{{- range $stacks }}
+{{- range $stack := $stacks }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" $ }}-fog-ledger-{{ . }}
+  name: {{ include "fogServices.fullname" $ }}-fog-ledger-{{ $stack }}
   labels:
     {{- include "fogServices.labels" $ | nindent 4 }}
 spec:
@@ -23,18 +23,19 @@ spec:
   router:
     shardingScheme: insecure-key-image-store
     shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
-    template:
-      containerName: fog-ledger-router
+    templates:
+    {{- range $template := $.Values.fogLedgerRouter.routerTemplates }}
+    - containerName: fog-ledger-router
       spec:
         podManagementPolicy: {{ $.Values.fogLedgerRouter.podManagementPolicy }}
-        replicas: {{ $.Values.fogLedgerRouter.replicaCount }}
+        replicas: {{ $template.replicas }}
         persistentVolumeClaimRetentionPolicy:
           whenDeleted: Delete
           whenScaled: Delete
         selector:
           matchLabels:
             app: fog-ledger-router
-            stack: fog-ledger-{{ . }}
+            stack: fog-ledger-{{ $stack }}
             {{- include "fogServices.selectorLabels" $ | nindent 12 }}
         serviceName: {{ include "fogServices.fullname" $ }}-fog-ledger
         template:
@@ -43,7 +44,7 @@ spec:
               {{- toYaml $.Values.fogLedgerRouter.podAnnotations | nindent 14 }}
             labels:
               app: fog-ledger-router
-              stack: fog-ledger-{{ . }}
+              stack: fog-ledger-{{ $stack }}
               {{- include "fogServices.labels" $ | nindent 14 }}
           spec:
             # Prevent endpoint creation until all shards for this router are ready
@@ -59,7 +60,7 @@ spec:
                     - key: stack
                       operator: In
                       values:
-                      - fog-ledger-{{ . }}
+                      - fog-ledger-{{ $stack }}
                   topologyKey: topology.kubernetes.io/zone
                 preferredDuringSchedulingIgnoredDuringExecution:
                 - podAffinityTerm:
@@ -68,7 +69,7 @@ spec:
                       - key: stack
                         operator: In
                         values:
-                        - fog-ledger-{{ . }}
+                        - fog-ledger-{{ $stack }}
                     topologyKey: "kubernetes.io/hostname"
                   weight: 1
             {{- end }}
@@ -144,7 +145,7 @@ spec:
                     key: token
                     optional: true
               - name: CLIENT_RESPONDER_ID
-                value: "{{ include "fogServices.fogPublicFQDN" $ }}:443"
+                value: {{ include "fogServices.fogPublicFQDN" (merge $ (dict "responderIDLookupKey" $template.responderIDLookupKey)) }}:443
               startupProbe:
                 grpc:
                   port: 3228
@@ -262,7 +263,7 @@ spec:
           spec:
             {{- toYaml $.Values.fogLedgerRouter.persistence.spec | nindent 12 }}
         {{- end }}
-
+    {{- end }}
   store:
     containerName: fog-ledger-store
     servicePort: 80
@@ -276,7 +277,7 @@ spec:
       selector:
         matchLabels:
           app: fog-ledger-store
-          stack: fog-ledger-{{ . }}
+          stack: fog-ledger-{{ $stack }}
           {{- include "fogServices.selectorLabels" $ | nindent 10 }}
       serviceName: {{ include "fogServices.fullname" $ }}-fog-ledger-store
       template:
@@ -285,7 +286,7 @@ spec:
             {{- toYaml $.Values.fogLedger.podAnnotations | nindent 12 }}
           labels:
             app: fog-ledger-store
-            stack: fog-ledger-{{ . }}
+            stack: fog-ledger-{{ $stack }}
             {{- include "fogServices.labels" $ | nindent 12 }}
         spec:
           {{- if $.Values.fogLedger.topologySpreadConstraintsEnabled }}
@@ -306,7 +307,7 @@ spec:
                   - key: stack
                     operator: In
                     values:
-                    - fog-ledger-{{ . }}
+                    - fog-ledger-{{ $stack }}
                 topologyKey: topology.kubernetes.io/zone
               preferredDuringSchedulingIgnoredDuringExecution:
               - podAffinityTerm:
@@ -315,7 +316,7 @@ spec:
                     - key: stack
                       operator: In
                       values:
-                      - fog-ledger-{{ . }}
+                      - fog-ledger-{{ $stack }}
                   topologyKey: "kubernetes.io/hostname"
                 weight: 1
           {{- end }}
