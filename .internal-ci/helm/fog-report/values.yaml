@@ -1,0 +1,122 @@
+imagePullSecrets:
+- name: docker-credentials
+
+# Pods share the image tag.
+image:
+  org: mobilecoin
+  tag: '' # Overrides the image tag whose default is the chart appVersion.
+
+# Mobilecoin network instance
+mobilecoin:
+  network: ''
+  partner: ''
+
+fogReport:
+  ### list of fog-report hostnames for this instance.
+  hosts: []
+
+  replicaCount: 2
+
+  image:
+    org: ''
+    name: fogreport
+    pullPolicy: Always
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+  ingress:
+    enabled: true
+    common:
+      tls:
+        clusterIssuer: letsencrypt-production-http
+      blocklist:
+        enabled: true
+        pattern: patterns/blocked-countries
+      annotations:
+        haproxy.org/server-ssl: 'false'             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: 'true'
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+
+    grpc:
+      annotations:
+        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+
+    http:
+      annotations:
+        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+  nodeSelector:
+    builder-node: 'false'
+    sgx-enabled-node: 'false'
+
+  affinity: {}
+  tolerations: []
+  resources:
+    limits:
+      cpu: 1
+      memory: 512Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  configMap:
+    data:
+      # https://docs.diesel.rs/diesel/r2d2/struct.Builder.html
+      POSTGRES_IDLE_TIMEOUT: '60'
+      POSTGRES_MAX_LIFETIME: '120'
+      POSTGRES_CONNECTION_TIMEOUT: '5'
+      POSTGRES_MAX_CONNECTIONS: '3'
+
+  ### These configmaps and secrets must be deployed by external process to the namespace.
+  # override the name of the required configmaps
+  externalConfigMaps:
+    sentry:
+      name: sentry
+      ### required keys:
+      #   fog-report-sentry-dsn
+    postgresReader:
+      name: fog-recovery-reader-0-postgresql
+      ### required keys:
+      #   postgresql-ssl-options
+      #   postgresql-database
+      #   postgresql-username
+      #   postgresql-hostname
+
+  # override the name of the required secrets
+  externalSecrets:
+    postgresReader:
+      name: fog-recovery-reader-0-postgresql
+      ### required keys:
+      #   postgresql-password
+    signingCert:
+      name: fog-report-signing-cert
+      ### required keys:
+      #   tls.crt
+      #   tls.key
+
+grpcGateway:
+  image:
+    org: ''
+    name: go-grpc-gateway
+    pullPolicy: Always
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 256Mi
+    requests:
+      cpu: 256m
+      memory: 256Mi
+
+jaegerTracing:
+  enabled: false

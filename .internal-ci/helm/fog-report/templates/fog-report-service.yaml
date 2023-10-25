@@ -1,0 +1,21 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fog-report.fullname" . }}
+  labels:
+    {{- include "fog-report.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "fog-report.selectorLabels" . | nindent 4 }}
+  ports:
+  - name: report-grpc
+    port: 3222
+    targetPort: report-grpc
+  - name: mgmt-http
+    port: 8000
+    targetPort: mgmt-http
+  - name: report-http
+    port: 8222
+    targetPort: report-http

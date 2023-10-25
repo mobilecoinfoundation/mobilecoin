@@ -1,0 +1,21 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- $hosts := .Values.fogReport.hosts | required "fogReport.hosts is required." }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "fog-report.fullname" . }}-tls
+  labels:
+    {{- include "fog-report.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "fog-report.fullname" . }}-tls
+  privateKey:
+    size: 2048
+    algorithm: RSA
+    encoding: PKCS1
+  dnsNames:
+  {{- range $hosts }}
+  - {{ . }}
+  {{- end }}
+  issuerRef:
+    name: {{ .Values.fogReport.ingress.common.tls.clusterIssuer }}
+    kind: ClusterIssuer

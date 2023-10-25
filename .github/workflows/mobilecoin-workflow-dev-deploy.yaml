@@ -43,10 +43,17 @@ on:
       DEV_RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
+      DEV_FOG_REPORT_B_SIGNING_CERT:
+        description: "fog-report alternate instance"
+        required: true
+      DEV_FOG_REPORT_B_SIGNING_CERT_KEY:
+        description: "fog-report alternate instance"
+        required: true
 
 env:
   FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
   VALUES_BASE_PATH: .tmp/values
+  CERTS_BASE_PATH: .tmp/certs
 
 jobs:
   setup-environment:
@@ -123,6 +130,118 @@ jobs:
           --set=image.org=${{ inputs.docker_image_org }}
         chart_wait_timeout: 5m
         release_name: mobilecoind
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  # run two copies of fog-report a/b
+  fog-report-deploy-a:
+    needs:
+    - consensus-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Generate fog-report values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogReport:
+          hosts:
+          - fog.${{ inputs.namespace }}.development.mobilecoin.com
+          ingress:
+            common:
+              blocklist:
+                enabled: false
+              tls:
+                clusterIssuer: google-public-ca
+          externalSecrets:
+            postgresReader:
+              name: fog-recovery-postgresql
+
+    - name: Deploy fog-report-a
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-report
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
+        release_name: fog-report-a
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  fog-report-deploy-b:
+    needs:
+    - consensus-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Write fog-report signing certificate
+      run: |
+        # Create minting secrets dir
+        mkdir -p "${CERTS_BASE_PATH}/fog-report-b"
+
+        # Write values to be used as k8s secret values.
+        echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CERT }}" > "${CERTS_BASE_PATH}/fog-report-b/tls.crt"
+        echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CERT_KEY }}" > "${CERTS_BASE_PATH}/fog-report-b/tls.key"
+
+    - name: Create fog-report-signing-cert-b secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-report-signing-cert-b
+        src: ${{ env.CERTS_BASE_PATH }}/fog-report-b
+
+    - name: Generate fog-report values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogReport:
+          hosts:
+          - fog-b.${{ inputs.namespace }}.development.mobilecoin.com
+          - fog-report-b.${{ inputs.namespace }}.development.mobilecoin.com
+          ingress:
+            common:
+              blocklist:
+                enabled: false
+              tls:
+                clusterIssuer: google-public-ca
+          externalSecrets:
+            postgresReader:
+              name: fog-recovery-postgresql
+            signingCert:
+              name: fog-report-signing-cert-b
+
+    - name: Deploy fog-report-b
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-report
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
+        release_name: fog-report-b
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -271,6 +390,8 @@ jobs:
     needs:
     - fog-ingest-deploy
     - fog-services-deploy
+    - fog-report-deploy-a
+    - fog-report-deploy-b
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Check end points up.
@@ -285,6 +406,7 @@ jobs:
         command: |
           # Get fog report
           /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
+          /test/check-ingress-ready.sh --url "https://fog-b.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
 
           # Get fog ledger
           /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks"

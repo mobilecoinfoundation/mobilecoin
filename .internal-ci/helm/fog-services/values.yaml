@@ -67,7 +67,7 @@ fogViewRouter:
   routerTemplates:
   - responderIDLookupKey: mobilecoin
     replicas: 1
-  - responderIDLookupKey: signal
+  - responderIDLookupKey: sg
     replicas: 1
 
   resources:
@@ -187,7 +187,7 @@ fogLedgerRouter:
   routerTemplates:
   - responderIDLookupKey: mobilecoin
     replicas: 1
-  - responderIDLookupKey: signal
+  - responderIDLookupKey: sg
     replicas: 1
 
   podManagementPolicy: Parallel
@@ -311,6 +311,7 @@ fogLedger:
 
 ### Fog Report Service
 fogReport:
+  enabled: false
   replicaCount: 2
   image:
     org: ''
