@@ -55,7 +55,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- randAlphaNum 8 }}
 {{- end }}
 
-{{/* shardRangeGenerator - get "network" name of fall back to default */}}
+{{/* stackConfig - get "network" name of fall back to default */}}
 {{- define "fog-view.stackConfig" }}
 {{- $networkName := .Values.mobilecoin.network }}
 {{- get .Values.fogView.stackConfig.network $networkName | default (get .Values.fogView.stackConfig.network "default") | toYaml }}

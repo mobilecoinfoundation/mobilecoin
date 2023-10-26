@@ -55,7 +55,7 @@ fogReport:
 Install chart with name override:
 
 ```bash
-helm upgrade fog-report-a mco-public/fog-report -i -f values.yaml
+helm upgrade fog-report-a mcf-public/fog-report -i -f values.yaml
 ```
 
 **Instance B**
@@ -93,7 +93,7 @@ fogReport:
 Install chart with name override:
 
 ```bash
-helm upgrade fog-report-b mco-public/fog-report -i -f values.yaml
+helm upgrade fog-report-b mcf-public/fog-report -i -f values.yaml
 ```
 
 ### Required ConfigMaps
