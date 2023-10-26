@@ -18,7 +18,7 @@ spec:
   tls:
   - hosts:
     - {{ $routerHosts.responderID }}
-    secretName: {{ include "fog-view.fullname" $ }}-tls
+    secretName: {{ include "fog-view.fullname" $ }}-tls-{{ $routerHosts.partner }}
   rules:
   - host: {{ $routerHosts.responderID }}
     http:
