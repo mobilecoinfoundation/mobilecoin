@@ -205,7 +205,7 @@ jobs:
         object_name: fog-report-signing-cert-b
         src: ${{ env.CERTS_BASE_PATH }}/fog-report-b
 
-    - name: Generate fog-report values file
+    - name: Generate fog-report-b values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
@@ -242,6 +242,54 @@ jobs:
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
         release_name: fog-report-b
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  fog-view-deploy:
+    needs:
+    - consensus-deploy
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Generate fog-view values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-view-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogView:
+          router:
+            hosts:
+            - partner: a
+              responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+            - partner: b
+              responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
+          ingress:
+            common:
+              blocklist:
+                enabled: false
+              tls:
+                clusterIssuer: google-public-ca
+          externalSecrets:
+            postgresReader:
+              name: fog-recovery-postgresql
+
+    - name: Deploy fog-view
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-view
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-values.yaml
+        release_name: fog-view
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}

@@ -11,6 +11,7 @@ usage()
     echo "Usage --key-dir <dir> --token-id <num>"
     echo "    --key-dir - source keys directory (keys to test)"
     echo "    --token-id - token id to transfer"
+    echo "    --fog-hostname - fog view/ledger service hostname"
 }
 
 is_set()
@@ -43,6 +44,10 @@ do
             token_ids="${2}"
             shift 2
             ;;
+        --fog-hostname )
+            fog_hostname="${2}"
+            shift 2
+            ;;
         *)
             echo "${1} unknown option"
             usage
@@ -55,11 +60,17 @@ is_set key_dir
 is_set token_ids
 is_set NAMESPACE
 
-if [ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]
+if [[ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]]
 then
     echo "Generating Client Auth Creds"
     pw=$(mc-util-grpc-token-generator --shared-secret "${CLIENT_AUTH_TOKEN_SECRET}" --username user1 | grep Password: | awk '{print $2}')
     user="user1:${pw}@"
+fi
+
+if [[ -z "${fog_hostname}" ]]
+then
+    fog_hostname="fog.${NAMESPACE}.development.mobilecoin.com"
+    echo "using default hostname ${fog_hostname}"
 fi
 
 ### v2.0.0 has "--token-id", v3.0.0 has "--token-ids"
@@ -85,5 +96,5 @@ test_client \
     --num-transactions 32 \
     --consensus-wait 300 \
     --transfer-amount 20 \
-    --fog-view "fog-view://${user}fog.${NAMESPACE}.development.mobilecoin.com:443" \
+    --fog-view "fog-view://${user}${fog_hostname}:443" \
     --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.development.mobilecoin.com:443"

@@ -55,9 +55,7 @@ fogReport:
     fluentbit.io/include: 'true' # collect logs with fluentbit
     fluentbit.io/exclude-jaeger-agent: 'true'
 
-  nodeSelector:
-    builder-node: 'false'
-    sgx-enabled-node: 'false'
+  nodeSelector: {}
 
   affinity: {}
   tolerations: []

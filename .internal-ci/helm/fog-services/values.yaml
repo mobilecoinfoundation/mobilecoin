@@ -61,6 +61,7 @@ fogViewShardRangeGenerator:
     count: 2
 
 fogViewRouter:
+  enabled: false
   podManagementPolicy: Parallel
   replicaCount: 1
 
@@ -98,6 +99,7 @@ fogViewRouter:
     pullPolicy: Always
 
 fogView:
+  enabled: false
   replicaCount: 1
   image:
     org: ''

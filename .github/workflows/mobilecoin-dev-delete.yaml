@@ -4,8 +4,7 @@
 
 name: Mobilecoin Dev Clean Up
 
-on:
-  delete: {}
+on: delete
 
 jobs:
   metadata:

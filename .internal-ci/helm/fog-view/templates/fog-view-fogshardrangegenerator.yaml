@@ -1,88 +1,80 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- if .Values.fogView.enabled }}
-{{- $count := (include "fogServices.fogViewShardRangeGenerator" . | fromYaml).count }}
-{{- $stacks := until (int $count) }}
-{{- range $stacks }}
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- $stackConfig := (include "fog-view.stackConfig" . | fromYaml) }}
+{{- range $stack := until (int $stackConfig.count) }}
 apiVersion: mc.mobilecoin.com/v1
 kind: FogShardRangeGenerator
 metadata:
-  name: {{ include "fogServices.fullname" $ }}-fog-view-{{ . }}
+  name: {{ include "fog-view.fullname" $ }}-{{ $stack }}
   labels:
-    {{- include "fogServices.labels" $ | nindent 4 }}
+    {{- include "fog-view.labels" $ | nindent 4 }}
 spec:
-  blockCountURL: {{ include "fogServices.blockHeightURL" $ | quote }}
-  {{- with (include "fogServices.fogViewShardRangeGenerator" $ | fromYaml) }}
+  {{- with $stackConfig }}
   shardSize: {{ .shardSize }}
   exceedBlockHeightBy: {{ .exceedBlockHeightBy }}
   shardOverlap: {{ .shardOverlap }}
-  {{- end }}
-  {{- with $.Values.blockHeighRetrieval }}
+  {{- with .blockHeightRetrieval }}
+  blockCountURL: {{ tpl .blockCountURL $ | quote }}
   blockCountQueryInterval: {{ .queryInterval | quote }}
   blockCountResponseJQ: {{ .responseJQ | quote }}
   blockCountReqBody: {{ .requestBody | quote }}
   {{- end }}
+  {{- end }}
+
   router:
-    template:
+    templates:
+    {{- range $routerHosts := $.Values.fogView.router.hosts }}
+    {{- with $.Values.fogView.router }}
+    - templateID: {{ $routerHosts.partner }}
       containerName: fog-view-router
       spec:
-        podManagementPolicy: {{ $.Values.fogViewRouter.podManagementPolicy }}
-        replicas: {{ $.Values.fogViewRouter.replicaCount }}
+        podManagementPolicy: {{ .podManagementPolicy }}
+        replicas: {{ .replicaCount }}
         selector:
           matchLabels:
             app: fog-view-router
-            stack: fog-view-{{ . }}
-            {{- include "fogServices.selectorLabels" $ | nindent 12 }}
-        serviceName: {{ include "fogServices.fullname" $ }}-fog-view-router
+            stack: fog-view-{{ $stack }}
+            partner: {{ $routerHosts.partner }}
+            client-responder-id: {{ $routerHosts.responderID }}
+            {{- include "fog-view.selectorLabels" $ | nindent 12 }}
+        serviceName: {{ include "fog-view.fullname" $ }}-router-{{ $routerHosts.partner }}
         template:
           metadata:
             annotations:
-              {{- toYaml $.Values.fogViewRouter.podAnnotations | nindent 14 }}
+              {{- toYaml .podAnnotations | nindent 14 }}
             labels:
               app: fog-view-router
-              stack: fog-view-{{ . }}
-              {{- include "fogServices.labels" $ | nindent 14 }}
+              stack: fog-view-{{ $stack }}
+              partner: {{ $routerHosts.partner }}
+              client-responder-id: {{ $routerHosts.responderID }}
+              {{- include "fog-view.labels" $ | nindent 14 }}
           spec:
-            # Prevent endpoint creation until all shards for this router are ready
-            readinessGates:
-            - conditionType: mobilecoin.com/shards-ready
-            volumes:
-            - emptyDir: {}
-              name: aesm-socket-dir
-            - name: supervisor-conf
-              projected:
-                defaultMode: 420
-                sources:
-                - configMap:
-                    name: {{ include "fogServices.fullname" $ }}-supervisord-fog-view-router
-                - configMap:
-                    name: {{ include "fogServices.fullname" $ }}-supervisord-sgx
-                - configMap:
-                    name: {{ include "fogServices.fullname" $ }}-supervisord-daemon
-                - configMap:
-                    name: {{ include "fogServices.fullname" $ }}-supervisord-admin
-            nodeSelector:
-              {{- toYaml $.Values.fogViewRouter.nodeSelector | nindent 14 }}
-            tolerations:
-              {{- toYaml $.Values.fogViewRouter.tolerations | nindent 14 }}
-            {{- if $.Values.fogViewRouter.affinityEnabled }}
+            {{- if .affinityEnabled }}
             affinity:
               podAffinity:
                 requiredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                      - fog-view-router
                     - key: stack
                       operator: In
                       values:
-                      - fog-view-{{ . }}
+                      - fog-view-{{ $stack }}
                   topologyKey: topology.kubernetes.io/zone
                 preferredDuringSchedulingIgnoredDuringExecution:
                 - podAffinityTerm:
                     labelSelector:
                       matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                        - fog-view-router
                       - key: stack
                         operator: In
                         values:
-                        - fog-view-{{ . }}
+                        - fog-view-{{ $stack }}
                     topologyKey: "kubernetes.io/hostname"
                   weight: 1
             {{- end }}
@@ -102,8 +94,8 @@ spec:
                 runAsNonRoot: False
             containers:
             - name: fog-view-router
-              image: "{{ $.Values.fogViewRouter.image.org | default $.Values.image.org }}/{{ $.Values.fogViewRouter.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
-              imagePullPolicy: {{ $.Values.fogViewRouter.image.pullPolicy }}
+              image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+              imagePullPolicy: {{ .image.pullPolicy }}
               command: [ "/usr/bin/supervisord", "-n" ]
               ports:
               - name: view-grpc
@@ -112,8 +104,7 @@ spec:
                 containerPort: 8000
               envFrom:
               - configMapRef:
-                  # This is pre-installed from the fog-services-config chart or Terraform
-                  name: fog-view
+                  name: {{ include "fog-view.fullname" $ }}-router
               - secretRef:
                   name: ias
               startupProbe:
@@ -139,33 +130,30 @@ spec:
                 timeoutSeconds: 1
               env:
               - name: RUST_BACKTRACE
-                value: {{ $.Values.fogViewRouter.rust.backtrace | quote }}
+                value: {{ .rust.backtrace | quote }}
               {{- if eq $.Values.jaegerTracing.enabled true }}
               - name: MC_TELEMETRY
                 value: "true"
               {{- end }}
               - name: RUST_LOG
-                value: {{ $.Values.fogViewRouter.rust.log | quote }}
-              - name: CLIENT_AUTH_TOKEN_SECRET
-                valueFrom:
-                  secretKeyRef:
-                    name: client-auth-token
-                    key: token
-                    optional: true
+                value: {{ .rust.log | quote }}
               - name: MC_CLIENT_RESPONDER_ID
-                value: {{ include "fogServices.fogPublicFQDN" $ }}:443
+                value: {{ $routerHosts.responderID }}:443
               - name: MC_CLIENT_LISTEN_URI
                 value: insecure-fog-view://0.0.0.0:3225/
+              - name: MC_ADMIN_LISTEN_URI
+                value: insecure-mca://127.0.0.1:8001/
               - name: FOG_VIEW_SENTRY_DSN
                 valueFrom:
                   configMapKeyRef:
                     name: sentry
                     key: fog-view-sentry-dsn
+                    optional: true
+              # Maps to Sentry Environment
+              - name: MC_BRANCH
+                value: {{ $.Values.mobilecoin.network }}
               - name: MC_CHAIN_ID
-                valueFrom:
-                  configMapKeyRef:
-                    name: mobilecoin-network
-                    key: network
+                value: {{ $.Values.mobilecoin.network }}
               volumeMounts:
               - name: supervisor-conf
                 mountPath: /etc/supervisor/conf.d
@@ -173,7 +161,7 @@ spec:
               - mountPath: /var/run/aesmd
                 name: aesm-socket-dir
               resources:
-                {{- toYaml $.Values.fogViewRouter.resources | nindent 16 }}
+                {{- toYaml .resources | nindent 16 }}
             - name: grpc-gateway
               image: "{{ $.Values.grpcGateway.image.org | default $.Values.image.org }}/{{ $.Values.grpcGateway.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
               imagePullPolicy: Always
@@ -184,8 +172,8 @@ spec:
               - -http-server-listen=:8225
               - -logtostderr
               ports:
-                - name: view-http
-                  containerPort: 8225
+              - name: view-http
+                containerPort: 8225
               resources:
                 {{- toYaml $.Values.grpcGateway.resources | nindent 16 }}
             {{- if eq $.Values.jaegerTracing.enabled true }}
@@ -193,61 +181,85 @@ spec:
               image: jaegertracing/jaeger-agent:latest
               imagePullPolicy: IfNotPresent
               ports:
-                - containerPort: 5775
-                  name: zk-compact-trft
-                  protocol: UDP
-                - containerPort: 5778
-                  name: config-rest
-                  protocol: TCP
-                - containerPort: 6831
-                  name: jg-compact-trft
-                  protocol: UDP
-                - containerPort: 6832
-                  name: jg-binary-trft
-                  protocol: UDP
-                - containerPort: 14271
-                  name: admin-http
-                  protocol: TCP
+              - containerPort: 5775
+                name: zk-compact-trft
+                protocol: UDP
+              - containerPort: 5778
+                name: config-rest
+                protocol: TCP
+              - containerPort: 6831
+                name: jg-compact-trft
+                protocol: UDP
+              - containerPort: 6832
+                name: jg-binary-trft
+                protocol: UDP
+              - containerPort: 14271
+                name: admin-http
+                protocol: TCP
               env:
-                - name: POD_NAME
-                  valueFrom:
-                    fieldRef:
-                      apiVersion: v1
-                      fieldPath: metadata.name
-                - name: HOST_IP
-                  valueFrom:
-                    fieldRef:
-                      apiVersion: v1
-                      fieldPath: status.hostIP
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.name
+              - name: HOST_IP
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: status.hostIP
               args:
-                - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
-                - --reporter.type=grpc
-                - --agent.tags=cluster=undefined,container.name=fog-view-router,deployment.name={{ include "fogServices.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
+              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.type=grpc
+              - --agent.tags=cluster=undefined,container.name=fog-view-router,deployment.name={{ include "fog-view.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
             {{- end }}
+            nodeSelector:
+              {{- toYaml .nodeSelector | nindent 14 }}
+            tolerations:
+            {{- toYaml .tolerations | nindent 12 }}
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
+            volumes:
+            - emptyDir: {}
+              name: aesm-socket-dir
+            - name: supervisor-conf
+              projected:
+                defaultMode: 420
+                sources:
+                - configMap:
+                    name: {{ include "fog-view.fullname" $ }}-supervisord-fog-view-router
+                - configMap:
+                    name: {{ include "fog-view.fullname" $ }}-supervisord-sgx
+                - configMap:
+                    name: {{ include "fog-view.fullname" $ }}-supervisord-daemon
+                - configMap:
+                    name: {{ include "fog-view.fullname" $ }}-supervisord-admin
+    {{- end }}
+    {{- end }}
 
+  {{- with $.Values.fogView.store }}
   store:
     containerName: fog-view-store
     servicePort: 80
     targetPort: view-grpc
     spec:
-      podManagementPolicy: {{ $.Values.fogViewRouter.podManagementPolicy }}
-      replicas: {{ $.Values.fogView.replicaCount }}
+      podManagementPolicy: {{ .podManagementPolicy }}
+      replicas: {{ .replicaCount }}
       selector:
         matchLabels:
           app: fog-view-store
-          stack: fog-view-{{ . }}
-          {{- include "fogServices.selectorLabels" $ | nindent 10 }}
-      serviceName: {{ include "fogServices.fullname" $ }}-fog-view-store
+          stack: fog-view-{{ $stack }}
+          {{- include "fog-view.selectorLabels" $ | nindent 10 }}
+      serviceName: {{ include "fog-view.fullname" $ }}-store
       template:
         metadata:
           annotations:
-            {{- toYaml $.Values.fogView.podAnnotations | nindent 12 }}
+            {{- toYaml .podAnnotations | nindent 12 }}
           labels:
             app: fog-view-store
-            stack: fog-view-{{ . }}
-            {{- include "fogServices.labels" $ | nindent 12 }}
+            stack: fog-view-{{ $stack }}
+            {{- include "fog-view.labels" $ | nindent 12 }}
         spec:
-          {{- if $.Values.fogView.topologySpreadConstraintsEnabled }}
+          {{- if .topologySpreadConstraintsEnabled }}
           topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
@@ -255,26 +267,35 @@ spec:
             labelSelector:
               matchLabels:
                 app: fog-view-store
+                stack: fog-view-{{ $stack }}
           {{- end }}
-          {{- if $.Values.fogView.affinityEnabled }}
+          {{- if .affinityEnabled }}
           affinity:
             podAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - fog-view-store
                   - key: stack
                     operator: In
                     values:
-                    - fog-view-{{ . }}
+                    - fog-view-{{ $stack }}
                 topologyKey: topology.kubernetes.io/zone
               preferredDuringSchedulingIgnoredDuringExecution:
               - podAffinityTerm:
                   labelSelector:
                     matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                      - fog-view-store
                     - key: stack
                       operator: In
                       values:
-                      - fog-view-{{ . }}
+                      - fog-view-{{ $stack }}
                   topologyKey: "kubernetes.io/hostname"
                 weight: 1
           {{- end }}
@@ -294,8 +315,8 @@ spec:
               runAsNonRoot: False
           containers:
           - name: fog-view-store
-            image: "{{ $.Values.fogView.image.org | default $.Values.image.org }}/{{ $.Values.fogView.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
-            imagePullPolicy: {{ $.Values.fogView.image.pullPolicy }}
+            image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+            imagePullPolicy: {{ .image.pullPolicy }}
             command: [ "/usr/bin/supervisord" ]
             ports:
             - name: view-grpc
@@ -304,62 +325,56 @@ spec:
               containerPort: 8000
             envFrom:
             - configMapRef:
-                name: fog-view
+                name: {{ include "fog-view.fullname" $ }}-store
             - secretRef:
                 name: ias
             env:
-            - name: RUST_BACKTRACE
-              value: {{ $.Values.fogView.rust.backtrace | quote }}
-            - name: RUST_LOG
-              value: {{ $.Values.fogView.rust.log | quote }}
             {{- if eq $.Values.jaegerTracing.enabled true }}
             - name: MC_TELEMETRY
               value: "true"
             {{- end }}
+            - name: RUST_BACKTRACE
+              value: {{ .rust.backtrace | quote }}
+            - name: RUST_LOG
+              value: {{ .rust.log | quote }}
             - name: FOG_VIEW_SENTRY_DSN
               valueFrom:
                 configMapKeyRef:
                   name: sentry
                   key: fog-view-sentry-dsn
+                  optional: true
             # Maps to Sentry Environment
             - name: MC_BRANCH
-              valueFrom:
-                configMapKeyRef:
-                  name: mobilecoin-network
-                  key: network
+              value: {{ $.Values.mobilecoin.network }}
             - name: MC_CHAIN_ID
-              valueFrom:
-                configMapKeyRef:
-                  name: mobilecoin-network
-                  key: network
+              value: {{ $.Values.mobilecoin.network }}
             - name: FOGDB_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: fog-recovery-reader-0-postgresql
+                  name: {{ $.Values.fogView.externalConfigMaps.postgresReader.name }}
                   key: postgresql-hostname
             - name: FOGDB_USER
               valueFrom:
                 configMapKeyRef:
-                  name: fog-recovery-reader-0-postgresql
+                  name: {{ $.Values.fogView.externalConfigMaps.postgresReader.name }}
                   key: postgresql-username
             - name: FOGDB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: fog-recovery-postgresql
+                  name: {{ $.Values.fogView.externalSecrets.postgresReader.name }}
                   key: postgresql-password
             - name: FOGDB_DATABASE
               valueFrom:
                 configMapKeyRef:
-                  name: fog-recovery-reader-0-postgresql
+                  name: {{ $.Values.fogView.externalConfigMaps.postgresReader.name }}
                   key: postgresql-database
             - name: FOGDB_SSL_OPTIONS
               valueFrom:
                 configMapKeyRef:
-                  name: fog-recovery-reader-0-postgresql
+                  name: {{ $.Values.fogView.externalConfigMaps.postgresReader.name }}
                   key: postgresql-ssl-options
             - name: DATABASE_URL
               value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
-             # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
             livenessProbe:
               grpc:
                 port: 3225
@@ -367,7 +382,6 @@ spec:
               periodSeconds: 30
               timeoutSeconds: 1
               successThreshold: 1
-            # Hold liveness and readiness until this probe passes.
             startupProbe:
               grpc:
                 port: 3225
@@ -375,7 +389,6 @@ spec:
               periodSeconds: 30
               timeoutSeconds: 1
               successThreshold: 1
-            # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
             readinessProbe:
               grpc:
                 port: 3225
@@ -390,7 +403,7 @@ spec:
             - mountPath: /var/run/aesmd
               name: aesm-socket-dir
             resources:
-              {{- toYaml $.Values.fogView.resources | nindent 14 }}
+              {{- toYaml .resources | nindent 14 }}
           {{- if eq $.Values.jaegerTracing.enabled true }}
           - name: jaeger-agent
             image: jaegertracing/jaeger-agent:latest
@@ -425,12 +438,12 @@ spec:
             args:
               - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
               - --reporter.type=grpc
-              - --agent.tags=cluster=undefined,container.name=fog-view,deployment.name={{ include "fogServices.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
+              - --agent.tags=cluster=undefined,container.name=fog-view,deployment.name={{ include "fog-view.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
           {{- end }}
           nodeSelector:
-            {{- toYaml $.Values.fogView.nodeSelector | nindent 12 }}
+            {{- toYaml .nodeSelector | nindent 12 }}
           tolerations:
-            {{- toYaml $.Values.fogView.tolerations | nindent 12 }}
+          {{- toYaml .tolerations | nindent 10 }}
           volumes:
           - emptyDir: {}
             name: aesm-socket-dir
@@ -438,13 +451,13 @@ spec:
             projected:
               sources:
               - configMap:
-                  name: {{ include "fogServices.fullname" $ }}-supervisord-sgx
+                  name: {{ include "fog-view.fullname" $ }}-supervisord-sgx
               - configMap:
-                  name: {{ include "fogServices.fullname" $ }}-supervisord-daemon
+                  name: {{ include "fog-view.fullname" $ }}-supervisord-daemon
               - configMap:
-                  name: {{ include "fogServices.fullname" $ }}-supervisord-fog-view-store
+                  name: {{ include "fog-view.fullname" $ }}-supervisord-fog-view-store
               - configMap:
-                  name: {{ include "fogServices.fullname" $ }}-supervisord-admin
+                  name: {{ include "fog-view.fullname" $ }}-supervisord-admin
+  {{- end }}
 ---
-{{- end }}
 {{- end }}

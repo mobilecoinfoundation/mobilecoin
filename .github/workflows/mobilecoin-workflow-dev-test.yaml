@@ -298,7 +298,7 @@ jobs:
             --fee 1024 \
             --token-id 8192
 
-    - name: Test - block-v3 - fog-test-client fog-report-a, token ids 0,8192
+    - name: Test - block-v3 - fog-test-client fog-a token ids 0,8192
       if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -311,9 +311,10 @@ jobs:
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
-            --token-ids 0,8192
+            --token-ids 0,8192 \
+            --fog-hostname fog.${{ inputs.namespace }}.development.mobilecoin.com
 
-    - name: Test - block-v3 - fog-test-client fog-report-b, token ids 0,8192
+    - name: Test - block-v3 - fog-test-client fog-b, token ids 0,8192
       if: inputs.testing_block_v3
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -326,4 +327,5 @@ jobs:
         command: |
           /test/fog-test-client.sh \
             --key-dir ${{ env.V3_DST_FOG_B_KEYS_DIR }} \
-            --token-ids 0,8192
+            --token-ids 0,8192 \
+            --fog-hostname fog-b.${{ inputs.namespace }}.development.mobilecoin.com
