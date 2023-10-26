@@ -705,7 +705,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let wrapper =
             api::printable::PrintableWrapper::b58_decode(request.get_b58_code().to_string())
                 .map_err(|err| {
-                    rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger)
+                    rpc_invalid_arg_error("PrintableWrapper_b58_decode", err, &self.logger)
                 })?;
 
         // An address code could be a public address or a payment request
