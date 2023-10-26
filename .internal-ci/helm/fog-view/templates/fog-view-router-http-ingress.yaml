@@ -1,0 +1,35 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- if .Values.fogView.router.ingress.enabled }}
+{{- range $routerHosts := $.Values.fogView.router.hosts }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fog-view.fullname" $ }}-router-http-{{ $routerHosts.partner }}
+  labels:
+    app: fog-view
+    {{- include "fog-view.labels" $ | nindent 4 }}
+  annotations:
+    {{- if $.Values.fogView.router.ingress.common.blocklist.enabled }}
+    haproxy.org/blacklist: {{ $.Values.fogView.router.ingress.common.blocklist.pattern }}
+    {{- end }}
+    {{ toYaml (tpl $.Values.fogView.router.ingress.common.annotations $ | fromYaml) | nindent 4 }}
+    {{ toYaml (tpl $.Values.fogView.router.ingress.http.annotations $ | fromYaml) | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ $routerHosts.responderID }}
+    secretName: {{ include "fog-view.fullname" $ }}-tls
+  rules:
+  - host: {{ $routerHosts.responderID }}
+    http:
+      paths:
+      - path: /gw/fog_view.FogViewAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-view.fullname" $ }}-router-{{ $routerHosts.partner }}
+            port:
+              name: view-http
+---
+{{- end }}
+{{- end }}

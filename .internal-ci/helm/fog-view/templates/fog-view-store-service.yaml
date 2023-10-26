@@ -1,18 +1,17 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
-{{- if .Values.fogView.enabled }}
+# Copyright (c) 2018-2023 The MobileCoin Foundation
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "fogServices.fullname" . }}-fog-view-store
+  name: {{ include "fog-view.fullname" . }}-store
   labels:
     app: fog-view-store
-    {{- include "fogServices.labels" . | nindent 4 }}
+    {{- include "fog-view.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   clusterIP: None
   selector:
     app: fog-view-store
-    {{- include "fogServices.selectorLabels" . | nindent 4 }}
+    {{- include "fog-view.selectorLabels" . | nindent 4 }}
   ports:
     - name: view-grpc
       port: 3225
@@ -23,4 +22,3 @@ spec:
     - name: view-http
       port: 8225
       targetPort: view-http
-{{- end }}

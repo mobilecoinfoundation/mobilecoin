@@ -1,0 +1,218 @@
+imagePullSecrets:
+- name: docker-credentials
+
+# Pods share the image tag.
+image:
+  org: mobilecoin
+  tag: '' # Overrides the image tag whose default is the chart appVersion.
+
+# Mobilecoin network instance
+mobilecoin:
+  network: ''
+  partner: ''
+
+fogView:
+  # Stack configurations by network.
+  stackConfig:
+    network:
+      # Assume default is a dev network. We can always define a "network" value if needed.
+      default:
+        shardSize: 20_000
+        exceedBlockHeightBy: 5_000
+        shardOverlap: 0
+        count: 2
+        blockHeightRetrieval:
+          blockCountURL: 'https://node1.{{ .Release.Namespace }}.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
+          responseJQ: '.index'
+          queryInterval: 1m
+          requestBody: ''
+      test:
+        shardSize: 400_000
+        exceedBlockHeightBy: 10_000
+        shardOverlap: 0
+        count: 2
+        blockHeightRetrieval:
+          blockCountURL: https://node1.test.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
+          responseJQ: '.index'
+          queryInterval: 5m
+          requestBody: ''
+      main:
+        shardSize: 400_000
+        exceedBlockHeightBy: 10_000
+        shardOverlap: 0
+        count: 3
+        blockHeightRetrieval:
+          blockCountURL: https://node1.prod.mobilecoinww.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
+          responseJQ: '.index'
+          queryInterval: 5m
+          requestBody: ''
+
+  router:
+    ### list of fog-ledger-router hostnames (client responder ID)
+    hosts:
+    - partner: ''
+      responderID: ''
+
+    replicaCount: 1
+
+    image:
+      org: ''
+      name: fogview
+      pullPolicy: Always
+
+    resources:
+      limits:
+        intel.com/sgx: 5000
+        memory: 3Gi
+      requests:
+        intel.com/sgx: 5000
+        memory: 3Gi
+        cpu: 1100m
+
+    nodeSelector:
+      sgx-enabled-node: 'true'
+
+    tolerations:
+    - key: sgx
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
+
+    # disable affinity rules for single node testing
+    podManagementPolicy: Parallel
+    affinityEnabled: true
+    topologySpreadConstraintsEnabled: true
+
+    rust:
+      backtrace: full
+      log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+    podAnnotations:
+      fluentbit.io/include: 'true' # collect logs with fluentbit
+      fluentbit.io/exclude-jaeger-agent: 'true'
+
+    ingress:
+      enabled: true
+      common:
+        tls:
+          clusterIssuer: letsencrypt-production-http
+        blocklist:
+          enabled: true
+          pattern: patterns/blocked-countries
+        annotations: |-
+          haproxy.org/server-ssl: "false"             # The backend (server) is http
+          haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+          haproxy.org/timeout-server: 239s
+          haproxy.org/timeout-http-keep-alive: 120s
+          haproxy.org/abortonclose: "true"
+          haproxy.org/backend-config-snippet: |-
+            http-reuse aggressive
+            dynamic-cookie-key {{ include "fog-view.grpcCookieSalt" . }}
+            cookie VIEW insert indirect nocache dynamic
+
+      grpc:
+        annotations: |-
+          haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+
+      http:
+        annotations: |-
+          haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
+    configMap:
+      data:
+        PLACEHOLDER: 'empty'
+
+  store:
+    replicaCount: 1
+
+    image:
+      org: ''
+      name: fogview
+      pullPolicy: Always
+
+    rust:
+      backtrace: full
+      log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
+
+    podAnnotations:
+      fluentbit.io/include: 'true' # collect logs with fluentbit
+      fluentbit.io/exclude-jaeger-agent: 'true'
+
+    # disable affinity rules for single node testing
+    podManagementPolicy: Parallel
+    affinityEnabled: true
+    topologySpreadConstraintsEnabled: true
+
+    ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
+    resources:
+      limits:
+        intel.com/sgx: 5000
+        memory: 5Gi
+      requests:
+        intel.com/sgx: 5000
+        memory: 5Gi
+        cpu: 1100m
+
+    nodeSelector:
+      sgx-enabled-node: 'true'
+
+    tolerations:
+    - key: sgx
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
+
+    configMap:
+      data:
+        # https://docs.diesel.rs/diesel/r2d2/struct.Builder.html
+        POSTGRES_IDLE_TIMEOUT: '60'
+        POSTGRES_MAX_LIFETIME: '120'
+        POSTGRES_CONNECTION_TIMEOUT: '5'
+        POSTGRES_MAX_CONNECTIONS: '3'
+        MC_OMAP_CAPACITY: '4194304'
+
+  ### These configmaps and secrets must be deployed by external process to the namespace.
+  # override the name of the required configmaps
+  externalConfigMaps:
+    # Sentry is Optional
+    sentry:
+      name: sentry
+      ### required keys:
+      #   fog-view-sentry-dsn
+    postgresReader:
+      name: fog-recovery-reader-0-postgresql
+      ### required keys:
+      #   postgresql-ssl-options
+      #   postgresql-database
+      #   postgresql-username
+      #   postgresql-hostname
+
+  # override the name of the required secrets
+  externalSecrets:
+    postgresReader:
+      name: fog-recovery-reader-0-postgresql
+      ### required keys:
+      #   postgresql-password
+    ias:
+      name: ias
+      ### required keys:
+      #   MC_IAS_API_KEY
+      #   MC_IAS_SPID
+
+
+grpcGateway:
+  image:
+    org: ''
+    name: go-grpc-gateway
+    pullPolicy: Always
+
+  resources:
+    limits:
+      cpu: 1
+      memory: 256Mi
+    requests:
+      cpu: 256m
+      memory: 256Mi
+
+jaegerTracing:
+  enabled: false

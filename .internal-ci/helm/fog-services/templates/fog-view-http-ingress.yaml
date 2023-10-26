@@ -1,4 +1,5 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- if .Values.fogView.enabled }}
 {{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -29,4 +30,5 @@ spec:
             name: {{ include "fogServices.fullname" . }}-fog-view-router
             port:
               name: view-http
+{{- end }}
 {{- end }}
