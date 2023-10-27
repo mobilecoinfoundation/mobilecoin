@@ -855,6 +855,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cookie"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cd91cf61412820176e137621345ee43b3f4423e589e7ae4e50d601d93e35ef8"
+dependencies = [
+ "time",
+ "version_check",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2887,7 +2897,7 @@ name = "mc-connection"
 version = "5.0.8"
 dependencies = [
  "aes-gcm",
- "cookie",
+ "cookie 0.18.0",
  "der",
  "displaydoc",
  "grpcio",
@@ -3691,7 +3701,7 @@ name = "mc-fog-enclave-connection"
 version = "5.0.8"
 dependencies = [
  "aes-gcm",
- "cookie",
+ "cookie 0.18.0",
  "der",
  "displaydoc",
  "grpcio",
@@ -6093,7 +6103,7 @@ version = "5.0.8"
 dependencies = [
  "base64 0.21.5",
  "clap 4.4.7",
- "cookie",
+ "cookie 0.18.0",
  "displaydoc",
  "futures",
  "grpcio",
@@ -7647,7 +7657,7 @@ version = "0.5.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "936012c99162a03a67f37f9836d5f938f662e26f2717809761a9ac46432090f4"
 dependencies = [
- "cookie",
+ "cookie 0.17.0",
  "either",
  "futures",
  "http",

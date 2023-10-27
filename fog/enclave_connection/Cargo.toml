@@ -21,7 +21,7 @@ mc-util-serial = { path = "../../util/serial" }
 mc-util-uri = { path = "../../util/uri" }
 
 aes-gcm = "0.10.3"
-cookie = "0.17"
+cookie = "0.18"
 der = "0.7.8"
 displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.12.1"
