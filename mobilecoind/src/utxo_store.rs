@@ -332,6 +332,19 @@ impl UtxoStore {
             .collect()
     }
 
+    /// Get all UnspentTxOuts for a given monitor
+    pub fn get_utxos_for_monitor(
+        &self,
+        db_txn: &impl Transaction,
+        monitor_id: &MonitorId,
+    ) -> Result<Vec<UnspentTxOut>, Error> {
+        let utxo_ids = self.get_utxo_ids_for_monitor_id(db_txn, monitor_id)?;
+        utxo_ids
+            .iter()
+            .map(|utxo_id| self.get_utxo_by_id(db_txn, utxo_id))
+            .collect()
+    }
+
     /// Get subaddress id by utxo id.
     pub fn get_subaddress_id_by_utxo_id(
         &self,
@@ -405,6 +418,49 @@ impl UtxoStore {
                     })
             })
             .collect::<Result<Vec<_>, Error>>()
+    }
+
+    /// Get all UtxoIds associated with a given monitor id
+    ///
+    /// This uses the fact that lmdb sorts keys lexicographically by bytes,
+    /// with low order bytes first, and the SubaddressId structure happens to
+    /// map the monitor id bytes first.
+    /// So if we open a cursor at subaddress (monitor_id, 0),
+    /// and walk until the subaddress changes, then we saw all records with that
+    /// monitor id.
+    fn get_utxo_ids_for_monitor_id(
+        &self,
+        db_txn: &impl Transaction,
+        monitor_id: &MonitorId,
+    ) -> Result<Vec<UtxoId>, Error> {
+        let mut cursor = db_txn.open_ro_cursor(self.subaddress_id_to_utxo_id)?;
+
+        let zero_subaddress_id = SubaddressId::new(monitor_id, 0);
+        let zero_subaddress_id_bytes = zero_subaddress_id.to_bytes();
+
+        let mut utxo_ids = Vec::<UtxoId>::default();
+        for iter in cursor.iter_dup_from(zero_subaddress_id.to_vec()) {
+            // The second iter is because, per docs, iter_dup_from returns an iterator over
+            // the duplicates
+            for result in iter {
+                match result {
+                    Ok((subaddress_id_bytes, utxo_id_bytes)) => {
+                        if subaddress_id_bytes[0..32] == zero_subaddress_id_bytes[0..32] {
+                            utxo_ids.push(UtxoId::try_from(utxo_id_bytes)?);
+                        } else {
+                            // We've moved on in the lexicographic ordering to a new monitor id,
+                            // so we're done here.
+                            break;
+                        }
+                    }
+                    Err(err) => {
+                        return Err(Error::from(err));
+                    }
+                }
+            }
+        }
+
+        Ok(utxo_ids)
     }
 
     /// Get a single UnspentTxOut by its id.
