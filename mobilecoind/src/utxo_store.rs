@@ -338,7 +338,7 @@ impl UtxoStore {
         db_txn: &impl Transaction,
         monitor_id: &MonitorId,
     ) -> Result<Vec<UnspentTxOut>, Error> {
-        let utxo_ids = self.get_utxo_ids_for_monitor_id(db_txn, &monitor_id)?;
+        let utxo_ids = self.get_utxo_ids_for_monitor_id(db_txn, monitor_id)?;
         utxo_ids
             .iter()
             .map(|utxo_id| self.get_utxo_by_id(db_txn, utxo_id))
@@ -445,7 +445,7 @@ impl UtxoStore {
             for result in iter {
                 match result {
                     Ok((subaddress_id_bytes, utxo_id_bytes)) => {
-                        if &subaddress_id_bytes[0..32] == &zero_subaddress_id_bytes[0..32] {
+                        if subaddress_id_bytes[0..32] == zero_subaddress_id_bytes[0..32] {
                             utxo_ids.push(UtxoId::try_from(utxo_id_bytes)?);
                         } else {
                             // We've moved on in the lexicographic ordering to a new monitor id,
