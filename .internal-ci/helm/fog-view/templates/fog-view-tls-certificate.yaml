@@ -18,5 +18,6 @@ spec:
   issuerRef:
     name: {{ $.Values.fogView.router.ingress.common.tls.clusterIssuer }}
     kind: ClusterIssuer
+---
 {{- end }}
 {{- end }}

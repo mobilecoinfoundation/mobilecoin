@@ -137,15 +137,19 @@ on:
         description: "TestNet signed tokens config json"
         required: true
 
+env:
+  BASE_PATH: .tmp
+  MINTING_BASE_PATH: .tmp/minting
+  SEEDS_BASE_PATH: .tmp/seeds
+  VALUES_BASE_PATH: .tmp/values
+  TOKENS_PATH: .tmp/tokens.signed.json
+  PG_PATH: .tmp/pg
+  CERTS_BASE_PATH: .tmp/certs
+  MOBILECOIND_BASE_PATH: ./tmp/mobilecoind
+
 jobs:
   setup-environment:
     runs-on: [self-hosted, Linux, small]
-    env:
-      BASE_PATH: .tmp
-      MINTING_BASE_PATH: .tmp/minting
-      SEEDS_BASE_PATH: .tmp/seeds
-      VALUES_BASE_PATH: .tmp/values
-      TOKENS_PATH: .tmp/tokens.signed.json
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -219,6 +223,15 @@ jobs:
         object_name: consensus-minting-secrets
         src: ${{ env.MINTING_BASE_PATH }}
 
+  setup-environment-v5-0:
+    if: startsWith(inputs.version, 'v5.0')
+    runs-on: [self-hosted, Linux, small]
+    needs:
+    - setup-environment
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: Write tokens.signed.json
       env:
         DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
@@ -234,21 +247,14 @@ jobs:
         # Set dev/main/test tokens file based on semver tag.
         .internal-ci/util/set_tokens_config_version.sh ${{ inputs.version }} > "${TOKENS_PATH}"
 
-    # We're only deploying to the dev cluster here.
-    # We want to still point at dev values for buckets and certs.
-    # We need "production" IAS creds to start up test/main enclaves.
     - name: Generate environment values file
       env:
         DEV_IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
         DEV_IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
-        MAIN_IAS_KEY: ${{ secrets.MAIN_IAS_KEY }}
-        MAIN_IAS_SPID: ${{ secrets.MAIN_IAS_SPID }}
-        TEST_IAS_KEY: ${{ secrets.TEST_IAS_KEY }}
-        TEST_IAS_SPID: ${{ secrets.TEST_IAS_SPID }}
-        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
-        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
         FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
         FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
+        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
         IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
       run: |
         # Create values base path
@@ -273,6 +279,229 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Deploy PostgreSQL instance
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: https://charts.bitnami.com/bitnami
+        chart_name: postgresql
+        # chart_version: 13.1.5
+        chart_version: 11.9.13
+        chart_set: |
+          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
+          --set=global.postgresql.auth.database=fog_recovery
+          --set=architecture=replication
+        chart_wait_timeout: 5m
+        release_name: fog-recovery-postgresql
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  setup-environment-v5-1:
+    # we want to match new builds "v0-" and "v5.1" or greater
+    if: ${{ ! startsWith(inputs.version, 'v5.0') }}
+    needs:
+    - setup-environment
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Write tokens.signed.json
+      env:
+        DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
+        DEV_TOKENS_CONFIG_V2_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}
+        MAIN_TOKENS_CONFIG_V1_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V1_JSON }}
+        MAIN_TOKENS_CONFIG_V2_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V2_JSON }}
+        TEST_TOKENS_CONFIG_V1_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V1_JSON }}
+        TEST_TOKENS_CONFIG_V2_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V2_JSON }}
+      run: |
+        # Create base path
+        mkdir -p "${BASE_PATH}"
+
+        # Set dev/main/test tokens file based on semver tag.
+        .internal-ci/util/set_tokens_config_version.sh ${{ inputs.version }} > "${TOKENS_PATH}"
+
+    - name: Generate environment values file
+      env:
+        DEV_IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
+        DEV_IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
+        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+        IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
+      run: |
+        # Create values base path
+        mkdir -p "${VALUES_BASE_PATH}"
+
+        # Generate values for standard dev cluster deployment.
+        .internal-ci/util/generate_dev_values-v5.1.sh ${{ inputs.version }} > "${VALUES_BASE_PATH}/mc-core-dev-env-values.yaml"
+
+    - name: Deploy environment setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: mc-core-dev-env-setup
+        chart_version: ${{ inputs.version }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/mc-core-dev-env-values.yaml
+        chart_set: |
+          --set=global.node.nodeConfig.blockVersion=${{ inputs.block_version }}
+        release_name: mc-core-dev-env-setup
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    - name: Write fog-report signing certificate
+      run: |
+        # Create secrets dir
+        mkdir -p "${CERTS_BASE_PATH}/fog-report-a"
+        mkdir -p "${CERTS_BASE_PATH}/fog-report-b"
+
+        # Write values to be used as k8s secret values.
+        echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}" > "${CERTS_BASE_PATH}/fog-report-a/tls.crt"
+        echo -n "${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}" > "${CERTS_BASE_PATH}/fog-report-a/tls.key"
+        echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CERT }}" > "${CERTS_BASE_PATH}/fog-report-b/tls.crt"
+        echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CERT_KEY }}" > "${CERTS_BASE_PATH}/fog-report-b/tls.key"
+
+    - name: Create fog-report-signing-cert-a secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-report-signing-cert-a
+        src: ${{ env.CERTS_BASE_PATH }}/fog-report-a
+
+    - name: Create fog-report-signing-cert-b secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-report-signing-cert-b
+        src: ${{ env.CERTS_BASE_PATH }}/fog-report-b
+
+    - name: Generate postgres cm and secret
+      run: |
+        mkdir -p "${PG_PATH}/cm"
+        mkdir -p "${PG_PATH}/cm-reader"
+        mkdir -p "${PG_PATH}/sec"
+
+        # primary
+        echo -n "fog_recovery" > "${PG_PATH}/cm/postgres-database"
+        echo -n "fog-recovery-postgresql-primary" > "${PG_PATH}/cm/postgres-hostname"
+        echo -n "5432" > "${PG_PATH}/cm/postgres-port"
+        echo -n "?sslmode=disable" > "${PG_PATH}/cm/postgres-ssl-options"
+        echo -n "postgres" > "${PG_PATH}/cm/postgres-username"
+
+        # reader
+        echo -n "fog_recovery" > "${PG_PATH}/cm-reader/postgres-database"
+        echo -n "fog-recovery-postgresql-read" > "${PG_PATH}/cm-reader/postgres-hostname"
+        echo -n "5432" > "${PG_PATH}/cm-reader/postgres-port"
+        echo -n "?sslmode=disable" > "${PG_PATH}/cm-reader/postgres-ssl-options"
+        echo -n "postgres" > "${PG_PATH}/cm-reader/postgres-username"
+
+        # secret
+        echo -n "${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}" > "${PG_PATH}/sec/postgres-password"
+        echo -n "${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}" > "${PG_PATH}/sec/replication-password"
+
+    - name: Create pg primary cm
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-recovery-postgresql
+        src: ${{ env.PG_PATH }}/cm
+
+    - name: Create pg reader cm
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-recovery-reader-0-postgresql
+        src: ${{ env.PG_PATH }}/cm-reader
+
+    - name: Create pg primary secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-recovery-postgresql
+        src: ${{ env.PG_PATH }}/sec
+
+    - name: Create pg reader secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-recovery-reader-0-postgresql
+        src: ${{ env.PG_PATH }}/sec
+
+    - name: Generate mobilecoind ConfigMap file
+      run: |
+        mkdir -p "${MOBILECOIND_BASE_PATH}"
+        p1="node1.${{ inputs.namespace }}.development.mobilecoin.com"
+        p2="node2.${{ inputs.namespace }}.development.mobilecoin.com"
+        p3="node3.${{ inputs.namespace }}.development.mobilecoin.com"
+
+        # awsRegion .s3Bucket (printf "node1.%s.development.mobilecoin.com" $.Release.Namespace) }}
+
+        tx_base="s3-eu-central-1.amazonaws.com"
+        tx_bucket="mobilecoin.eu.development.chain"
+        tx1="https://${tx_base}/${tx_bucket}/${p1}/"
+        tx2="https://${tx_base}/${tx_bucket}/${p2}/"
+        tx3="https://${tx_base}/${tx_bucket}/${p3}/"
+
+        q="{\"threshold\": 2, \"members\": [{\"args\":\"${p1}:443\",\"type\":\"Node\"},{\"args\":\"${p2}:443\",\"type\":\"Node\"},{\"args\":\"${p3}:443\",\"type\":\"Node\"}]}"
+
+        echo -n "mc://${p1}:443,mc://${p2}:443,mc://${p3}:443" > "${MOBILECOIND_BASE_PATH}/MC_PEER"
+        echo -n "${tx1},${tx2},${tx3}" > "${MOBILECOIND_BASE_PATH}/MC_TX_SOURCE_URL"
+        echo -n "${q}" > "${MOBILECOIND_BASE_PATH}/MC_QUORUM_SET"
+
+    - name: Create mobilecoind configmap
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: fog-mobilecoind
+        src: ${{ env.MOBILECOIND_BASE_PATH }}
+
+    - name: Write tokens.signed.json
+      env:
+        DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
+        DEV_TOKENS_CONFIG_V2_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}
+        MAIN_TOKENS_CONFIG_V1_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V1_JSON }}
+        MAIN_TOKENS_CONFIG_V2_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V2_JSON }}
+        TEST_TOKENS_CONFIG_V1_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V1_JSON }}
+        TEST_TOKENS_CONFIG_V2_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V2_JSON }}
+      run: |
+        # Create base path
+        mkdir -p "${BASE_PATH}"
+
+        # Set dev/main/test tokens file based on semver tag.
+        .internal-ci/util/set_tokens_config_version.sh ${{ inputs.version }} > "${TOKENS_PATH}"
 
     - name: Deploy PostgreSQL instance
       uses: mobilecoinofficial/gha-k8s-toolbox@v1

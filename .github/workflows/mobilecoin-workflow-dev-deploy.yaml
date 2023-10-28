@@ -43,17 +43,10 @@ on:
       DEV_RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
-      DEV_FOG_REPORT_B_SIGNING_CERT:
-        description: "fog-report alternate instance"
-        required: true
-      DEV_FOG_REPORT_B_SIGNING_CERT_KEY:
-        description: "fog-report alternate instance"
-        required: true
 
 env:
   FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
   VALUES_BASE_PATH: .tmp/values
-  CERTS_BASE_PATH: .tmp/certs
 
 jobs:
   setup-environment:
@@ -162,8 +155,8 @@ jobs:
               tls:
                 clusterIssuer: google-public-ca
           externalSecrets:
-            postgresReader:
-              name: fog-recovery-postgresql
+            signingCert:
+              name: fog-report-signing-cert-a
 
     - name: Deploy fog-report-a
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -185,26 +178,6 @@ jobs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
-    - name: Write fog-report signing certificate
-      run: |
-        # Create minting secrets dir
-        mkdir -p "${CERTS_BASE_PATH}/fog-report-b"
-
-        # Write values to be used as k8s secret values.
-        echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CERT }}" > "${CERTS_BASE_PATH}/fog-report-b/tls.crt"
-        echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CERT_KEY }}" > "${CERTS_BASE_PATH}/fog-report-b/tls.key"
-
-    - name: Create fog-report-signing-cert-b secret
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: secrets-create-from-file
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-        object_name: fog-report-signing-cert-b
-        src: ${{ env.CERTS_BASE_PATH }}/fog-report-b
-
     - name: Generate fog-report-b values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
@@ -227,8 +200,6 @@ jobs:
               tls:
                 clusterIssuer: google-public-ca
           externalSecrets:
-            postgresReader:
-              name: fog-recovery-postgresql
             signingCert:
               name: fog-report-signing-cert-b
 
@@ -270,15 +241,12 @@ jobs:
               responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
             - partner: b
               responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
-          ingress:
-            common:
-              blocklist:
-                enabled: false
-              tls:
-                clusterIssuer: google-public-ca
-          externalSecrets:
-            postgresReader:
-              name: fog-recovery-postgresql
+            ingress:
+              common:
+                blocklist:
+                  enabled: false
+                tls:
+                  clusterIssuer: google-public-ca
 
     - name: Deploy fog-view
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -295,72 +263,52 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
-  fog-services-deploy:
+  fog-ledger-deploy:
     needs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
-    - name: Generate fog-services values file
+    - name: Generate fog-ledger values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
-        cat <<EOF > "${VALUES_BASE_PATH}/fog-services-values.yaml"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
-        global:
-          certManagerClusterIssuer: google-public-ca
-        fogLedgerRouter:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-          persistence:
-            enabled: false
-        fogLedger:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-          persistence:
-            enabled: false
-        fogViewRouter:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-        fogView:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-        blockHeighRetrieval:
-          url: 'https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
-          responseJQ: '.index'
-          requestBody: ' '
-          queryInterval: 5m
-        fogViewShardRangeGenerator:
-          override: &stores
-            shardSize: 10_000
-            exceedBlockHeightBy: 5_000
-            shardOverlap: 0
-            count: 2
-        fogLedgerShardRangeGenerator:
-          override: *stores
-        EOF
 
-    - name: Deploy fog-services
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogLedger:
+          router:
+            hosts:
+            - partner: a
+              responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+            - partner: b
+              responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
+            persistance:
+              enabled: false
+            ingress:
+              common:
+                blocklist:
+                  enabled: false
+                tls:
+                  clusterIssuer: google-public-ca
+          store:
+            persistance:
+              enabled: false
+
+
+    - name: Deploy fog-ledger
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-services
+        chart_name: fog-ledger
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
-        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-services-values.yaml
-        release_name: fog-services
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-values.yaml
+        release_name: fog-ledger
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -437,7 +385,8 @@ jobs:
   wait-for-up:
     needs:
     - fog-ingest-deploy
-    - fog-services-deploy
+    - fog-view-deploy
+    - fog-ledger-deploy
     - fog-report-deploy-a
     - fog-report-deploy-b
     runs-on: [self-hosted, Linux, small]

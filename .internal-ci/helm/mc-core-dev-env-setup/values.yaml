@@ -85,17 +85,3 @@ consensusNodeConfig3:
 
 fogIngestConfig:
   enabled: true
-  fogRecoveryDatabase:
-    configMap:
-      enabled: true
-    secret:
-      enabled: true
-
-fogServicesConfig:
-  enabled: true
-  fogRecoveryDatabaseReader:
-    configMap:
-      enabled: true
-  fogPublicFQDN:
-    domainname: '{{ printf "fog.%s.development.mobilecoin.com" .Release.Namespace }}'
-    fogReportSANs: '{{ printf "fog-report.%s.development.mobilecoin.com" .Release.Namespace }}'
