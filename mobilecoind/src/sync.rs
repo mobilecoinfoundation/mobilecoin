@@ -94,7 +94,9 @@ impl SyncThread {
         // Create worker threads.
         let mut worker_join_handles = Vec::new();
 
-        for idx in 0..num_workers.unwrap_or_else(num_cpus::get) {
+        let num_workers = num_workers.unwrap_or_else(num_cpus::get);
+
+        for idx in 0..num_workers {
             let thread_ledger_db = ledger_db.clone();
             let thread_mobilecoind_db = mobilecoind_db.clone();
             let thread_sender = sender.clone();
@@ -110,6 +112,7 @@ impl SyncThread {
                         thread_sender,
                         thread_receiver,
                         thread_queued_monitor_ids,
+                        num_workers,
                         thread_logger,
                     );
                 })
@@ -238,12 +241,19 @@ fn sync_thread_entry_point(
     sender: crossbeam_channel::Sender<SyncMsg>,
     receiver: crossbeam_channel::Receiver<SyncMsg>,
     queued_monitor_ids: Arc<Mutex<HashSet<MonitorId>>>,
+    num_workers: usize,
     logger: Logger,
 ) {
     for msg in receiver.iter() {
         match msg {
             SyncMsg::SyncMonitor(monitor_id) => {
-                match sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger) {
+                match sync_monitor_parallel(
+                    &ledger_db,
+                    &mobilecoind_db,
+                    &monitor_id,
+                    num_workers,
+                    &logger,
+                ) {
                     // Success - No more blocks are currently available.
                     Ok(SyncMonitorOk::NoMoreBlocks) => {
                         // Remove the monitor id from the list of queued ones so that the main
@@ -286,8 +296,118 @@ fn sync_thread_entry_point(
     }
 }
 
-/// Sync a single monitor.
-fn sync_monitor(
+/// Sync a single monitor, spawning parallel jobs to perform block scanning if
+/// it is many blocks behind. This allows us to use all the CPU cores scanning
+/// even when we only have a single monitor to work on, and all the blocks are
+/// pretty small (only 2 or 3 UTXOs), which is a very common configuration and
+/// situation. First, we test how far behind the monitor is. When the monitor is
+/// close to caught up, we fallback to sync_monitor_sequential.
+fn sync_monitor_parallel(
+    ledger_db: &LedgerDB,
+    mobilecoind_db: &Database,
+    monitor_id: &MonitorId,
+    num_workers: usize,
+    logger: &Logger,
+) -> Result<SyncMonitorOk, Error> {
+    let monitor_data = mobilecoind_db.get_monitor_data(monitor_id)?;
+    let num_blocks = ledger_db.num_blocks()?;
+
+    // If we cannot hope to work on num_workers blocks in parallel for this montior,
+    // then we are pretty close to the end, let's fall back to
+    // sync_monitor_sequential. Otherwise, we should be able to get num_workers
+    // blocks and work on them in parallel.
+    if monitor_data.next_block + num_workers as u64 >= num_blocks {
+        return sync_monitor_sequential(ledger_db, mobilecoind_db, monitor_id, logger);
+    }
+
+    // Each worker will try to call
+    // ledger_db.get_block_contents(monitor_data.next_block + worker_idx)
+    // and then
+    // match_tx_outs_into_utxos
+    // in parallel.
+    //
+    // At the end we collect the results and add them to the database in order,
+    // because the database needs that to be done sequentially. But the scanning
+    // is the slow part here, so this is fine.
+    let parallel_results = (0..num_workers)
+        .into_par_iter()
+        .map(
+            |worker_idx| -> Result<(Vec<UnspentTxOut>, Vec<KeyImage>), Error> {
+                // We don't expect to get Error::NotFound here, since we earlier tested
+                // ledger_db.num_blocks(). The other error cases are not common
+                // either.
+                let block_idx = monitor_data.next_block + worker_idx as u64;
+                let block_contents = match ledger_db.get_block_contents(block_idx) {
+                    Ok(block_contents) => block_contents,
+                    // Note: mc_ledger_db::Error::NotFound is being handled like any other error
+                    // here, since it really isn't expected.
+                    Err(err) => {
+                        return Err(err.into());
+                    }
+                };
+
+                log::trace!(
+                    logger,
+                    "processing {} outputs and {} key images from block {} for monitor_id {}",
+                    block_contents.outputs.len(),
+                    block_contents.key_images.len(),
+                    block_idx,
+                    monitor_id,
+                );
+
+                // Match tx outs into UTXOs.
+                let utxos = match_tx_outs_into_utxos(
+                    mobilecoind_db,
+                    &block_contents.outputs,
+                    monitor_id,
+                    &monitor_data,
+                    logger,
+                )?;
+
+                Ok((utxos, block_contents.key_images))
+            },
+        )
+        .collect::<Vec<Result<(Vec<UnspentTxOut>, Vec<KeyImage>), Error>>>();
+
+    // For diagnostics, we want to keep track of which workers were successful.
+    // Usually it should be all of them, but if sometimes a worker in the middle
+    // fails and later ones don't, that will harm performance.
+    let worker_successes = parallel_results
+        .iter()
+        .map(|result| if result.is_ok() { 1 } else { 0 })
+        .collect::<Vec<usize>>();
+
+    // Now add everything to the database
+    for (worker_idx, result) in parallel_results.into_iter().enumerate() {
+        match result {
+            Ok((utxos, key_images)) => {
+                // Update database.
+                mobilecoind_db.block_processed(
+                    monitor_id,
+                    monitor_data.next_block + worker_idx as u64,
+                    &utxos,
+                    &key_images,
+                )?;
+            }
+            Err(err) => {
+                // Unfortunately, we have to abandon any work that could have been accomplished
+                // successfully by the threads after this one. To track this,
+                // we'll log a warning about work being abandoned.
+                let abandoned_successes: usize = worker_successes.iter().skip(worker_idx + 1).sum();
+                if abandoned_successes > 0 {
+                    log::warn!(logger, "Due to an error while parallel scanning, had to abandon {} successful block scanning results", abandoned_successes);
+                }
+                return Err(err);
+            }
+        }
+    }
+
+    Ok(SyncMonitorOk::MoreBlocksPotentiallyAvailable)
+}
+
+/// Sync a single monitor, working on at most MAX_BLOCKS_PROCESSING_CHUNK_SIZE
+/// before moving on. Works on blocks sequentially.
+fn sync_monitor_sequential(
     ledger_db: &LedgerDB,
     mobilecoind_db: &Database,
     monitor_id: &MonitorId,
