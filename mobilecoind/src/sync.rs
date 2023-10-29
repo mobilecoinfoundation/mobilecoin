@@ -379,26 +379,23 @@ fn sync_monitor_parallel(
 
     // Now add everything to the database
     for (worker_idx, result) in parallel_results.into_iter().enumerate() {
-        match result {
-            Ok((utxos, key_images)) => {
-                // Update database.
-                mobilecoind_db.block_processed(
-                    monitor_id,
-                    monitor_data.next_block + worker_idx as u64,
-                    &utxos,
-                    &key_images,
-                )?;
+        if let Err(err) = result.and_then(|(utxos, key_images)| {
+            // Update database.
+            mobilecoind_db.block_processed(
+                monitor_id,
+                monitor_data.next_block + worker_idx as u64,
+                &utxos,
+                &key_images,
+            )
+        }) {
+            // Unfortunately, we have to abandon any work that could have been accomplished
+            // successfully by the threads after this one. To track this,
+            // we'll log a warning about work being abandoned.
+            let abandoned_successes: usize = worker_successes.iter().skip(worker_idx + 1).sum();
+            if abandoned_successes > 0 {
+                log::warn!(logger, "Due to an error while parallel scanning, had to abandon {} successful block scanning results", abandoned_successes);
             }
-            Err(err) => {
-                // Unfortunately, we have to abandon any work that could have been accomplished
-                // successfully by the threads after this one. To track this,
-                // we'll log a warning about work being abandoned.
-                let abandoned_successes: usize = worker_successes.iter().skip(worker_idx + 1).sum();
-                if abandoned_successes > 0 {
-                    log::warn!(logger, "Due to an error while parallel scanning, had to abandon {} successful block scanning results", abandoned_successes);
-                }
-                return Err(err);
-            }
+            return Err(err);
         }
     }
 
