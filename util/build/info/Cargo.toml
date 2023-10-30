@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-info"
-version = "5.0.8"
+version = "5.1.0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
