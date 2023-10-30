@@ -36,7 +36,6 @@ spec:
             app: fog-ledger-router
             stack: fog-ledger-{{ $stack }}
             partner: {{ $routerHosts.partner }}
-            client-responder-id: {{ $routerHosts.responderID }}
             {{- include "fog-ledger.selectorLabels" $ | nindent 12 }}
         serviceName: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
         template:
@@ -47,7 +46,6 @@ spec:
               app: fog-ledger-router
               stack: fog-ledger-{{ $stack }}
               partner: {{ $routerHosts.partner }}
-              client-responder-id: {{ $routerHosts.responderID }}
               {{- include "fog-ledger.labels" $ | nindent 14 }}
           spec:
             readinessGates:

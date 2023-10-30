@@ -34,7 +34,6 @@ spec:
             app: fog-view-router
             stack: fog-view-{{ $stack }}
             partner: {{ $routerHosts.partner }}
-            client-responder-id: {{ $routerHosts.responderID }}
             {{- include "fog-view.selectorLabels" $ | nindent 12 }}
         serviceName: {{ include "fog-view.fullname" $ }}-router-{{ $routerHosts.partner }}
         template:
@@ -45,7 +44,6 @@ spec:
               app: fog-view-router
               stack: fog-view-{{ $stack }}
               partner: {{ $routerHosts.partner }}
-              client-responder-id: {{ $routerHosts.responderID }}
               {{- include "fog-view.labels" $ | nindent 14 }}
           spec:
             {{- if .affinityEnabled }}
