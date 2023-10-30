@@ -11,7 +11,7 @@ base64 = "0.21"
 displaydoc = "0.2"
 prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_with = { version = "3.3", default-features = false, features = ["hex"] }
+serde_with = { version = "3.4", default-features = false, features = ["hex"] }
 
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
