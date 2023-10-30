@@ -35,7 +35,7 @@ mc-fog-uri = { path = "../uri" }
 # third-party
 clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = "0.2"
-grpcio = "0.12"
+grpcio = "0.13"
 hex_fmt = "0.3"
 lazy_static = "1.4"
 maplit = "1.0"

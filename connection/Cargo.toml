@@ -26,7 +26,7 @@ mc-util-uri = { path = "../util/uri" }
 aes-gcm = "0.10.1"
 cookie = "0.17"
 displaydoc = "0.2"
-grpcio = "0.12.1"
+grpcio = "0.13"
 mc-rand = "1"
 retry = "2.0"
 secrecy = "0.8"

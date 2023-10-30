@@ -32,7 +32,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "4.1", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
-grpcio = "0.12.1"
+grpcio = "0.13"
 lazy_static = "1.4"
 rand = "0.8"
 rayon = "1.7"

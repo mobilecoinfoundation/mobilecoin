@@ -36,7 +36,7 @@ rand = "0.8"
 # third party
 clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.1"
+grpcio = "0.13"
 hex = "0.4"
 protobuf = "2.27.1"
 retry = "2.0"
