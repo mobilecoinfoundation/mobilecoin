@@ -55,7 +55,7 @@ mc-fog-uri = { path = "../../uri" }
 clap = { version = "4.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.1"
+grpcio = "0.13"
 itertools = "0.10"
 lazy_static = "1.4"
 prometheus = "0.13"
