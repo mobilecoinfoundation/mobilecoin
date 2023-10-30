@@ -54,10 +54,6 @@ spec:
                 requiredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                      - fog-view-router
                     - key: stack
                       operator: In
                       values:
@@ -67,10 +63,6 @@ spec:
                 - podAffinityTerm:
                     labelSelector:
                       matchExpressions:
-                      - key: app
-                        operator: In
-                        values:
-                        - fog-view-router
                       - key: stack
                         operator: In
                         values:
@@ -260,13 +252,15 @@ spec:
             {{- include "fog-view.labels" $ | nindent 12 }}
         spec:
           {{- if .topologySpreadConstraintsEnabled }}
+          # Stacks launch first.
+          # Make sure each stack is scheduled on different zones.
+          # Then try to keep a stack on the minimal amount of nodes possible in a single zone.
           topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
             whenUnsatisfiable: ScheduleAnyway
             labelSelector:
               matchLabels:
-                app: fog-view-store
                 stack: fog-view-{{ $stack }}
           {{- end }}
           {{- if .affinityEnabled }}
@@ -275,10 +269,6 @@ spec:
               requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                    - fog-view-store
                   - key: stack
                     operator: In
                     values:
@@ -288,10 +278,6 @@ spec:
               - podAffinityTerm:
                   labelSelector:
                     matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                      - fog-view-store
                     - key: stack
                       operator: In
                       values:

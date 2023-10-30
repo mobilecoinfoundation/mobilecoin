@@ -58,10 +58,6 @@ spec:
                 requiredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                      - fog-ledger-router
                     - key: stack
                       operator: In
                       values:
@@ -71,10 +67,6 @@ spec:
                 - podAffinityTerm:
                     labelSelector:
                       matchExpressions:
-                      - key: app
-                        operator: In
-                        values:
-                        - fog-ledger-router
                       - key: stack
                         operator: In
                         values:
@@ -294,13 +286,15 @@ spec:
             {{- include "fog-ledger.labels" $ | nindent 12 }}
         spec:
           {{- if .topologySpreadConstraintsEnabled }}
+          # Stacks launch first.
+          # Make sure each stack is scheduled on different zones.
+          # Then try to keep a stack on the minimal amount of nodes possible in a single zone.
           topologySpreadConstraints:
           - topologyKey: topology.kubernetes.io/zone
             maxSkew: 1
             whenUnsatisfiable: ScheduleAnyway
             labelSelector:
               matchLabels:
-                app: fog-ledger-store
                 stack: fog-ledger-{{ $stack }}
           {{- end }}
           {{- if .affinityEnabled }}
@@ -309,10 +303,6 @@ spec:
               requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                    - fog-ledger-store
                   - key: stack
                     operator: In
                     values:
@@ -322,10 +312,6 @@ spec:
               - podAffinityTerm:
                   labelSelector:
                     matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                      - fog-ledger-store
                     - key: stack
                       operator: In
                       values:
