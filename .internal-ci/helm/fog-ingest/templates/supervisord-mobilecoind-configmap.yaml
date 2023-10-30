@@ -1,21 +1,16 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2023 The MobileCoin Foundation
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fog-supervisord-mobilecoind
+  name: {{ include "fogIngest.fullname" . }}-supervisord-mobilecoind
   labels:
-    {{- include "mcCoreCommonConfig.labels" . | nindent 4 }}
+    {{- include "fogIngest.labels" . | nindent 4 }}
 data:
   mobilecoind.conf: |
     [program:mobilecoind-sync]
     priority=10
     command=/usr/bin/mobilecoind
-{{- range .Values.mobilecoind.nodes }}
-      --peer mc://{{ tpl .client $ }}/
-      --tx-source-url {{ tpl .txSourceUrl $ }}
-{{- end }}
       --poll-interval 1
-      --quorum-set {{ include "mcCoreCommonConfig.mobilecoindQuorum" . | squote }}
       --ledger-db /fog-data/ledger
       --watcher-db /fog-data/watcher
 

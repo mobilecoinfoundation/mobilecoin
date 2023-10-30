@@ -78,27 +78,27 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
-              key: postgresql-hostname
+              key: postgres-hostname
         - name: FOGDB_USER
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
-              key: postgresql-username
+              key: postgres-username
         - name: FOGDB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ .Values.fogReport.externalSecrets.postgresReader.name }}
-              key: postgresql-password
+              key: postgres-password
         - name: FOGDB_DATABASE
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
-              key: postgresql-database
+              key: postgres-database
         - name: FOGDB_SSL_OPTIONS
           valueFrom:
             configMapKeyRef:
               name: {{ .Values.fogReport.externalConfigMaps.postgresReader.name }}
-              key: postgresql-ssl-options
+              key: postgres-ssl-options
         - name: DATABASE_URL
           value: "postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)"
         startupProbe:

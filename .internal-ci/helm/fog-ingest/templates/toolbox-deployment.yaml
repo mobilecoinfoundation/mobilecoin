@@ -35,27 +35,27 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: fog-recovery-postgresql
-              key: postgresql-hostname
+              key: postgres-hostname
         - name: FOGDB_USER
           valueFrom:
             configMapKeyRef:
               name: fog-recovery-postgresql
-              key: postgresql-username
+              key: postgres-username
         - name: FOGDB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: fog-recovery-postgresql
-              key: postgresql-password
+              key: postgres-password
         - name: FOGDB_DATABASE
           valueFrom:
             configMapKeyRef:
               name: fog-recovery-postgresql
-              key: postgresql-database
+              key: postgres-database
         - name: FOGDB_SSL_OPTIONS
           valueFrom:
             configMapKeyRef:
               name: fog-recovery-postgresql
-              key: postgresql-ssl-options
+              key: postgres-ssl-options
         - name: DATABASE_URL
           value: 'postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)'
         - name: NAMESPACE

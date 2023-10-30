@@ -97,4 +97,4 @@ test_client \
     --consensus-wait 300 \
     --transfer-amount 20 \
     --fog-view "fog-view://${user}${fog_hostname}:443" \
-    --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.development.mobilecoin.com:443"
+    --fog-ledger "fog-ledger://${user}${fog_hostname}:443"

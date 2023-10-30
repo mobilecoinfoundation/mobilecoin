@@ -1,21 +1,21 @@
 # Copyright (c) 2018-2023 The MobileCoin Foundation
 {{- $network := .Values.mobilecoin.network | required "mobilecoin.network is required." }}
 {{- $partner := .Values.mobilecoin.partner | required "mobilecoin.partner is required." }}
-{{- range $routerHosts := $.Values.fogView.router.hosts }}
+{{- range $routerHosts := $.Values.fogLedger.router.hosts }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fog-view.fullname" $ }}-router-{{ $routerHosts.partner }}
+  name: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
   labels:
     publish: grafana-cloud
-    app: fog-view-router
-    {{- include "fog-view.labels" $ | nindent 4 }}
+    app: fog-ledger-router
+    {{- include "fog-ledger.labels" $ | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: fog-view-router
+      app: fog-ledger-router
       partner: {{ $routerHosts.partner }}
-      {{- include "fog-view.selectorLabels" $ | nindent 6 }}
+      {{- include "fog-ledger.selectorLabels" $ | nindent 6 }}
   endpoints:
   - port: mgmt-http
     relabelings:

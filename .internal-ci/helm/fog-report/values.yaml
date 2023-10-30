@@ -85,10 +85,10 @@ fogReport:
     postgresReader:
       name: fog-recovery-reader-0-postgresql
       ### required keys:
-      #   postgresql-ssl-options
-      #   postgresql-database
-      #   postgresql-username
-      #   postgresql-hostname
+      #   postgres-ssl-options
+      #   postgres-database
+      #   postgres-username
+      #   postgres-hostname
 
   # override the name of the required secrets
   externalSecrets:
