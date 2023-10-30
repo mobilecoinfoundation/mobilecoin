@@ -286,7 +286,6 @@ jobs:
         action: helm-deploy
         chart_repo: https://charts.bitnami.com/bitnami
         chart_name: postgresql
-        # chart_version: 13.1.5
         chart_version: 11.9.13
         chart_set: |
           --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
@@ -463,7 +462,6 @@ jobs:
         p2="node2.${{ inputs.namespace }}.development.mobilecoin.com"
         p3="node3.${{ inputs.namespace }}.development.mobilecoin.com"
 
-        # awsRegion .s3Bucket (printf "node1.%s.development.mobilecoin.com" $.Release.Namespace) }}
 
         tx_base="s3-eu-central-1.amazonaws.com"
         tx_bucket="mobilecoin.eu.development.chain"
