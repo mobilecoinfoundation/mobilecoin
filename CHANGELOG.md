@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.1.0]
+
+### Changed
+
+- Fog ledger will now update the prometheus metrics periodically ([#3649])
+
+#### Deployments
+
+- Reworked fog ledger and fog view deployments ([#3675], [#3668], [#3662])
+- Add support for multiple fog report instances ([#3643])
+
+#### Rust Dependencies
+
+- Bump `grpcio` from 0.12.1 to 0.13.0 ([#3674])
+
+[#3675]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3675
+[#3674]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3674
+[#3668]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3668
+[#3662]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3662
+[#3649]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3649
+[#3643]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3643
+
 ## [5.0.8]
 
 ### Changed
