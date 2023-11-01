@@ -45,7 +45,7 @@ sha2 = { version = "0.10", default-features = false }
 mc-attest-untrusted = { path = "../untrusted", default-features = false }
 mc-util-encodings = { path = "../../util/encodings", default-features = false }
 p256 = { version = "0.13.0", default-features = false }
-textwrap = "0.14"
+textwrap = "0.16"
 
 [build-dependencies]
 mc-sgx-core-sys-types = "0.9.0"
