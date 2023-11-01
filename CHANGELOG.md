@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.1.1]
+
+### Fixed
+
+#### Deployments
+
+- fix port alignment for fog-ledger-router and grpc-gateway ([#3687])
+
+[#3687]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3687
+
 ## [5.1.0]
 
 ### Changed
