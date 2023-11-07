@@ -926,6 +926,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-enclave-boundary",
  "mc-sgx-compat",
+ "mc-sgx-debug-edl",
  "mc-sgx-enclave-id",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
@@ -1215,6 +1216,7 @@ version = "5.1.1"
 dependencies = [
  "lazy_static",
  "mc-sgx-debug",
+ "mc-sgx-debug-edl",
  "mc-sgx-sync",
 ]
 
@@ -1252,6 +1254,13 @@ dependencies = [
 [[package]]
 name = "mc-sgx-debug"
 version = "5.1.1"
+
+[[package]]
+name = "mc-sgx-debug-edl"
+version = "5.1.1"
+dependencies = [
+ "cargo-emit",
+]
 
 [[package]]
 name = "mc-sgx-enclave-id"

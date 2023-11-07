@@ -2719,6 +2719,7 @@ dependencies = [
  "mc-fog-test-infra",
  "mc-ledger-db",
  "mc-rand",
+ "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",

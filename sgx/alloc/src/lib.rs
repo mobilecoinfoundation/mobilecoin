@@ -3,10 +3,6 @@
 #![no_std]
 #![feature(alloc_error_handler)] // for alloc_error_handler
 
-extern crate mc_sgx_debug;
-extern crate mc_sgx_sync;
-extern crate lazy_static;
-
 use core::alloc::{GlobalAlloc, Layout};
 use mc_sgx_debug::eprintln;
 use mc_sgx_sync::Mutex;

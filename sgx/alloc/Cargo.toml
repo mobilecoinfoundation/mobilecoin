@@ -4,6 +4,7 @@ version = "5.1.1"
 authors = ["MobileCoin"]
 license = "GPL-3.0"
 readme = "README.md"
+edition ="2021"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
 rust-version = "1.68.0"
 
@@ -11,6 +12,8 @@ rust-version = "1.68.0"
 mc-sgx-debug = { path = "../debug" }
 lazy_static = "1.4"
 mc-sgx-sync = { path = "../sync" }
+mc-sgx-debug-edl = { path = "../debug-edl" }
+
 [features]
 default = ["oom_panic"]
 oom_panic = []
