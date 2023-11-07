@@ -1,5 +1,6 @@
 use displaydoc::Display;
-use opentelemetry::{sdk, trace::TraceError, KeyValue};
+use opentelemetry::{trace::TraceError, KeyValue};
+use opentelemetry_sdk::{trace, Resource};
 
 #[derive(Debug, Display)]
 pub enum Error {
@@ -15,7 +16,7 @@ pub enum Error {
 
 /// Set up a default tracer with no additional tags.
 /// Telemetry is enabled iff env.MC_TELEMETRY is set to "1" or "true".
-pub fn setup_default_tracer(service_name: &str) -> Result<Option<sdk::trace::Tracer>, Error> {
+pub fn setup_default_tracer(service_name: &str) -> Result<Option<trace::Tracer>, Error> {
     setup_default_tracer_with_tags(service_name, &[])
 }
 
@@ -24,7 +25,7 @@ pub fn setup_default_tracer(service_name: &str) -> Result<Option<sdk::trace::Tra
 pub fn setup_default_tracer_with_tags(
     service_name: &str,
     extra_tags: &[(&'static str, String)],
-) -> Result<Option<sdk::trace::Tracer>, Error> {
+) -> Result<Option<trace::Tracer>, Error> {
     let telemetry_enabled = std::env::var("MC_TELEMETRY")
         .map(|val| val == "1" || val.to_lowercase() == "true")
         .unwrap_or(false);
@@ -47,7 +48,7 @@ pub fn setup_default_tracer_with_tags(
 
     opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name(service_name)
-        .with_trace_config(sdk::trace::Config::default().with_resource(sdk::Resource::new(tags)))
+        .with_trace_config(trace::Config::default().with_resource(Resource::new(tags)))
         .install_simple()
         .map_err(Error::Trace)
         .map(Some)
