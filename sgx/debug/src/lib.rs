@@ -18,5 +18,5 @@ pub fn _eprint(args: core::fmt::Arguments) {
 extern "C" {
     /// This is the OCALL prototype for passing message buffers to the untrusted
     /// code. See sgx_debug_edl crate.
-    fn eprintln_message(msg: *const u8, msg_len: usize);
+    fn eprintln_messages(msg: *const u8, msg_len: usize);
 }

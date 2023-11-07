@@ -926,6 +926,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-enclave-boundary",
  "mc-sgx-compat",
+ "mc-sgx-compat-edl",
  "mc-sgx-debug-edl",
  "mc-sgx-enclave-id",
  "mc-sgx-panic-edl",
@@ -1241,6 +1242,15 @@ dependencies = [
  "mc-sgx-service",
  "mc-sgx-sync",
  "mc-sgx-types",
+]
+
+[[package]]
+name = "mc-sgx-compat-edl"
+version = "5.1.1"
+dependencies = [
+ "cargo-emit",
+ "mc-sgx-debug-edl",
+ "mc-sgx-panic-edl",
 ]
 
 [[package]]
