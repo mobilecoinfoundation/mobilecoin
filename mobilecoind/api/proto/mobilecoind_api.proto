@@ -8,6 +8,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
 import "blockchain.proto";
+import "watcher.proto";
 
 package mobilecoind_api;
 
@@ -38,7 +39,7 @@ service MobilecoindAPI {
     rpc CreateAddressCode (CreateAddressCodeRequest) returns (CreateAddressCodeResponse) {}
 
     // Txs
-    rpc GetMixins( GetMixinsRequest) returns (GetMixinsResponse) {}
+    rpc GetMixins (GetMixinsRequest) returns (GetMixinsResponse) {}
     rpc GetMembershipProofs (GetMembershipProofsRequest) returns (GetMembershipProofsResponse) {}
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
@@ -803,6 +804,12 @@ message GetBlockResponse {
 
     // TxOuts in the block.
     repeated external.TxOut txos = 4;
+
+    // Timestamp result code
+    watcher.TimestampResultCode timestamp_result_code = 5;
+
+    // Timestamp (only valid if timestamp_result_code is TimestampFound)
+    uint64 timestamp = 6;
 }
 
 // Get the status of a submitted transaction as the Sender.
