@@ -4,6 +4,9 @@
 #![feature(alloc_error_handler)] // for alloc_error_handler
 
 use core::alloc::{GlobalAlloc, Layout};
+use core::sync::Mutex;
+use once_cell::sync::Lazy;
+use sgx_debug::eprintln;
 
 // Our allocator uses malloc and free exposed by intel libsgx_tstdc
 extern "C" {
@@ -12,14 +15,21 @@ extern "C" {
     pub fn free(p: *mut u8);
 }
 
+static TOTAL_HEAP: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+static MAX_HEAP: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
 // Our allocator definition
 struct SgxAllocator;
 
 unsafe impl GlobalAlloc for SgxAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let memory = TOTAL_HEAP.lock().unwrap();
+        memory.checked_add(layout.size() as u64).unwrap();
+        eprintln!("MEMORY USED: {:?}", memory);
         memalign(layout.align(), layout.size())
     }
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        TOTAL_HEAP.lock().unwrap().checked_sub(layout.size() as u64).unwrap();
         free(ptr)
     }
 }

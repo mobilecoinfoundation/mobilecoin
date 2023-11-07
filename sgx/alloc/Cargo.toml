@@ -7,6 +7,9 @@ readme = "README.md"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
 rust-version = "1.68.0"
 
+[dependencies]
+mc-sgx-debug = { path = "../debug" }
+once_cell = "1.18.0"
 [features]
 default = ["oom_panic"]
 oom_panic = []
