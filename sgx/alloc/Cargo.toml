@@ -9,7 +9,8 @@ rust-version = "1.68.0"
 
 [dependencies]
 mc-sgx-debug = { path = "../debug" }
-once_cell = "1.18.0"
+lazy_static = "1.4"
+mc-sgx-sync = { path = "../sync" }
 [features]
 default = ["oom_panic"]
 oom_panic = []

@@ -1213,7 +1213,9 @@ dependencies = [
 name = "mc-sgx-alloc"
 version = "5.1.1"
 dependencies = [
+ "lazy_static",
  "mc-sgx-debug",
+ "mc-sgx-sync",
 ]
 
 [[package]]

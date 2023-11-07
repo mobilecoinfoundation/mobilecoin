@@ -3,10 +3,14 @@
 #![no_std]
 #![feature(alloc_error_handler)] // for alloc_error_handler
 
+extern crate mc_sgx_debug;
+extern crate mc_sgx_sync;
+extern crate lazy_static;
+
 use core::alloc::{GlobalAlloc, Layout};
-use core::sync::Mutex;
-use once_cell::sync::Lazy;
-use sgx_debug::eprintln;
+use mc_sgx_debug::eprintln;
+use mc_sgx_sync::Mutex;
+use lazy_static::lazy_static;
 
 // Our allocator uses malloc and free exposed by intel libsgx_tstdc
 extern "C" {
@@ -15,8 +19,9 @@ extern "C" {
     pub fn free(p: *mut u8);
 }
 
-static TOTAL_HEAP: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
-static MAX_HEAP: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+lazy_static! {
+    static ref TOTAL_HEAP: Mutex<u64> = Mutex::new(0);
+}
 
 // Our allocator definition
 struct SgxAllocator;
