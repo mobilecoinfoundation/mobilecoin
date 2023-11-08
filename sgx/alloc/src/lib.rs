@@ -5,8 +5,8 @@
 
 use core::alloc::{GlobalAlloc, Layout};
 // use mc_sgx_debug::eprintln;
-// use mc_sgx_sync::Mutex;
-// use lazy_static::lazy_static;
+use mc_sgx_sync::Mutex;
+use lazy_static::lazy_static;
 use core::fmt;
 use core::fmt::Write;
 
@@ -83,25 +83,25 @@ extern "C" {
     fn eprintln_message(msg: *const u8, msg_len: usize);
 }
 
-// lazy_static! {
-//     static ref TOTAL_HEAP: Mutex<u64> = Mutex::new(0);
-// }
+lazy_static! {
+    static ref TOTAL_HEAP: Mutex<u64> = Mutex::new(0);
+}
 
 // Our allocator definition
 struct SgxAllocator;
 
 unsafe impl GlobalAlloc for SgxAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let memory = TOTAL_HEAP.lock().unwrap();
+        memory.checked_add(layout.size() as u64).unwrap();
         let mut buf = WriteBuffer::new();
-        write!(&mut buf, "ALLOCATING {} bytes", layout.size()).unwrap();
+        write!(&mut buf, "TOTAL MEMORY {} bytes", memory).unwrap();
         let contents: &[u8] = buf.as_ref();
         eprintln_message(contents.as_ptr(), contents.len());
-        // let memory = TOTAL_HEAP.lock().unwrap();
-        // memory.checked_add(layout.size() as u64).unwrap();
         memalign(layout.align(), layout.size())
     }
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        // TOTAL_HEAP.lock().unwrap().checked_sub(layout.size() as u64).unwrap();
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        TOTAL_HEAP.lock().unwrap().checked_sub(layout.size() as u64).unwrap();
         free(ptr)
     }
 }
