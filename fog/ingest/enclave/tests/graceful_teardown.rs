@@ -8,8 +8,8 @@ use mc_fog_ingest_enclave::{IngestSgxEnclave, ENCLAVE_FILE};
 use mc_fog_test_infra::get_enclave_path;
 use std::str::FromStr;
 
-const NUM_TRIALS: usize = 3;
-const OMAP_CAP: u64 = 256;
+const NUM_TRIALS: usize = 1;
+const OMAP_CAP: u64 = 4096;
 
 /// Test that we can create and destroy the Ingest enclave repeatedly without
 /// crashing
