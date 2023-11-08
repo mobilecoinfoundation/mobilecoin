@@ -19,6 +19,8 @@ use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, Un
 use mc_account_keys::{
     burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
 };
+use mc_api::blockchain::ArchiveBlock;
+use mc_blockchain_types::BlockIndex;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -49,6 +51,7 @@ use mc_util_grpc::{
     BuildInfoService, ConnectionUriGrpcioServer,
 };
 use mc_watcher::watcher_db::WatcherDB;
+use mc_watcher_api::TimestampResultCode;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -1639,6 +1642,56 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         self.get_block_impl(request)
     }
 
+    fn get_blocks_data_impl(
+        &self,
+        request: api::GetBlocksDataRequest,
+    ) -> Result<api::GetBlocksDataResponse, RpcStatus> {
+        let mut results = Vec::with_capacity(request.blocks.len());
+
+        let latest_block: mc_api::blockchain::Block = (&self
+            .ledger_db
+            .get_latest_block()
+            .map_err(|err| rpc_internal_error("ledger_db.get_latest_block", err, &self.logger))?)
+            .into();
+
+        for block_index in request.blocks.iter() {
+            let block_data = match self.ledger_db.get_block_data(*block_index) {
+                Ok(block_data) => block_data,
+                Err(LedgerError::NotFound) => {
+                    results.push(api::BlockDataWithTimestamp {
+                        found: false,
+                        ..Default::default()
+                    });
+                    continue;
+                }
+                Err(err) => {
+                    return Err(rpc_internal_error(
+                        "ledger_db.get_block_data",
+                        err,
+                        &self.logger,
+                    ));
+                }
+            };
+
+            let (block_timestamp, block_timestamp_result_code) =
+                self.get_block_timestamp(*block_index);
+
+            results.push(api::BlockDataWithTimestamp {
+                found: true,
+                block_data: Some(ArchiveBlock::from(&block_data)).into(),
+                timestamp_result_code: (&block_timestamp_result_code).into(),
+                timestamp: block_timestamp,
+                ..Default::default()
+            });
+        }
+
+        Ok(api::GetBlocksDataResponse {
+            results: results.into(),
+            latest_block: Some(latest_block).into(),
+            ..Default::default()
+        })
+    }
+
     fn get_tx_status_as_sender_impl(
         &mut self,
         request: api::SubmitTxResponse,
@@ -2270,6 +2323,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         Ok(api::Empty::default())
     }
+
+    fn get_block_timestamp(&self, block_index: BlockIndex) -> (u64, TimestampResultCode) {
+        self.watcher_db
+            .as_ref()
+            .map_or((u64::MAX, TimestampResultCode::Unavailable), |watcher| {
+                watcher
+                    .get_block_timestamp(block_index)
+                    .unwrap_or((u64::MAX, TimestampResultCode::WatcherDatabaseError))
+            })
+    }
 }
 
 macro_rules! build_api {
@@ -2339,6 +2402,7 @@ build_api! {
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
     get_block GetBlockRequest GetBlockResponse get_block_impl,
     get_latest_block Empty GetBlockResponse get_latest_block_impl,
+    get_blocks_data GetBlocksDataRequest GetBlocksDataResponse get_blocks_data_impl,
     get_tx_status_as_sender SubmitTxResponse GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
@@ -3011,6 +3075,37 @@ mod test {
             response.timestamp_result_code,
             mc_api::watcher::TimestampResultCode::Unavailable
         ); // test code doesnt have a watcher
+    }
+
+    #[test_with_logger]
+    fn test_get_blocks_data(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        // Call get block data
+        let mut request = api::GetBlocksDataRequest::new();
+        request.set_blocks(vec![0, 2, 100, 1].into());
+
+        let response = client.get_blocks_data(&request).unwrap();
+        assert_eq!(
+            Block::try_from(response.get_latest_block()).unwrap(),
+            ledger_db.get_latest_block().unwrap()
+        );
+
+        let blocks = response.get_results();
+        assert_eq!(blocks.len(), 4);
+        assert!(blocks[0].found);
+        assert!(blocks[1].found);
+        assert!(!blocks[2].found);
+        assert!(blocks[3].found);
+
+        assert_eq!(
+            blocks[0].get_block_data(),
+            &ArchiveBlock::from(&ledger_db.get_block_data(0).unwrap())
+        );
     }
 
     #[test_with_logger]

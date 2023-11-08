@@ -4883,6 +4883,7 @@ dependencies = [
  "mc-util-telemetry",
  "mc-util-uri",
  "mc-watcher",
+ "mc-watcher-api",
  "more-asserts",
  "num_cpus",
  "pem",

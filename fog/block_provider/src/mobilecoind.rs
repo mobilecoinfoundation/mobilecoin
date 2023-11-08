@@ -1,11 +1,15 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use crate::{BlockProvider, BlocksDataResponse, Error, TxOutInfoByPublicKeyResponse};
+use crate::{
+    BlockDataWithTimestamp, BlockProvider, BlocksDataResponse, Error, TxOutInfoByPublicKeyResponse,
+};
 use grpcio::{ChannelBuilder, EnvBuilder};
-use mc_blockchain_types::{Block, BlockIndex};
+use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_api::{
+    mobilecoind_api_grpc::MobilecoindApiClient, GetBlocksDataRequest, MobilecoindUri,
+};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{sync::Arc, time::Duration};
@@ -44,8 +48,36 @@ impl BlockProvider for MobilecoindBlockProvider {
     /// Get block data of multiple blocks by block number, and in addition get
     /// information about the latest block. Also include block timestamp for
     /// each block, if available.
-    fn get_blocks_data(&self, _block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error> {
-        todo!()
+    fn get_blocks_data(&self, block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error> {
+        let request = GetBlocksDataRequest {
+            blocks: block_indices.to_vec().into(),
+            ..Default::default()
+        };
+        let response = self.client.get_blocks_data(&request)?;
+
+        let results = response
+            .results
+            .iter()
+            .map(|result| {
+                if !result.found {
+                    return Ok(None);
+                }
+
+                Ok(Some(BlockDataWithTimestamp {
+                    block_data: BlockData::try_from(result.get_block_data())?,
+                    block_timestamp: result.timestamp,
+                    block_timestamp_result_code: (&result.timestamp_result_code).try_into()?,
+                }))
+            })
+            .collect::<Result<Vec<_>, Error>>()?
+            .into();
+
+        let latest_block = Block::try_from(response.get_latest_block())?;
+
+        Ok(BlocksDataResponse {
+            results,
+            latest_block,
+        })
     }
 
     /// Poll indefinitely for a watcher timestamp, logging warnings if we wait

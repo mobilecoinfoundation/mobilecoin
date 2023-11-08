@@ -57,6 +57,7 @@ service MobilecoindAPI {
     rpc GetBlockInfo (GetBlockInfoRequest) returns (GetBlockInfoResponse) {}
     rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {}
     rpc GetLatestBlock (google.protobuf.Empty) returns (GetBlockResponse) {}
+    rpc GetBlocksData (GetBlocksDataRequest) returns (GetBlocksDataResponse) {}
     rpc GetTxStatusAsSender (SubmitTxResponse) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
     rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}
@@ -811,6 +812,34 @@ message GetBlockResponse {
 
     // Timestamp (only valid if timestamp_result_code is TimestampFound)
     uint64 timestamp = 6;
+}
+
+// Get multiple block datas coupled with timestamps
+message GetBlocksDataRequest {
+    // List of block numbers to query
+    repeated uint64 blocks = 1;
+}
+
+message BlockDataWithTimestamp {
+    /// Whether we found a block for the provided index.
+    bool found = 1;
+
+    /// The block data
+    blockchain.ArchiveBlock block_data = 2;
+
+    // Timestamp result code
+    watcher.TimestampResultCode timestamp_result_code = 3;
+
+    // Timestamp (only valid if timestamp_result_code is TimestampFound)
+    uint64 timestamp = 4;
+}
+
+message GetBlocksDataResponse {
+    /// Result (one for each index in the request)
+    repeated BlockDataWithTimestamp results = 1;
+
+    /// Latest block in the ledger.
+    blockchain.Block latest_block = 2;
 }
 
 // Get the status of a submitted transaction as the Sender.
