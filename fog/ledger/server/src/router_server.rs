@@ -1,10 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
+use crate::{
+    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
+    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
-
 use futures::executor::block_on;
 use grpcio::ChannelBuilder;
 use mc_attest_net::RaClient;
@@ -16,18 +15,15 @@ use mc_fog_api::ledger_grpc;
 use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
-use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel,
     ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
-use mc_watcher::watcher_db::WatcherDB;
-
-use crate::{
-    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
 };
 
 pub struct LedgerRouterServer<E, RC>
@@ -56,8 +52,6 @@ where
         config: LedgerRouterConfig,
         enclave: E,
         ra_client: RC,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
         block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> LedgerRouterServer<E, RC> {
@@ -137,8 +131,7 @@ where
         // Init block service
         let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
             config.chain_id.clone(),
-            ledger,
-            watcher,
+            block_provider,
             client_authenticator,
             logger.clone(),
         ));

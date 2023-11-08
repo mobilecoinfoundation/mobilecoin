@@ -2,41 +2,37 @@
 
 use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
-use mc_common::logger::{log, Logger};
+use mc_common::logger::Logger;
 use mc_fog_api::{
     external,
     ledger::{BlockData, BlockRequest, BlockResponse},
     ledger_grpc::FogBlockApi,
 };
-use mc_ledger_db::{self, Error as DbError, Ledger};
+use mc_fog_block_provider::{BlockProvider, BlocksDataResponse};
 use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_logger, send_result, Authenticator,
 };
-use mc_watcher::watcher_db::WatcherDB;
-use mc_watcher_api::TimestampResultCode;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct BlockService<L: Ledger + Clone> {
+pub struct BlockService {
     chain_id: String,
-    ledger: L,
-    watcher: WatcherDB,
+    block_provider: Box<dyn BlockProvider>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
 }
 
-impl<L: Ledger + Clone> BlockService<L> {
+impl BlockService {
     pub fn new(
         chain_id: String,
-        ledger: L,
-        watcher: WatcherDB,
+
+        block_provider: Box<dyn BlockProvider>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
             chain_id,
-            ledger,
-            watcher,
+            block_provider,
             authenticator,
             logger,
         }
@@ -45,65 +41,46 @@ impl<L: Ledger + Clone> BlockService<L> {
     fn get_blocks_impl(&mut self, request: BlockRequest) -> Result<BlockResponse, RpcStatus> {
         mc_common::trace_time!(self.logger, "Get Blocks");
 
-        let mut result = BlockResponse::new();
+        let block_indices = request
+            .ranges
+            .iter()
+            .flat_map(|range| range.start_block..range.end_block)
+            .collect::<Vec<_>>();
 
-        result.num_blocks = self
-            .ledger
-            .num_blocks()
+        let BlocksDataResponse {
+            results,
+            latest_block,
+        } = self
+            .block_provider
+            .get_blocks_data(block_indices.as_slice())
             .map_err(|err| rpc_database_err(err, &self.logger))?;
-        result.global_txo_count = self
-            .ledger
-            .num_txos()
-            .map_err(|err| rpc_database_err(err, &self.logger))?;
 
-        for range in request.ranges.iter() {
-            for block_idx in range.start_block..range.end_block {
-                match self.get_block(block_idx) {
-                    Ok(block) => result.blocks.push(block),
-                    // TODO: signal internal error for some errors?
-                    Err(err) => {
-                        log::error!(self.logger, "DbError getting block {}: {}", block_idx, err)
-                    }
-                };
-            }
-        }
+        let mut response = BlockResponse::new();
+        response.num_blocks = latest_block.index + 1;
+        response.global_txo_count = latest_block.cumulative_txo_count;
 
-        Ok(result)
-    }
-
-    fn get_block(&mut self, block_index: u64) -> Result<BlockData, DbError> {
-        let mut result = BlockData::new();
-        let block_contents = self.ledger.get_block_contents(block_index)?;
-        let block = self.ledger.get_block(block_index)?;
-        for output in block_contents.outputs {
-            result.outputs.push(external::TxOut::from(&output));
-        }
-        result.index = block_index;
-        result.global_txo_count = block.cumulative_txo_count;
-
-        // Get the timestamp of the block_index if possible
-        let (timestamp, ts_result): (u64, TimestampResultCode) =
-            match self.watcher.get_block_timestamp(block_index) {
-                Ok((ts, res)) => (ts, res),
-                Err(err) => {
-                    log::error!(
-                        self.logger,
-                        "Could not obtain timestamp for block {} due to error {:?}",
-                        block_index,
-                        err
-                    );
-                    (u64::MAX, TimestampResultCode::WatcherDatabaseError)
+        let results = results
+            .into_iter()
+            .flatten()
+            .map(|b| {
+                let mut result = BlockData::new();
+                for output in b.block_data.contents().outputs.iter() {
+                    result.outputs.push(external::TxOut::from(output));
                 }
-            };
+                result.index = b.block_data.block().index;
+                result.global_txo_count = b.block_data.block().cumulative_txo_count;
+                result.timestamp = b.block_timestamp;
+                result.timestamp_result_code = b.block_timestamp_result_code as u32;
+                result
+            })
+            .collect::<Vec<_>>();
+        response.blocks = results.into();
 
-        result.timestamp = timestamp;
-        result.timestamp_result_code = ts_result as u32;
-
-        Ok(result)
+        Ok(response)
     }
 }
 
-impl<L: Ledger + Clone> FogBlockApi for BlockService<L> {
+impl FogBlockApi for BlockService {
     fn get_blocks(
         &mut self,
         ctx: RpcContext,

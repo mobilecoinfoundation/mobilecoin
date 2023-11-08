@@ -24,9 +24,10 @@ pub trait BlockProvider: DynClone + Send + Sync {
     /// Get the latest block in the ledger.
     fn get_latest_block(&self) -> Result<Block, Error>;
 
-    /// Get block data by block number, and in addition get information
-    /// about the latest block. Also include block timestamp, if available.
-    fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error>;
+    /// Get block data of multiple blocks by block number, and in addition get
+    /// information about the latest block. Also include block timestamp for
+    /// each block, if available.
+    fn get_blocks_data(&self, block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error>;
 
     /// Poll indefinitely for a watcher timestamp, logging warnings if we wait
     /// for more than watcher_timeout.
@@ -44,12 +45,27 @@ pub trait BlockProvider: DynClone + Send + Sync {
         &self,
         tx_out_pub_keys: &[CompressedRistrettoPublic],
     ) -> Result<TxOutInfoByPublicKeyResponse, Error>;
+
+    /// Convenience method to get a single block data by block number.
+    fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error> {
+        let BlocksDataResponse {
+            mut results,
+            latest_block,
+        } = self.get_blocks_data(&[block_index])?;
+
+        let result = results.pop().flatten().ok_or(Error::NotFound)?;
+
+        Ok(BlockDataResponse {
+            result,
+            latest_block,
+        })
+    }
 }
 
 dyn_clone::clone_trait_object!(BlockProvider);
 
 #[derive(Clone, Debug)]
-pub struct BlockDataResponse {
+pub struct BlockDataWithTimestamp {
     /// The block data.
     pub block_data: BlockData,
 
@@ -58,6 +74,21 @@ pub struct BlockDataResponse {
 
     /// Timestamp result code.
     pub block_timestamp_result_code: TimestampResultCode,
+}
+
+#[derive(Clone, Debug)]
+pub struct BlocksDataResponse {
+    /// Results.
+    pub results: Vec<Option<BlockDataWithTimestamp>>,
+
+    /// The latest block.
+    pub latest_block: Block,
+}
+
+#[derive(Clone, Debug)]
+pub struct BlockDataResponse {
+    /// Result.
+    pub result: BlockDataWithTimestamp,
 
     /// The latest block.
     pub latest_block: Block,

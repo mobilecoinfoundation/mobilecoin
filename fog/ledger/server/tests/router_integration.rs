@@ -241,8 +241,6 @@ fn create_router(
         config,
         enclave,
         ra_client,
-        ledger.clone(),
-        watcher.clone(),
         LocalBlockProvider::new(ledger, watcher),
         logger,
     );

@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use crate::{BlockDataResponse, BlockProvider, Error, TxOutInfoByPublicKeyResponse};
+use crate::{BlocksDataResponse, BlockProvider, Error, TxOutInfoByPublicKeyResponse, BlockDataWithTimestamp};
 use mc_blockchain_types::{Block, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ledger::{TxOutResult, TxOutResultCode};
@@ -89,16 +89,35 @@ impl<L: Ledger + Clone + Sync> BlockProvider for LocalBlockProvider<L> {
         Ok(self.ledger.get_latest_block()?)
     }
 
-    fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error> {
-        let block_data = self.ledger.get_block_data(block_index)?;
+    fn get_blocks_data(&self, block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error> {
+        let mut results = Vec::with_capacity(block_indices.len());
+
         let latest_block = self.ledger.get_latest_block()?;
 
-        let (block_timestamp, block_timestamp_result_code) = self.get_block_timestamp(block_index);
+        for block_index in block_indices {
+            let block_data = match self.ledger.get_block_data(*block_index) {
+                Ok(block_data) => block_data,
+                Err(LedgerError::NotFound) => {
+                    results.push(None);
+                    continue;
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
+            };
 
-        Ok(BlockDataResponse {
-            block_data,
-            block_timestamp,
-            block_timestamp_result_code,
+            let (block_timestamp, block_timestamp_result_code) =
+                self.get_block_timestamp(*block_index);
+
+            results.push(Some(BlockDataWithTimestamp {
+                block_data,
+                block_timestamp,
+                block_timestamp_result_code,
+            }));
+        }
+
+        Ok(BlocksDataResponse {
+            results,
             latest_block,
         })
     }

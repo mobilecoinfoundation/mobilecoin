@@ -8,7 +8,7 @@ use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
-use mc_fog_block_provider::{BlockProvider, Error as BlockProviderError};
+use mc_fog_block_provider::{BlockDataResponse, BlockProvider, Error as BlockProviderError};
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_fog_types::common::BlockRange;
@@ -16,6 +16,7 @@ use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
 };
+use mc_watcher_api::TimestampResultCode;
 use retry::{delay, retry, OperationResult};
 use std::{
     cmp::min,
@@ -228,7 +229,10 @@ impl<
                 );
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
             }
-            Ok(response) => {
+            Ok(BlockDataResponse {
+                result,
+                latest_block,
+            }) => {
                 // Tracing
                 let tracer = tracer!();
 
@@ -243,13 +247,19 @@ impl<
                 // Only add blocks within the epoch to the ORAM
                 if block_range.contains(*next_block_index) {
                     // Get the timestamp for the block.
-                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                        self.block_provider
-                            .poll_block_timestamp(*next_block_index, watcher_timeout)
-                    });
+                    let timestamp = if result.block_timestamp_result_code
+                        == TimestampResultCode::TimestampFound
+                    {
+                        result.block_timestamp
+                    } else {
+                        tracer.in_span("poll_block_timestamp", |_cx| {
+                            self.block_provider
+                                .poll_block_timestamp(*next_block_index, watcher_timeout)
+                        })
+                    };
 
                     // Add block to enclave.
-                    let records = response
+                    let records = result
                         .block_data
                         .contents()
                         .key_images
@@ -274,7 +284,7 @@ impl<
                     // we just processed, so we have fully processed next_block_index + 1 blocks
                     shared_state.highest_processed_block_count = *next_block_index + 1;
                     shared_state.last_known_block_cumulative_txo_count =
-                        response.latest_block.cumulative_txo_count;
+                        latest_block.cumulative_txo_count;
                 });
 
                 *next_block_index += 1;

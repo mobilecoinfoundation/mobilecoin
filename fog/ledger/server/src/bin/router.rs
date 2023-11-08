@@ -53,15 +53,13 @@ fn main() {
     let watcher_db =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
-    let block_provider = LocalBlockProvider::new(ledger_db.clone(), watcher_db.clone());
+    let block_provider = LocalBlockProvider::new(ledger_db.clone(), watcher_db);
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut router_server = LedgerRouterServer::new(
         config,
         enclave,
         ias_client,
-        ledger_db.clone(),
-        watcher_db,
         block_provider,
         logger.clone(),
     );
