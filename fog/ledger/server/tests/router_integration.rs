@@ -237,7 +237,15 @@ fn create_router(
 
     let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
 
-    let mut router = LedgerRouterServer::new(config, enclave, ra_client, ledger, watcher, logger);
+    let mut router = LedgerRouterServer::new(
+        config,
+        enclave,
+        ra_client,
+        ledger.clone(),
+        watcher.clone(),
+        LocalBlockProvider::new(ledger, watcher),
+        logger,
+    );
     router.start();
     router
 }

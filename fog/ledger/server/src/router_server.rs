@@ -13,6 +13,7 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_fog_api::ledger_grpc;
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::LedgerDB;
@@ -57,6 +58,7 @@ where
         ra_client: RC,
         ledger: LedgerDB,
         watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> LedgerRouterServer<E, RC> {
         let mut ledger_store_grpc_clients = HashMap::new();
@@ -119,7 +121,7 @@ where
         let merkle_proof_service =
             ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
                 config.chain_id.clone(),
-                ledger.clone(),
+                block_provider.clone(),
                 enclave.clone(),
                 client_authenticator.clone(),
                 logger.clone(),

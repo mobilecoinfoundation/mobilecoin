@@ -7,9 +7,9 @@ use mc_attest_enclave_api::ClientSession;
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{ledger::OutputResultCode, ledger_grpc::FogMerkleProofApi};
+use mc_fog_block_provider::{BlockProvider, Error as BlockProviderError};
 use mc_fog_ledger_enclave::{GetOutputsResponse, LedgerEnclaveProxy, OutputContext, OutputResult};
 use mc_fog_ledger_enclave_api::Error as EnclaveError;
-use mc_ledger_db::{Error as DbError, Ledger};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_internal_error, rpc_invalid_arg_error,
@@ -21,25 +21,25 @@ use std::sync::Arc;
 pub const MAX_REQUEST_SIZE: usize = 2000;
 
 #[derive(Clone)]
-pub struct MerkleProofService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
+pub struct MerkleProofService<E: LedgerEnclaveProxy> {
     chain_id: String,
-    ledger: L,
+    block_provider: Box<dyn BlockProvider>,
     enclave: E,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
 }
 
-impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
+impl<E: LedgerEnclaveProxy> MerkleProofService<E> {
     pub fn new(
         chain_id: String,
-        ledger: L,
+        block_provider: Box<dyn BlockProvider>,
         enclave: E,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
             chain_id,
-            ledger,
+            block_provider,
             enclave,
             authenticator,
             logger,
@@ -108,25 +108,20 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
             ));
         }
 
-        let latest_block_version = self
-            .ledger
+        let latest_block = self
+            .block_provider
             .get_latest_block()
-            .map_err(|err| rpc_database_err(err, &self.logger))?
-            .version;
+            .map_err(|err| rpc_database_err(err, &self.logger))?;
+
+        let latest_block_version = latest_block.version;
 
         Ok(GetOutputsResponse {
-            num_blocks: self
-                .ledger
-                .num_blocks()
-                .map_err(|err| rpc_database_err(err, &self.logger))?,
-            global_txo_count: self
-                .ledger
-                .num_txos()
-                .map_err(|err| rpc_database_err(err, &self.logger))?,
+            num_blocks: latest_block.index + 1,
+            global_txo_count: latest_block.cumulative_txo_count,
             results: output_context
                 .indexes
                 .iter()
-                .map(|idx| -> Result<OutputResult, DbError> {
+                .map(|idx| -> Result<OutputResult, BlockProviderError> {
                     Ok(match self.get_output_impl(*idx)? {
                         Some((output, proof)) => OutputResult {
                             index: *idx,
@@ -142,7 +137,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
                         },
                     })
                 })
-                .collect::<Result<Vec<_>, DbError>>()
+                .collect::<Result<Vec<_>, BlockProviderError>>()
                 .map_err(|err| rpc_database_err(err, &self.logger))?,
             latest_block_version,
             max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
@@ -152,19 +147,19 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
     fn get_output_impl(
         &mut self,
         idx: u64,
-    ) -> Result<Option<(TxOut, TxOutMembershipProof)>, DbError> {
-        match self.ledger.get_tx_out_by_index(idx).and_then(|tx_out| {
-            let proofs = self.ledger.get_tx_out_proof_of_memberships(&[idx])?;
-            Ok(Some((tx_out, proofs[0].clone())))
-        }) {
-            Ok(result) => Ok(result),
-            Err(DbError::NotFound) => Ok(None),
+    ) -> Result<Option<(TxOut, TxOutMembershipProof)>, BlockProviderError> {
+        match self
+            .block_provider
+            .get_tx_out_and_membership_proof_by_index(idx)
+        {
+            Ok(result) => Ok(Some(result)),
+            Err(BlockProviderError::NotFound) => Ok(None),
             Err(err) => Err(err),
         }
     }
 }
 
-impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogMerkleProofApi for MerkleProofService<L, E> {
+impl<E: LedgerEnclaveProxy> FogMerkleProofApi for MerkleProofService<E> {
     fn get_outputs(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -230,7 +225,9 @@ mod test {
         HashSet,
     };
     use mc_crypto_keys::RistrettoPrivate;
+    use mc_fog_block_provider::LocalBlockProvider;
     use mc_fog_ledger_test_infra::{MockEnclave, MockLedger};
+    use mc_ledger_db::Ledger;
     use mc_transaction_core::{
         membership_proofs::Range,
         tokens::Mob,
@@ -299,7 +296,7 @@ mod test {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut ledger_server_node = MerkleProofService::new(
             "local".to_string(),
-            mock_ledger.clone(),
+            LocalBlockProvider::new(mock_ledger.clone(), None),
             enclave,
             authenticator,
             logger,
@@ -358,7 +355,7 @@ mod test {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut ledger_server_node = MerkleProofService::new(
             "local".to_string(),
-            mock_ledger,
+            LocalBlockProvider::new(mock_ledger, None),
             enclave,
             authenticator,
             logger,

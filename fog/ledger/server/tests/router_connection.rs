@@ -157,6 +157,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 ra_client,
                 ledger.clone(),
                 watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
@@ -434,6 +435,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 ra_client,
                 ledger.clone(),
                 watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
@@ -636,6 +638,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             ra_client,
             ledger.clone(),
             watcher.clone(),
+            LocalBlockProvider::new(ledger.clone(), watcher.clone()),
             logger.clone(),
         );
 
@@ -801,6 +804,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             ra_client,
             ledger.clone(),
             watcher.clone(),
+            LocalBlockProvider::new(ledger.clone(), watcher.clone()),
             logger.clone(),
         );
 
@@ -1013,6 +1017,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 ra_client,
                 ledger.clone(),
                 watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 

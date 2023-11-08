@@ -6,15 +6,20 @@
 mod error;
 mod local;
 
+use dyn_clone::DynClone;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
+use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use std::time::Duration;
 
 pub use error::Error;
 pub use local::LocalBlockProvider;
 
-pub trait BlockProvider: Send {
+pub trait BlockProvider: DynClone + Send + Sync {
     /// Get the number of blocks currently in the ledger.
     fn num_blocks(&self) -> Result<u64, Error>;
+
+    /// Get the latest block in the ledger.
+    fn get_latest_block(&self) -> Result<Block, Error>;
 
     /// Get block contents by block number, and in addition get information
     /// about the latest block.
@@ -23,7 +28,15 @@ pub trait BlockProvider: Send {
     /// Poll indefinitely for a watcher timestamp, logging warnings if we wait
     /// for more than watcher_timeout.
     fn poll_block_timestamp(&self, block_index: BlockIndex, watcher_timeout: Duration) -> u64;
+
+    /// Get TxOut and membership proof by tx out index.
+    fn get_tx_out_and_membership_proof_by_index(
+        &self,
+        tx_out_index: u64,
+    ) -> Result<(TxOut, TxOutMembershipProof), Error>;
 }
+
+dyn_clone::clone_trait_object!(BlockProvider);
 
 #[derive(Clone, Debug)]
 pub struct BlockContentsResponse {

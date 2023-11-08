@@ -11,8 +11,10 @@ rust-version = { workspace = true }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-mobilecoind-api = { path = "../../mobilecoind/api" }
+mc-transaction-core = { path = "../../transaction/core" }
 mc-watcher = { path = "../../watcher" }
 
 displaydoc = "0.2"
+dyn-clone = "1.0.16"
 
 [dev-dependencies]
