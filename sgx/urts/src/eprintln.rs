@@ -20,8 +20,8 @@ pub unsafe extern "C" fn eprintln_message(msg: *const u8, msg_len: usize) {
 
 fn eprintln_message_impl(msg_bytes: &[u8]) {
     match str::from_utf8(msg_bytes) {
-        Ok(v) => global_log::info!("Enclave eprintln: {}", v),
-        Err(e) => global_log::info!(
+        Ok(v) => global_log::warn!("Enclave eprintln: {}", v),
+        Err(e) => global_log::warn!(
             "Enclave eprintln message contained invalid utf8:\n{}\n{:?}",
             e,
             msg_bytes

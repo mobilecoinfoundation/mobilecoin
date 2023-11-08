@@ -285,6 +285,8 @@ class Node:
             f'--tokens={self.tokens_config_file}',
         ])
 
+        print(f'command {cmd}')
+        exit(1)
         print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')
         print(f' - Peers: {self.peers}')
         print(f' - Quorum set: {pformat(quorum_set)}')

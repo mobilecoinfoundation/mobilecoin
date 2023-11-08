@@ -5,10 +5,11 @@
 
 use core::alloc::{GlobalAlloc, Layout};
 // use mc_sgx_debug::eprintln;
-use mc_sgx_sync::Mutex;
+// use mc_sgx_sync::Mutex;
 use lazy_static::lazy_static;
 use core::fmt;
 use core::fmt::Write;
+use core::sync::atomic;
 
 /// Byte size of [`WriteBuffer`].
 ///
@@ -84,7 +85,8 @@ extern "C" {
 }
 
 lazy_static! {
-    static ref TOTAL_HEAP: Mutex<u64> = Mutex::new(0);
+    // static ref TOTAL_HEAP: Mutex<u64> = Mutex::new(0);
+    static ref TOTAL_HEAP: atomic::AtomicU64 = atomic::AtomicU64::new(0);
 }
 
 // Our allocator definition
@@ -92,16 +94,32 @@ struct SgxAllocator;
 
 unsafe impl GlobalAlloc for SgxAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let memory = TOTAL_HEAP.lock().unwrap();
-        memory.checked_add(layout.size() as u64).unwrap();
+        // let memory = TOTAL_HEAP.lock().unwrap();
+        // memory.checked_add(layout.size() as u64).unwrap();
+        let used_memory = TOTAL_HEAP.fetch_add(layout.size() as u64, atomic::Ordering::SeqCst);
         let mut buf = WriteBuffer::new();
-        write!(&mut buf, "TOTAL MEMORY {} bytes", memory).unwrap();
+        write!(&mut buf, "ALLOCATED {} bytes", layout.size() as u64).unwrap();
+        let contents: &[u8] = buf.as_ref();
+        eprintln_message(contents.as_ptr(), contents.len());
+        if layout.size() > 1 << 20 {
+            buf.clear();
+            write!(&mut buf, "THIS WAS A BIGUN {} bytes", layout.size() as u64).unwrap();
+            let contents: &[u8] = buf.as_ref();
+            eprintln_message(contents.as_ptr(), contents.len());
+        }
+        buf.clear();
+        write!(&mut buf, "TOTAL MEMORY USED {} bytes", used_memory + layout.size() as u64).unwrap();
         let contents: &[u8] = buf.as_ref();
         eprintln_message(contents.as_ptr(), contents.len());
         memalign(layout.align(), layout.size())
     }
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        TOTAL_HEAP.lock().unwrap().checked_sub(layout.size() as u64).unwrap();
+        let mut buf = WriteBuffer::new();
+        write!(&mut buf, "FREED {} bytes", layout.size()).unwrap();
+        let contents: &[u8] = buf.as_ref();
+        eprintln_message(contents.as_ptr(), contents.len());
+        TOTAL_HEAP.fetch_sub(layout.size() as u64, atomic::Ordering::SeqCst);
+        // TOTAL_HEAP.lock().unwrap().checked_sub(layout.size() as u64).unwrap();
         free(ptr)
     }
 }
