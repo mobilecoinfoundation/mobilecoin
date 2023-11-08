@@ -11,6 +11,7 @@ use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ledger::TxOutResult;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
+use mc_watcher_api::TimestampResultCode;
 use std::time::Duration;
 
 pub use error::Error;
@@ -24,7 +25,7 @@ pub trait BlockProvider: DynClone + Send + Sync {
     fn get_latest_block(&self) -> Result<Block, Error>;
 
     /// Get block data by block number, and in addition get information
-    /// about the latest block.
+    /// about the latest block. Also include block timestamp, if available.
     fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error>;
 
     /// Poll indefinitely for a watcher timestamp, logging warnings if we wait
@@ -51,6 +52,12 @@ dyn_clone::clone_trait_object!(BlockProvider);
 pub struct BlockDataResponse {
     /// The block data.
     pub block_data: BlockData,
+
+    /// Block timestamp, if available (u64::MAX if not).
+    pub block_timestamp: u64,
+
+    /// Timestamp result code.
+    pub block_timestamp_result_code: TimestampResultCode,
 
     /// The latest block.
     pub latest_block: Block,

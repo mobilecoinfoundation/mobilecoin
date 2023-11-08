@@ -60,30 +60,23 @@ impl<L: Ledger + Clone + Sync> LocalBlockProvider<L> {
             }
         };
 
-        // Get the timestamp of the block_index if possible
-        let (timestamp, ts_result): (u64, TimestampResultCode) = self
-            .watcher
-            .as_ref()
-            .map(|watcher| match watcher.get_block_timestamp(block_index) {
-                Ok((ts, res)) => (ts, res),
-                Err(_err) => {
-                    // TODO
-                    // log::error!(
-                    //     self.logger,
-                    //     "Could not obtain timestamp for block {} due to error {:?}",
-                    //     block_index,
-                    //     err
-                    // );
-                    (u64::MAX, TimestampResultCode::WatcherDatabaseError)
-                }
-            })
-            .unwrap_or_else(|| (u64::MAX, TimestampResultCode::Unavailable));
+        let (timestamp, ts_result) = self.get_block_timestamp(block_index);
 
         result.block_index = block_index;
         result.timestamp = timestamp;
         result.timestamp_result_code = ts_result as u32;
 
         Ok(result)
+    }
+
+    fn get_block_timestamp(&self, block_index: BlockIndex) -> (u64, TimestampResultCode) {
+        self.watcher
+            .as_ref()
+            .map_or((u64::MAX, TimestampResultCode::Unavailable), |watcher| {
+                watcher
+                    .get_block_timestamp(block_index)
+                    .unwrap_or((u64::MAX, TimestampResultCode::WatcherDatabaseError))
+            })
     }
 }
 
@@ -99,8 +92,13 @@ impl<L: Ledger + Clone + Sync> BlockProvider for LocalBlockProvider<L> {
     fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error> {
         let block_data = self.ledger.get_block_data(block_index)?;
         let latest_block = self.ledger.get_latest_block()?;
+
+        let (block_timestamp, block_timestamp_result_code) = self.get_block_timestamp(block_index);
+
         Ok(BlockDataResponse {
             block_data,
+            block_timestamp,
+            block_timestamp_result_code,
             latest_block,
         })
     }
