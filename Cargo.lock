@@ -3416,10 +3416,13 @@ dependencies = [
  "displaydoc",
  "dyn-clone",
  "mc-blockchain-types",
+ "mc-crypto-keys",
+ "mc-fog-api",
  "mc-ledger-db",
  "mc-mobilecoind-api",
  "mc-transaction-core",
  "mc-watcher",
+ "mc-watcher-api",
 ]
 
 [[package]]

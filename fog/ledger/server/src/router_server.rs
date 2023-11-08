@@ -130,8 +130,7 @@ where
         let untrusted_tx_out_service =
             ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
                 config.chain_id.clone(),
-                ledger.clone(),
-                watcher.clone(),
+                block_provider.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
             ));
