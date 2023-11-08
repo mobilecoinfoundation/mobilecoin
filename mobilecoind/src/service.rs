@@ -1622,6 +1622,23 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(response)
     }
 
+    fn get_latest_block_impl(
+        &mut self,
+        _request: api::Empty,
+    ) -> Result<api::GetBlockResponse, RpcStatus> {
+        let num_blocks = self
+            .ledger_db
+            .num_blocks()
+            .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
+
+        let request = api::GetBlockRequest {
+            block: num_blocks - 1,
+            ..Default::default()
+        };
+
+        self.get_block_impl(request)
+    }
+
     fn get_tx_status_as_sender_impl(
         &mut self,
         request: api::SubmitTxResponse,
@@ -2321,6 +2338,7 @@ build_api! {
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
     get_block GetBlockRequest GetBlockResponse get_block_impl,
+    get_latest_block Empty GetBlockResponse get_latest_block_impl,
     get_tx_status_as_sender SubmitTxResponse GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
@@ -2965,6 +2983,30 @@ mod test {
         assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
         assert_eq!(response.key_images.len(), 0); // test code does not generate
                                                   // any key images
+        assert_eq!(
+            response.timestamp_result_code,
+            mc_api::watcher::TimestampResultCode::Unavailable
+        ); // test code doesnt have a watcher
+    }
+
+    #[test_with_logger]
+    fn test_get_latest_block_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        // Call get latet block
+        let response = client.get_latest_block(&Default::default()).unwrap();
+
+        assert_eq!(
+            Block::try_from(response.get_block()).unwrap(),
+            ledger_db.get_latest_block().unwrap(),
+        );
+        // FIXME: Implement block signatures for mobilecoind and test
+        assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
+        assert_eq!(response.key_images.len(), 1);
         assert_eq!(
             response.timestamp_result_code,
             mc_api::watcher::TimestampResultCode::Unavailable

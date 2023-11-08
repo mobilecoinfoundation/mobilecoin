@@ -8,6 +8,7 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
+mc-api = { path = "../../api" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../crypto/keys" }

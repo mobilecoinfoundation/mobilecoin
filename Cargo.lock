@@ -3416,6 +3416,7 @@ dependencies = [
  "displaydoc",
  "dyn-clone",
  "grpcio",
+ "mc-api",
  "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",

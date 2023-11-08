@@ -56,6 +56,7 @@ service MobilecoindAPI {
     rpc GetLedgerInfo (google.protobuf.Empty) returns (GetLedgerInfoResponse) {}
     rpc GetBlockInfo (GetBlockInfoRequest) returns (GetBlockInfoResponse) {}
     rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {}
+    rpc GetLatestBlock (google.protobuf.Empty) returns (GetBlockResponse) {}
     rpc GetTxStatusAsSender (SubmitTxResponse) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
     rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}

@@ -2,6 +2,7 @@
 
 use displaydoc::Display;
 use grpcio::RpcStatusCode;
+use mc_api::ConversionError;
 
 #[derive(Debug, Display)]
 pub enum Error {
@@ -13,6 +14,9 @@ pub enum Error {
 
     /// GRPC: {0}
     Grpc(grpcio::Error),
+
+    /// Conversion: {0}
+    Conversion(ConversionError),
 }
 
 impl From<mc_ledger_db::Error> for Error {
@@ -36,5 +40,11 @@ impl From<grpcio::Error> for Error {
             }
             _ => Self::Grpc(err),
         }
+    }
+}
+
+impl From<ConversionError> for Error {
+    fn from(err: ConversionError) -> Self {
+        Self::Conversion(err)
     }
 }

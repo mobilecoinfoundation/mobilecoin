@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use std::{sync::Arc, time::Duration};
-
+use crate::{BlockProvider, BlocksDataResponse, Error, TxOutInfoByPublicKeyResponse};
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_blockchain_types::{Block, BlockIndex};
 use mc_common::logger::Logger;
@@ -9,8 +8,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-
-use crate::{BlockProvider, BlocksDataResponse, Error, TxOutInfoByPublicKeyResponse};
+use std::{sync::Arc, time::Duration};
 
 #[derive(Clone)]
 pub struct MobilecoindBlockProvider {
@@ -39,7 +37,8 @@ impl BlockProvider for MobilecoindBlockProvider {
 
     /// Get the latest block in the ledger.
     fn get_latest_block(&self) -> Result<Block, Error> {
-        todo!()
+        let response = self.client.get_latest_block(&Default::default())?;
+        Ok(response.get_block().try_into()?)
     }
 
     /// Get block data of multiple blocks by block number, and in addition get
