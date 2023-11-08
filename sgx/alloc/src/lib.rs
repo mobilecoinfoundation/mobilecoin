@@ -4,10 +4,11 @@
 #![feature(alloc_error_handler)] // for alloc_error_handler
 
 use core::alloc::{GlobalAlloc, Layout};
-use mc_sgx_debug::eprintln;
+// use mc_sgx_debug::eprintln;
 // use mc_sgx_sync::Mutex;
 // use lazy_static::lazy_static;
 use core::fmt;
+use core::fmt::Write;
 
 /// Byte size of [`WriteBuffer`].
 ///
@@ -91,9 +92,9 @@ struct SgxAllocator;
 
 unsafe impl GlobalAlloc for SgxAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let mut buf = WriteBuffer;
+        let mut buf = WriteBuffer::new();
         write!(&mut buf, "ALLOCATING {} bytes", layout.size()).unwrap();
-        let contents = buf.as_ref();
+        let contents: &[u8] = buf.as_ref();
         eprintln_message(contents.as_ptr(), contents.len());
         // let memory = TOTAL_HEAP.lock().unwrap();
         // memory.checked_add(layout.size() as u64).unwrap();
