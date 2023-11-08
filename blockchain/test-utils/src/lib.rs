@@ -110,9 +110,13 @@ pub fn get_blocks_with_recipients<R: RngCore + CryptoRng>(
         };
 
         let block = match &prev_block {
-            Some(parent) => {
-                Block::new_with_parent(block_version, parent, &Default::default(), &block_contents)
-            }
+            Some(parent) => Block::new_with_parent(
+                block_version,
+                parent,
+                &Default::default(),
+                &block_contents,
+                parent.timestamp + 1,
+            ),
             None => Block::new_origin_block(&block_contents.outputs),
         };
         prev_block = Some(block.clone());
@@ -242,6 +246,7 @@ mod tests {
                 block.cumulative_txo_count,
                 &block.root_element,
                 &block.contents_hash,
+                block.timestamp,
             );
             assert_eq!(derived_block_id, block.id);
 

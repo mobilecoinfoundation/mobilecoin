@@ -662,9 +662,11 @@ impl<
                     }
                 }
 
-                ConsensusValue::MintTx(_) | ConsensusValue::MintConfigTx(_) => {
-                    // MintTxs and MintConfigTxs do not need to be broadcasted
-                    // to peers, they will learn about them
+                ConsensusValue::MintTx(_)
+                | ConsensusValue::MintConfigTx(_)
+                | ConsensusValue::TimeStamp(_) => {
+                    // These variants do not need to be broadcast
+                    // to peers. The peers will learn about them
                     // directly via SCP messages.
                 }
             };

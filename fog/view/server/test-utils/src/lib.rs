@@ -357,6 +357,7 @@ pub fn add_block_data(
             cumulative_tx_out_count,
             &Default::default(),
             &Default::default(),
+            0,
         ),
         0,
         txs,

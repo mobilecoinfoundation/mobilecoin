@@ -200,6 +200,7 @@ mod tests {
             88,
             &Default::default(),
             &Default::default(),
+            88,
         );
 
         let lcv = get_light_client_verifier(BTreeSet::from([block88.id.clone()]));
@@ -211,6 +212,7 @@ mod tests {
             99,
             &Default::default(),
             &Default::default(),
+            99,
         );
         let block9999 = Block::new(
             Default::default(),
@@ -219,6 +221,7 @@ mod tests {
             9999,
             &Default::default(),
             &Default::default(),
+            9999,
         );
         let block99999 = Block::new(
             Default::default(),
@@ -227,6 +230,7 @@ mod tests {
             99999,
             &Default::default(),
             &Default::default(),
+            99999,
         );
 
         // Block 88 verifies even without any signatures, because we put it in the
@@ -365,6 +369,7 @@ mod tests {
             9999,
             &Default::default(),
             &bc,
+            9999,
         );
 
         let metadata = sign_block_id_for_test_node_ids(&block9999.id, &[1, 2, 3]);
@@ -459,6 +464,7 @@ mod tests {
             9999,
             &Default::default(),
             &bc,
+            9999,
         );
 
         let metadata = sign_block_id_for_test_node_ids(&block9999.id, &[1, 2, 3]);

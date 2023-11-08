@@ -2,13 +2,9 @@
 
 //! A utility object for keeping track of pending transaction hashes.
 
-use crate::{mint_tx_manager::MintTxManager, tx_manager::TxManager};
+use crate::{mint_tx_manager::MintTxManager, timestamp_validator, tx_manager::TxManager};
 use mc_peers::ConsensusValue;
-use std::{
-    collections::{hash_map::Entry::Vacant, HashMap},
-    sync::Arc,
-    time::Instant,
-};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 /// A list of transactions that this node will attempt to submit to consensus.
 /// Invariant: each pending transaction is well-formed.
@@ -22,9 +18,9 @@ pub struct PendingValues<TXM: TxManager, MTXM: MintTxManager> {
 
     /// We need to store pending values vec so we can process values
     /// on a first-come first-served basis. However, we want to be able to:
-    /// 1) Efficiently see if we already have a given transaction and ignore
-    /// duplicates 2) Track how long each transaction took to externalize.
-    ///
+    ///     1. Efficiently see if we already have a given transaction and ignore
+    ///        duplicates
+    ///     2. Track how long each transaction took to externalize.
     /// To accomplish these goals we store, in addition to the queue of pending
     /// values, a map that maps a value to when we first encountered it.
     /// This essentially gives us an ordered HashMap.
@@ -69,49 +65,14 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
     /// list. Returns `true` if the value is valid and not already on the
     /// list, false otherwise.
     pub fn push(&mut self, value: ConsensusValue, timestamp: Option<Instant>) -> bool {
-        if let Vacant(entry) = self.pending_values_map.entry(value.clone()) {
-            match value {
-                ConsensusValue::TxHash(tx_hash) => {
-                    // A new transaction.
-                    if self.tx_manager.validate(&tx_hash).is_ok() {
-                        // The transaction is well-formed and valid.
-                        entry.insert(timestamp);
-                        self.pending_values.push(value);
-                        true
-                    } else {
-                        false
-                    }
-                }
-
-                ConsensusValue::MintConfigTx(ref mint_config_tx) => {
-                    if self
-                        .mint_tx_manager
-                        .validate_mint_config_tx(mint_config_tx)
-                        .is_ok()
-                    {
-                        // The transaction is well-formed and valid.
-                        entry.insert(timestamp);
-                        self.pending_values.push(value);
-                        true
-                    } else {
-                        false
-                    }
-                }
-
-                ConsensusValue::MintTx(ref mint_tx) => {
-                    if self.mint_tx_manager.validate_mint_tx(mint_tx).is_ok() {
-                        // The transaction is well-formed and valid.
-                        entry.insert(timestamp);
-                        self.pending_values.push(value);
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }
-        } else {
-            false
+        if self.pending_values_map.get(&value).is_some()
+            || !Self::validate(&value, &self.tx_manager, &self.mint_tx_manager)
+        {
+            return false;
         }
+        self.pending_values_map.insert(value.clone(), timestamp);
+        self.pending_values.push(value);
+        true
     }
 
     /// Iterate over the list of pending values.
@@ -129,13 +90,12 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
     where
         F: Fn(&ConsensusValue) -> bool,
     {
-        self.pending_values_map
-            .retain(|tx_hash, _| predicate(tx_hash));
+        self.pending_values_map.retain(|value, _| predicate(value));
 
         // (Help the borrow checker)
         let self_pending_values_map = &self.pending_values_map;
         self.pending_values
-            .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
+            .retain(|value| self_pending_values_map.contains_key(value));
 
         // Invariant
         assert_eq!(self.pending_values_map.len(), self.pending_values.len());
@@ -145,7 +105,15 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
     pub fn clear_invalid_values(&mut self) {
         let tx_manager = self.tx_manager.clone();
         let mint_tx_manager = self.mint_tx_manager.clone();
-        self.retain(|value| match value {
+        self.retain(|value| Self::validate(value, &tx_manager, &mint_tx_manager));
+    }
+
+    fn validate(
+        value: &ConsensusValue,
+        tx_manager: &Arc<TXM>,
+        mint_tx_manager: &Arc<MTXM>,
+    ) -> bool {
+        match value {
             ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
             ConsensusValue::MintConfigTx(ref mint_config_tx) => mint_tx_manager
                 .validate_mint_config_tx(mint_config_tx)
@@ -153,7 +121,10 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
             ConsensusValue::MintTx(ref mint_tx) => {
                 mint_tx_manager.validate_mint_tx(mint_tx).is_ok()
             }
-        });
+            ConsensusValue::TimeStamp(timestamp) => {
+                timestamp_validator::validate(*timestamp, 0).is_ok()
+            }
+        }
     }
 }
 

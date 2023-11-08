@@ -29,6 +29,9 @@ pub enum ConsensusValue {
 
     /// MintTx({0})
     MintTx(MintTx),
+
+    /// Timestamp({0})ms
+    TimeStamp(u64),
 }
 
 impl From<TxHash> for ConsensusValue {

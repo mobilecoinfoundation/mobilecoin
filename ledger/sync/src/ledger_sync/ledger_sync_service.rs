@@ -831,6 +831,7 @@ pub fn identify_safe_blocks<L: Ledger>(
             block.cumulative_txo_count,
             &block.root_element,
             &block_contents.hash(),
+            block.timestamp,
         );
         if block.id != derived_block_id {
             log::error!(

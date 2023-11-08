@@ -350,8 +350,13 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             validated_mint_config_txs,
         };
 
-        let block =
-            Block::new_with_parent(block_version, parent_block, root_element, &block_contents);
+        let block = Block::new_with_parent(
+            block_version,
+            parent_block,
+            root_element,
+            &block_contents,
+            inputs.timestamp,
+        );
 
         let signature = BlockSignature::from_block_and_keypair(&block, &self.signing_keypair)?;
 

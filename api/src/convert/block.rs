@@ -39,6 +39,7 @@ impl TryFrom<&blockchain::Block> for Block {
             cumulative_txo_count: value.cumulative_txo_count,
             root_element,
             contents_hash,
+            timestamp: value.timestamp,
         };
         Ok(block)
     }
@@ -65,6 +66,7 @@ mod tests {
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
             contents_hash: BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+            timestamp: 357,
         };
 
         let block = blockchain::Block::from(&source_block);
@@ -77,6 +79,7 @@ mod tests {
         assert_eq!(block.get_root_element().get_range().get_to(), 20);
         assert_eq!(block.get_root_element().get_hash().get_data(), &[12u8; 32]);
         assert_eq!(block.get_contents_hash().get_data(), [66u8; 32]);
+        assert_eq!(block.get_timestamp(), 357);
     }
 
     #[test]
@@ -131,6 +134,7 @@ mod tests {
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
             contents_hash: BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+            timestamp: 911,
         };
 
         // Encode using `protobuf`, decode using `prost`.

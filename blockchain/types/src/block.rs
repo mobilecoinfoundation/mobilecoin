@@ -45,6 +45,10 @@ pub struct Block {
     /// Hash of the block's contents.
     #[prost(message, required, tag = "7")]
     pub contents_hash: BlockContentsHash,
+
+    /// Timestamp of the block. ms since Unix epoch
+    #[prost(uint64, tag = "8")]
+    pub timestamp: u64,
 }
 
 impl Block {
@@ -58,6 +62,7 @@ impl Block {
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
         let root_element = TxOutMembershipElement::default();
+        let timestamp = 0;
 
         // The origin block does not contain anything but TxOuts.
         let block_contents = BlockContents {
@@ -73,6 +78,7 @@ impl Block {
             cumulative_txo_count,
             &root_element,
             &contents_hash,
+            timestamp,
         );
         Self {
             id,
@@ -82,6 +88,7 @@ impl Block {
             cumulative_txo_count,
             root_element,
             contents_hash,
+            timestamp,
         }
     }
 
@@ -100,6 +107,7 @@ impl Block {
         parent: &Block,
         root_element: &TxOutMembershipElement,
         block_contents: &BlockContents,
+        timestamp: u64,
     ) -> Self {
         Block::new(
             version,
@@ -108,6 +116,7 @@ impl Block {
             parent.cumulative_txo_count + block_contents.outputs.len() as u64,
             root_element,
             block_contents,
+            timestamp,
         )
     }
 
@@ -123,6 +132,7 @@ impl Block {
     ///   block*
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
+    /// * `timestamp` - The timestamp of the block.
     pub fn new(
         version: BlockVersion,
         parent_id: &BlockID,
@@ -130,6 +140,7 @@ impl Block {
         cumulative_txo_count: u64,
         root_element: &TxOutMembershipElement,
         block_contents: &BlockContents,
+        timestamp: u64,
     ) -> Self {
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
@@ -139,6 +150,7 @@ impl Block {
             cumulative_txo_count,
             root_element,
             &contents_hash,
+            timestamp,
         );
 
         Self {
@@ -149,6 +161,7 @@ impl Block {
             cumulative_txo_count,
             root_element: root_element.clone(),
             contents_hash,
+            timestamp,
         }
     }
 
@@ -165,6 +178,7 @@ impl Block {
             self.cumulative_txo_count,
             &self.root_element,
             &self.contents_hash,
+            self.timestamp,
         );
 
         self.id == expected_id
@@ -182,6 +196,7 @@ pub fn compute_block_id(
     cumulative_txo_count: u64,
     root_element: &TxOutMembershipElement,
     contents_hash: &BlockContentsHash,
+    timestamp: u64,
 ) -> BlockID {
     let mut transcript = MerlinTranscript::new(b"mobilecoin-block-id");
 
@@ -191,6 +206,11 @@ pub fn compute_block_id(
     cumulative_txo_count.append_to_transcript(b"cumulative_txo_count", &mut transcript);
     root_element.append_to_transcript(b"root_element", &mut transcript);
     contents_hash.append_to_transcript(b"contents_hash", &mut transcript);
+
+    // Earlier blocks didn't have a timestamp so it will come back as 0
+    if timestamp != 0 {
+        timestamp.append_to_transcript(b"timestamp", &mut transcript);
+    }
 
     let mut result = [0u8; 32];
     transcript.extract_digest(&mut result);
@@ -252,7 +272,7 @@ mod block_tests {
         (key_images, outputs)
     }
 
-    fn get_block<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
+    fn get_block_version_1<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
         let bytes = [14u8; 32];
         let parent_id = BlockID::try_from(&bytes[..]).unwrap();
 
@@ -270,6 +290,29 @@ mod block_tests {
             400,
             &root_element,
             &block_contents,
+            0, // timestamp of 0 for earlier block versions
+        )
+    }
+
+    fn get_block_version_4<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
+        let bytes = [14u8; 32];
+        let parent_id = BlockID::try_from(&bytes[..]).unwrap();
+
+        let root_element = TxOutMembershipElement {
+            range: Range::new(0, 15).unwrap(),
+            hash: TxOutMembershipHash::from([0u8; 32]),
+        };
+
+        let block_contents = get_block_contents(rng);
+
+        Block::new(
+            BlockVersion::FOUR,
+            &parent_id,
+            3,
+            400,
+            &root_element,
+            &block_contents,
+            10,
         )
     }
 
@@ -298,6 +341,7 @@ mod block_tests {
             400,
             &root_element,
             &block_contents,
+            0,
         )
     }
 
@@ -305,7 +349,7 @@ mod block_tests {
     /// The block returned by `get_block` should have a valid BlockID.
     fn test_get_block_has_valid_id() {
         let mut rng = get_seeded_rng();
-        let block = get_block(&mut rng);
+        let block = get_block_version_1(&mut rng);
         assert!(block.is_block_id_valid());
     }
 
@@ -313,7 +357,7 @@ mod block_tests {
     /// The block ID should depend on the block version.
     fn test_block_id_includes_version() {
         let mut rng = get_seeded_rng();
-        let mut block = get_block(&mut rng);
+        let mut block = get_block_version_1(&mut rng);
         block.version += 1;
         assert!(!block.is_block_id_valid());
     }
@@ -322,7 +366,7 @@ mod block_tests {
     /// The block ID should depend on the parent_id.
     fn test_block_id_includes_parent_id() {
         let mut rng = get_seeded_rng();
-        let mut block = get_block(&mut rng);
+        let mut block = get_block_version_1(&mut rng);
 
         let mut bytes = [0u8; 32];
         rng.fill_bytes(&mut bytes);
@@ -336,7 +380,7 @@ mod block_tests {
     /// The block ID should depend on the block's index.
     fn test_block_id_includes_block_index() {
         let mut rng = get_seeded_rng();
-        let mut block = get_block(&mut rng);
+        let mut block = get_block_version_1(&mut rng);
         block.index += 1;
         assert!(!block.is_block_id_valid());
     }
@@ -345,7 +389,7 @@ mod block_tests {
     /// The block ID should depend on the root element.
     fn test_block_id_includes_root_element() {
         let mut rng = get_seeded_rng();
-        let mut block = get_block(&mut rng);
+        let mut block = get_block_version_1(&mut rng);
 
         let wrong_root_element = TxOutMembershipElement {
             range: Range::new(13, 17).unwrap(),
@@ -359,7 +403,7 @@ mod block_tests {
     /// The block ID should depend on the content_hash.
     fn test_block_id_includes_content_hash() {
         let mut rng = get_seeded_rng();
-        let mut block = get_block(&mut rng);
+        let mut block = get_block_version_1(&mut rng);
 
         let mut bytes = [0u8; 32];
         rng.fill_bytes(&mut bytes);
@@ -386,7 +430,7 @@ mod block_tests {
         let mut rng = get_seeded_rng();
 
         //Check hash with memo
-        let block = get_block(&mut rng);
+        let block = get_block_version_1(&mut rng);
         assert_eq!(
             block.id.as_ref(),
             &[
@@ -419,6 +463,24 @@ mod block_tests {
             &[
                 243, 164, 40, 173, 7, 115, 68, 93, 208, 45, 219, 161, 198, 90, 201, 188, 104, 67,
                 1, 213, 3, 151, 104, 78, 72, 109, 223, 131, 19, 119, 118, 95
+            ]
+        );
+    }
+    #[test]
+    /// The block ID hash do not change as the code evolves.
+    /// This test was written by writing a failed assert and then copying the
+    /// actual block id into the test. This should hopefully catches cases where
+    /// we add/change Block/BlockContents and accidentally break id
+    /// calculation of old blocks.
+    fn test_hashing_is_consistent_block_version_four() {
+        let mut rng = get_seeded_rng();
+
+        let block = get_block_version_4(&mut rng);
+        assert_eq!(
+            block.id.as_ref(),
+            &[
+                156, 155, 244, 98, 84, 234, 204, 146, 224, 142, 236, 197, 11, 69, 5, 74, 109, 160,
+                123, 173, 206, 100, 224, 171, 72, 35, 208, 137, 150, 168, 43, 93
             ]
         );
     }

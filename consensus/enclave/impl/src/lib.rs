@@ -322,6 +322,20 @@ impl SgxConsensusEnclave {
         Ok(transactions)
     }
 
+    /// Validate the provided timestamp is valid.
+    ///
+    /// # Arguments
+    /// * `timestamp` - The timestamp to validate
+    /// * `parent_block_timestamp` - The timestamp of the parent block.
+    fn validate_timestamp(timestamp: u64, parent_block_timestamp: u64) -> Result<u64> {
+        if timestamp <= parent_block_timestamp {
+            return Err(Error::FormBlock(format!(
+                "Timestamp ({timestamp}) must be greater than parent block timestamp ({parent_block_timestamp})",
+            )));
+        }
+        Ok(timestamp)
+    }
+
     /// Validate a list of MintConfigTxs.
     ///
     /// # Arguments
@@ -937,13 +951,16 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             validated_mint_config_txs,
             mint_txs,
         };
-        //
+
+        let timestamp = Self::validate_timestamp(inputs.timestamp, parent_block.timestamp)?;
+
         // Form the block.
         let block = Block::new_with_parent(
             config.block_version,
             parent_block,
             root_element,
             &block_contents,
+            timestamp,
         );
 
         // Sign the block.
@@ -1056,6 +1073,8 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use yare::parameterized;
+    use assert_matches::assert_matches;
 
     // The private keys here are only used by tests. They do not need to be
     // specified for main net. The public keys associated with this private keys
@@ -1432,6 +1451,7 @@ mod tests {
                     &parent_block,
                     FormBlockInputs {
                         well_formed_encrypted_txs_with_proofs,
+                        timestamp: parent_block.timestamp + 1,
                         ..Default::default()
                     },
                     &root_element,
@@ -1609,6 +1629,7 @@ mod tests {
                     &parent_block,
                     FormBlockInputs {
                         well_formed_encrypted_txs_with_proofs,
+                        timestamp: parent_block.timestamp + 1,
                         ..Default::default()
                     },
                     &root_element,
@@ -1784,6 +1805,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -1901,6 +1923,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2012,6 +2035,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2102,6 +2126,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2191,6 +2216,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2296,6 +2322,7 @@ mod tests {
                                 mint_config_tx2.prefix.configs[0].clone(),
                             ),
                         ],
+                        timestamp: parent_block.timestamp + 1,
                         ..Default::default()
                     },
                     &root_element,
@@ -2460,6 +2487,7 @@ mod tests {
                         mint_config_tx.clone(),
                         mint_config_tx.prefix.configs[0].clone(),
                     )],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2631,6 +2659,7 @@ mod tests {
                     valid_mint_config_tx.clone(),
                     valid_mint_config_tx.prefix.configs[0].clone(),
                 )],
+                timestamp: parent_block.timestamp + 1,
                 ..Default::default()
             },
             &root_element,
@@ -2651,6 +2680,7 @@ mod tests {
                     invalid_mint_config_tx.clone(),
                     invalid_mint_config_tx.prefix.configs[0].clone(),
                 )],
+                timestamp: parent_block.timestamp + 1,
                 ..Default::default()
             },
             &root_element,
@@ -2732,6 +2762,7 @@ mod tests {
                             mint_config_tx1.prefix.configs[0].clone(),
                         ),
                     ],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2817,6 +2848,7 @@ mod tests {
                         mint_config_tx1.clone(),
                         mint_config_tx1.prefix.configs[0].clone(),
                     )],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -2886,6 +2918,7 @@ mod tests {
                     &parent_block,
                     FormBlockInputs {
                         mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+                        timestamp: parent_block.timestamp + 1,
                         ..Default::default()
                     },
                     &root_element,
@@ -2978,6 +3011,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone()],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -3044,6 +3078,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone()],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -3105,6 +3140,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx1.clone()],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -3240,6 +3276,7 @@ mod tests {
                                 mint_config_tx2.prefix.configs[0].clone(),
                             ),
                         ],
+                        timestamp: parent_block.timestamp + 1,
                         ..Default::default()
                     },
                     &root_element,
@@ -3372,6 +3409,7 @@ mod tests {
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+                    timestamp: parent_block.timestamp + 1,
                     ..Default::default()
                 },
                 &root_element,
@@ -3562,5 +3600,101 @@ mod tests {
             &blockchain_config,
         )
         .expect("Mint txs should be valid");
+    }
+
+    #[parameterized(
+        same_as_parent = {23456, 23456},
+        earlier_than_parent = {1233, 1234},
+        zero = {0, 0},
+    )]
+    fn timestamp_is_not_valid(timestamp: u64, parent_timestamp: u64) {
+        assert_matches!(SgxConsensusEnclave::validate_timestamp(timestamp, parent_timestamp), Err(Error::FormBlock(_)));
+    }
+
+    #[parameterized(
+        one_ms_later_than_parent = {9877, 9876},
+        much_later_than_parent = {8765, 4567},
+        one_more_than_zero = {1, 0},
+    )]
+    fn timestamp_is_valid(timestamp: u64, parent_timestamp: u64) {
+        assert_eq!(SgxConsensusEnclave::validate_timestamp(timestamp, parent_timestamp), Ok(timestamp));
+    }
+
+    #[test_with_logger]
+    fn test_form_block_failes_for_invalid_timestamp(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Create a valid test transaction.
+            let sender = AccountKey::random(&mut rng);
+            let recipient = AccountKey::random(&mut rng);
+
+            let mut ledger = create_ledger();
+            let n_blocks = 1;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Spend outputs from the origin block.
+            let origin_block_contents = ledger.get_block_contents(0).unwrap();
+
+            let input_transactions: Vec<Tx> = (0..3)
+                .map(|i| {
+                    let tx_out = origin_block_contents.outputs[i].clone();
+
+                    create_transaction(
+                        block_version,
+                        &ledger,
+                        &tx_out,
+                        &sender,
+                        &recipient.default_subaddress(),
+                        n_blocks + 1,
+                        &mut rng,
+                    )
+                })
+                .collect();
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<_> = input_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            assert_matches!(enclave
+                .form_block(
+                    &parent_block,
+                    FormBlockInputs {
+                        well_formed_encrypted_txs_with_proofs,
+                        ..Default::default()
+                    },
+                    &root_element,
+                ), Err(Error::FormBlock(_)));
+        }
     }
 }

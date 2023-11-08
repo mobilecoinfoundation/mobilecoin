@@ -40,7 +40,7 @@ use std::{
         Arc, Mutex,
     },
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant, UNIX_EPOCH},
 };
 
 /// Default number of consensus messages to process per batch.
@@ -436,12 +436,20 @@ impl<
         // Fairness heuristics:
         // * Values are proposed in the order that they were received.
         // * Each node limits the total number of values it proposes per slot.
-        let values = self
+        let mut values: BTreeSet<_> = self
             .pending_values
             .iter()
-            .take(MAX_PENDING_VALUES_TO_NOMINATE)
+            .take(MAX_PENDING_VALUES_TO_NOMINATE - 1)
             .cloned()
             .collect();
+
+        // Add a timestamp value to the nomination, there must be at least
+        // one timestamp value per slot.
+        // A zero time will fail to validate, but keep this task running.
+        let time = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
+        values.insert(ConsensusValue::TimeStamp(time.as_millis() as u64));
 
         let msg_opt = self
             .scp_node
@@ -609,6 +617,7 @@ impl<
                 mint_config_tx.prefix.tombstone_block > expired_block_index
             }
             ConsensusValue::MintTx(mint_tx) => mint_tx.prefix.tombstone_block > expired_block_index,
+            ConsensusValue::TimeStamp(_) => true,
         });
 
         // Drop pending values that are no longer considered valid.
@@ -825,6 +834,7 @@ impl<
         let mut tx_hashes = Vec::new();
         let mut mint_config_txs = Vec::new();
         let mut mint_txs = Vec::new();
+        let mut timestamps = Vec::new();
 
         for value in externalized_values {
             match value {
@@ -835,6 +845,7 @@ impl<
                 ConsensusValue::MintTx(mint_tx) => {
                     mint_txs.push(mint_tx);
                 }
+                ConsensusValue::TimeStamp(timestamp) => timestamps.push(timestamp),
             }
         }
 
@@ -858,6 +869,11 @@ impl<
             .get_root_tx_out_membership_element()
             .expect("Failed getting root tx out membership element");
 
+        let timestamp = timestamps
+            .into_iter()
+            .min()
+            .expect("Failed to find a timestamp in the output values");
+
         // Request the enclave to form the next block.
         let (block, block_contents, mut signature) = self
             .enclave
@@ -867,6 +883,7 @@ impl<
                     well_formed_encrypted_txs_with_proofs,
                     mint_config_txs,
                     mint_txs_with_config,
+                    timestamp,
                 },
                 &root_element,
             )
@@ -1679,6 +1696,7 @@ mod tests {
             ConsensusValue::TxHash(hash_tx2),
             ConsensusValue::TxHash(hash_tx3),
             ConsensusValue::MintTx(mint_tx1.clone()),
+            ConsensusValue::TimeStamp(35),
         ]);
         scp_node
             .expect_get_current_slot_metrics()

@@ -2100,6 +2100,7 @@ mod ledger_db_test {
             origin.block(),
             &Default::default(),
             &block_contents,
+            1,
         );
 
         assert_eq!(
@@ -2400,6 +2401,7 @@ mod ledger_db_test {
                 &last_block,
                 &Default::default(),
                 &block_contents,
+                last_block.timestamp + 1,
             );
             assert_eq!(
                 ledger_db.append_block(&invalid_block, &block_contents, None, None),
@@ -2412,6 +2414,7 @@ mod ledger_db_test {
                     &last_block,
                     &Default::default(),
                     &block_contents,
+                    last_block.timestamp + 1,
                 );
                 assert_eq!(
                     ledger_db.append_block(&invalid_block, &block_contents, None, None),
@@ -2450,6 +2453,7 @@ mod ledger_db_test {
                     &last_block,
                     &Default::default(),
                     &block_contents,
+                    last_block.timestamp + 1,
                 );
 
                 let metadata = make_block_metadata(last_block.id.clone(), &mut rng);
@@ -2504,6 +2508,7 @@ mod ledger_db_test {
             origin.cumulative_txo_count,
             &Default::default(),
             &block_contents,
+            1,
         );
         assert_eq!(
             ledger_db.append_block(&new_block, &block_contents, None, None),
@@ -2584,6 +2589,7 @@ mod ledger_db_test {
             origin.block(),
             &Default::default(),
             &block_one_contents,
+            1,
         );
 
         assert_eq!(
@@ -2645,6 +2651,7 @@ mod ledger_db_test {
                 origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
+                1,
             );
 
             assert_eq!(
@@ -2660,6 +2667,7 @@ mod ledger_db_test {
                 origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
+                1,
             );
 
             assert_eq!(

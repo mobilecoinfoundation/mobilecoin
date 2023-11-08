@@ -675,6 +675,7 @@ pub fn random_block(
         0,
         &Default::default(),
         &Default::default(),
+        0,
     );
     let test_rows: Vec<ETxOutRecord> = (0..num_txs).map(|_| random_tx_row(rng)).collect();
     (block, test_rows)

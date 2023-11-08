@@ -222,6 +222,9 @@ pub struct FormBlockInputs {
 
     /// Minting transactions coupled with configuration information.
     pub mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
+
+    /// The timestamp to use for the block. ms since Unix epoch.
+    pub timestamp: u64,
 }
 
 /// The API for interacting with a consensus node's enclave.
