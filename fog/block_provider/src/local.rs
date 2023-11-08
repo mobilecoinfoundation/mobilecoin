@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use crate::{BlockContentsResponse, BlockProvider, Error, TxOutInfoByPublicKeyResponse};
+use crate::{BlockDataResponse, BlockProvider, Error, TxOutInfoByPublicKeyResponse};
 use mc_blockchain_types::{Block, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ledger::{TxOutResult, TxOutResultCode};
@@ -96,11 +96,11 @@ impl<L: Ledger + Clone + Sync> BlockProvider for LocalBlockProvider<L> {
         Ok(self.ledger.get_latest_block()?)
     }
 
-    fn get_block_contents(&self, block_index: BlockIndex) -> Result<BlockContentsResponse, Error> {
-        let block_contents = self.ledger.get_block_contents(block_index)?;
+    fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error> {
+        let block_data = self.ledger.get_block_data(block_index)?;
         let latest_block = self.ledger.get_latest_block()?;
-        Ok(BlockContentsResponse {
-            block_contents,
+        Ok(BlockDataResponse {
+            block_data,
             latest_block,
         })
     }

@@ -7,7 +7,7 @@ mod error;
 mod local;
 
 use dyn_clone::DynClone;
-use mc_blockchain_types::{Block, BlockContents, BlockIndex};
+use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ledger::TxOutResult;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
@@ -23,9 +23,9 @@ pub trait BlockProvider: DynClone + Send + Sync {
     /// Get the latest block in the ledger.
     fn get_latest_block(&self) -> Result<Block, Error>;
 
-    /// Get block contents by block number, and in addition get information
+    /// Get block data by block number, and in addition get information
     /// about the latest block.
-    fn get_block_contents(&self, block_index: BlockIndex) -> Result<BlockContentsResponse, Error>;
+    fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockDataResponse, Error>;
 
     /// Poll indefinitely for a watcher timestamp, logging warnings if we wait
     /// for more than watcher_timeout.
@@ -48,9 +48,9 @@ pub trait BlockProvider: DynClone + Send + Sync {
 dyn_clone::clone_trait_object!(BlockProvider);
 
 #[derive(Clone, Debug)]
-pub struct BlockContentsResponse {
-    /// The block contents.
-    pub block_contents: BlockContents,
+pub struct BlockDataResponse {
+    /// The block data.
+    pub block_data: BlockData,
 
     /// The latest block.
     pub latest_block: Block,

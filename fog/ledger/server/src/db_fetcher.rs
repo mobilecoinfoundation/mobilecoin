@@ -217,7 +217,7 @@ impl<
 
         let start_time = SystemTime::now();
 
-        match self.block_provider.get_block_contents(*next_block_index) {
+        match self.block_provider.get_block_data(*next_block_index) {
             Err(BlockProviderError::NotFound) => may_have_more_work = false,
             Err(e) => {
                 log::error!(
@@ -250,7 +250,8 @@ impl<
 
                     // Add block to enclave.
                     let records = response
-                        .block_contents
+                        .block_data
+                        .contents()
                         .key_images
                         .iter()
                         .map(|key_image| KeyImageData {
