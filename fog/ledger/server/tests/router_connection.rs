@@ -124,8 +124,9 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             .unwrap();
             let config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
                 client_responder_id: client_listen_uri
@@ -361,8 +362,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for store"),
                 client_listen_uri: store_uri.clone(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir.clone(),
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir.clone()),
+                mobilecoind_uri: None,
                 ias_api_key: Default::default(),
                 ias_spid: Default::default(),
                 admin_listen_uri: Some(store_admin_uri),
@@ -402,8 +404,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
             .unwrap();
             let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
                 shard_uris: vec![store_uri],
@@ -601,8 +604,9 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         .unwrap();
         let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
+            ledger_db: Some(db_full_path.to_path_buf()),
+            watcher_db: Some(watcher_dir),
+            mobilecoind_uri: None,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
             client_responder_id: client_listen_uri
@@ -765,8 +769,9 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         .unwrap();
         let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
+            ledger_db: Some(db_full_path.to_path_buf()),
+            watcher_db: Some(watcher_dir),
+            mobilecoind_uri: None,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
             client_responder_id: client_listen_uri
@@ -937,8 +942,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for store"),
                 client_listen_uri: store_uri.clone(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir.clone(),
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir.clone()),
+                mobilecoind_uri: None,
                 ias_api_key: Default::default(),
                 ias_spid: Default::default(),
                 admin_listen_uri: Some(store_admin_uri),
@@ -978,8 +984,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             .unwrap();
             let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: router_client_listen_uri.clone(),
                 client_responder_id: router_client_listen_uri

@@ -5,6 +5,7 @@
 
 mod error;
 mod local;
+mod mobilecoind;
 
 use dyn_clone::DynClone;
 use mc_blockchain_types::{Block, BlockData, BlockIndex};
@@ -16,6 +17,7 @@ use std::time::Duration;
 
 pub use error::Error;
 pub use local::LocalBlockProvider;
+pub use mobilecoind::MobilecoindBlockProvider;
 
 pub trait BlockProvider: DynClone + Send + Sync {
     /// Get the number of blocks currently in the ledger.

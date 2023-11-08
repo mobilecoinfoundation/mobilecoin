@@ -1,6 +1,8 @@
 // Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use crate::{BlocksDataResponse, BlockProvider, Error, TxOutInfoByPublicKeyResponse, BlockDataWithTimestamp};
+use crate::{
+    BlockDataWithTimestamp, BlockProvider, BlocksDataResponse, Error, TxOutInfoByPublicKeyResponse,
+};
 use mc_blockchain_types::{Block, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ledger::{TxOutResult, TxOutResultCode};

@@ -3415,12 +3415,15 @@ version = "5.1.1"
 dependencies = [
  "displaydoc",
  "dyn-clone",
+ "grpcio",
  "mc-blockchain-types",
+ "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
  "mc-ledger-db",
  "mc-mobilecoind-api",
  "mc-transaction-core",
+ "mc-util-grpc",
  "mc-watcher",
  "mc-watcher-api",
 ]
@@ -3894,6 +3897,7 @@ dependencies = [
  "mc-fog-types",
  "mc-fog-uri",
  "mc-ledger-db",
+ "mc-mobilecoind-api",
  "mc-rand",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",

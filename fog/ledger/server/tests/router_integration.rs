@@ -61,8 +61,9 @@ fn create_store_config(
             .responder_id()
             .expect("Couldn't get responder ID for store"),
         client_listen_uri: store_uri.clone(),
-        ledger_db: Default::default(),
-        watcher_db: Default::default(),
+        ledger_db: Some(Default::default()),
+        watcher_db: Some(Default::default()),
+        mobilecoind_uri: None,
         ias_api_key: Default::default(),
         ias_spid: Default::default(),
         admin_listen_uri: None,
@@ -205,8 +206,9 @@ fn create_router(
 
     let config = LedgerRouterConfig {
         chain_id: "local".to_string(),
-        ledger_db: ledger_db_path.to_path_buf(),
-        watcher_db: watcher_db_path.to_path_buf(),
+        ledger_db: Some(ledger_db_path.to_path_buf()),
+        watcher_db: Some(watcher_db_path.to_path_buf()),
+        mobilecoind_uri: None,
         shard_uris: test_config
             .shards
             .iter()
