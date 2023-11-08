@@ -18,6 +18,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_crypto_keys::X25519;
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_enclave::{
     CheckKeyImagesResponse, KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE,
 };
@@ -174,8 +175,6 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let client_listen_uri = store_config.client_listen_uri.clone();
     let store_service = KeyImageService::new(
         client_listen_uri.clone(),
-        ledger,
-        watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally
         shared_state.clone(),
         Arc::new(AnonymousAuthenticator::default()),
@@ -190,6 +189,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         store_service,
         client_listen_uri,
         enclave.clone(),
+        LocalBlockProvider::new(ledger, watcher),
         ias_client,
         store_config.ias_spid,
         EpochShardingStrategy::default(),

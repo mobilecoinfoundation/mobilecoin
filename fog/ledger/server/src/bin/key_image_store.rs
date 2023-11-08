@@ -4,6 +4,7 @@ use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy};
 use mc_ledger_db::LedgerDB;
@@ -48,8 +49,7 @@ fn main() {
             config.clone(),
             enclave,
             ias_client,
-            ledger_db.clone(),
-            watcher,
+            LocalBlockProvider::new(ledger_db.clone(), watcher),
             sharding_strategy,
             SystemTimeProvider::default(),
             logger.clone(),

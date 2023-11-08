@@ -1,0 +1,18 @@
+[package]
+name = "mc-fog-block-provider"
+version = "5.1.1"
+authors = ["MobileCoin"]
+edition = "2021"
+description = "Provide blocks from a local or remote ledger database"
+license = "Apache-2.0"
+rust-version = { workspace = true }
+
+[dependencies]
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-mobilecoind-api = { path = "../../mobilecoind/api" }
+mc-watcher = { path = "../../watcher" }
+
+displaydoc = "0.2"
+
+[dev-dependencies]

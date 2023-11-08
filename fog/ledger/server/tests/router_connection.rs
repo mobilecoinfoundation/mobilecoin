@@ -15,6 +15,7 @@ use mc_common::{
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
@@ -383,8 +384,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 store_config,
                 store_enclave,
                 ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 EpochShardingStrategy::default(),
                 SystemTimeProvider::default(),
                 logger.clone(),
@@ -963,8 +963,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 store_config,
                 store_enclave,
                 ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 EpochShardingStrategy::default(),
                 SystemTimeProvider::default(),
                 logger.clone(),

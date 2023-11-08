@@ -10,6 +10,7 @@ use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{KeyImageResultExtension, LedgerGrpcClient};
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -158,8 +159,7 @@ fn create_store(
         config,
         enclave,
         ra_client,
-        ledger,
-        watcher,
+        LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::new(block_range),
         SystemTimeProvider::default(),
         logger,

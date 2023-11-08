@@ -3404,6 +3404,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-block-provider"
+version = "5.1.1"
+dependencies = [
+ "displaydoc",
+ "mc-blockchain-types",
+ "mc-ledger-db",
+ "mc-mobilecoind-api",
+ "mc-watcher",
+]
+
+[[package]]
 name = "mc-fog-distribution"
 version = "5.1.1"
 dependencies = [
@@ -3861,6 +3872,7 @@ dependencies = [
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
+ "mc-fog-block-provider",
  "mc-fog-enclave-connection",
  "mc-fog-ledger-connection",
  "mc-fog-ledger-enclave",
