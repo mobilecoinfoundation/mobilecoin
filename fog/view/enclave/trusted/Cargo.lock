@@ -1335,7 +1335,6 @@ version = "5.1.1"
 dependencies = [
  "lazy_static",
  "mc-sgx-debug",
- "mc-sgx-debug-edl",
  "mc-sgx-sync",
 ]
 
