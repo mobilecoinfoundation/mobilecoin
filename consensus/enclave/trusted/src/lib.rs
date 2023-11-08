@@ -16,7 +16,6 @@ use mc_sgx_compat::panic::catch_unwind;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
 use mc_util_serial::{deserialize, serialize};
-use mc_sgx_compat::eprintln;
 
 lazy_static! {
     /// Storage for ECALL results whose given outbuf was not large enough
@@ -32,12 +31,10 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
     let call_details: EnclaveCall =
         deserialize(inbuf).or(Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER))?;
 
-
     // And actually do it
     match call_details {
         // Utility methods
         EnclaveCall::EnclaveInit(peer_self_id, client_self_id, sealed_key, blockchain_config) => {
-            eprintln!("EnclaveCall::EnclaveInit");
             serialize(&ENCLAVE.enclave_init(
                 &peer_self_id,
                 &client_self_id,

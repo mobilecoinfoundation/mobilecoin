@@ -12,7 +12,6 @@ rust-version = "1.68.0"
 mc-sgx-debug = { path = "../debug" }
 lazy_static = "1.4"
 mc-sgx-sync = { path = "../sync" }
-mc-sgx-debug-edl = { path = "../debug-edl" }
 
 [features]
 default = ["oom_panic"]

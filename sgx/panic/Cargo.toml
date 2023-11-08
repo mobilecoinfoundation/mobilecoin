@@ -6,7 +6,6 @@ license = "GPL-3.0"
 readme = "README.md"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
 rust-version = "1.68.0"
-edition = "2021"
 
 [features]
 default = ["alloc", "panic_abort"]

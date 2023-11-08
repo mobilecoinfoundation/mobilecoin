@@ -363,7 +363,7 @@ class FogLedgerRouter:
 
         print(f'Starting fog ledger router {self.name}')
         cmd = ' '.join([
-            f'exec /opt/intel/sgxsdk/bin/sgx-gdb --eval-command="enable sgx_emmt" --args {self.target_dir}/ledger_router',
+            f'exec {self.target_dir}/ledger_router',
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
