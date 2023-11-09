@@ -14,7 +14,7 @@ path = "src/main.rs"
 # third party
 clap = { version = "4.4", features = ["derive", "env"] }
 ctrlc = "3.4"
-grpcio = "0.12.1"
+grpcio = "0.13.0"
 rand = "0.8"
 
 # mobilecoin
