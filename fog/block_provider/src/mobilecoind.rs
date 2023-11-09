@@ -63,7 +63,7 @@ impl BlockProvider for MobilecoindBlockProvider {
     /// each block, if available.
     fn get_blocks_data(&self, block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error> {
         let request = GetBlocksDataRequest {
-            blocks: block_indices.to_vec().into(),
+            blocks: block_indices.to_vec(),
             ..Default::default()
         };
         let response = self.client.get_blocks_data(&request)?;
@@ -82,8 +82,7 @@ impl BlockProvider for MobilecoindBlockProvider {
                     block_timestamp_result_code: (&result.timestamp_result_code).try_into()?,
                 }))
             })
-            .collect::<Result<Vec<_>, Error>>()?
-            .into();
+            .collect::<Result<Vec<_>, Error>>()?;
 
         let latest_block = Block::try_from(response.get_latest_block())?;
 
@@ -165,7 +164,7 @@ impl BlockProvider for MobilecoindBlockProvider {
         let response = self
             .client
             .get_membership_proofs(&GetMembershipProofsRequest {
-                indices: vec![tx_out_index].into(),
+                indices: vec![tx_out_index],
                 ..Default::default()
             })?;
 
