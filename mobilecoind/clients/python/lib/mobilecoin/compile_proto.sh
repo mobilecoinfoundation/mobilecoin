@@ -28,6 +28,7 @@ case "$(uname -s)" in
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/quorum_set.proto
+    py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/watcher.proto
     py.exe -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API --python_out=. $MC_ATTEST_API/attest.proto
     py.exe -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/fog_common.proto
     py.exe -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/ledger.proto
@@ -39,6 +40,7 @@ case "$(uname -s)" in
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/quorum_set.proto
+    python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/watcher.proto
     python3 -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API --python_out=. $MC_ATTEST_API/attest.proto
     python3 -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/fog_common.proto
     python3 -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/ledger.proto
