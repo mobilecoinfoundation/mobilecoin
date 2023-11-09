@@ -155,7 +155,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Create namespace
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      uses: mobilecoinofficial/gha-k8s-toolbox@4515f1d3832affff3979f7abf36a6f060f9485a5
       with:
         action: namespace-create
         namespace: ${{ inputs.namespace }}
