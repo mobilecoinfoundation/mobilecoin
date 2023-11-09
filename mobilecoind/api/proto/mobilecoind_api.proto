@@ -9,6 +9,7 @@ import "google/protobuf/empty.proto";
 import "external.proto";
 import "blockchain.proto";
 import "watcher.proto";
+import "ledger.proto";
 
 package mobilecoind_api;
 
@@ -62,6 +63,7 @@ service MobilecoindAPI {
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
     rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}
     rpc GetBlockIndexByTxPubKey (GetBlockIndexByTxPubKeyRequest) returns (GetBlockIndexByTxPubKeyResponse) {}
+    rpc GetTxOutResultsByPubKey (GetTxOutResultsByPubKeyRequest) returns (GetTxOutResultsByPubKeyResponse) {}
 
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
@@ -486,8 +488,10 @@ message GetMixinsResponse {
     repeated TxOutWithProof mixins = 1;
 }
 
+// Get membership proofs either by TxOuts or by TxOut indices.
 message GetMembershipProofsRequest {
     repeated external.TxOut outputs = 1;
+    repeated uint64 indices = 2;
 }
 
 message GetMembershipProofsResponse {
@@ -879,6 +883,16 @@ message GetBlockIndexByTxPubKeyRequest {
 message GetBlockIndexByTxPubKeyResponse {
     // The block index.
     uint64 block = 1;
+}
+
+// Get TxOutResults for a list of TxOut public keys.
+message GetTxOutResultsByPubKeyRequest {
+    repeated external.CompressedRistretto tx_out_public_keys = 1;
+}
+
+message GetTxOutResultsByPubKeyResponse {
+    repeated fog_ledger.TxOutResult results = 1;
+    blockchain.Block latest_block = 2;
 }
 
 //

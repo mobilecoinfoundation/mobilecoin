@@ -14,6 +14,7 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
+use api::ledger::{TxOutResult, TxOutResultCode};
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{
@@ -798,15 +799,43 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         request: api::GetMembershipProofsRequest,
     ) -> Result<api::GetMembershipProofsResponse, RpcStatus> {
-        let outputs: Vec<TxOut> = request
-            .get_outputs()
-            .iter()
-            .map(|tx_out| {
-                // Proto -> Rust struct conversion.
-                TxOut::try_from(tx_out)
-                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
-            })
-            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
+        let outputs: Vec<TxOut> = match (request.outputs.is_empty(), request.indices.is_empty()) {
+            // No outputs but indices are provided
+            (true, false) => request
+                .get_indices()
+                .iter()
+                .map(|idx| {
+                    self.ledger_db.get_tx_out_by_index(*idx).map_err(|err| {
+                        rpc_invalid_arg_error("get_tx_out_by_index", err, &self.logger)
+                    })
+                })
+                .collect::<Result<Vec<TxOut>, RpcStatus>>()?,
+
+            // Outputs and no indices
+            (false, true) => {
+                request
+                    .get_outputs()
+                    .iter()
+                    .map(|tx_out| {
+                        // Proto -> Rust struct conversion.
+                        TxOut::try_from(tx_out)
+                            .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
+                    })
+                    .collect::<Result<Vec<TxOut>, RpcStatus>>()?
+            }
+
+            // No outputs or indices
+            (true, true) => vec![],
+
+            // Both outputs and indices
+            (false, false) => {
+                return Err(rpc_invalid_arg_error(
+                    "request",
+                    "cannot provide both outputs and indices",
+                    &self.logger,
+                ))
+            }
+        };
 
         let proofs: Vec<TxOutMembershipProof> = self
             .transactions_manager
@@ -2067,6 +2096,36 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(response)
     }
 
+    fn get_tx_out_results_by_pub_key_impl(
+        &mut self,
+        request: api::GetTxOutResultsByPubKeyRequest,
+    ) -> Result<api::GetTxOutResultsByPubKeyResponse, RpcStatus> {
+        let tx_out_pub_keys = request
+            .tx_out_public_keys
+            .iter()
+            .map(CompressedRistrettoPublic::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| rpc_invalid_arg_error("tx_out_public_keys", err, &self.logger))?;
+
+        let latest_block: mc_api::blockchain::Block = (&self
+            .ledger_db
+            .get_latest_block()
+            .map_err(|err| rpc_internal_error("ledger_db.get_latest_block", err, &self.logger))?)
+            .into();
+
+        let results = tx_out_pub_keys
+            .iter()
+            .map(|pk| self.get_tx_out_result(pk))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| rpc_internal_error("get_tx_out_result", err, &self.logger))?;
+
+        Ok(api::GetTxOutResultsByPubKeyResponse {
+            results: results.into(),
+            latest_block: Some(latest_block).into(),
+            ..Default::default()
+        })
+    }
+
     fn get_balance_impl(
         &mut self,
         request: api::GetBalanceRequest,
@@ -2333,6 +2392,50 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .unwrap_or((u64::MAX, TimestampResultCode::WatcherDatabaseError))
             })
     }
+
+    fn get_tx_out_result(
+        &self,
+        tx_out_pubkey: &CompressedRistrettoPublic,
+    ) -> Result<TxOutResult, LedgerError> {
+        let mut result = TxOutResult::new();
+        result.set_tx_out_pubkey(tx_out_pubkey.into());
+
+        let tx_out_index = match self.ledger_db.get_tx_out_index_by_public_key(tx_out_pubkey) {
+            Ok(index) => index,
+            Err(LedgerError::NotFound) => {
+                result.result_code = TxOutResultCode::NotFound;
+                return Ok(result);
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
+
+        result.result_code = TxOutResultCode::Found;
+        result.tx_out_global_index = tx_out_index;
+
+        let block_index = match self.ledger_db.get_block_index_by_tx_out_index(tx_out_index) {
+            Ok(index) => index,
+            Err(err) => {
+                log::error!(
+                    self.logger,
+                    "Unexpected error when getting block by tx out index {}: {}",
+                    tx_out_index,
+                    err
+                );
+                result.result_code = TxOutResultCode::DatabaseError;
+                return Ok(result);
+            }
+        };
+
+        let (timestamp, ts_result) = self.get_block_timestamp(block_index);
+
+        result.block_index = block_index;
+        result.timestamp = timestamp;
+        result.timestamp_result_code = ts_result as u32;
+
+        Ok(result)
+    }
 }
 
 macro_rules! build_api {
@@ -2407,6 +2510,7 @@ build_api! {
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_block_index_by_tx_pub_key GetBlockIndexByTxPubKeyRequest GetBlockIndexByTxPubKeyResponse get_block_index_by_tx_pub_key_impl,
+    get_tx_out_results_by_pub_key GetTxOutResultsByPubKeyRequest GetTxOutResultsByPubKeyResponse get_tx_out_results_by_pub_key_impl,
 
     // Convenience calls
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
@@ -3930,6 +4034,7 @@ mod test {
             ]
         };
 
+        // Try with only outputs
         let mut request = api::GetMembershipProofsRequest::new();
         request.set_outputs(RepeatedField::from_vec(
             outputs.iter().map(api::external::TxOut::from).collect(),
@@ -3958,6 +4063,37 @@ mod test {
 
             assert_eq!(output_with_proof.get_proof(), &expected_proof);
         }
+
+        // Try with only indices, we should receive an identical response.
+        let mut request2 = api::GetMembershipProofsRequest::new();
+        request2.set_indices(vec![
+            ledger_db
+                .get_tx_out_index_by_hash(&outputs[0].hash())
+                .unwrap(),
+            ledger_db
+                .get_tx_out_index_by_hash(&outputs[1].hash())
+                .unwrap(),
+            ledger_db
+                .get_tx_out_index_by_hash(&outputs[2].hash())
+                .unwrap(),
+        ]);
+
+        let response2 = client.get_membership_proofs(&request2).unwrap();
+
+        assert_eq!(response, response2);
+
+        // Try with no indices or outputs
+        let request3 = api::GetMembershipProofsRequest::new();
+        let response3 = client.get_membership_proofs(&request3).unwrap();
+        assert!(response3.output_list.is_empty());
+
+        // Try with both, we should get an error.
+        let mut request4 = api::GetMembershipProofsRequest::new();
+        request4.set_outputs(RepeatedField::from_vec(
+            outputs.iter().map(api::external::TxOut::from).collect(),
+        ));
+        request4.set_indices(vec![1].into());
+        assert!(client.get_membership_proofs(&request4).is_err());
     }
 
     #[test_with_logger]
@@ -4997,6 +5133,87 @@ mod test {
             let response = client.get_block_index_by_tx_pub_key(&request).unwrap();
             assert_eq!(block_index, response.block);
         }
+    }
+
+    #[test_with_logger]
+    /// Should return a correct proof-of-membership for each requested TxOut.
+    fn test_get_tx_out_results_by_pub_key(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Select some outputs from the ledger.
+        let outputs: Vec<TxOut> = {
+            let unspent_outputs = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap();
+
+            vec![
+                unspent_outputs[1].tx_out.clone(),
+                unspent_outputs[3].tx_out.clone(),
+                unspent_outputs[5].tx_out.clone(),
+            ]
+        };
+
+        // Send request for 3 known tx outs and 1 unknown key
+        let request = api::GetTxOutResultsByPubKeyRequest {
+            tx_out_public_keys: vec![
+                (&outputs[0].public_key).into(),
+                (&outputs[1].public_key).into(),
+                (&outputs[2].public_key).into(),
+                (&CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng))).into(),
+            ]
+            .into(),
+            ..Default::default()
+        };
+
+        let response = client.get_tx_out_results_by_pub_key(&request).unwrap();
+
+        assert_eq!(response.results.len(), request.tx_out_public_keys.len());
+
+        for i in 0..3 {
+            assert_eq!(
+                response.results[i].tx_out_pubkey.get_ref(),
+                &request.tx_out_public_keys[i]
+            );
+            assert_eq!(response.results[i].result_code, TxOutResultCode::Found);
+        }
+
+        assert_eq!(
+            response.results[3].tx_out_pubkey.get_ref(),
+            &request.tx_out_public_keys[3]
+        );
+        assert_eq!(response.results[3].result_code, TxOutResultCode::NotFound);
+
+        assert_eq!(
+            Block::try_from(response.get_latest_block()).unwrap(),
+            ledger_db.get_latest_block().unwrap()
+        );
     }
 
     #[test_with_logger]

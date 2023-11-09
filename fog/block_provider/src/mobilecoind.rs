@@ -10,11 +10,13 @@ use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_mobilecoind_api::{
     mobilecoind_api_grpc::MobilecoindApiClient, GetBlockRequest, GetBlocksDataRequest,
-    MobilecoindUri,
+    GetMembershipProofsRequest, GetTxOutResultsByPubKeyRequest, MobilecoindUri,
 };
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use mc_watcher::watcher_db::{POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY, POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY};
+use mc_watcher::watcher_db::{
+    POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY, POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY,
+};
 use std::{
     sync::Arc,
     thread::sleep,
@@ -158,17 +160,42 @@ impl BlockProvider for MobilecoindBlockProvider {
     /// Get TxOut and membership proof by tx out index.
     fn get_tx_out_and_membership_proof_by_index(
         &self,
-        _tx_out_index: u64,
+        tx_out_index: u64,
     ) -> Result<(TxOut, TxOutMembershipProof), Error> {
-        todo!()
+        let response = self
+            .client
+            .get_membership_proofs(&GetMembershipProofsRequest {
+                indices: vec![tx_out_index].into(),
+                ..Default::default()
+            })?;
+
+        if response.output_list.len() != 1 {
+            log::error!(self.logger, "get_membership_proofs ")
+        }
+
+        let tx_out_with_proof = response.output_list.get(0).unwrap();
+        let tx_out = TxOut::try_from(tx_out_with_proof.get_output())?;
+        let proof = TxOutMembershipProof::try_from(tx_out_with_proof.get_proof())?;
+        Ok((tx_out, proof))
     }
 
     /// Get information about multiple TxOuts by their public keys, and in
     /// addition get information about the latest block.
     fn get_tx_out_info_by_public_key(
         &self,
-        _tx_out_pub_keys: &[CompressedRistrettoPublic],
+        tx_out_pub_keys: &[CompressedRistrettoPublic],
     ) -> Result<TxOutInfoByPublicKeyResponse, Error> {
-        todo!()
+        let request = GetTxOutResultsByPubKeyRequest {
+            tx_out_public_keys: tx_out_pub_keys.iter().map(|pk| pk.into()).collect(),
+            ..Default::default()
+        };
+        let response = self.client.get_tx_out_results_by_pub_key(&request)?;
+
+        let latest_block = Block::try_from(response.get_latest_block())?;
+
+        Ok(TxOutInfoByPublicKeyResponse {
+            results: response.get_results().to_vec(),
+            latest_block,
+        })
     }
 }
