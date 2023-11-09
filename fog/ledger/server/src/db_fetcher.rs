@@ -285,6 +285,7 @@ impl<
                     shared_state.highest_processed_block_count = *next_block_index + 1;
                     shared_state.last_known_block_cumulative_txo_count =
                         latest_block.cumulative_txo_count;
+                    shared_state.latest_block_version = latest_block.version;
                 });
 
                 *next_block_index += 1;
