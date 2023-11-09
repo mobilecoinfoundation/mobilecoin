@@ -1640,17 +1640,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 );
                 response.mut_signatures().push(signature_message);
             }
-
-            let (timestamp, timestamp_result_code) = watcher_db
-                .get_block_timestamp(request.block)
-                .map_err(|err| {
-                    rpc_internal_error("watcher_db.get_block_timestamp", err, &self.logger)
-                })?;
-            response.set_timestamp_result_code((&timestamp_result_code).into());
-            response.set_timestamp(timestamp);
-        } else {
-            response.set_timestamp_result_code(mc_api::watcher::TimestampResultCode::Unavailable);
         }
+
+        let (timestamp, timestamp_result_code) = self.get_block_timestamp(request.block);
+        response.set_timestamp_result_code((&timestamp_result_code).into());
+        response.set_timestamp(timestamp);
+
         Ok(response)
     }
 
