@@ -52,15 +52,11 @@ impl BlockProvider for MobilecoindBlockProvider {
         Ok(response.block_count)
     }
 
-    /// Get the latest block in the ledger.
     fn get_latest_block(&self) -> Result<Block, Error> {
         let response = self.client.get_latest_block(&Default::default())?;
         Ok(response.get_block().try_into()?)
     }
 
-    /// Get block data of multiple blocks by block number, and in addition get
-    /// information about the latest block. Also include block timestamp for
-    /// each block, if available.
     fn get_blocks_data(&self, block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error> {
         let request = GetBlocksDataRequest {
             blocks: block_indices.to_vec(),
@@ -92,8 +88,6 @@ impl BlockProvider for MobilecoindBlockProvider {
         })
     }
 
-    /// Poll indefinitely for a watcher timestamp, logging warnings if we wait
-    /// for more than watcher_timeout.
     fn poll_block_timestamp(&self, block_index: BlockIndex, watcher_timeout: Duration) -> u64 {
         // special case the origin block has a timestamp of u64::MAX
         if block_index == 0 {
@@ -156,7 +150,6 @@ impl BlockProvider for MobilecoindBlockProvider {
         }
     }
 
-    /// Get TxOut and membership proof by tx out index.
     fn get_tx_out_and_membership_proof_by_index(
         &self,
         tx_out_index: u64,
@@ -178,8 +171,6 @@ impl BlockProvider for MobilecoindBlockProvider {
         Ok((tx_out, proof))
     }
 
-    /// Get information about multiple TxOuts by their public keys, and in
-    /// addition get information about the latest block.
     fn get_tx_out_info_by_public_key(
         &self,
         tx_out_pub_keys: &[CompressedRistrettoPublic],
