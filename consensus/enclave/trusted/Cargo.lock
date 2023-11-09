@@ -948,7 +948,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -972,14 +972,14 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-attest-ake"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "aead",
  "cargo-emit",
@@ -1002,7 +1002,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-core"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "base64",
  "bitflags 2.4.1",
@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-enclave-api"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "displaydoc",
  "mc-attest-ake",
@@ -1047,7 +1047,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-trusted"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -1058,7 +1058,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
  "cfg-if 1.0.0",
@@ -1090,7 +1090,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "base64",
  "displaydoc",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "displaydoc",
  "hex_fmt",
@@ -1155,7 +1155,7 @@ dependencies = [
 
 [[package]]
 name = "mc-common"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cfg-if 1.0.0",
  "displaydoc",
@@ -1176,7 +1176,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-api"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "displaydoc",
  "hex",
@@ -1198,7 +1198,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-edl"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -1206,7 +1206,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-impl"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
  "hex",
@@ -1238,7 +1238,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-trusted"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
  "lazy_static",
@@ -1269,7 +1269,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-common",
  "mc-crypto-digestible",
@@ -1281,7 +1281,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1296,7 +1296,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
@@ -1306,7 +1306,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ake-enclave"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "aes-gcm",
  "digest",
@@ -1328,7 +1328,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "aead",
  "digest",
@@ -1342,7 +1342,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cfg-if 1.0.0",
  "curve25519-dalek",
@@ -1355,7 +1355,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1364,7 +1364,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-crypto-digestible",
  "signature",
@@ -1372,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "blake2",
  "digest",
@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -1410,7 +1410,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-message-cipher"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "aes-gcm",
  "displaydoc",
@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-multisig"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -1433,7 +1433,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-noise"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -1453,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature-signer"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1494,7 +1494,7 @@ dependencies = [
 
 [[package]]
 name = "mc-enclave-boundary"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-common",
  "mc-rand",
@@ -1505,7 +1505,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-crypto-keys",
 ]
@@ -1538,11 +1538,11 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-alloc"
-version = "5.0.8"
+version = "5.1.1"
 
 [[package]]
 name = "mc-sgx-build"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cc",
  "lazy_static",
@@ -1552,7 +1552,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cfg-if 1.0.0",
  "mc-sgx-alloc",
@@ -1606,7 +1606,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-css"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "displaydoc",
  "mc-sgx-core-types",
@@ -1647,29 +1647,29 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-debug"
-version = "5.0.8"
+version = "5.1.1"
 
 [[package]]
 name = "mc-sgx-enclave-id"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-sgx-types",
 ]
 
 [[package]]
 name = "mc-sgx-panic"
-version = "5.0.8"
+version = "5.1.1"
 
 [[package]]
 name = "mc-sgx-panic-edl"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-report-cache-api"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -1681,7 +1681,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-service"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-sgx-build",
  "mc-sgx-types",
@@ -1689,7 +1689,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cfg-if 1.0.0",
  "mc-common",
@@ -1699,14 +1699,14 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog-edl"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-sync"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-sgx-panic",
  "mc-sgx-types",
@@ -1714,7 +1714,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "mc-sgx-core-sys-types",
 ]
@@ -1727,7 +1727,7 @@ checksum = "2afaa76b1049c04f4caa75b378656dabb079a0d8be350084bd3f1ac8426e179e"
 
 [[package]]
 name = "mc-transaction-core"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "aes",
  "bulletproofs-og",
@@ -1765,7 +1765,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1783,7 +1783,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-script"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
  "displaydoc",
@@ -1794,7 +1794,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-sgx"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "cargo-emit",
  "cc",
@@ -1805,7 +1805,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-encodings"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "base64",
  "displaydoc",
@@ -1816,14 +1816,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "generic-array",
  "hex_fmt",
@@ -1833,7 +1833,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-serial"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "prost",
  "serde",
@@ -1842,11 +1842,11 @@ dependencies = [
 
 [[package]]
 name = "mc-util-u64-ratio"
-version = "5.0.8"
+version = "5.1.1"
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "5.0.8"
+version = "5.1.1"
 dependencies = [
  "serde",
 ]

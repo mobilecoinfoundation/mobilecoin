@@ -1,6 +1,6 @@
 [package]
 name = "mc-ledger-sync"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -29,7 +29,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.13.0"
+grpcio = "0.13"
 mc-attestation-verifier = "0.4.1"
 mockall = "0.11.4"
 protobuf = "2.27.1"

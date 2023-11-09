@@ -1,0 +1,486 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- $stackConfig := (include "fog-ledger.stackConfig" . | fromYaml) }}
+{{- range $stack := until (int $stackConfig.count) }}
+apiVersion: mc.mobilecoin.com/v1
+kind: FogShardRangeGenerator
+metadata:
+  name: {{ include "fog-ledger.fullname" $ }}-{{ $stack }}
+  labels:
+    {{- include "fog-ledger.labels" $ | nindent 4 }}
+spec:
+  {{- with $stackConfig }}
+  shardSize: {{ .shardSize }}
+  exceedBlockHeightBy: {{ .exceedBlockHeightBy }}
+  shardOverlap: {{ .shardOverlap }}
+  {{- with .blockHeightRetrieval }}
+  blockCountURL: {{ tpl .blockCountURL $ | quote }}
+  blockCountQueryInterval: {{ .queryInterval | quote }}
+  blockCountResponseJQ: {{ .responseJQ | quote }}
+  blockCountReqBody: {{ .requestBody | quote }}
+  {{- end }}
+  {{- end }}
+
+  router:
+    shardingScheme: insecure-key-image-store
+    shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
+    templates:
+    {{- range $routerHosts := $.Values.fogLedger.router.hosts }}
+    {{- with $.Values.fogLedger.router }}
+    - templateID: {{ $routerHosts.partner }}
+      containerName: fog-ledger-router
+      spec:
+        podManagementPolicy: {{ .podManagementPolicy }}
+        replicas: {{ .replicaCount }}
+        selector:
+          matchLabels:
+            app: fog-ledger-router
+            stack: fog-ledger-{{ $stack }}
+            partner: {{ $routerHosts.partner }}
+            {{- include "fog-ledger.selectorLabels" $ | nindent 12 }}
+        serviceName: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
+        template:
+          metadata:
+            annotations:
+              {{- toYaml .podAnnotations | nindent 14 }}
+            labels:
+              app: fog-ledger-router
+              stack: fog-ledger-{{ $stack }}
+              partner: {{ $routerHosts.partner }}
+              {{- include "fog-ledger.labels" $ | nindent 14 }}
+          spec:
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
+            {{- if .affinityEnabled }}
+            affinity:
+              podAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-ledger-{{ $stack }}
+                  topologyKey: topology.kubernetes.io/zone
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: stack
+                        operator: In
+                        values:
+                        - fog-ledger-{{ $stack }}
+                    topologyKey: "kubernetes.io/hostname"
+                  weight: 1
+            {{- end }}
+            imagePullSecrets:
+            {{- toYaml $.Values.imagePullSecrets | nindent 12 }}
+            initContainers:
+            - name: sysctl
+              image: ubuntu:20.04
+              command:
+              - sysctl
+              - -w
+              - net.ipv4.tcp_retries2=5
+              - net.core.somaxconn=65535
+              securityContext:
+                privileged: true
+                runAsUser: 0
+                runAsNonRoot: False
+            containers:
+            - name: fog-ledger-router
+              image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+              imagePullPolicy: {{ .image.pullPolicy }}
+              command: [ "/usr/bin/supervisord", "-n" ]
+              ports:
+              - name: ledger-grpc
+                containerPort: 3228
+              - name: mgmt-http
+                containerPort: 8000
+              envFrom:
+              - configMapRef:
+                  name: {{ include "fog-ledger.fullname" $ }}-router
+              - secretRef:
+                  name: {{ $.Values.fogLedger.externalSecrets.ias.name }}
+              - secretRef:
+                  name: {{ $.Values.fogLedger.externalSecrets.ipinfo.name }}
+                  optional: true
+              - configMapRef:
+                  name: {{ $.Values.fogLedger.externalConfigMaps.mobilecoind.name }}
+              env:
+              - name: MC_LEDGER_DB_MIGRATE
+                value: "true"
+              - name: RUST_BACKTRACE
+                value: {{ .rust.backtrace | quote }}
+              - name: RUST_LOG
+                value: {{ .rust.log | quote }}
+              {{- if eq $.Values.jaegerTracing.enabled true }}
+              - name: MC_TELEMETRY
+                value: "true"
+              {{- end }}
+              - name: MC_CLIENT_RESPONDER_ID
+                value: {{ $routerHosts.responderID }}:443
+              - name: MC_CLIENT_LISTEN_URI
+                value: insecure-fog-ledger://0.0.0.0:3228/
+              - name: MC_ADMIN_LISTEN_URI
+                value: insecure-mca://127.0.0.1:8001/
+              - name: MC_SENTRY_DSN
+                valueFrom:
+                  configMapKeyRef:
+                    name: sentry
+                    key: fog-ledger-sentry-dsn
+                    optional: true
+              # Maps to Sentry Environment
+              - name: MC_BRANCH
+                value: {{ $.Values.mobilecoin.network }}
+              - name: MC_CHAIN_ID
+                value: {{ $.Values.mobilecoin.network }}
+              - name: MC_LEDGER_DB
+                value: /fog-data/ledger
+              - name: MC_WATCHER_DB
+                value: /fog-data/watcher
+              startupProbe:
+                grpc:
+                  port: 3228
+                # Wait up to 2 hours for startup
+                failureThreshold: 240
+                periodSeconds: 30
+                successThreshold: 1
+                timeoutSeconds: 1
+              livenessProbe:
+                grpc:
+                  port: 3228
+                failureThreshold: 4
+                periodSeconds: 30
+                successThreshold: 1
+                timeoutSeconds: 1
+              readinessProbe:
+                grpc:
+                  port: 3228
+                failureThreshold: 2
+                periodSeconds: 10
+                successThreshold: 1
+                timeoutSeconds: 1
+              volumeMounts:
+              - name: fog-data
+                mountPath: /fog-data
+              - name: aesm-socket-dir
+                mountPath: /var/run/aesmd
+              - name: supervisor-conf
+                mountPath: /etc/supervisor/conf.d
+                readOnly: true
+              - name: tmp
+                mountPath: /tmp
+              resources:
+                {{- toYaml .resources | nindent 16 }}
+            - name: grpc-gateway
+              image: "{{ $.Values.grpcGateway.image.org | default $.Values.image.org }}/{{ $.Values.grpcGateway.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+              imagePullPolicy: Always
+              command:
+              - /usr/bin/go-grpc-gateway
+              - -grpc-server-endpoint=127.0.0.1:3228
+              - -grpc-insecure
+              - -http-server-listen=:8228
+              - -logtostderr
+              ports:
+              - name: ledger-http
+                containerPort: 8228
+              resources:
+                {{- toYaml $.Values.grpcGateway.resources | nindent 16 }}
+            {{- if eq $.Values.jaegerTracing.enabled true }}
+            - name: jaeger-agent
+              image: jaegertracing/jaeger-agent:latest
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort: 5775
+                name: zk-compact-trft
+                protocol: UDP
+              - containerPort: 5778
+                name: config-rest
+                protocol: TCP
+              - containerPort: 6831
+                name: jg-compact-trft
+                protocol: UDP
+              - containerPort: 6832
+                name: jg-binary-trft
+                protocol: UDP
+              - containerPort: 14271
+                name: admin-http
+                protocol: TCP
+              env:
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.name
+              - name: HOST_IP
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: status.hostIP
+              args:
+              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.type=grpc
+              - --agent.tags=cluster=undefined,container.name=fog-ledger-router,deployment.name={{ include "fog-ledger.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
+            {{- end }}
+            nodeSelector:
+              {{- toYaml .nodeSelector | nindent 14 }}
+            tolerations:
+            {{- toYaml .tolerations | nindent 12 }}
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
+            volumes:
+            {{- if eq .persistence.enabled false }}
+            - name: fog-data
+              emptyDir: {}
+            {{- end }}
+            - name: tmp
+              emptyDir: {}
+            - name: aesm-socket-dir
+              emptyDir: {}
+            - name: supervisor-conf
+              projected:
+                sources:
+                - configMap:
+                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-sgx
+                - configMap:
+                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-daemon
+                - configMap:
+                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-router
+                - configMap:
+                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-admin
+                - configMap:
+                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-mobilecoind
+        {{- if .persistence.enabled }}
+        volumeClaimTemplates:
+        - metadata:
+            name: fog-data
+          spec:
+            {{- toYaml .persistence.spec | nindent 12 }}
+        {{- end }}
+    {{- end }}
+    {{- end }}
+
+  {{- with $.Values.fogLedger.store }}
+  store:
+    containerName: fog-ledger-store
+    servicePort: 80
+    targetPort: ledger-grpc
+    spec:
+      podManagementPolicy: {{ .podManagementPolicy }}
+      replicas: {{ .replicaCount }}
+      selector:
+        matchLabels:
+          app: fog-ledger-store
+          stack: fog-ledger-{{ $stack }}
+          {{- include "fog-ledger.selectorLabels" $ | nindent 10 }}
+      serviceName: {{ include "fog-ledger.fullname" $ }}-store
+      template:
+        metadata:
+          annotations:
+            {{- toYaml .podAnnotations | nindent 12 }}
+          labels:
+            app: fog-ledger-store
+            stack: fog-ledger-{{ $stack }}
+            {{- include "fog-ledger.labels" $ | nindent 12 }}
+        spec:
+          {{- if .topologySpreadConstraintsEnabled }}
+          # Stacks launch first.
+          # Make sure each stack is scheduled on different zones.
+          # Then try to keep a stack on the minimal amount of nodes possible in a single zone.
+          topologySpreadConstraints:
+          - topologyKey: topology.kubernetes.io/zone
+            maxSkew: 1
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                stack: fog-ledger-{{ $stack }}
+          {{- end }}
+          {{- if .affinityEnabled }}
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: stack
+                    operator: In
+                    values:
+                    - fog-ledger-{{ $stack }}
+                topologyKey: topology.kubernetes.io/zone
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - fog-ledger-{{ $stack }}
+                  topologyKey: "kubernetes.io/hostname"
+                weight: 1
+          {{- end }}
+          imagePullSecrets:
+          {{- toYaml $.Values.imagePullSecrets | nindent 10 }}
+          initContainers:
+          - name: sysctl
+            image: ubuntu:20.04
+            command:
+            - sysctl
+            - -w
+            - net.ipv4.tcp_retries2=5
+            - net.core.somaxconn=65535
+            securityContext:
+              privileged: true
+              runAsUser: 0
+              runAsNonRoot: False
+          containers:
+          - name: fog-ledger-store
+            image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+            imagePullPolicy: {{ .image.pullPolicy }}
+            command: [ "/usr/bin/supervisord" ]
+            ports:
+            - name: ledger-grpc
+              containerPort: 3228
+            - name: mgmt-http
+              containerPort: 8000
+            envFrom:
+            - configMapRef:
+                name: {{ include "fog-ledger.fullname" $ }}-store
+            - configMapRef:
+                name: {{ $.Values.fogLedger.externalConfigMaps.mobilecoind.name }}
+            - secretRef:
+                name: {{ $.Values.fogLedger.externalSecrets.ias.name }}
+            - secretRef:
+                name: {{ $.Values.fogLedger.externalSecrets.ipinfo.name }}
+                optional: true
+            env:
+            {{- if eq $.Values.jaegerTracing.enabled true }}
+            - name: MC_TELEMETRY
+              value: "true"
+            {{- end }}
+            - name: MC_LEDGER_DB_MIGRATE
+              value: "true"
+            - name: RUST_BACKTRACE
+              value: {{ .rust.backtrace | quote }}
+            - name: RUST_LOG
+              value: {{ .rust.log | quote }}
+            - name: MC_SENTRY_DSN
+              valueFrom:
+                configMapKeyRef:
+                  name: sentry
+                  key: fog-ledger-sentry-dsn
+                  optional: true
+            - name: MC_ADMIN_LISTEN_URI
+              value: insecure-mca://127.0.0.1:8001/
+            - name: MC_BRANCH
+              value: {{ $.Values.mobilecoin.network }}
+            - name: MC_CHAIN_ID
+              value: {{ $.Values.mobilecoin.network }}
+            - name: MC_LEDGER_DB
+              value: /fog-data/ledger
+            - name: MC_WATCHER_DB
+              value: /fog-data/watcher
+            livenessProbe:
+              grpc:
+                port: 3228
+              failureThreshold: 5
+              periodSeconds: 30
+              timeoutSeconds: 1
+              successThreshold: 1
+            startupProbe:
+              grpc:
+                port: 3228
+              # Wait up to 2 hours for startup
+              failureThreshold: 240
+              periodSeconds: 30
+              timeoutSeconds: 1
+              successThreshold: 1
+            readinessProbe:
+              grpc:
+                port: 3228
+              failureThreshold: 2
+              periodSeconds: 10
+              timeoutSeconds: 1
+              successThreshold: 1
+            volumeMounts:
+            - name: aesm-socket-dir
+              mountPath: /var/run/aesmd
+            - name: fog-data
+              mountPath: /fog-data
+            - name: supervisor-conf
+              mountPath: /etc/supervisor/conf.d
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            resources:
+              {{- toYaml .resources | nindent 14 }}
+          {{- if eq $.Values.jaegerTracing.enabled true }}
+          - name: jaeger-agent
+            image: jaegertracing/jaeger-agent:latest
+            imagePullPolicy: IfNotPresent
+            ports:
+              - containerPort: 5775
+                name: zk-compact-trft
+                protocol: UDP
+              - containerPort: 5778
+                name: config-rest
+                protocol: TCP
+              - containerPort: 6831
+                name: jg-compact-trft
+                protocol: UDP
+              - containerPort: 6832
+                name: jg-binary-trft
+                protocol: UDP
+              - containerPort: 14271
+                name: admin-http
+                protocol: TCP
+            env:
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.name
+              - name: HOST_IP
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: status.hostIP
+            args:
+              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.type=grpc
+              - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fog-ledger.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
+          {{- end }}
+          nodeSelector:
+            {{- toYaml .nodeSelector | nindent 12 }}
+          tolerations:
+          {{- toYaml .tolerations | nindent 10 }}
+          volumes:
+          {{- if eq .persistence.enabled false }}
+          - name: fog-data
+            emptyDir: {}
+          {{- end }}
+          - name: tmp
+            emptyDir: {}
+          - name: aesm-socket-dir
+            emptyDir: {}
+          - name: supervisor-conf
+            projected:
+              sources:
+              - configMap:
+                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-sgx
+              - configMap:
+                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-daemon
+              - configMap:
+                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-store
+              - configMap:
+                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-admin
+              - configMap:
+                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-mobilecoind
+      {{- if .persistence.enabled }}
+      volumeClaimTemplates:
+      - metadata:
+          name: fog-data
+        spec:
+          {{- toYaml .persistence.spec | nindent 10 }}
+      {{- end }}
+  {{- end }}
+---
+{{- end }}

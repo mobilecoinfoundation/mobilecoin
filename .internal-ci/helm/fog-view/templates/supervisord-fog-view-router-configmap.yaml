@@ -1,0 +1,18 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fog-view.fullname" . }}-supervisord-fog-view-router
+  labels:
+    {{- include "fog-view.labels" . | nindent 4 }}
+data:
+  fog_view_router.conf: |
+    [program:fogviewrouter]
+    priority=100
+    command=fog_view_router
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

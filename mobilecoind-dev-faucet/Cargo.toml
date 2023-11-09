@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind-dev-faucet"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -30,7 +30,7 @@ mc-util-uri = { path = "../util/uri" }
 async-channel = { version = "1" }
 clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = "0.2"
-grpcio = "0.13.0"
+grpcio = "0.13"
 hex = "0.4"
 mc-attestation-verifier = "0.4.1"
 rand = "0.8"

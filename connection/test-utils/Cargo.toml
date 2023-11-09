@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection-test-utils"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 rust-version = { workspace = true }

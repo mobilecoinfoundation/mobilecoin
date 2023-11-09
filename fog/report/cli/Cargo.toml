@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-cli"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -27,5 +27,5 @@ mc-util-uri = { path = "../../../util/uri" }
 
 base64 = "0.21"
 clap = { version = "4.4", features = ["derive", "env"] }
-grpcio = "0.13.0"
+grpcio = "0.13"
 hex = "0.4"

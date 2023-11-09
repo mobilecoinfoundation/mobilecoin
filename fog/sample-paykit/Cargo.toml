@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sample-paykit"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -55,7 +55,7 @@ mc-fog-view-protocol = { path = "../view/protocol" }
 clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.13.0"
+grpcio = "0.13"
 link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
 mc-attestation-verifier = "0.4.1"
 protobuf = "2.27.1"

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-connection"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -33,7 +33,7 @@ aes-gcm = "0.10.3"
 der = "0.7.8"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.13.0"
+grpcio = "0.13"
 mc-attestation-verifier = "0.4.1"
 protobuf = "2.27.1"
 retry = "2.0"

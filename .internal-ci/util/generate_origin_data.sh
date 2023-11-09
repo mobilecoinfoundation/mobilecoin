@@ -23,6 +23,7 @@ is_set INITIAL_KEYS_SEED
 mkdir -p "${BASE_PATH}/sample_data/ledger"
 mkdir -p "${BASE_PATH}/sample_data/keys"
 mkdir -p "${BASE_PATH}/sample_data/fog_keys"
+mkdir -p "${BASE_PATH}/sample_data/fog_keys_b"
 mkdir -p "${BASE_PATH}/sample_data/mnemonic_keys"
 mkdir -p "${BASE_PATH}/sample_data/mnemonic_fog_keys"
 
@@ -68,6 +69,27 @@ then
         read-pubfile --pubfile "./fog_keys/account_keys_${i}.pub" \
             --out-b58 "./fog_keys/account_keys_${i}.b58pub" >/dev/null 2>&1
     done
+
+    if [[ -n "${FOG_REPORT_B_URL}" ]]
+    then
+        is_set FOG_REPORT_B_SIGNING_CA_CERT_PATH
+        is_set FOG_REPORT_B_URL
+        echo ""
+        echo "-- Generate keys for fog-report b server"
+
+        /util/sample-keys.1.1.3 --num 500 \
+        --seed "${FOG_KEYS_SEED}" \
+        --fog-report-url "${FOG_REPORT_B_URL}" \
+        --fog-authority-root "${FOG_REPORT_B_SIGNING_CA_CERT_PATH}" \
+        --output-dir ./fog_keys_b
+
+        echo "-- Generate b58pub files for fog_keys_b"
+        for i in {0..499}
+        do
+            read-pubfile --pubfile "./fog_keys_b/account_keys_${i}.pub" \
+                --out-b58 "./fog_keys_b/account_keys_${i}.b58pub" >/dev/null 2>&1
+        done
+    fi
 fi
 
 if [[ -n "${MNEMONIC_KEYS_SEED}" ]]

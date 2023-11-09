@@ -109,7 +109,7 @@ push_tag="${target_tag}"
 
 images=(bootstrap-tools fogingest fog-ledger fogreport fogview go-grpc-gateway mobilecoind node_hw fog-test-client watcher)
 
-charts=(consensus-node consensus-node-config fog-ingest fog-ingest-config fog-services fog-services-config mc-core-common-config mc-core-dev-env-setup mobilecoind watcher)
+charts=(consensus-node consensus-node-config fog-ingest fog-ingest-config fog-view fog-ledger fog-report mc-core-common-config mc-core-dev-env-setup mobilecoind watcher)
 
 if [[ -n "${pull}" ]]
 then
