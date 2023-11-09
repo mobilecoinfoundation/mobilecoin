@@ -3186,7 +3186,7 @@ mod test {
 
         // Call get block data
         let mut request = api::GetBlocksDataRequest::new();
-        request.set_blocks(vec![0, 2, 100, 1].into());
+        request.set_blocks(vec![0, 2, 100, 1]);
 
         let response = client.get_blocks_data(&request).unwrap();
         assert_eq!(
@@ -4087,7 +4087,7 @@ mod test {
         request4.set_outputs(RepeatedField::from_vec(
             outputs.iter().map(api::external::TxOut::from).collect(),
         ));
-        request4.set_indices(vec![1].into());
+        request4.set_indices(vec![1]);
         assert!(client.get_membership_proofs(&request4).is_err());
     }
 
