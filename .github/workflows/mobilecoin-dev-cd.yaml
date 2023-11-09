@@ -7,7 +7,8 @@ name: Mobilecoin CD
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  RELEASE_5X_TAG: v5.0.3-dev
+  RELEASE_5X_TAG: v5.1.1-dev
+  GH_SHORT_SHA: placeholder
 
 on:
   pull_request:
