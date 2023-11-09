@@ -59,7 +59,7 @@ impl BlockService {
         response.num_blocks = latest_block.index + 1;
         response.global_txo_count = latest_block.cumulative_txo_count;
 
-        let results = results
+        response.blocks = results
             .into_iter()
             .flatten()
             .map(|b| {
@@ -73,8 +73,7 @@ impl BlockService {
                 result.timestamp_result_code = b.block_timestamp_result_code as u32;
                 result
             })
-            .collect::<Vec<_>>();
-        response.blocks = results.into();
+            .collect();
 
         Ok(response)
     }
