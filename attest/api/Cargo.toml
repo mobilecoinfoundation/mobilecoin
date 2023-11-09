@@ -29,7 +29,7 @@ mc-util-serial = { path = "../../util/serial" }
 aead = "0.5"
 digest = "0.10"
 futures = "0.3"
-grpcio = "0.12.1"
+grpcio = "0.13.0"
 protobuf = "2.27.1"
 
 [dev-dependencies]

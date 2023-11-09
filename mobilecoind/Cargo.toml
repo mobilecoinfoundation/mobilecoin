@@ -58,7 +58,7 @@ aes-gcm = "0.10.3"
 clap = { version = "4.4", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.12.1"
+grpcio = "0.13.0"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
 mc-attestation-verifier = "0.4.1"
