@@ -17,6 +17,8 @@ esac
 # paths
 MC_ROOT=../../../../..
 MC_API=$MC_ROOT/api/proto
+MC_ATTEST_API=$MC_ROOT/attest/api/proto
+MC_FOG_API=$MC_ROOT/fog/api/proto
 MCD_API=$MC_ROOT/mobilecoind/api/proto
 CONSENSUS_API=$MC_ROOT/consensus/api/proto
 
@@ -26,16 +28,22 @@ case "$(uname -s)" in
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/quorum_set.proto
+    py.exe -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API --python_out=. $MC_ATTEST_API/attest.proto
+    py.exe -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/fog_common.proto
+    py.exe -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/ledger.proto
     py.exe -m grpc_tools.protoc -I$MC_API -I$CONSENSUS_API --python_out=. $CONSENSUS_API/consensus_common.proto
-    py.exe -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
+    py.exe -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
   ;;
 
   *)
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/quorum_set.proto
+    python3 -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API --python_out=. $MC_ATTEST_API/attest.proto
+    python3 -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/fog_common.proto
+    python3 -m grpc_tools.protoc -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. $MC_FOG_API/ledger.proto
     python3 -m grpc_tools.protoc -I$MC_API -I$CONSENSUS_API --python_out=. $CONSENSUS_API/consensus_common.proto
-    python3 -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
+    python3 -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API -I$MC_ATTEST_API -I$MC_FOG_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
   ;;
 esac
 
