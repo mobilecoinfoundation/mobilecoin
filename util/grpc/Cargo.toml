@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 description = "Runtime gRPC Utilities"
 edition = "2021"
@@ -20,7 +20,7 @@ clap = { version = "4.4", features = ["derive", "env"] }
 cookie = "0.18"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.13.0"
+grpcio = "0.13"
 hex = "0.4"
 hex_fmt = "0.3"
 hmac = "0.12"

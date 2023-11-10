@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc-admin-tool"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -16,4 +16,4 @@ mc-util-grpc = { path = "../grpc" }
 mc-util-uri = { path = "../uri" }
 
 clap = { version = "4.4", features = ["derive", "env"] }
-grpcio = "0.13.0"
+grpcio = "0.13"

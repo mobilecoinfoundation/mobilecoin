@@ -36,7 +36,7 @@ fn main() {
     );
 
     //Get our ledger connection started.
-    let db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
+    let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
     let watcher =
         WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
 
@@ -44,7 +44,7 @@ fn main() {
         ShardingStrategy::Epoch(sharding_strategy) => KeyImageStoreServer::new_from_config(
             config.clone(),
             enclave,
-            db,
+            ledger_db.clone(),
             watcher,
             sharding_strategy,
             SystemTimeProvider,
@@ -67,12 +67,18 @@ fn main() {
             config.client_responder_id.to_string(),
             Some(get_config_json),
             vec![],
-            logger,
+            logger.clone(),
         )
         .expect("Failed starting admin server")
     });
 
     loop {
+        // The ledger database is read by this service, but updated by another service.
+        // In order to keep this service's metrics up to date, we need to update them
+        // periodically.
+        if let Err(e) = ledger_db.update_metrics() {
+            log::error!(logger, "Error updating ledger metrics: {:?}", e);
+        }
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }

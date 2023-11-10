@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-server-test-utils"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -28,6 +28,6 @@ mc-fog-view-protocol = { path = "../../protocol" }
 mc-fog-view-server = { path = "../." }
 
 # Third-party
-grpcio = "0.13.0"
+grpcio = "0.13"
 mc-attestation-verifier = "0.4.1"
 portpicker = "0.1.1"

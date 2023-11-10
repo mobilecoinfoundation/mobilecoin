@@ -1,0 +1,11 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fog-report.fullname" . }}-supervisord-daemon
+  labels:
+    {{- include "fog-report.labels" . | nindent 4 }}
+data:
+  supervisor.conf: |
+    [supervisord]
+    nodaemon=true

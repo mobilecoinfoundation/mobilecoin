@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -27,7 +27,7 @@ mc-util-uri = { path = "../util/uri" }
 aes-gcm = "0.10.3"
 cookie = "0.18"
 displaydoc = "0.2"
-grpcio = "0.13.0"
+grpcio = "0.13"
 mc-attestation-verifier = "0.4.1"
 mc-rand = "1"
 retry = "2.0"

@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-impl"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 description = '''
 This crate contains the actual implementation of a mobilenode enclave.

@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-metrics"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -10,7 +10,7 @@ rust-version = { workspace = true }
 mc-common = { path = "../../common", features = ["log"] }
 
 chrono = "0.4"
-grpcio = "0.13.0"
+grpcio = "0.13"
 lazy_static = "1.4"
 prometheus = "0.13"
 protobuf = "2.27.1"

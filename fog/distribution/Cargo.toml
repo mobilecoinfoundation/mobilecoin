@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-distribution"
-version = "5.0.8"
+version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -31,7 +31,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "4.4", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
-grpcio = "0.13.0"
+grpcio = "0.13"
 lazy_static = "1.4"
 mc-attestation-verifier = "0.4.1"
 rand = "0.8"
