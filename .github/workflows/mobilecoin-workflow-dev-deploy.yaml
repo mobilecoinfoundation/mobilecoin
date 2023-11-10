@@ -407,4 +407,4 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/check-env-status.sh --minimum-block ${{ inputs.minimum_block }} \
-              -- namespace ${{ inputs.namespace }}
+              --namespace ${{ inputs.namespace }}
