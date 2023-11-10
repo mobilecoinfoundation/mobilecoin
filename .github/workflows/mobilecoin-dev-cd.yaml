@@ -7,7 +7,8 @@ name: Mobilecoin CD
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  RELEASE_5X_TAG: v5.0.3-dev
+  RELEASE_5X_TAG: v5.1.1-dev
+  GH_SHORT_SHA: placeholder
 
 on:
   pull_request:
@@ -415,6 +416,7 @@ jobs:
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
+      minimum_block: '5946'
     secrets: inherit
 
   test-current-bv3-release:
