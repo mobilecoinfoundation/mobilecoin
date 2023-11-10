@@ -4,10 +4,13 @@ version = "5.1.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
-rust-version = "1.74.0"
+rust-version = { workspace = true }
 
 # Declare as an empty workspace to not confuse cargo.
 [workspace]
+
+[workspace.package]
+rust-version = "1.74.0"
 
 [lib]
 crate-type = ["staticlib"]
