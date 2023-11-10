@@ -33,6 +33,11 @@ on:
         description: "block_version"
         type: string
         required: true
+      minimum_block:
+        description: "The minimum block height before the enviroment is ready"
+        type: string
+        required: false
+        default: "500"
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -401,16 +406,5 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
-          # Get fog report
-          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
-          /test/check-ingress-ready.sh --url "https://fog-b.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
-
-          # Get fog ledger
-          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks"
-
-          # Get consensus client ports
-          /test/check-ingress-ready.sh --url "https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-          /test/check-ingress-ready.sh --url "https://node2.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-          /test/check-ingress-ready.sh --url "https://node3.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-
-          # no unauthenticated endpoints for view :(
+          /test/check-env-status.sh --minimum-block ${{ inputs.minimum_block }} \
+              -- namespace ${{ inputs.namespace }}

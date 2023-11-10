@@ -416,6 +416,7 @@ jobs:
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
+      minimum_block: '5946'
     secrets: inherit
 
   test-current-bv3-release:

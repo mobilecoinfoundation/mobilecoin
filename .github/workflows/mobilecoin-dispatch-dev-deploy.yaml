@@ -90,4 +90,5 @@ jobs:
       ingest_color: ${{ inputs.ingest_color }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
+      minimum_block: ${{ inputs.bootstrap_version == 'v5.1.1-dev' && '5946' || '500' }}
     secrets: inherit
