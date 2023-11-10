@@ -38,7 +38,7 @@ done
 
 check()
 {
-    curl --max-time 5 --retry 2 --retry-all-errors -sSLf -X POST "${1}"
+    curl --max-time 5 --retry 2 -sSLf -X POST "${1}"
 }
 
 check_timeout()
