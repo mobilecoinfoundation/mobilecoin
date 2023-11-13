@@ -5,6 +5,8 @@ fail-fast = false
 failure-output = "immediate-final"
 # Show failed, flaky and retried, and slow tests.
 status-level = "slow"
+# Limit the number of threads for now to prevent saturating the CI machines.
+test-threads = 16
 
 [profile.ci.junit]
 # Output a JUnit report under `target/nextest/ci/junit.xml`.
