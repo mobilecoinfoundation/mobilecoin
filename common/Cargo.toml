@@ -71,5 +71,5 @@ slog-stdlog = { version = "4.1.1", optional = true }
 slog-term = { version = "2.9", optional = true }
 
 [dev-dependencies]
-proptest = { version = "1.3", default-features = false, features = ["default-code-coverage"] }
+proptest = { version = "1.4", default-features = false, features = ["default-code-coverage"] }
 scoped_threadpool = "0.1.*"
