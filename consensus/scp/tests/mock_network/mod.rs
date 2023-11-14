@@ -641,6 +641,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                 );
                 last_log = Instant::now();
             }
+            std::thread::sleep(Duration::from_millis(1));
         }
 
         // check that all submitted values are externalized at least once
