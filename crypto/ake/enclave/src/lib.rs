@@ -41,16 +41,20 @@ const MAX_AUTH_PENDING_REQUESTS: usize = 64;
 const MAX_PEER_SESSIONS: usize = 64;
 
 /// Maximum number of concurrent sessions to this enclave from router enclaves.
-const MAX_FRONTEND_SESSIONS: usize = 500;
+const MAX_FRONTEND_SESSIONS: usize = 64;
 
 /// Max number of backends that this enclave can connect to as a client.
-const MAX_BACKEND_SESSIONS: usize = 10_000;
+/// Current shard size is 400_000 blocks, with 2 replicas per shard.
+/// At 2 million blocks this would require 10 connections. Using 100 connections
+/// allows for 10x increase of 2 million blocks.
+const MAX_BACKEND_SESSIONS: usize = 100;
 
 /// Max number of client sessions.
 const MAX_CLIENT_SESSIONS: usize = 10_000;
 
 /// Max number of auth requests for enclave backends.
-const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 10_000;
+/// See [`MAX_BACKEND_SESSIONS`] for sizing.
+const MAX_BACKEND_AUTH_PENDING_REQUESTS: usize = 100;
 
 /// Any additional "identities" (e.g. key material) for a given enclave that
 /// needs to become a part of the report. We provide some simple identities, and
