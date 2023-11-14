@@ -48,8 +48,6 @@ spec:
               partner: {{ $routerHosts.partner }}
               {{- include "fog-ledger.labels" $ | nindent 14 }}
           spec:
-            readinessGates:
-            - conditionType: mobilecoin.com/shards-ready
             {{- if .affinityEnabled }}
             affinity:
               podAffinity:
@@ -90,7 +88,7 @@ spec:
             - name: fog-ledger-router
               image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
               imagePullPolicy: {{ .image.pullPolicy }}
-              command: [ "/usr/bin/supervisord", "-n" ]
+              args: [ "/usr/bin/supervisord" ]
               ports:
               - name: ledger-grpc
                 containerPort: 3228
@@ -218,7 +216,7 @@ spec:
                     apiVersion: v1
                     fieldPath: status.hostIP
               args:
-              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.grpc.host-port=dns:///jaeger-collector:14250
               - --reporter.type=grpc
               - --agent.tags=cluster=undefined,container.name=fog-ledger-router,deployment.name={{ include "fog-ledger.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
             {{- end }}
@@ -335,7 +333,7 @@ spec:
           - name: fog-ledger-store
             image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
             imagePullPolicy: {{ .image.pullPolicy }}
-            command: [ "/usr/bin/supervisord" ]
+            args: [ "/usr/bin/supervisord" ]
             ports:
             - name: ledger-grpc
               containerPort: 3228
@@ -444,7 +442,7 @@ spec:
                     apiVersion: v1
                     fieldPath: status.hostIP
             args:
-              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.grpc.host-port=dns:///jaeger-collector:14250
               - --reporter.type=grpc
               - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fog-ledger.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
           {{- end }}
