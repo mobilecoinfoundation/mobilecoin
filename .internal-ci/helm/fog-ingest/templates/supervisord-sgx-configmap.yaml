@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "fogIngest.fullname" . }}-supervisord-sgx
+  name: {{ include "fog-ingest.fullname" . }}-supervisord-sgx
   labels:
-    {{- include "fogIngest.labels" . | nindent 4 }}
+    {{- include "fog-ingest.labels" . | nindent 4 }}
 data:
   sgx.conf: |
     [program:aesm-service]
