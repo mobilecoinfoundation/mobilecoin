@@ -2,17 +2,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "fogIngest.fullname" . }}-supervisord-mobilecoind
+  name: {{ include "fog-ingest.fullname" . }}-supervisord-mobilecoind
   labels:
-    {{- include "fogIngest.labels" . | nindent 4 }}
+    {{- include "fog-ingest.labels" . | nindent 4 }}
 data:
   mobilecoind.conf: |
     [program:mobilecoind-sync]
     priority=10
     command=/usr/bin/mobilecoind
       --poll-interval 1
-      --ledger-db /fog-data/ledger
-      --watcher-db /fog-data/watcher
 
     stdout_logfile=/dev/fd/1
     stdout_logfile_maxbytes=0

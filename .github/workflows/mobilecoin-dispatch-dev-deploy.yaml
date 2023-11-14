@@ -29,8 +29,8 @@ on:
         default: none
         options:
         - none
-        - v1.1.3-dev
-        - v3.0.0-dev
+        - v5.0.3-dev
+        - v5.1.1-dev
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
@@ -50,7 +50,6 @@ on:
         required: true
         default: docker.io/mobilecoin
 
-
 jobs:
   list-values:
     name: 👾 Environment Info - ${{ inputs.namespace }} - ${{ inputs.version }} 👾
@@ -67,25 +66,13 @@ jobs:
       run: |
         .internal-ci/util/print_details.sh
 
-  bootstrap-v1-1-3-bv0:
+  bootstrap:
     needs:
     - list-values
-    if: inputs.bootstrap_version == 'v1.1.3-dev'
+    if: inputs.bootstrap_version != 'none'
     uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
     with:
-      block_version: 0
-      chart_repo: ${{ inputs.chart_repo }}
-      namespace: ${{ inputs.namespace }}
-      version: ${{ inputs.bootstrap_version }}
-    secrets: inherit
-
-  bootstrap-v3-0-0-bv2:
-    needs:
-    - list-values
-    if: inputs.bootstrap_version == 'v3.0.0-dev'
-    uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
-    with:
-      block_version: 2
+      block_version: '3'
       chart_repo: ${{ inputs.chart_repo }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.bootstrap_version }}
@@ -94,8 +81,7 @@ jobs:
   deploy:
     if: '! failure()'
     needs:
-    - bootstrap-v1-1-3-bv0
-    - bootstrap-v3-0-0-bv2
+    - bootstrap
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     with:
       block_version: ${{ inputs.block_version }}
@@ -104,4 +90,5 @@ jobs:
       ingest_color: ${{ inputs.ingest_color }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
+      minimum_block: ${{ inputs.bootstrap_version == 'v5.1.1-dev' && '5946' || '500' }}
     secrets: inherit

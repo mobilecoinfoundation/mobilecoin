@@ -2,20 +2,20 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fogIngest.fullname" . }}
+  name: {{ include "fog-ingest.fullname" . }}
   labels:
     publish: grafana-cloud
     app: fog-ingest
-    {{- include "fogIngest.labels" . | nindent 4 }}
+    {{- include "fog-ingest.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
       app: fog-ingest
-      {{- include "fogIngest.selectorLabels" . | nindent 6 }}
+      {{- include "fog-ingest.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt
     relabelings:
     - targetLabel: network
-      replacement: {{ include "fogIngest.mobileCoinNetwork.network" . }}
+      replacement: {{ .Values.mobilecoin.network }}
     - targetLabel: partner
-      replacement: {{ include "fogIngest.mobileCoinNetwork.partner" . }}
+      replacement: {{ .Values.mobilecoin.partner }}

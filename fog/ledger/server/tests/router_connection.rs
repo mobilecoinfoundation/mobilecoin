@@ -138,13 +138,12 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
@@ -376,7 +375,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &store_config.client_responder_id,
-                OMAP_CAPACITY,
+                store_config.omap_capacity,
                 logger.clone(),
             );
             let ra_client =
@@ -418,13 +417,12 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &router_config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
@@ -618,13 +616,12 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
-            omap_capacity: OMAP_CAPACITY,
         };
 
         let enclave = LedgerSgxEnclave::new(
             get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
-            OMAP_CAPACITY,
+            0,
             logger.clone(),
         );
 
@@ -783,13 +780,12 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
-            omap_capacity: OMAP_CAPACITY,
         };
 
         let enclave = LedgerSgxEnclave::new(
             get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
-            OMAP_CAPACITY,
+            0,
             logger.clone(),
         );
 
@@ -956,7 +952,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &store_config.client_responder_id,
-                OMAP_CAPACITY,
+                store_config.omap_capacity,
                 logger.clone(),
             );
             let ra_client =
@@ -998,13 +994,12 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &router_config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 

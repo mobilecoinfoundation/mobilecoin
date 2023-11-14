@@ -45,7 +45,8 @@ fn main() {
     let enclave = LedgerSgxEnclave::new(
         enclave_path,
         &config.client_responder_id,
-        config.omap_capacity,
+        // The router doesn't use the OMAP, so we can set it to 0.
+        0,
         logger.clone(),
     );
 
