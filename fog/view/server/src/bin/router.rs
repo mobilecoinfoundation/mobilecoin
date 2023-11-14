@@ -37,7 +37,7 @@ fn main() {
     let sgx_enclave = SgxViewEnclave::new(
         enclave_path,
         config.client_responder_id.clone(),
-        config.omap_capacity,
+        0,
         logger.clone(),
     );
 
