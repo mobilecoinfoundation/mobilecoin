@@ -225,13 +225,12 @@ fn create_router(
         client_auth_token_secret: None,
         client_auth_token_max_lifetime: Default::default(),
         query_retries: 3,
-        omap_capacity: test_config.omap_capacity,
     };
 
     let enclave = LedgerSgxEnclave::new(
         get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
         &config.client_responder_id,
-        config.omap_capacity,
+        0,
         logger.clone(),
     );
 
@@ -341,7 +340,6 @@ struct TestEnvironmentConfig {
     router_address: SocketAddr,
     router_admin_address: SocketAddr,
     shards: Vec<ShardConfig>,
-    omap_capacity: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -398,7 +396,6 @@ async fn smoke_test() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
-        omap_capacity: 1000,
     };
 
     let mut blocks_config = vec![];
@@ -515,7 +512,6 @@ async fn overlapping_stores() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
-        omap_capacity: 1000,
     };
 
     let mut blocks_config = vec![];
