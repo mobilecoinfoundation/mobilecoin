@@ -47,7 +47,7 @@ spec:
       containers:
       - name: fog-report
         image: "{{ .Values.fogReport.image.org | default .Values.image.org }}/{{ .Values.fogReport.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-        command: [ "/usr/bin/supervisord" ]
+        args: [ "/usr/bin/supervisord" ]
         ports:
         - name: report-grpc
           containerPort: 3222
