@@ -88,6 +88,7 @@ python3 -m grpc_tools.protoc \
     /proto/api/external.proto \
     /proto/api/blockchain.proto \
     /proto/api/quorum_set.proto \
+    /proto/api/watcher.proto \
     /proto/attest/attest.proto \
     /proto/fog/fog_common.proto \
     /proto/fog/ledger.proto \
