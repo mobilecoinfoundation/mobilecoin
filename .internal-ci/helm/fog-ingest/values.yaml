@@ -135,4 +135,5 @@ toolbox:
       cpu: 2000m
 
 jaegerTracing:
-  enabled: false
+  enabled: true
+  collector: 'dns:///jaeger-collector:14250'

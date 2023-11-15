@@ -12,3 +12,4 @@ data:
   MC_BLOCK_VERSION: {{ .Values.global.node.nodeConfig.blockVersion | squote }}
   MC_CLIENT_RESPONDER_ID: "{{ include "consensusNodeConfig.clientHostname" . }}:443"
   MC_PEER_RESPONDER_ID: "{{ include "consensusNodeConfig.peerHostname" . }}:443"
+  MC_TELEMETRY: "true"

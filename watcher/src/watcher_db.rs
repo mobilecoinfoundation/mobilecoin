@@ -408,8 +408,9 @@ impl WatcherDB {
     /// status code.
     ///
     /// Note: If there are no Signatures (and therefore no timestamps) for the
-    /// given       block, the result from get_signatures will be
-    /// Ok(vec![]).       A consensus validator only writes a signature for
+    /// given block, the result from get_signatures will be
+    /// Ok(vec![]).
+    /// A consensus validator only writes a signature for
     /// a block in which it       participated in consensus. Therefore, if
     /// the watcher is only watching       a subset of nodes, and those
     /// nodes happened to not participate in this       block, the timestamp
