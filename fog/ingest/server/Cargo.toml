@@ -19,7 +19,7 @@ displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.13"
 hex = "0.4"
-itertools = "0.11"
+itertools = "0.12"
 lazy_static = "1.4"
 protobuf = "2.27.1"
 retry = "2.0"
