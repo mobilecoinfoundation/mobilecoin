@@ -6,7 +6,7 @@
 
 ARG REPO_ORG=mobilecoin
 ARG BASE_TAG=latest
-FROM ${REPO_ORG}/runtime-base:${BASE_TAG}
+FROM ${REPO_ORG}/dcap-runtime-base:${BASE_TAG}
 
 SHELL ["/bin/bash", "-c"]
 
@@ -16,17 +16,17 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Install updates
 RUN apt-get update \
- && apt-get install -y \
-        ca-certificates \
-        gettext \
-        libssl1.1 \
-        jq \
-        vim \
-        python3-pip \
-        zstd \
-        openssl \
- && rm -rf /var/cache/apt \
- && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y \
+  ca-certificates \
+  gettext \
+  libssl1.1 \
+  jq \
+  vim \
+  python3-pip \
+  zstd \
+  openssl \
+  && rm -rf /var/cache/apt \
+  && rm -rf /var/lib/apt/lists/*
 
 # update pip
 RUN pip3 install --upgrade pip
