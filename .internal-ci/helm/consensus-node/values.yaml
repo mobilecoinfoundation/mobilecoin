@@ -75,19 +75,19 @@ node:
     fluentbit.io/exclude-jaeger-agent: 'true'
 
   nodeSelector:
-    sgx-enabled-node: 'true'
+    dcap: "true"
 
   resources:
     limits:
-      intel.com/sgx: 5000
+      sgx.intel.com/epc: "512Ki"
     requests:
-      intel.com/sgx: 5000
+      sgx.intel.com/epc: "512Ki"
 
   tolerations:
-  - key: sgx
-    operator: Equal
-    value: 'true'
-    effect: NoSchedule
+  - key: "dcap"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
 
   initContainers: []
 
