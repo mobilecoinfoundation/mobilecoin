@@ -50,6 +50,7 @@ RUN  apt-get update \
      libsgx-ae-id-enclave=${DCAP_VERSION} \
      libsgx-dcap-ql=${DCAP_VERSION} \
      libsgx-dcap-default-qpl=${DCAP_VERSION} \
+     libsgx-dcap-quote-verify=${DCAP_VERSION} \
   && apt-get clean \
   && rm -r /var/lib/apt/lists
 
