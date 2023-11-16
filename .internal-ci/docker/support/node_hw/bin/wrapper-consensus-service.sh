@@ -44,38 +44,5 @@ export MC_SENTRY_DSN=${CONSENSUS_SERVICE_SENTRY_DSN}
 # CONSENSUS_SERVICE_SENTRY_DSN
 # MC_LOG_UDP_JSON
 
-# Check to see if aesm service is ready.
-aesm_socket=/var/run/aesmd/aesm.socket
-aesm=0
-ledger=0
-echo "mc.app:wrapper-consensus-service Wait for ledger-distribution and aesm service to become ready"
-while [[ ${aesm} -le 1 ]] || [[ ${ledger} -le 1 ]]
-do
-    sleep 10
-
-    aesm_status=$(super_status aesm-service)
-    ledger_distribution_status=$(super_status ledger-distribution)
-
-    # does the aesm socket exist, is the service in RUNNING?
-    if [[ -S "${aesm_socket}" ]] && [[ "${aesm_status}" == "RUNNING" ]]
-    then
-        echo "mc.app:wrapper-consensus-service aesm-service is RUNNING and ${aesm_socket} found - success ${aesm}"
-        ((aesm++))
-    else
-        echo "mc.app:wrapper-consensus-service aesm-service is not RUNNING or ${aesm_socket} not found - reset counter"
-        aesm=0
-    fi
-
-    # is ledger-distribution running?
-    if [[ "${ledger_distribution_status}" == "RUNNING" ]]
-    then
-        echo "mc.app:wrapper-consensus-service ledger-distribution is RUNNING - success ${ledger}"
-        ((ledger++))
-    else
-        echo "mc.app:wrapper-consensus-service ledger-distribution is not RUNNING - reset counter"
-        ledger=0
-    fi
-done
-
 # Run consensus-service with ENV var options
 /usr/bin/consensus-service
