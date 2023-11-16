@@ -84,11 +84,6 @@ jobs:
         global:
           certManagerClusterIssuer: google-public-ca
         node:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
           persistence:
             enabled: false
           ingress:
@@ -331,11 +326,6 @@ jobs:
         image:
           org: ${{ inputs.docker_image_org }}
         fogIngest:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
           persistence:
             enabled: false
         EOF
