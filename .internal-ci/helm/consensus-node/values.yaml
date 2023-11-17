@@ -73,6 +73,7 @@ node:
   podAnnotations:
     fluentbit.io/include: 'true'
     fluentbit.io/exclude-jaeger-agent: 'true'
+    sgx.intel.com/quote-provider: node
 
   nodeSelector:
     dcap: "true"
