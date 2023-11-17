@@ -91,6 +91,8 @@ spec:
               image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
               imagePullPolicy: {{ .image.pullPolicy }}
               command: [ "/usr/bin/supervisord", "-n" ]
+              securityContext:
+                privileged: true
               ports:
               - name: ledger-grpc
                 containerPort: 3228
@@ -334,6 +336,8 @@ spec:
             image: "{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
             imagePullPolicy: {{ .image.pullPolicy }}
             command: [ "/usr/bin/supervisord" ]
+            securityContext:
+              privileged: true
             ports:
             - name: ledger-grpc
               containerPort: 3228
