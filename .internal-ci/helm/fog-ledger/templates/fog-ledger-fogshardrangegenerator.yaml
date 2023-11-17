@@ -100,8 +100,6 @@ spec:
               - configMapRef:
                   name: {{ include "fog-ledger.fullname" $ }}-router
               - secretRef:
-                  name: {{ $.Values.fogLedger.externalSecrets.ias.name }}
-              - secretRef:
                   name: {{ $.Values.fogLedger.externalSecrets.ipinfo.name }}
                   optional: true
               - configMapRef:
@@ -346,8 +344,6 @@ spec:
                 name: {{ include "fog-ledger.fullname" $ }}-store
             - configMapRef:
                 name: {{ $.Values.fogLedger.externalConfigMaps.mobilecoind.name }}
-            - secretRef:
-                name: {{ $.Values.fogLedger.externalSecrets.ias.name }}
             - secretRef:
                 name: {{ $.Values.fogLedger.externalSecrets.ipinfo.name }}
                 optional: true

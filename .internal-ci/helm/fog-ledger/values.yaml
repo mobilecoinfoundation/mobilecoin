@@ -206,11 +206,8 @@ fogLedger:
       #   MC_QUORUM_SET
 
   externalSecrets:
-    ias:
-      name: ias
-      ### required keys:
-      #   MC_IAS_API_KEY
-      #   MC_IAS_SPID
+    # ias:
+    #  name: ias
 
     # ipinfo is optional
     ipinfo:
