@@ -26,7 +26,7 @@ mc-fog-types = { path = "../../types" }
 displaydoc = { version = "0.2", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-zeroize = "1.6"
+zeroize = "1.7"
 
 [dev_dependencies]
 mc-util-test-helper = { path = "../../../util/test-helper" }
