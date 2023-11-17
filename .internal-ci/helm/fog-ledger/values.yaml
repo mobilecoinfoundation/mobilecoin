@@ -195,6 +195,12 @@ fogLedger:
       name: sentry
       ### required keys:
       #   fog-ledger-sentry-dsn
+    mobilecoind:
+      name: fog-mobilecoind
+      ### required keys:
+      #   MC_PEER
+      #   MC_TX_SOURCE_URL
+      #   MC_QUORUM_SET
 
   externalSecrets:
     ias:

@@ -104,7 +104,11 @@ spec:
               - secretRef:
                   name: {{ $.Values.fogLedger.externalSecrets.ipinfo.name }}
                   optional: true
+              - configMapRef:
+                  name: {{ $.Values.fogLedger.externalConfigMaps.mobilecoind.name }}
               env:
+              - name: MC_LEDGER_DB_MIGRATE
+                value: "true"
               - name: RUST_BACKTRACE
                 value: {{ .rust.backtrace | quote }}
               - name: RUST_LOG
@@ -130,8 +134,10 @@ spec:
                 value: {{ $.Values.mobilecoin.network }}
               - name: MC_CHAIN_ID
                 value: {{ $.Values.mobilecoin.network }}
-              - name: MC_MOBILECOIND_URI
-                value: insecure-mobilecoind://mobilecoind:3229
+              - name: MC_LEDGER_DB
+                value: /fog-data/ledger
+              - name: MC_WATCHER_DB
+                value: /fog-data/watcher
               startupProbe:
                 grpc:
                   port: 3228
@@ -242,6 +248,8 @@ spec:
                     name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-router
                 - configMap:
                     name: {{ include "fog-ledger.fullname" $ }}-supervisord-admin
+                - configMap:
+                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-mobilecoind
         {{- if .persistence.enabled }}
         volumeClaimTemplates:
         - metadata:
@@ -336,6 +344,8 @@ spec:
             envFrom:
             - configMapRef:
                 name: {{ include "fog-ledger.fullname" $ }}-store
+            - configMapRef:
+                name: {{ $.Values.fogLedger.externalConfigMaps.mobilecoind.name }}
             - secretRef:
                 name: {{ $.Values.fogLedger.externalSecrets.ias.name }}
             - secretRef:
@@ -346,6 +356,8 @@ spec:
             - name: MC_TELEMETRY
               value: "true"
             {{- end }}
+            - name: MC_LEDGER_DB_MIGRATE
+              value: "true"
             - name: RUST_BACKTRACE
               value: {{ .rust.backtrace | quote }}
             - name: RUST_LOG
@@ -362,8 +374,10 @@ spec:
               value: {{ $.Values.mobilecoin.network }}
             - name: MC_CHAIN_ID
               value: {{ $.Values.mobilecoin.network }}
-            - name: MC_MOBILECOIND_URI
-              value: insecure-mobilecoind://mobilecoind:3229
+            - name: MC_LEDGER_DB
+              value: /fog-data/ledger
+            - name: MC_WATCHER_DB
+              value: /fog-data/watcher
             livenessProbe:
               grpc:
                 port: 3228
@@ -458,6 +472,8 @@ spec:
                   name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-store
               - configMap:
                   name: {{ include "fog-ledger.fullname" $ }}-supervisord-admin
+              - configMap:
+                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-mobilecoind
       {{- if .persistence.enabled }}
       volumeClaimTemplates:
       - metadata:
