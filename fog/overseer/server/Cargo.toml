@@ -19,7 +19,7 @@ grpcio = "0.13"
 lazy_static = "1.4"
 prometheus = "0.13.3"
 retry = "2.0"
-rocket = { version = "0.5.0-rc.4", features = ["json"] }
+rocket = { version = "0.5.0", features = ["json"] }
 serde = "1"
 
 # mc
