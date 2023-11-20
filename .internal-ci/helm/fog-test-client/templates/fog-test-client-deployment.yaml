@@ -57,8 +57,6 @@ spec:
               key: CONSENSUS_WAIT
         - name: MC_TRANSFER_AMOUNT
           value: "100000000000"
-        - name: MC_TELEMETRY
-          value: "true"
         - name: MC_CHAIN_ID
           valueFrom:
             configMapKeyRef:

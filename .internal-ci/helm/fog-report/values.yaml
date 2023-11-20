@@ -117,5 +117,4 @@ grpcGateway:
       memory: 256Mi
 
 jaegerTracing:
-  enabled: true
-  collector: 'dns:///jaeger-collector:14250'
+  enabled: false
