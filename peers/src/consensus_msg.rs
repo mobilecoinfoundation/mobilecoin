@@ -37,6 +37,35 @@ impl From<TxHash> for ConsensusValue {
     }
 }
 
+impl From<MintConfigTx> for ConsensusValue {
+    fn from(config: MintConfigTx) -> Self {
+        Self::MintConfigTx(config)
+    }
+}
+
+impl From<MintTx> for ConsensusValue {
+    fn from(tx: MintTx) -> Self {
+        Self::MintTx(tx)
+    }
+}
+
+#[derive(
+    Clone, Debug, Deserialize, Digestible, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
+/// A [`ConsensusValue`] with a timestamp of when it was proposed.
+pub struct ConsensusValueWithTimestamp {
+    /// The consensus value {0}.
+    pub value: ConsensusValue,
+    /// Timestamp {0} ms since UNIX epoch.
+    pub timestamp: u64,
+}
+
+impl ConsensusValueWithTimestamp {
+    pub fn new(value: ConsensusValue, timestamp: u64) -> Self {
+        Self { value, timestamp }
+    }
+}
+
 /// A consensus message holds the data that is exchanged by consensus service
 /// nodes as part of the process of reaching agreement on the contents of the
 /// next block.
@@ -44,7 +73,7 @@ impl From<TxHash> for ConsensusValue {
 pub struct ConsensusMsg {
     /// An SCP message, used to reach agreement on the set of values the next
     /// block will contain.
-    pub scp_msg: Msg<ConsensusValue>,
+    pub scp_msg: Msg<ConsensusValueWithTimestamp>,
 
     /// The block ID of the block the message is trying to append values to.
     pub prev_block_id: BlockID,
@@ -60,7 +89,7 @@ pub struct VerifiedConsensusMsg {
 }
 
 impl VerifiedConsensusMsg {
-    pub fn scp_msg(&self) -> &Msg<ConsensusValue> {
+    pub fn scp_msg(&self) -> &Msg<ConsensusValueWithTimestamp> {
         &self.inner.scp_msg
     }
 
@@ -143,7 +172,7 @@ impl From<SignatureError> for ConsensusMsgError {
 impl ConsensusMsg {
     pub fn from_scp_msg(
         ledger: &impl Ledger,
-        scp_msg: Msg<ConsensusValue>,
+        scp_msg: Msg<ConsensusValueWithTimestamp>,
         signer_key: &Ed25519Pair,
     ) -> StdResult<Self, ConsensusMsgError> {
         if scp_msg.slot_index == 0 {
@@ -222,7 +251,13 @@ mod tests {
                 local_quorum_set,
                 num_blocks as u64,
                 Topic::Commit(CommitPayload {
-                    B: Ballot::new(100, &[ConsensusValue::TxHash(hash_tx)]),
+                    B: Ballot::new(
+                        100,
+                        &[ConsensusValueWithTimestamp {
+                            value: ConsensusValue::TxHash(hash_tx),
+                            timestamp: 0,
+                        }],
+                    ),
                     PN: 77,
                     CN: 55,
                     HN: 66,
@@ -270,11 +305,11 @@ mod tests {
         assert_eq!(msg.scp_msg.quorum_set, m);
 
         let ser = mc_util_serial::serialize(&msg.scp_msg.topic).unwrap();
-        let m: Topic<ConsensusValue> = mc_util_serial::deserialize(&ser).unwrap();
+        let m: Topic<ConsensusValueWithTimestamp> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.topic, m);
 
         let ser = mc_util_serial::serialize(&msg.scp_msg).unwrap();
-        let m: Msg<ConsensusValue> = mc_util_serial::deserialize(&ser).unwrap();
+        let m: Msg<ConsensusValueWithTimestamp> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg, m);
 
         let ser = mc_util_serial::serialize(&msg.prev_block_id).unwrap();

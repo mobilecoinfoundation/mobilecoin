@@ -4,25 +4,24 @@
 //! the ledger.
 //!
 //! Validation is broken into two parts:
-//! 1) "Well formed"-ness - A transaction is considered "well formed" if all the
-//! data in it that is    not affected by future changes to the ledger is
-//! correct. This includes checks like    inputs/outputs counts, range proofs,
-//! signature validation, membership proofs, etc.    A transaction that is
-//! well-formed remains well-formed if additional transactions are    appended
-//! to the ledger. However, a transaction could transition from not well-formed
-//! to well-formed:    for example, the transaction may include inputs that are
-//! not yet in the local ledger because    the local ledger is out of sync with
-//! the consensus ledger.
-//!
-//! 2) "Is valid [to add to the ledger]" - This checks whether a **single**
-//! transaction can be safely  appended to a ledger in it's current state. A
-//! valid transaction must also be well-formed.
+//!     1. "Well formed"-ness - A transaction is considered "well formed" if all
+//!        the data in it that is not affected by future changes to the ledger
+//!        is correct. This includes checks like inputs/outputs counts, range
+//!        proofs, signature validation, membership proofs, etc. A transaction
+//!        that is well-formed remains well-formed if additional transactions
+//!        are appended to the ledger. However, a transaction could transition
+//!        from not well-formed to well-formed: for example, the transaction may
+//!        include inputs that are not yet in the local ledger because the local
+//!        ledger is out of sync with the consensus ledger.
+//!     2. "Is valid [to add to the ledger]" - This checks whether a **single**
+//!        transaction can be safely  appended to a ledger in it's current
+//!        state. A valid transaction must also be well-formed.
 //!
 //! This definition differs from what the `mc_transaction_core::validation`
 //! module - the check provided by it is actually the "Is well formed" check,
 //! and might be renamed in the future to match this.
 
-use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
+use crate::{timestamp_validator, tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces};
 use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::{Error as LedgerError, Ledger};
@@ -71,16 +70,24 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).
-    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
-        // Get the index of the current block we will be building.
-        let current_block_index = self
+    fn is_valid(
+        &self,
+        context: Arc<WellFormedTxContext>,
+        timestamp: Option<u64>,
+    ) -> TransactionValidationResult<()> {
+        let latest_block = self
             .ledger
-            .num_blocks()
+            .get_latest_block()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
+
+        if let Some(timestamp) = timestamp {
+            timestamp_validator::validate(timestamp, &latest_block)
+                .map_err(|e| TransactionValidationError::Timestamp(e.to_string()))?;
+        }
 
         // The transaction must not have expired, and the tombstone block must not be
         // too far in the future.
-        validate_tombstone(current_block_index, context.tombstone_block())?;
+        validate_tombstone(latest_block.index + 1, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
         let contains_spent_key_image = context
@@ -122,9 +129,9 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     /// are safe to append to the ledger.
     fn combine(
         &self,
-        tx_contexts: &[Arc<WellFormedTxContext>],
+        tx_contexts: &[(Arc<WellFormedTxContext>, u64)],
         max_elements: usize,
-    ) -> Vec<TxHash> {
+    ) -> Vec<(TxHash, u64)> {
         // WellFormedTxContext defines the sort order of transactions within a block.
         let mut candidates: Vec<_> = tx_contexts.to_vec();
         candidates.sort();
@@ -135,7 +142,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         let mut used_key_images: HashSet<&KeyImage> = HashSet::default();
         let mut used_output_public_keys: HashSet<&CompressedRistrettoPublic> = HashSet::default();
 
-        for candidate in &candidates {
+        for (candidate, timestamp) in &candidates {
             // Enforce maximum size.
             if allowed_hashes.len() >= max_elements {
                 break;
@@ -154,7 +161,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             }
 
             // The transaction is allowed.
-            allowed_hashes.push(*candidate.tx_hash());
+            allowed_hashes.push((*candidate.tx_hash(), *timestamp));
             used_key_images.extend(&key_images);
             used_output_public_keys.extend(&output_public_keys);
         }
@@ -263,47 +270,56 @@ pub mod well_formed_tests {
 #[cfg(test)]
 mod is_valid_tests {
     use super::*;
+    use assert_matches::assert_matches;
+    use mc_blockchain_types::Block;
     use mc_ledger_db::{Error as LedgerError, MockLedger};
     use mc_transaction_core::{
         constants::MAX_TOMBSTONE_BLOCKS, validation::TransactionValidationError,
     };
 
+    fn well_formed_tx_context(latest_block: &Block) -> WellFormedTxContext {
+        let key_images = vec![
+            KeyImage::default(),
+            KeyImage::default(),
+            KeyImage::default(),
+        ];
+
+        let output_public_keys = vec![
+            CompressedRistrettoPublic::default(),
+            CompressedRistrettoPublic::default(),
+        ];
+
+        WellFormedTxContext::new(
+            Default::default(),
+            Default::default(),
+            // "2", because the block this transaction would go on will have
+            // an index 1 greater than the latest block. The tombstone needs to be greater than
+            // the block being built for the transaction to be valid.
+            latest_block.index + 2,
+            key_images,
+            vec![9, 10, 8],
+            output_public_keys,
+        )
+    }
+
     #[test]
     /// `is_valid` should accept a valid transaction.
     fn is_valid_ok() {
-        // Number of blocks in the local ledger.
-        let num_blocks = 53;
-
-        let well_formed_tx_context = {
-            let key_images = vec![
-                KeyImage::default(),
-                KeyImage::default(),
-                KeyImage::default(),
-            ];
-
-            let output_public_keys = vec![
-                CompressedRistrettoPublic::default(),
-                CompressedRistrettoPublic::default(),
-            ];
-
-            WellFormedTxContext::new(
-                Default::default(),
-                Default::default(),
-                num_blocks + 17,
-                key_images,
-                vec![9, 10, 8],
-                output_public_keys,
-            )
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
         };
+
+        let well_formed_tx_context = well_formed_tx_context(&latest_block);
 
         // Mock the local ledger.
         let mut ledger = MockLedger::new();
 
         // Untrusted should request num_blocks.
         ledger
-            .expect_num_blocks()
+            .expect_get_latest_block()
             .times(1)
-            .return_const(Ok(num_blocks));
+            .return_const(Ok(latest_block));
 
         // Key images must not be in the ledger.
         ledger
@@ -319,19 +335,24 @@ mod is_valid_tests {
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
-        assert_eq!(untrusted.is_valid(Arc::new(well_formed_tx_context)), Ok(()));
+        assert_eq!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context), None),
+            Ok(())
+        );
     }
 
     #[test]
     /// `is_valid` should reject a transaction if num_blocks > tombstone_block.
     fn is_valid_rejects_expired_transaction() {
-        // Number of blocks in the local ledger.
-        let num_blocks = 53;
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
+        };
 
         let well_formed_tx_context = WellFormedTxContext::new(
             Default::default(),
             Default::default(),
-            17, // The local ledger has advanced beyond the tombstone block.
+            latest_block.index + 1,
             Default::default(),
             Default::default(),
             Default::default(),
@@ -342,14 +363,14 @@ mod is_valid_tests {
 
         // Untrusted should request num_blocks.
         ledger
-            .expect_num_blocks()
+            .expect_get_latest_block()
             .times(1)
-            .return_const(Ok(num_blocks));
+            .return_const(Ok(latest_block));
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
         assert_eq!(
-            untrusted.is_valid(Arc::new(well_formed_tx_context)),
+            untrusted.is_valid(Arc::new(well_formed_tx_context), None),
             Err(TransactionValidationError::TombstoneBlockExceeded),
         );
     }
@@ -358,13 +379,15 @@ mod is_valid_tests {
     /// `is_valid` should reject a transaction if tombstone_block is too far in
     /// the future.
     fn is_valid_rejects_tombstone_too_far() {
-        // Number of blocks in the local ledger.
-        let num_blocks = 53;
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
+        };
 
         let well_formed_tx_context = WellFormedTxContext::new(
             Default::default(),
             Default::default(),
-            num_blocks + MAX_TOMBSTONE_BLOCKS + 1,
+            latest_block.index + MAX_TOMBSTONE_BLOCKS + 2,
             Default::default(),
             Default::default(),
             Default::default(),
@@ -375,14 +398,14 @@ mod is_valid_tests {
 
         // Untrusted should request num_blocks.
         ledger
-            .expect_num_blocks()
+            .expect_get_latest_block()
             .times(1)
-            .return_const(Ok(num_blocks));
+            .return_const(Ok(latest_block));
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
         assert_eq!(
-            untrusted.is_valid(Arc::new(well_formed_tx_context)),
+            untrusted.is_valid(Arc::new(well_formed_tx_context), None),
             Err(TransactionValidationError::TombstoneBlockTooFar),
         );
     }
@@ -390,34 +413,21 @@ mod is_valid_tests {
     #[test]
     /// `is_valid` should reject a transaction with an already spent key image.
     fn is_valid_rejects_spent_key_image() {
-        // Number of blocks in the local ledger.
-        let num_blocks = 53;
-
-        let well_formed_tx_context = {
-            let key_images = vec![
-                KeyImage::default(),
-                KeyImage::default(),
-                KeyImage::default(),
-            ];
-
-            WellFormedTxContext::new(
-                Default::default(),
-                Default::default(),
-                num_blocks + 17,
-                key_images,
-                Default::default(),
-                Default::default(),
-            )
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
         };
+
+        let well_formed_tx_context = well_formed_tx_context(&latest_block);
 
         // Mock the local ledger.
         let mut ledger = MockLedger::new();
 
         // Untrusted should request num_blocks.
         ledger
-            .expect_num_blocks()
+            .expect_get_latest_block()
             .times(1)
-            .return_const(Ok(num_blocks));
+            .return_const(Ok(latest_block));
 
         // A key image has been spent.
         ledger
@@ -428,7 +438,7 @@ mod is_valid_tests {
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
         assert_eq!(
-            untrusted.is_valid(Arc::new(well_formed_tx_context)),
+            untrusted.is_valid(Arc::new(well_formed_tx_context), None),
             Err(TransactionValidationError::ContainsSpentKeyImage),
         );
     }
@@ -437,39 +447,21 @@ mod is_valid_tests {
     /// `is_valid` should reject a transaction with an already used output
     /// public key.
     fn is_valid_rejects_non_unique_output_public_key() {
-        // Number of blocks in the local ledger.
-        let num_blocks = 53;
-
-        let well_formed_tx_context = {
-            let key_images = vec![
-                KeyImage::default(),
-                KeyImage::default(),
-                KeyImage::default(),
-            ];
-
-            let output_public_keys = vec![
-                CompressedRistrettoPublic::default(),
-                CompressedRistrettoPublic::default(),
-            ];
-
-            WellFormedTxContext::new(
-                Default::default(),
-                Default::default(),
-                num_blocks + 17,
-                key_images,
-                vec![9, 10, 8],
-                output_public_keys,
-            )
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
         };
+
+        let well_formed_tx_context = well_formed_tx_context(&latest_block);
 
         // Mock the local ledger.
         let mut ledger = MockLedger::new();
 
         // Untrusted should request num_blocks.
         ledger
-            .expect_num_blocks()
+            .expect_get_latest_block()
             .times(1)
-            .return_const(Ok(num_blocks));
+            .return_const(Ok(latest_block));
 
         // Key images must not be in the ledger.
         ledger
@@ -486,8 +478,81 @@ mod is_valid_tests {
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
         assert_eq!(
-            untrusted.is_valid(Arc::new(well_formed_tx_context)),
+            untrusted.is_valid(Arc::new(well_formed_tx_context), None),
             Err(TransactionValidationError::ContainsExistingOutputPublicKey),
+        );
+    }
+
+    #[test]
+    fn valid_with_timestamp() {
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
+        };
+
+        let well_formed_tx_context = well_formed_tx_context(&latest_block);
+
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
+
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_get_latest_block()
+            .times(1)
+            .return_const(Ok(latest_block));
+
+        // Key images must not be in the ledger.
+        ledger
+            .expect_contains_key_image()
+            .times(well_formed_tx_context.key_images().len())
+            .return_const(Ok(false));
+
+        // Output public keys must not be in the ledger.
+        ledger
+            .expect_contains_tx_out_public_key()
+            .times(well_formed_tx_context.output_public_keys().len())
+            .return_const(Ok(false));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+
+        assert_eq!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context), Some(now)),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn invalid_with_a_timestamp_that_is_very_old() {
+        let latest_block = Block {
+            index: 52,
+            ..Default::default()
+        };
+
+        let well_formed_tx_context = well_formed_tx_context(&latest_block);
+
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
+
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_get_latest_block()
+            .times(1)
+            .return_const(Ok(latest_block));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
+        // 1970 might be a bit extreme, but we only want to show we hooked up
+        // the timestamp validator, not the edge cases of it.
+        let timestamp_too_old = 0;
+
+        assert_matches!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context), Some(timestamp_too_old)),
+            Err(TransactionValidationError::Timestamp(_))
         );
     }
 }
@@ -510,10 +575,13 @@ mod combine_tests {
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
+    fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<(TxHash, u64)> {
         let ledger = get_mock_ledger(10);
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
-        let tx_contexts: Vec<_> = tx_contexts.into_iter().map(Arc::new).collect();
+        let tx_contexts: Vec<_> = tx_contexts
+            .into_iter()
+            .map(|tx| (Arc::new(tx), 10))
+            .collect();
         untrusted.combine(&tx_contexts, max_elements)
     }
 
@@ -894,7 +962,7 @@ mod combine_tests {
             // `combine` should only allow one of the transactions that attempts to use the
             // same key image.
             assert_eq!(combined_transactions.len(), 2);
-            assert!(combined_transactions.contains(third_client_tx.tx_hash()));
+            assert!(combined_transactions.contains(&(*third_client_tx.tx_hash(), 10)));
         }
     }
 
@@ -1104,7 +1172,7 @@ mod combine_tests {
             // `combine` should only allow one of the transactions that attempts to use the
             // same output public key.
             assert_eq!(combined_transactions.len(), 2);
-            assert!(combined_transactions.contains(third_client_tx.tx_hash()));
+            assert!(combined_transactions.contains(&(*third_client_tx.tx_hash(), 10)));
         }
     }
 
@@ -1119,7 +1187,11 @@ mod combine_tests {
 
         let hashes = combine(tx_contexts, 10);
         // Transactions should be ordered from highest fee to lowest fee.
-        let expected_hashes = vec![TxHash([2u8; 32]), TxHash([1u8; 32]), TxHash([3u8; 32])];
+        let expected_hashes = vec![
+            (TxHash([2u8; 32]), 10),
+            (TxHash([1u8; 32]), 10),
+            (TxHash([3u8; 32]), 10),
+        ];
         assert_eq!(hashes, expected_hashes);
     }
 }

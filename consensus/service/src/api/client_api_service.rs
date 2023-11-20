@@ -161,7 +161,7 @@ impl ClientApiService {
         // Validate the transaction.
         // This is done here as a courtesy to give clients immediate feedback about the
         // transaction.
-        self.tx_manager.validate(&tx_hash)?;
+        self.tx_manager.validate(&tx_hash, None)?;
 
         // The transaction can be considered by the network.
         (*self.propose_tx_callback)(ConsensusValue::TxHash(tx_hash), None, None);
@@ -189,7 +189,7 @@ impl ClientApiService {
         // This is done here as a courtesy to give clients immediate feedback about the
         // transaction.
         self.mint_tx_manager
-            .validate_mint_config_tx(&mint_config_tx)?;
+            .validate_mint_config_tx(&mint_config_tx, None)?;
 
         // The transaction can be considered by the network.
         (*self.propose_tx_callback)(ConsensusValue::MintConfigTx(mint_config_tx), None, None);
@@ -214,7 +214,7 @@ impl ClientApiService {
         // Validate the transaction.
         // This is done here as a courtesy to give clients immediate feedback about the
         // transaction.
-        self.mint_tx_manager.validate_mint_tx(&mint_tx)?;
+        self.mint_tx_manager.validate_mint_tx(&mint_tx, None)?;
 
         // The transaction can be considered by the network.
         (*self.propose_tx_callback)(ConsensusValue::MintTx(mint_tx), None, None);

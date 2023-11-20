@@ -153,6 +153,9 @@ pub enum TransactionValidationError {
 
     /// Unknown Masked Amount version
     UnknownMaskedAmountVersion,
+
+    /// Tx Timestamp: {0}
+    Timestamp(String),
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {

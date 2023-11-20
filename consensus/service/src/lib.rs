@@ -19,6 +19,7 @@ mod background_work_queue;
 mod byzantine_ledger;
 mod counters;
 mod peer_keepalive;
+mod timestamp_validator;
 
 lazy_static::lazy_static! {
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("consensus_service");

@@ -19,7 +19,8 @@ use mc_consensus_scp::{
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
 use mc_ledger_db::{test_utils::MockLedger, Ledger};
 use mc_peers::{
-    ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError, Result as PeerResult,
+    ConsensusConnection, ConsensusMsg, ConsensusValue, ConsensusValueWithTimestamp,
+    Error as PeerError, Result as PeerResult,
 };
 use mc_transaction_core::tx::TxHash;
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
@@ -230,7 +231,10 @@ pub fn create_consensus_msg(
 ) -> ConsensusMsg {
     let msg_hash = TxHash::try_from(Sha512_256::digest(msg.as_bytes()).as_slice())
         .expect("Could not hash message into TxHash");
-    let value = ConsensusValue::TxHash(msg_hash);
+    let value = ConsensusValueWithTimestamp {
+        value: ConsensusValue::TxHash(msg_hash),
+        timestamp: 1,
+    };
     let mut payload = NominatePayload {
         X: BTreeSet::default(),
         Y: BTreeSet::default(),

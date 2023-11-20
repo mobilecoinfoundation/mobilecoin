@@ -15,6 +15,7 @@ pub use traits::MintTxManager;
 #[cfg(test)]
 pub use traits::MockMintTxManager;
 
+use crate::timestamp_validator;
 use mc_common::{
     logger::{log, Logger},
     HashSet,
@@ -60,15 +61,18 @@ impl<L: Ledger> MintTxManagerImpl<L> {
     }
 }
 
-#[derive(Debug, Eq, Hash, PartialEq)]
-struct NonceByTokenId {
-    nonce: Vec<u8>,
-    token_id: u64,
-}
-
 impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
-    /// Validate a MintConfigTx transaction against the current ledger.
-    fn validate_mint_config_tx(&self, mint_config_tx: &MintConfigTx) -> MintTxManagerResult<()> {
+    fn validate_mint_config_tx(
+        &self,
+        mint_config_tx: &MintConfigTx,
+        timestamp: Option<u64>,
+    ) -> MintTxManagerResult<()> {
+        let latest_block = self.ledger_db.get_latest_block()?;
+
+        if let Some(timestamp) = timestamp {
+            timestamp_validator::validate(timestamp, &latest_block)?;
+        }
+
         // Ensure that we have not seen this transaction before.
         if self
             .ledger_db
@@ -92,13 +96,10 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 MintValidationError::NoGovernors(token_id),
             ))?;
 
-        // Get the index of the block currently being built.
-        let current_block_index = self.ledger_db.num_blocks()?;
-
         // Perform the actual validation.
         validate_mint_config_tx(
             mint_config_tx,
-            Some(current_block_index),
+            Some(latest_block.index + 1),
             self.block_version,
             &governors,
         )?;
@@ -108,32 +109,25 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
     fn combine_mint_config_txs(
         &self,
-        txs: &[MintConfigTx],
+        txs: &[(MintConfigTx, u64)],
         max_elements: usize,
-    ) -> MintTxManagerResult<Vec<MintConfigTx>> {
-        let mut candidates = txs.to_vec();
-        candidates.sort();
-
-        let mut seen_nonces = HashSet::default();
-        let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
-            let nonce_with_token_id = NonceByTokenId {
-                nonce: tx.prefix.nonce.clone(),
-                token_id: tx.prefix.token_id,
-            };
-            if seen_nonces.len() >= max_elements {
-                return false;
-            }
-            if seen_nonces.contains(&nonce_with_token_id) {
-                return false;
-            }
-            seen_nonces.insert(nonce_with_token_id);
-            true
-        });
-
-        Ok(allowed_txs)
+    ) -> MintTxManagerResult<Vec<(MintConfigTx, u64)>> {
+        let mut candidates = timestamp_validator::sort_and_dedup(txs.iter());
+        candidates.truncate(max_elements);
+        Ok(candidates)
     }
 
-    fn validate_mint_tx(&self, mint_tx: &MintTx) -> MintTxManagerResult<()> {
+    fn validate_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+        timestamp: Option<u64>,
+    ) -> MintTxManagerResult<()> {
+        let latest_block = self.ledger_db.get_latest_block()?;
+
+        if let Some(timestamp) = timestamp {
+            timestamp_validator::validate(timestamp, &latest_block)?;
+        }
+
         // Ensure that we have not seen this transaction before.
         if self
             .ledger_db
@@ -160,13 +154,10 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 err => err.into(),
             })?;
 
-        // Get the index of the block currently being built.
-        let current_block_index = self.ledger_db.num_blocks()?;
-
         // Perform the actual validation.
         validate_mint_tx(
             mint_tx,
-            current_block_index,
+            latest_block.index + 1,
             self.block_version,
             &active_mint_config.mint_config,
         )?;
@@ -176,48 +167,39 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
     fn combine_mint_txs(
         &self,
-        txs: &[MintTx],
+        txs: &[(MintTx, u64)],
         max_elements: usize,
-    ) -> MintTxManagerResult<Vec<MintTx>> {
-        let mut candidates = txs.to_vec();
-        candidates.sort();
+    ) -> MintTxManagerResult<Vec<(MintTx, u64)>> {
+        let candidates = timestamp_validator::sort_and_dedup(txs.iter());
 
-        let mut seen_nonces = HashSet::default();
         let mut seen_mint_configs = HashSet::default();
-        let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
-            let nonce_with_token_id = NonceByTokenId {
-                nonce: tx.prefix.nonce.clone(),
-                token_id: tx.prefix.token_id,
-            };
-            if seen_nonces.len() >= max_elements {
-                return false;
-            }
-            if seen_nonces.contains(&nonce_with_token_id) {
-                return false;
-            }
-
-            // We allow a specific MintConfig to be used only once per block - this
-            // simplifies enforcing the total mint limit.
-            let active_mint_config = match self.ledger_db.get_active_mint_config_for_mint_tx(tx) {
-                Ok(active_mint_config) => active_mint_config,
-                Err(err) => {
-                    log::warn!(
-                        self.logger,
-                        "failed finding an active mint config for mint tx {}: {}",
-                        tx,
-                        err
-                    );
+        let allowed_txs = candidates
+            .into_iter()
+            .filter(|(tx, _)| {
+                // We allow a specific MintConfig to be used only once per block - this
+                // simplifies enforcing the total mint limit.
+                let active_mint_config = match self.ledger_db.get_active_mint_config_for_mint_tx(tx)
+                {
+                    Ok(active_mint_config) => active_mint_config,
+                    Err(err) => {
+                        log::warn!(
+                            self.logger,
+                            "failed finding an active mint config for mint tx {}: {}",
+                            tx,
+                            err
+                        );
+                        return false;
+                    }
+                };
+                if seen_mint_configs.contains(&active_mint_config.mint_config) {
                     return false;
                 }
-            };
-            if seen_mint_configs.contains(&active_mint_config.mint_config) {
-                return false;
-            }
 
-            seen_nonces.insert(nonce_with_token_id);
-            seen_mint_configs.insert(active_mint_config.mint_config);
-            true
-        });
+                seen_mint_configs.insert(active_mint_config.mint_config);
+                true
+            })
+            .take(max_elements)
+            .collect();
 
         Ok(allowed_txs)
     }
@@ -251,6 +233,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 #[cfg(test)]
 mod mint_config_tx_tests {
     use super::*;
+    use assert_matches::assert_matches;
     use mc_blockchain_types::BlockContents;
     use mc_common::logger::test_with_logger;
     use mc_crypto_multisig::SignerSet;
@@ -263,6 +246,7 @@ mod mint_config_tx_tests {
         mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
+    use std::time::SystemTime;
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
@@ -287,8 +271,13 @@ mod mint_config_tx_tests {
         let mint_tx_manager =
             MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, Some(now)),
             Ok(())
         );
     }
@@ -329,17 +318,17 @@ mod mint_config_tx_tests {
             MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx1),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx1, None),
             Ok(())
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx2),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx2, None),
             Ok(())
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx3),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx3, None),
             Ok(())
         );
     }
@@ -374,7 +363,7 @@ mod mint_config_tx_tests {
         // At first we should succeed since we have not yet exceeded the tombstone
         // block.
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, None),
             Ok(())
         );
 
@@ -388,7 +377,7 @@ mod mint_config_tx_tests {
 
         // Try again, we should fail.
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::TombstoneBlockExceeded
             ))
@@ -418,7 +407,7 @@ mod mint_config_tx_tests {
 
         // At first we should succeed since the nonce is not yet in the ledger.
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, None),
             Ok(())
         );
 
@@ -431,7 +420,7 @@ mod mint_config_tx_tests {
 
         // Try again, we should fail.
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NonceAlreadyUsed
             ))
@@ -462,7 +451,7 @@ mod mint_config_tx_tests {
 
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx2),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx2, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NoGovernors(token_id_2)
             ))
@@ -494,10 +483,39 @@ mod mint_config_tx_tests {
         mint_config_tx.prefix.tombstone_block += 1;
 
         assert_eq!(
-            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::InvalidSignature
             ))
+        );
+    }
+
+    #[test_with_logger]
+    fn validate_mint_config_tx_rejects_old_timestamp(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 1;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, n_blocks, &sender, &mut rng);
+
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
+
+        // 1970 might be a bit extreme, but we only want to show we hooked up
+        // the timestamp validator, not the edge cases of it.
+        let timestamp_too_old = 0;
+
+        assert_matches!(
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx, Some(timestamp_too_old)),
+            Err(MintTxManagerError::Timestamp(_))
         );
     }
 
@@ -526,25 +544,25 @@ mod mint_config_tx_tests {
             MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         let mut expected_result = vec![
-            mint_config_tx1.clone(),
-            mint_config_tx2.clone(),
-            mint_config_tx3.clone(),
-            mint_config_tx4.clone(),
+            (mint_config_tx1.clone(), 100),
+            (mint_config_tx2.clone(), 200),
+            (mint_config_tx3.clone(), 300),
+            (mint_config_tx4.clone(), 400),
         ];
         expected_result.sort();
 
         assert_eq!(
             mint_tx_manager.combine_mint_config_txs(
                 &[
-                    mint_config_tx3.clone(),
-                    mint_config_tx4,
-                    mint_config_tx1.clone(),
-                    mint_config_tx3.clone(),
-                    mint_config_tx3,
-                    mint_config_tx2.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx1,
-                    mint_config_tx2,
+                    (mint_config_tx3.clone(), 3),
+                    (mint_config_tx4, 400),
+                    (mint_config_tx1.clone(), 1),
+                    (mint_config_tx3.clone(), 300),
+                    (mint_config_tx3, 3),
+                    (mint_config_tx2.clone(), 2),
+                    (mint_config_tx1.clone(), 100),
+                    (mint_config_tx1, 1),
+                    (mint_config_tx2, 200),
                 ],
                 100
             ),
@@ -589,17 +607,20 @@ mod mint_config_tx_tests {
         let mint_tx_manager =
             MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
-        let mut expected_result = vec![mint_config_tx1.clone(), mint_config_tx2.clone()];
+        let mut expected_result = vec![
+            (mint_config_tx1.clone(), 1000),
+            (mint_config_tx2.clone(), 2000),
+        ];
         expected_result.sort();
 
         assert_eq!(
             mint_tx_manager.combine_mint_config_txs(
                 &[
-                    mint_config_tx1.clone(),
-                    mint_config_tx2.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx1,
-                    mint_config_tx2,
+                    (mint_config_tx1.clone(), 10),
+                    (mint_config_tx2.clone(), 20),
+                    (mint_config_tx1.clone(), 1000),
+                    (mint_config_tx1, 100),
+                    (mint_config_tx2, 2000),
                 ],
                 100
             ),
@@ -633,12 +654,12 @@ mod mint_config_tx_tests {
             MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         let mut expected_result = vec![
-            mint_config_tx1.clone(),
-            mint_config_tx2.clone(),
-            mint_config_tx3.clone(),
-            mint_config_tx4.clone(),
-            mint_config_tx5.clone(),
-            mint_config_tx6.clone(),
+            (mint_config_tx1.clone(), 100),
+            (mint_config_tx2.clone(), 200),
+            (mint_config_tx3.clone(), 300),
+            (mint_config_tx4.clone(), 400),
+            (mint_config_tx5.clone(), 500),
+            (mint_config_tx6.clone(), 600),
         ];
         expected_result.sort();
         expected_result.truncate(3);
@@ -646,16 +667,16 @@ mod mint_config_tx_tests {
         assert_eq!(
             mint_tx_manager.combine_mint_config_txs(
                 &[
-                    mint_config_tx3.clone(),
-                    mint_config_tx4,
-                    mint_config_tx1.clone(),
-                    mint_config_tx5,
-                    mint_config_tx3,
-                    mint_config_tx2.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx1,
-                    mint_config_tx2,
-                    mint_config_tx6,
+                    (mint_config_tx3.clone(), 3),
+                    (mint_config_tx4, 400),
+                    (mint_config_tx1.clone(), 1),
+                    (mint_config_tx5, 500),
+                    (mint_config_tx3, 300),
+                    (mint_config_tx2.clone(), 2),
+                    (mint_config_tx1.clone(), 100),
+                    (mint_config_tx1, 1),
+                    (mint_config_tx2, 200),
+                    (mint_config_tx6, 600),
                 ],
                 3
             ),
@@ -667,6 +688,7 @@ mod mint_config_tx_tests {
 #[cfg(test)]
 mod mint_tx_tests {
     use super::*;
+    use assert_matches::assert_matches;
     use mc_blockchain_types::BlockContents;
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
@@ -680,6 +702,7 @@ mod mint_tx_tests {
         mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
+    use std::time::SystemTime;
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
@@ -721,7 +744,15 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx, Some(now)),
+            Ok(())
+        );
     }
 
     /// validate_mint_tx accepts a valid mint tx when two tokens are configured.
@@ -772,7 +803,7 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx1), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx1, None), Ok(()));
 
         let mint_tx2 = create_mint_tx(
             token_id_2,
@@ -784,7 +815,7 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx2), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx2, None), Ok(()));
     }
 
     /// validate_mint_tx rejects a mint tx when it cannot be matched with an
@@ -839,7 +870,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NoMatchingMintConfig
             ))
@@ -855,7 +886,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NoMatchingMintConfig
             ))
@@ -870,7 +901,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NoMatchingMintConfig
             ))
@@ -916,7 +947,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::AmountExceedsMintLimit
             ))
@@ -931,7 +962,7 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx],
@@ -949,7 +980,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::AmountExceedsMintLimit
             ))
@@ -963,7 +994,7 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
     }
 
     /// validate_mint_tx rejects a mint tx that exceeds the overall mint limit.
@@ -1006,7 +1037,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::AmountExceedsMintLimit
             ))
@@ -1021,7 +1052,7 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx],
@@ -1039,7 +1070,7 @@ mod mint_tx_tests {
         );
 
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::AmountExceedsMintLimit
             ))
@@ -1053,7 +1084,7 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
     }
 
     /// validate_mint_tx rejects invalid signature.
@@ -1093,12 +1124,12 @@ mod mint_tx_tests {
             &mut rng,
         );
 
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
 
         // Now mess with the data so the signature is no longer valid.
         mint_tx.prefix.amount += 1;
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NoMatchingMintConfig
             ))
@@ -1148,7 +1179,7 @@ mod mint_tx_tests {
 
         // At first we should succeed since we have not yet exceeded the tombstone
         // block.
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
 
         // Append a block to the ledger.
         let block_contents = BlockContents {
@@ -1160,7 +1191,7 @@ mod mint_tx_tests {
 
         // Try again, we should fail.
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::TombstoneBlockExceeded
             ))
@@ -1205,7 +1236,7 @@ mod mint_tx_tests {
         );
 
         // At first we should succeed since the nonce is not yet in the ledger.
-        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx, None), Ok(()));
 
         // Append to the ledger.
         let block_contents = BlockContents {
@@ -1217,10 +1248,56 @@ mod mint_tx_tests {
 
         // Try again, we should fail.
         assert_eq!(
-            mint_tx_manager.validate_mint_tx(&mint_tx),
+            mint_tx_manager.validate_mint_tx(&mint_tx, None),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NonceAlreadyUsed
             ))
+        );
+    }
+
+    #[test_with_logger]
+    fn mint_tx_rejects_timestamp_too_old(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
+            ..Default::default()
+        };
+        add_block_contents_to_ledger(&mut ledger, BLOCK_VERSION, block_contents, &mut rng).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
+
+        // Create a valid MintTx signed by the governor.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        // 1970 might be a bit extreme, but we only want to show we hooked up
+        // the timestamp validator, not the edge cases of it.
+        let timestamp_too_old = 0;
+
+        assert_matches!(
+            mint_tx_manager.validate_mint_tx(&mint_tx, Some(timestamp_too_old)),
+            Err(MintTxManagerError::Timestamp(_))
         );
     }
 
@@ -1280,24 +1357,28 @@ mod mint_tx_tests {
         let mint_tx_manager =
             MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
-        let mut expected_result = mint_txs.clone();
+        let mut expected_result = vec![
+            (mint_txs[0].clone(), 100),
+            (mint_txs[1].clone(), 200),
+            (mint_txs[2].clone(), 300),
+        ];
         expected_result.sort();
 
         assert_eq!(
             mint_tx_manager.combine_mint_txs(
                 &[
-                    mint_txs[0].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[2].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[2].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[2].clone(),
+                    (mint_txs[0].clone(), 10),
+                    (mint_txs[0].clone(), 11),
+                    (mint_txs[1].clone(), 200),
+                    (mint_txs[2].clone(), 31),
+                    (mint_txs[1].clone(), 20),
+                    (mint_txs[0].clone(), 100),
+                    (mint_txs[0].clone(), 12),
+                    (mint_txs[2].clone(), 32),
+                    (mint_txs[1].clone(), 21),
+                    (mint_txs[0].clone(), 13),
+                    (mint_txs[1].clone(), 22),
+                    (mint_txs[2].clone(), 300),
                 ],
                 100
             ),
@@ -1369,21 +1450,21 @@ mod mint_tx_tests {
         let mint_tx_manager =
             MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
-        let mut expected_result = mint_txs.clone();
+        let mut expected_result = vec![(mint_txs[0].clone(), 1000), (mint_txs[1].clone(), 2000)];
         expected_result.sort();
 
         assert_eq!(
             mint_tx_manager.combine_mint_txs(
                 &[
-                    mint_txs[0].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
+                    (mint_txs[0].clone(), 0),
+                    (mint_txs[0].clone(), 3),
+                    (mint_txs[1].clone(), 1997),
+                    (mint_txs[1].clone(), 1998),
+                    (mint_txs[0].clone(), 1000),
+                    (mint_txs[0].clone(), 1),
+                    (mint_txs[1].clone(), 2000),
+                    (mint_txs[0].clone(), 2),
+                    (mint_txs[1].clone(), 1999),
                 ],
                 100
             ),
@@ -1472,32 +1553,36 @@ mod mint_tx_tests {
         let combined = mint_tx_manager
             .combine_mint_txs(
                 &[
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[2].clone(),
-                    mint_txs[3].clone(),
-                    mint_txs[4].clone(),
-                    mint_txs[3].clone(),
-                    mint_txs[4].clone(),
-                    mint_txs[5].clone(),
-                    mint_txs[5].clone(),
-                    mint_txs[5].clone(),
-                    mint_txs[0].clone(),
-                    mint_txs[1].clone(),
-                    mint_txs[2].clone(),
-                    mint_txs[2].clone(),
-                    mint_txs[3].clone(),
-                    mint_txs[3].clone(),
-                    mint_txs[4].clone(),
-                    mint_txs[5].clone(),
+                    (mint_txs[0].clone(), 10),
+                    (mint_txs[1].clone(), 200),
+                    (mint_txs[2].clone(), 30),
+                    (mint_txs[3].clone(), 400),
+                    (mint_txs[4].clone(), 50),
+                    (mint_txs[3].clone(), 40),
+                    (mint_txs[4].clone(), 500),
+                    (mint_txs[5].clone(), 60),
+                    (mint_txs[5].clone(), 61),
+                    (mint_txs[5].clone(), 600),
+                    (mint_txs[0].clone(), 100),
+                    (mint_txs[1].clone(), 20),
+                    (mint_txs[2].clone(), 300),
+                    (mint_txs[2].clone(), 31),
+                    (mint_txs[3].clone(), 41),
+                    (mint_txs[3].clone(), 42),
+                    (mint_txs[4].clone(), 51),
+                    (mint_txs[5].clone(), 62),
                 ],
                 100,
             )
             .unwrap();
 
         assert_eq!(
-            HashSet::from_iter([10, 20, 30]),
-            HashSet::from_iter(combined.iter().map(|tx| tx.prefix.amount))
+            HashSet::from_iter([(10, 100), (20, 200), (30, 300)]),
+            HashSet::from_iter(
+                combined
+                    .iter()
+                    .map(|(tx, timestamp)| (tx.prefix.amount, *timestamp))
+            )
         );
     }
 }

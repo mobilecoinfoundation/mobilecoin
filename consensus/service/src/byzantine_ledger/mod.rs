@@ -27,7 +27,8 @@ use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{
-    Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, ConsensusValueWithTimestamp,
+    VerifiedConsensusMsg,
 };
 use mc_transaction_core::mint::constants::{MAX_MINT_CONFIG_TXS_PER_BLOCK, MAX_MINT_TXS_PER_BLOCK};
 use mc_util_metered_channel::Sender;
@@ -129,7 +130,7 @@ impl ByzantineLedger {
         logger: Logger,
     ) -> Self {
         // TODO: this should be passed in as an argument.
-        let scp_node: Box<dyn ScpNode<ConsensusValue>> = {
+        let scp_node: Box<dyn ScpNode<ConsensusValueWithTimestamp>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
             let mint_tx_manager_validate = mint_tx_manager.clone();
@@ -139,19 +140,21 @@ impl ByzantineLedger {
                 node_id.clone(),
                 quorum_set.clone(),
                 // Validation callback
-                Arc::new(move |scp_value| match scp_value {
-                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate
-                        .validate(tx_hash)
-                        .map_err(UnifiedNodeError::from),
+                Arc::new(
+                    move |scp_value: &ConsensusValueWithTimestamp| match &scp_value.value {
+                        ConsensusValue::TxHash(tx_hash) => tx_manager_validate
+                            .validate(tx_hash, Some(scp_value.timestamp))
+                            .map_err(UnifiedNodeError::from),
 
-                    ConsensusValue::MintConfigTx(mint_config_tx) => mint_tx_manager_validate
-                        .validate_mint_config_tx(mint_config_tx)
-                        .map_err(UnifiedNodeError::from),
+                        ConsensusValue::MintConfigTx(mint_config_tx) => mint_tx_manager_validate
+                            .validate_mint_config_tx(mint_config_tx, Some(scp_value.timestamp))
+                            .map_err(UnifiedNodeError::from),
 
-                    ConsensusValue::MintTx(mint_tx) => mint_tx_manager_validate
-                        .validate_mint_tx(mint_tx)
-                        .map_err(UnifiedNodeError::from),
-                }),
+                        ConsensusValue::MintTx(mint_tx) => mint_tx_manager_validate
+                            .validate_mint_tx(mint_tx, Some(scp_value.timestamp))
+                            .map_err(UnifiedNodeError::from),
+                    },
+                ),
                 // Combine callback
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
@@ -159,30 +162,37 @@ impl ByzantineLedger {
                     let mut mint_txs = Vec::new();
 
                     for value in scp_values {
-                        match value {
-                            ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                        match &value.value {
+                            ConsensusValue::TxHash(tx_hash) => {
+                                tx_hashes.push((*tx_hash, value.timestamp))
+                            }
                             ConsensusValue::MintConfigTx(mint_config_tx) => {
-                                mint_config_txs.push(mint_config_tx.clone());
+                                mint_config_txs.push((mint_config_tx.clone(), value.timestamp));
                             }
                             ConsensusValue::MintTx(mint_tx) => {
-                                mint_txs.push(mint_tx.clone());
+                                mint_txs.push((mint_tx.clone(), value.timestamp));
                             }
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
-                    let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
+                    let tx_hashes_iter = tx_hashes.into_iter().map(|(tx, timestamp)| {
+                        ConsensusValueWithTimestamp::new(tx.into(), timestamp)
+                    });
 
                     let mint_config_txs = mint_tx_manager_combine.combine_mint_config_txs(
                         &mint_config_txs[..],
                         MAX_MINT_CONFIG_TXS_PER_BLOCK,
                     )?;
-                    let mint_config_txs_iter = mint_config_txs
-                        .into_iter()
-                        .map(ConsensusValue::MintConfigTx);
+                    let mint_config_txs_iter =
+                        mint_config_txs.into_iter().map(|(tx, timestamp)| {
+                            ConsensusValueWithTimestamp::new(tx.into(), timestamp)
+                        });
 
                     let mint_txs = mint_tx_manager_combine
                         .combine_mint_txs(&mint_txs[..], MAX_MINT_TXS_PER_BLOCK)?;
-                    let mint_txs_iter = mint_txs.into_iter().map(ConsensusValue::MintTx);
+                    let mint_txs_iter = mint_txs.into_iter().map(|(tx, timestamp)| {
+                        ConsensusValueWithTimestamp::new(tx.into(), timestamp)
+                    });
 
                     Ok(tx_hashes_iter
                         .chain(mint_config_txs_iter)
@@ -354,7 +364,7 @@ mod tests {
     use std::{
         collections::BTreeSet,
         sync::{Arc, Mutex},
-        time::Instant,
+        time::{Duration, Instant, SystemTime},
     };
 
     // Run these tests with a particular block version
@@ -655,6 +665,11 @@ mod tests {
             .unwrap()
             .into();
 
+        let timestamp_before = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
         byzantine_ledger.push_values(
             vec![
                 hash_tx_zero.clone(),
@@ -666,6 +681,45 @@ mod tests {
 
         let slot_index = num_blocks as SlotIndex;
 
+        let deadline = Instant::now() + Duration::from_secs(60);
+        while Instant::now() < deadline {
+            {
+                if !mock_peer_state
+                    .lock()
+                    .expect("Could not lock mock peer state")
+                    .msgs
+                    .is_empty()
+                {
+                    break;
+                }
+            }
+
+            thread::sleep(Duration::from_millis(100_u64));
+        }
+
+        let timestamp_after = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
+        let timestamp = {
+            let msgs = &mock_peer_state
+                .lock()
+                .expect("Could not lock mock peer state")
+                .msgs;
+            let front = msgs.front().unwrap();
+            if let Topic::Nominate(ref payload) = front.scp_msg.topic {
+                payload.X.iter().next().unwrap().timestamp
+            } else {
+                panic!("Expected Nominate msg")
+            }
+        };
+
+        assert!(
+            timestamp_before <= timestamp && timestamp <= timestamp_after,
+            "Timestamp in message doesn't reflect the time when the message was received"
+        );
+
         // After some time, this node should nominate its client values.
         let expected_msg = ConsensusMsg::from_scp_msg(
             &ledger,
@@ -675,9 +729,18 @@ mod tests {
                 slot_index,
                 Topic::Nominate(NominatePayload {
                     X: BTreeSet::from_iter(vec![
-                        hash_tx_zero.clone(),
-                        hash_tx_one.clone(),
-                        hash_tx_two.clone(),
+                        ConsensusValueWithTimestamp {
+                            value: hash_tx_zero.clone(),
+                            timestamp,
+                        },
+                        ConsensusValueWithTimestamp {
+                            value: hash_tx_one.clone(),
+                            timestamp,
+                        },
+                        ConsensusValueWithTimestamp {
+                            value: hash_tx_two.clone(),
+                            timestamp,
+                        },
                     ]),
                     Y: BTreeSet::default(),
                 }),
@@ -685,22 +748,6 @@ mod tests {
             &local_signer_key,
         )
         .unwrap();
-
-        let deadline = Instant::now() + Duration::from_secs(60);
-        while Instant::now() < deadline {
-            {
-                if mock_peer_state
-                    .lock()
-                    .expect("Could not lock mock peer state")
-                    .msgs
-                    .contains(&expected_msg)
-                {
-                    break;
-                }
-            }
-
-            thread::sleep(Duration::from_millis(100_u64));
-        }
 
         {
             let msgs = &mock_peer_state
@@ -725,9 +772,18 @@ mod tests {
                         B: Ballot::new(
                             100,
                             &[
-                                hash_tx_zero.clone(),
-                                hash_tx_one.clone(),
-                                hash_tx_two.clone(),
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_zero.clone(),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_one.clone(),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_two.clone(),
+                                    timestamp,
+                                },
                             ],
                         ),
                         PN: 77,
@@ -754,9 +810,18 @@ mod tests {
                         B: Ballot::new(
                             100,
                             &[
-                                hash_tx_zero.clone(),
-                                hash_tx_one.clone(),
-                                hash_tx_two.clone(),
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_zero.clone(),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_one.clone(),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_two.clone(),
+                                    timestamp,
+                                },
                             ],
                         ),
                         PN: 77,
@@ -820,7 +885,23 @@ mod tests {
                     local_quorum_set.clone(),
                     slot_index,
                     Topic::Externalize(ExternalizePayload {
-                        C: Ballot::new(55, &[hash_tx_zero, hash_tx_one, hash_tx_two,]),
+                        C: Ballot::new(
+                            55,
+                            &[
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_zero,
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_one,
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: hash_tx_two,
+                                    timestamp,
+                                },
+                            ]
+                        ),
                         HN: 66,
                     }),
                 ),
@@ -993,6 +1074,11 @@ mod tests {
             &mut rng,
         );
 
+        let timestamp_before = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
         byzantine_ledger.push_values(
             vec![
                 ConsensusValue::MintTx(tx1.clone()),
@@ -1005,6 +1091,45 @@ mod tests {
         let num_blocks = ledger.num_blocks().unwrap();
         let slot_index = num_blocks as SlotIndex;
 
+        let deadline = Instant::now() + Duration::from_secs(60);
+        while Instant::now() < deadline {
+            {
+                if !mock_peer_state
+                    .lock()
+                    .expect("Could not lock mock peer state")
+                    .msgs
+                    .is_empty()
+                {
+                    break;
+                }
+            }
+
+            thread::sleep(Duration::from_millis(100_u64));
+        }
+
+        let timestamp_after = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
+        let timestamp = {
+            let msgs = &mock_peer_state
+                .lock()
+                .expect("Could not lock mock peer state")
+                .msgs;
+            let front = msgs.front().unwrap();
+            if let Topic::Nominate(ref payload) = front.scp_msg.topic {
+                payload.X.iter().next().unwrap().timestamp
+            } else {
+                panic!("Expected Nominate msg")
+            }
+        };
+
+        assert!(
+            timestamp_before <= timestamp && timestamp <= timestamp_after,
+            "Timestamp in message doesn't reflect the time when the message was received"
+        );
+
         // After some time, this node should nominate its client values.
         let expected_msg = ConsensusMsg::from_scp_msg(
             &ledger,
@@ -1014,9 +1139,18 @@ mod tests {
                 slot_index,
                 Topic::Nominate(NominatePayload {
                     X: BTreeSet::from_iter(vec![
-                        ConsensusValue::MintTx(tx1.clone()),
-                        ConsensusValue::MintTx(tx2.clone()),
-                        ConsensusValue::MintTx(tx3.clone()),
+                        ConsensusValueWithTimestamp {
+                            value: ConsensusValue::MintTx(tx1.clone()),
+                            timestamp,
+                        },
+                        ConsensusValueWithTimestamp {
+                            value: ConsensusValue::MintTx(tx2.clone()),
+                            timestamp,
+                        },
+                        ConsensusValueWithTimestamp {
+                            value: ConsensusValue::MintTx(tx3.clone()),
+                            timestamp,
+                        },
                     ]),
                     Y: BTreeSet::default(),
                 }),
@@ -1024,22 +1158,6 @@ mod tests {
             &local_signer_key,
         )
         .unwrap();
-
-        let deadline = Instant::now() + Duration::from_secs(60);
-        while Instant::now() < deadline {
-            {
-                if mock_peer_state
-                    .lock()
-                    .expect("Could not lock mock peer state")
-                    .msgs
-                    .contains(&expected_msg)
-                {
-                    break;
-                }
-            }
-
-            thread::sleep(Duration::from_millis(100_u64));
-        }
 
         {
             let msgs = &mock_peer_state
@@ -1064,9 +1182,18 @@ mod tests {
                         B: Ballot::new(
                             100,
                             &[
-                                ConsensusValue::MintTx(tx1.clone()),
-                                ConsensusValue::MintTx(tx2.clone()),
-                                ConsensusValue::MintTx(tx3.clone()),
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx1.clone()),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx2.clone()),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx3.clone()),
+                                    timestamp,
+                                },
                             ],
                         ),
                         PN: 77,
@@ -1093,9 +1220,18 @@ mod tests {
                         B: Ballot::new(
                             100,
                             &[
-                                ConsensusValue::MintTx(tx1.clone()),
-                                ConsensusValue::MintTx(tx2.clone()),
-                                ConsensusValue::MintTx(tx3.clone()),
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx1.clone()),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx2.clone()),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx3.clone()),
+                                    timestamp,
+                                },
                             ],
                         ),
                         PN: 77,
@@ -1141,9 +1277,18 @@ mod tests {
                         C: Ballot::new(
                             55,
                             &[
-                                ConsensusValue::MintTx(tx1),
-                                ConsensusValue::MintTx(tx2),
-                                ConsensusValue::MintTx(tx3),
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx1),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx2),
+                                    timestamp,
+                                },
+                                ConsensusValueWithTimestamp {
+                                    value: ConsensusValue::MintTx(tx3),
+                                    timestamp,
+                                },
                             ]
                         ),
                         HN: 66,

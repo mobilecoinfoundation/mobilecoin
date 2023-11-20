@@ -29,10 +29,23 @@ pub trait TxManager: Send {
 
     /// Validate the transaction corresponding to the given hash against the
     /// current ledger.
-    fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()>;
+    ///
+    /// # Arguments
+    /// * `tx_hash` - The tx to validate.
+    /// * `timestamp` - The timestamp to validate. ms since Unix epoch. If None,
+    ///   then only the validity of the `tx_hash` will be checked.
+    fn validate(&self, tx_hash: &TxHash, timestamp: Option<u64>) -> TxManagerResult<()>;
 
     /// Combines the transactions that correspond to the given hashes.
-    fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>>;
+    ///
+    /// # Arguments
+    /// * `tx_hashes` - "Candidate" transactions, and their proposed timestamp
+    ///   in ms since Unix epoch.
+    ///
+    /// Returns a bounded, deterministically-ordered list of transactions that
+    /// are safe to append to the ledger. If there are any duplicate
+    /// hashes the ones with the largest timestamp will be returned.
+    fn combine(&self, tx_hashes: &[(TxHash, u64)]) -> TxManagerResult<Vec<(TxHash, u64)>>;
 
     /// Get an array of well-formed encrypted transactions and membership proofs
     /// that correspond to the provided tx hashes.

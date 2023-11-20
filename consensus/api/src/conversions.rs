@@ -63,6 +63,7 @@ impl From<Error> for ProposeTxResult {
             Error::InputRulesNotAllowed => Self::InputRulesNotAllowed,
             Error::InputRule(ir) => ir.into(),
             Error::UnknownMaskedAmountVersion => Self::UnknownMaskedAmountVersion,
+            Error::Timestamp(_) => Self::Timestamp,
         }
     }
 }
