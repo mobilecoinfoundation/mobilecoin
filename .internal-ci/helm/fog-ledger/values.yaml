@@ -130,8 +130,7 @@ fogLedger:
 
     configMap:
       data:
-        MC_LEDGER_DB_URL: ''
-        MC_WATCHER_DB_URL: ''
+        PLACEHOLDER: empty
 
   store:
     replicaCount: 1
@@ -186,8 +185,6 @@ fogLedger:
     configMap:
       data:
         MC_OMAP_CAPACITY: '4194304'
-        MC_LEDGER_DB_URL: ''
-        MC_WATCHER_DB_URL: ''
 
   externalConfigMaps:
     # sentry is optional
