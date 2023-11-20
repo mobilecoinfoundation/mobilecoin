@@ -546,8 +546,8 @@ impl<
 
         // Update pending value processing time metrics.
         for value in externalized.iter() {
-            if let Some(timestamp) = self.pending_values.get_timestamp_for_value(value) {
-                let duration = Instant::now().saturating_duration_since(timestamp);
+            if let Some(received_time) = self.pending_values.get_received_time_for_value(value) {
+                let duration = Instant::now().saturating_duration_since(received_time);
                 counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
             }
         }

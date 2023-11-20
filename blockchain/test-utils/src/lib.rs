@@ -111,7 +111,18 @@ pub fn get_blocks_with_recipients<R: RngCore + CryptoRng>(
 
         let block = match &prev_block {
             Some(parent) => {
-                Block::new_with_parent(block_version, parent, &Default::default(), &block_contents)
+                let timestamp = if block_version.timestamps_are_supported() {
+                    parent.timestamp + 1
+                } else {
+                    0
+                };
+                Block::new_with_parent(
+                    block_version,
+                    parent,
+                    &Default::default(),
+                    &block_contents,
+                    timestamp,
+                )
             }
             None => Block::new_origin_block(&block_contents.outputs),
         };
@@ -242,6 +253,7 @@ mod tests {
                 block.cumulative_txo_count,
                 &block.root_element,
                 &block.contents_hash,
+                block.timestamp,
             );
             assert_eq!(derived_block_id, block.id);
 
