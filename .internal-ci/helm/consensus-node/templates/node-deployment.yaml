@@ -150,8 +150,6 @@ spec:
           readOnly: true
         resources:
           {{- toYaml .Values.node.resources | nindent 10 }}
-        securityContext:
-          privileged: true
       - name: http-gateway
         image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: Always
