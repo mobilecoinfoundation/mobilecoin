@@ -3169,7 +3169,7 @@ mod test {
         assert_eq!(response.key_images.len(), 1);
         assert_eq!(
             response.timestamp_result_code,
-            mc_api::watcher::TimestampResultCode::Unavailable
+            mc_api::watcher::TimestampResultCode::WatcherDatabaseError
         ); // test code doesnt have a watcher
     }
 
