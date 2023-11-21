@@ -2,15 +2,28 @@
 
 use displaydoc::Display;
 use mc_blockchain_types::Block;
+use mc_common::logger::{log, Logger};
 
 /// Provides logic for validating a timestamp used in consensus
 
 const MAX_TIMESTAMP_AGE: u64 = 30 * 1000; // 30 seconds
 
+/// The maximum allowed skew between the system time and the timestamp. This
+/// allows the system time to be a bit behind the timestamp.
+/// The reason for this is that during consensus multiple nodes will be looking
+/// at the time and those nodes may have skew between their clocks. If the node
+/// with the latest time proposes a value, it's possible that the other nodes
+/// will reject it because the timestamp is in the future.
+///
+/// The 3 seconds is taken from the `signed_at` values from the first 2 million
+/// blocks of the blockchain. Throwing away significant outlier nodes most nodes
+/// were almost always within 3 seconds of each other.
+const ALLOWED_FUTURE_SKEW: u64 = 3 * 1000;
+
 /// Errors related to validating timestamps
 #[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum Error {
-    /// The timestamp is in the future now: {0}, timestamp: {1}
+    /// The timestamp is too far in the future now: {0}, timestamp: {1}
     InFuture(u64, u64),
     /** The timestamp is not newer than the last bock. last_bock timestamp: {0},
     timestamp: {1} */
@@ -19,13 +32,24 @@ pub enum Error {
     TooOld(u64, u64),
 }
 
+pub fn validate_with_logger(
+    timestamp: u64,
+    latest_block: &Block,
+    logger: &Logger,
+) -> Result<(), Error> {
+    validate(timestamp, latest_block).map_err(|e| {
+        log::warn!(logger, "Consensus Value timestamp invalid: {e}");
+        e
+    })
+}
+
 pub fn validate(timestamp: u64, latest_block: &Block) -> Result<(), Error> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("Failed to get system time")
         .as_millis() as u64;
 
-    if timestamp > now {
+    if timestamp > (now + ALLOWED_FUTURE_SKEW) {
         return Err(Error::InFuture(now, timestamp));
     }
 
@@ -100,7 +124,7 @@ mod test {
         // network.
         let now = std::time::SystemTime::now();
         let future = now
-            .checked_add(std::time::Duration::from_millis(100))
+            .checked_add(std::time::Duration::from_millis(ALLOWED_FUTURE_SKEW + 100))
             .unwrap()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -124,6 +148,20 @@ mod test {
         let latest_block = Block::default();
 
         assert_eq!(validate(now, &latest_block), Ok(()));
+    }
+
+    #[test]
+    fn timestamp_up_to_allowed_future_skew_succeeds() {
+        let skewed_now = std::time::SystemTime::now()
+            .checked_add(std::time::Duration::from_millis(ALLOWED_FUTURE_SKEW))
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+
+        let latest_block = Block::default();
+
+        assert_eq!(validate(skewed_now, &latest_block), Ok(()));
     }
 
     #[test]

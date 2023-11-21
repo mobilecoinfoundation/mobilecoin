@@ -232,7 +232,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         if let Some(context) = context_opt {
             let _timer = counters::VALIDATE_TX_TIME.start_timer();
-            self.untrusted.is_valid(context, timestamp)?;
+            self.untrusted.is_valid(context, timestamp).map_err(|e| {
+                log::warn!(self.logger, "Failed validated tx_hash: {e}");
+                e
+            })?;
             Ok(())
         } else {
             log::warn!(
@@ -280,7 +283,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         cache_entries
             .into_iter()
-            .map(|(entry, _)| {
+            .map(|(entry, _timestamp)| {
                 // Highest indices proofs must be w.r.t. the current ledger.
                 // Recreating them here is a crude way to ensure that.
                 let highest_index_proofs: Vec<_> = self

@@ -880,6 +880,12 @@ impl<
             .get_root_tx_out_membership_element()
             .expect("Failed getting root tx out membership element");
 
+        // We use the max timestamp as that should be the closest time to "now".
+        // i.e. it may have taken 100ms to process the block. The last
+        // timestamp, in an ideal system, may be 100ms later than the first
+        // timestamp in the values, but should still be slightly before now.
+        // Using the max timestamp is also called out in the
+        // [Stellar Whitepaper](https://www.stellar.org/papers/stellar-consensus-protocol).
         let timestamp = timestamps.into_iter().max().unwrap_or(0);
 
         // Request the enclave to form the next block.

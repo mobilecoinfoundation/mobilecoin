@@ -70,7 +70,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         let latest_block = self.ledger_db.get_latest_block()?;
 
         if let Some(timestamp) = timestamp {
-            timestamp_validator::validate(timestamp, &latest_block)?;
+            timestamp_validator::validate_with_logger(timestamp, &latest_block, &self.logger)?;
         }
 
         // Ensure that we have not seen this transaction before.
@@ -125,7 +125,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         let latest_block = self.ledger_db.get_latest_block()?;
 
         if let Some(timestamp) = timestamp {
-            timestamp_validator::validate(timestamp, &latest_block)?;
+            timestamp_validator::validate_with_logger(timestamp, &latest_block, &self.logger)?;
         }
 
         // Ensure that we have not seen this transaction before.
