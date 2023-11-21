@@ -2100,7 +2100,7 @@ mod ledger_db_test {
             origin.block(),
             &Default::default(),
             &block_contents,
-            1,
+            0,
         );
 
         assert_eq!(
@@ -2335,7 +2335,7 @@ mod ledger_db_test {
     }
 
     #[test]
-    /// Appending blocks that have ever-increasing and continous version numbers
+    /// Appending blocks that have ever-increasing and continuous version numbers
     /// should work as long as it is <= MAX_BLOCK_VERSION.
     /// Appending a block > MAX_BLOCK_VERSION should fail even if it is after a
     /// block with version == MAX_BLOCK_VERSION.
@@ -2396,12 +2396,19 @@ mod ledger_db_test {
 
             // Note: unsafe transmute is being used to skirt the invariant that BlockVersion
             // does not exceed MAX_BLOCK_VERSION
+            let version: BlockVersion = unsafe { core::mem::transmute(last_block.version + 1) };
+            let timestamp = if version.timestamps_are_supported() {
+                last_block.timestamp + 1
+            } else {
+                0
+            };
+
             let invalid_block = Block::new_with_parent(
-                unsafe { core::mem::transmute(last_block.version + 1) },
+                version,
                 &last_block,
                 &Default::default(),
                 &block_contents,
-                last_block.timestamp + 1,
+                timestamp,
             );
             assert_eq!(
                 ledger_db.append_block(&invalid_block, &block_contents, None, None),
@@ -2409,12 +2416,19 @@ mod ledger_db_test {
             );
 
             if last_block.version > 0 {
+                let version = BlockVersion::try_from(last_block.version - 1).unwrap();
+                let timestamp = if version.timestamps_are_supported() {
+                    last_block.timestamp + 1
+                } else {
+                    0
+                };
+
                 let invalid_block = Block::new_with_parent(
-                    BlockVersion::try_from(last_block.version - 1).unwrap(),
+                    version,
                     &last_block,
                     &Default::default(),
                     &block_contents,
-                    last_block.timestamp + 1,
+                    timestamp,
                 );
                 assert_eq!(
                     ledger_db.append_block(&invalid_block, &block_contents, None, None),
@@ -2448,12 +2462,17 @@ mod ledger_db_test {
                     outputs,
                     ..Default::default()
                 };
+                let timestamp = if block_version.timestamps_are_supported() {
+                    last_block.timestamp + 1
+                } else {
+                    0
+                };
                 last_block = Block::new_with_parent(
                     block_version,
                     &last_block,
                     &Default::default(),
                     &block_contents,
-                    last_block.timestamp + 1,
+                    timestamp,
                 );
 
                 let metadata = make_block_metadata(last_block.id.clone(), &mut rng);
@@ -2508,7 +2527,7 @@ mod ledger_db_test {
             origin.cumulative_txo_count,
             &Default::default(),
             &block_contents,
-            1,
+            0,
         );
         assert_eq!(
             ledger_db.append_block(&new_block, &block_contents, None, None),
@@ -2589,7 +2608,7 @@ mod ledger_db_test {
             origin.block(),
             &Default::default(),
             &block_one_contents,
-            origin.block().timestamp + 1,
+            0,
         );
 
         assert_eq!(
@@ -2651,7 +2670,7 @@ mod ledger_db_test {
                 origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
-                origin.block().timestamp + 1,
+                0,
             );
 
             assert_eq!(
@@ -2667,7 +2686,7 @@ mod ledger_db_test {
                 origin.block().cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
-                origin.block().timestamp + 1,
+                0,
             );
 
             assert_eq!(

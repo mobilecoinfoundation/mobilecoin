@@ -136,7 +136,7 @@ impl Block {
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
     /// * `timestamp` - The timestamp of the block in ms since Unix epoch.
-    ///   should be 0 for block versions 3 and below.
+    ///   should be 0 for block versions 3 and below, and set for block versions 4 and above.
     pub fn new(
         version: BlockVersion,
         parent_id: &BlockID,
@@ -146,7 +146,7 @@ impl Block {
         block_contents: &BlockContents,
         timestamp: u64,
     ) -> Self {
-        assert!(timestamp == 0 || version.timestamps_are_supported());
+        assert!((timestamp == 0) ^ version.timestamps_are_supported());
 
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
