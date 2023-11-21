@@ -136,7 +136,8 @@ impl Block {
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
     /// * `timestamp` - The timestamp of the block in ms since Unix epoch.
-    ///   should be 0 for block versions 3 and below, and set for block versions 4 and above.
+    ///   should be 0 for block versions 3 and below, and set for block versions
+    ///   4 and above.
     pub fn new(
         version: BlockVersion,
         parent_id: &BlockID,

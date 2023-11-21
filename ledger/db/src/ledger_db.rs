@@ -2335,8 +2335,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    /// Appending blocks that have ever-increasing and continuous version numbers
-    /// should work as long as it is <= MAX_BLOCK_VERSION.
+    /// Appending blocks that have ever-increasing and continuous version
+    /// numbers should work as long as it is <= MAX_BLOCK_VERSION.
     /// Appending a block > MAX_BLOCK_VERSION should fail even if it is after a
     /// block with version == MAX_BLOCK_VERSION.
     /// Appending a block with a version < last block's version should fail.
