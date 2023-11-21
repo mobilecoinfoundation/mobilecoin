@@ -2381,11 +2381,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     fn get_block_timestamp(&self, block_index: BlockIndex) -> (u64, TimestampResultCode) {
         self.watcher_db
             .as_ref()
-            .map_or((u64::MAX, TimestampResultCode::Unavailable), |watcher| {
-                watcher
-                    .get_block_timestamp(block_index)
-                    .unwrap_or((u64::MAX, TimestampResultCode::WatcherDatabaseError))
-            })
+            .and_then(|watcher| watcher.get_block_timestamp(block_index).ok())
+            .unwrap_or((u64::MAX, TimestampResultCode::WatcherDatabaseError))
     }
 
     fn get_tx_out_result(
@@ -5136,14 +5133,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         let sender = AccountKey::random(&mut rng);
-        let data = MonitorData::new(
-            sender.clone(),
-            0,  // first_subaddress
-            20, // num_subaddresses
-            0,  // first_block
-            "", // name
-        )
-        .unwrap();
+        let data = MonitorData::new(sender.clone(), 0, 20, 0, "").unwrap();
 
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =

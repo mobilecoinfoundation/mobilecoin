@@ -162,7 +162,8 @@ impl BlockProvider for MobilecoindBlockProvider {
             })?;
 
         if response.output_list.len() != 1 {
-            log::error!(self.logger, "get_membership_proofs ")
+            log::error!(self.logger, "get_membership_proofs returned unexpected number of results: {}", response.output_list.len());
+            return Err(Error::UnexpectedNumberOfResults(response.output_list.len()));
         }
 
         let tx_out_with_proof = response.output_list.get(0).unwrap();

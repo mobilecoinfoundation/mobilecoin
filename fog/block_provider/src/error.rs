@@ -17,6 +17,9 @@ pub enum Error {
 
     /// Conversion: {0}
     Conversion(ConversionError),
+
+    /// Unexpected number of results: {0}
+    UnexpectedNumResults(usize),
 }
 
 impl From<mc_ledger_db::Error> for Error {
