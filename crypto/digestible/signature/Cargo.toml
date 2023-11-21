@@ -17,4 +17,4 @@ default = ["alloc", "derive", "dalek"]
 [dependencies]
 mc-crypto-digestible = { path = "..", default_features = false }
 
-signature = { version = "2.0.0", default-features = false }
+signature = { version = "2.1.0", default-features = false }

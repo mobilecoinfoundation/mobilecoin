@@ -11,7 +11,7 @@ extern crate alloc;
 
 use ::prost::Message;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
-use mc_attest_verifier_types::{prost, VerificationReport};
+use mc_attest_verifier_types::{prost, EvidenceKind, VerificationReport};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 
@@ -39,20 +39,20 @@ impl From<prost::DcapEvidence> for AttestationEvidence {
     }
 }
 
-/// A one of container for AttestationEvidence.
-/// One cannot decode a oneof directly, so this is used to wrap the oneof to get
-/// that behavior
-#[derive(Clone, Digestible, Eq, PartialEq, Serialize, Deserialize, Message)]
-pub struct AttestationEvidenceOneOf {
-    /// Attestation evidence for the enclave.
-    #[prost(oneof = "AttestationEvidence", tags = "2, 4")]
-    pub evidence: Option<AttestationEvidence>,
+impl From<EvidenceKind> for AttestationEvidence {
+    fn from(kind: EvidenceKind) -> Self {
+        match kind {
+            EvidenceKind::Epid(report) => report.into(),
+            EvidenceKind::Dcap(evidence) => evidence.into(),
+        }
+    }
 }
 
-impl From<AttestationEvidence> for AttestationEvidenceOneOf {
+impl From<AttestationEvidence> for EvidenceKind {
     fn from(evidence: AttestationEvidence) -> Self {
-        Self {
-            evidence: Some(evidence),
+        match evidence {
+            AttestationEvidence::VerificationReport(report) => report.into(),
+            AttestationEvidence::DcapEvidence(evidence) => evidence.into(),
         }
     }
 }
