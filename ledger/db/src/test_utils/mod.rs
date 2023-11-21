@@ -429,12 +429,18 @@ pub fn add_block_contents_to_ledger(
     let new_block = if num_blocks > 0 {
         let parent = ledger_db.get_block(num_blocks - 1)?;
 
+        let timestamp = if block_version.timestamps_are_supported() {
+            parent.timestamp + 1
+        } else {
+            0
+        };
+
         Block::new_with_parent(
             block_version,
             &parent,
             &Default::default(),
             &block_contents,
-            parent.timestamp + 1,
+            timestamp,
         )
     } else {
         Block::new_origin_block(&block_contents.outputs)
