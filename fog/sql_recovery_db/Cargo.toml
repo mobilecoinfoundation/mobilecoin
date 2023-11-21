@@ -19,6 +19,7 @@ name = "fog-sql-recovery-db-write-bench"
 path = "src/bin/fog_sql_recovery_db_write_bench.rs"
 
 [dependencies]
+mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../crypto/keys" }

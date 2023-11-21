@@ -18,7 +18,7 @@ mod schema;
 mod sql_types;
 
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
-use ::prost::{DecodeError, Message};
+use ::prost::Message;
 use chrono::NaiveDateTime;
 use clap::Parser;
 use diesel::{
@@ -26,6 +26,7 @@ use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
+use mc_attest_verifier_types::EvidenceKind;
 use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, Logger},
@@ -38,7 +39,6 @@ use mc_fog_recovery_db_iface::{
     IngressPublicKeyRecord, IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb,
     RecoveryDbError, ReportData, ReportDb,
 };
-use mc_fog_report_types::AttestationEvidenceOneOf;
 use mc_fog_types::{
     common::BlockRange,
     view::{FixedTxOutSearchResult, TxOutSearchResultCode},
@@ -1147,14 +1147,12 @@ impl SqlRecoveryDb {
             .load::<(Option<i64>, String, Vec<u8>, i64)>(conn)?
             .into_iter()
             .map(|(ingest_invocation_id, report_id, report, pubkey_expiry)| {
-                let attestation_evidence = AttestationEvidenceOneOf::decode(&*report)?.evidence;
+                let attestation_evidence = EvidenceKind::from_bytes(report)?;
                 Ok((
                     report_id,
                     ReportData {
                         ingest_invocation_id: ingest_invocation_id.map(IngestInvocationId::from),
-                        attestation_evidence: attestation_evidence.ok_or_else(|| {
-                            Error::Decode(DecodeError::new("No attestation evidence"))
-                        })?,
+                        attestation_evidence: attestation_evidence.into(),
                         pubkey_expiry: pubkey_expiry as u64,
                     },
                 ))
@@ -1220,8 +1218,7 @@ impl SqlRecoveryDb {
                 }
 
                 let report_bytes =
-                    AttestationEvidenceOneOf::from(data.attestation_evidence.clone())
-                        .encode_to_vec();
+                    EvidenceKind::from(data.attestation_evidence.clone()).into_bytes();
                 let report = models::NewReport {
                     ingress_public_key: ingress_key.as_ref(),
                     ingest_invocation_id: data.ingest_invocation_id.map(i64::from),
