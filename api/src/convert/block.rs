@@ -17,7 +17,13 @@ impl From<&Block> for blockchain::Block {
         block.set_cumulative_txo_count(other.cumulative_txo_count);
         block.set_root_element((&other.root_element).into());
         block.set_contents_hash(blockchain::BlockContentsHash::from(&other.contents_hash));
-        block.set_timestamp(other.timestamp);
+
+        // It should be 0 if timestamps are not supported, but being a
+        // publicly accessible field means anyone could set it, so we guard
+        // against that here in the conversion.
+        if block.version.timestamps_are_supported() {
+            block.set_timestamp(other.timestamp);
+        }
         block
     }
 }
@@ -32,6 +38,12 @@ impl TryFrom<&blockchain::Block> for Block {
         let root_element = TxOutMembershipElement::try_from(value.get_root_element())?;
         let contents_hash = BlockContentsHash::try_from(value.get_contents_hash())?;
 
+        let timestamp = if value.get_version().timestamps_are_supported() {
+            value.get_timestamp()
+        } else {
+            0
+        };
+
         let block = Block {
             id: block_id,
             version: value.version,
@@ -40,7 +52,7 @@ impl TryFrom<&blockchain::Block> for Block {
             cumulative_txo_count: value.cumulative_txo_count,
             root_element,
             contents_hash,
-            timestamp: value.timestamp,
+            timestamp,
         };
         Ok(block)
     }

@@ -103,6 +103,8 @@ impl Block {
     /// * `parent` - The parent block
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents - The Contents of the block.
+    /// * `timestamp` - The timestamp of the block in ms since Unix epoch. Only
+    ///    supported for BlockVersion 4 and higher.
     pub fn new_with_parent(
         version: BlockVersion,
         parent: &Block,
@@ -117,6 +119,7 @@ impl Block {
             parent.cumulative_txo_count + block_contents.outputs.len() as u64,
             root_element,
             block_contents,
+            // timestamp is normalized in Block::new()
             timestamp,
         )
     }
@@ -133,7 +136,8 @@ impl Block {
     ///   block*
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
-    /// * `timestamp` - The timestamp of the block in ms.
+    /// * `timestamp` - The timestamp of the block in ms since Unix epoch. Only
+    ///    supported for BlockVersion 4 and higher.
     pub fn new(
         version: BlockVersion,
         parent_id: &BlockID,
@@ -143,6 +147,13 @@ impl Block {
         block_contents: &BlockContents,
         timestamp: u64,
     ) -> Self {
+
+        let timestamp = if version.timestamps_are_supported() {
+            timestamp
+        } else {
+            0
+        };
+
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             *version,
@@ -488,7 +499,7 @@ mod block_tests {
     }
 
     #[test]
-    fn test_block_version_3_ignores_timestamp_in_id() {
+    fn test_block_version_3_ignores_timestamp() {
         let parent_id = BlockID::try_from(&[1u8; 32][..]).unwrap();
         let index = 1;
         let cumulative_txo_count = 1;
@@ -515,6 +526,17 @@ mod block_tests {
             timestamp_2,
         );
         assert_eq!(id_1, id_2);
+
+        let block = Block::new(
+            BlockVersion::THREE,
+            &parent_id,
+            index,
+            cumulative_txo_count,
+            &root_element,
+            &BlockContents::default(),
+            timestamp_1,
+        );
+        assert_eq!(block.timestamp, 0);
     }
 
     #[test]
