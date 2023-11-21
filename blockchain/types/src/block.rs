@@ -147,8 +147,6 @@ impl Block {
         block_contents: &BlockContents,
         timestamp: u64,
     ) -> Self {
-        assert!((timestamp == 0) ^ version.timestamps_are_supported());
-
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             *version,
