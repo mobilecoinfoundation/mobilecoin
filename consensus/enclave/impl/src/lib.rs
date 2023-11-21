@@ -953,7 +953,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             mint_txs,
         };
 
-        let timestamp = Self::validate_timestamp(inputs.timestamp, parent_block)?;
+        let timestamp = if config.block_version.timestamps_are_supported() {
+            Self::validate_timestamp(inputs.timestamp, parent_block)?
+        } else {
+            // This should be zero in these instances, Block::new_with_parent()
+            // will panic if it's not.
+            inputs.timestamp
+        };
 
         // Form the block.
         let block = Block::new_with_parent(
@@ -1448,12 +1454,18 @@ mod tests {
             let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let (block, block_contents, signature) = enclave
                 .form_block(
                     &parent_block,
                     FormBlockInputs {
                         well_formed_encrypted_txs_with_proofs,
-                        timestamp: parent_block.timestamp + 1,
+                        timestamp,
                         ..Default::default()
                     },
                     &root_element,
@@ -1626,12 +1638,18 @@ mod tests {
             let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let (block, block_contents, signature) = enclave
                 .form_block(
                     &parent_block,
                     FormBlockInputs {
                         well_formed_encrypted_txs_with_proofs,
-                        timestamp: parent_block.timestamp + 1,
+                        timestamp,
                         ..Default::default()
                     },
                     &root_element,
@@ -1803,11 +1821,17 @@ mod tests {
             let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let form_block_result = enclave.form_block(
                 &parent_block,
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
-                    timestamp: parent_block.timestamp + 1,
+                    timestamp,
                     ..Default::default()
                 },
                 &root_element,
@@ -2308,6 +2332,12 @@ mod tests {
 
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let (block, block_contents, signature) = enclave
                 .form_block(
                     &parent_block,
@@ -2324,7 +2354,7 @@ mod tests {
                                 mint_config_tx2.prefix.configs[0].clone(),
                             ),
                         ],
-                        timestamp: parent_block.timestamp + 1,
+                        timestamp,
                         ..Default::default()
                     },
                     &root_element,
@@ -2915,12 +2945,18 @@ mod tests {
 
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let (block, block_contents, signature) = enclave
                 .form_block(
                     &parent_block,
                     FormBlockInputs {
                         mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
-                        timestamp: parent_block.timestamp + 1,
+                        timestamp,
                         ..Default::default()
                     },
                     &root_element,
@@ -3009,11 +3045,16 @@ mod tests {
 
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
             let form_block_result = enclave.form_block(
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone()],
-                    timestamp: parent_block.timestamp + 1,
+                    timestamp,
                     ..Default::default()
                 },
                 &root_element,
@@ -3076,11 +3117,17 @@ mod tests {
 
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let form_block_result = enclave.form_block(
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone()],
-                    timestamp: parent_block.timestamp + 1,
+                    timestamp,
                     ..Default::default()
                 },
                 &root_element,
@@ -3138,11 +3185,17 @@ mod tests {
 
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let form_block_result = enclave.form_block(
                 &parent_block,
                 FormBlockInputs {
                     mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx1.clone()],
-                    timestamp: parent_block.timestamp + 1,
+                    timestamp,
                     ..Default::default()
                 },
                 &root_element,
@@ -3261,6 +3314,12 @@ mod tests {
             let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
+            let timestamp = if block_version.timestamps_are_supported() {
+                parent_block.timestamp + 1
+            } else {
+                0
+            };
+
             let (block, block_contents, signature) = enclave
                 .form_block(
                     &parent_block,
@@ -3278,7 +3337,7 @@ mod tests {
                                 mint_config_tx2.prefix.configs[0].clone(),
                             ),
                         ],
-                        timestamp: parent_block.timestamp + 1,
+                        timestamp,
                         ..Default::default()
                     },
                     &root_element,
@@ -3744,17 +3803,31 @@ mod tests {
             let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
             let root_element = ledger.get_root_tx_out_membership_element().unwrap();
 
-            assert_matches!(
-                enclave.form_block(
-                    &parent_block,
-                    FormBlockInputs {
-                        well_formed_encrypted_txs_with_proofs,
-                        ..Default::default()
-                    },
-                    &root_element,
-                ),
-                Err(Error::FormBlock(_))
+            // For block versions that support timestamps the timestamp should
+            // be newer than the parent block. For ones that don't support
+            // timestamps, it should be 0, and the parent timestamp should be 0.
+            // Thus using the parent timestamp will fail for timestamp supported
+            // versions and succeed for those not supporting timestamps
+            let timestamp = parent_block.timestamp;
+            let result = enclave.form_block(
+                &parent_block,
+                FormBlockInputs {
+                    well_formed_encrypted_txs_with_proofs,
+                    timestamp,
+                    ..Default::default()
+                },
+                &root_element,
             );
+
+            match block_version {
+                BlockVersion::ZERO
+                | BlockVersion::ONE
+                | BlockVersion::TWO
+                | BlockVersion::THREE => {
+                    assert!(result.is_ok());
+                }
+                _ => assert_matches!(result, Err(Error::FormBlock(e)) if e.contains("timestamp")),
+            }
         }
     }
 }
