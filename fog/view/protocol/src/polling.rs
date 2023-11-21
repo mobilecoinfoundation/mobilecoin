@@ -199,10 +199,20 @@ pub trait FogViewConnection {
             // log n round trips.
             request_multiplier *= 2;
 
-            // There is some grpc limit (Recieved message larger than max)
-            if request_multiplier >= 1000 {
-                request_multiplier = 1000;
+            // There is some grpc limit (Recieved message larger than max).
+            // Experimentation had shown that 4096 search keys work okay and takes about 10
+            // seconds to retrieve, and still fits in a single grpc response.
+            // However, for some reason, a smaller number of search keys performs better,
+            // and through experimentation we landed on a maximum of 500 search keys per
+            // query. S we cap at that spread evenly across all live rngs.
+            let num_live_rngs = (user_rng_set.get_rngs().len() - dead_rng_set.len()) as u64;
+            if num_live_rngs > 0 {
+                let max_request_multiplier = 500 / num_live_rngs;
+                if request_multiplier >= max_request_multiplier {
+                    request_multiplier = max_request_multiplier;
+                }
             }
+
             // Missed block ranges are reported once, so we can add
             // directly without fear of repeating ranges.
             missed_block_ranges.extend(resp.missed_block_ranges);
