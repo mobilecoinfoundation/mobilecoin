@@ -8,7 +8,10 @@ use mc_attest_ake::{
 };
 use mc_attest_core::VerificationReport;
 use mc_attest_verifier::Verifier;
-use mc_common::{logger::{log, o, Logger}, trace_time};
+use mc_common::{
+    logger::{log, o, Logger},
+    trace_time,
+};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_fog_api::{
