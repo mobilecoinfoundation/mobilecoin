@@ -79,7 +79,7 @@ pub fn validate(timestamp: u64, latest_block: &Block) -> Result<(), Error> {
 pub fn sort_and_dedup<'a, V: Clone + Ord + 'a>(
     values: impl Iterator<Item = &'a (V, u64)>,
 ) -> Vec<(V, u64)> {
-    let sorted = sort(values);
+    let sorted = sort_by_value_then_timestamp(values);
     dedup(sorted)
 }
 
@@ -98,7 +98,9 @@ fn dedup<V: Eq>(mut values: Vec<(V, u64)>) -> Vec<(V, u64)> {
 ///
 /// The reason for this sorting is to place the latest timestamp for a value
 /// first in the sequence of the same value.
-fn sort<'a, V: Clone + Ord + 'a>(values: impl IntoIterator<Item = &'a (V, u64)>) -> Vec<(V, u64)> {
+pub fn sort_by_value_then_timestamp<'a, V: Clone + Ord + 'a>(
+    values: impl IntoIterator<Item = &'a (V, u64)>,
+) -> Vec<(V, u64)> {
     let mut values: Vec<_> = values.into_iter().cloned().collect();
     values.sort_by(|a, b| {
         if a.0 == b.0 {
@@ -222,7 +224,7 @@ mod test {
     #[test]
     fn sorting_empty() {
         let values: Vec<(&str, u64)> = vec![];
-        let sorted = sort(values.iter());
+        let sorted = sort_by_value_then_timestamp(values.iter());
         assert_eq!(sorted, vec![])
     }
 
@@ -236,7 +238,7 @@ mod test {
         unsorted_duplicates_with_different_timestamps = {&[("b", 10), ("a", 2), ("a", 3), ("b", 11)], &[("a", 3), ("a", 2), ("b", 11), ("b", 10)]},
     )]
     fn sorting(unsorted: &[(&str, u64)], expected: &[(&str, u64)]) {
-        let sorted = sort(unsorted);
+        let sorted = sort_by_value_then_timestamp(unsorted);
         assert_eq!(sorted, expected)
     }
 

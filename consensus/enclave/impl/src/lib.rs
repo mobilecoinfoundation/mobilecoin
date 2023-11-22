@@ -956,9 +956,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let timestamp = if config.block_version.timestamps_are_supported() {
             Self::validate_timestamp(inputs.timestamp, parent_block)?
         } else {
-            // This should be zero in these instances, Block::new_with_parent()
-            // will panic if it's not.
-            inputs.timestamp
+            // We are ignoring `inputs.timestamp` here as a block version that
+            // doesn't support timestamps should have 0. However the callers
+            // into this enclave may not know what block version this enclave
+            // is using and so may pass in a non-zero timestamp.
+            0
         };
 
         // Form the block.

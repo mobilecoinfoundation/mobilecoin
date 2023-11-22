@@ -112,7 +112,13 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         txs: &[(MintConfigTx, u64)],
         max_elements: usize,
     ) -> MintTxManagerResult<Vec<(MintConfigTx, u64)>> {
-        let mut candidates = timestamp_validator::sort_and_dedup(txs.iter());
+        let mut candidates = timestamp_validator::sort_by_value_then_timestamp(txs.iter());
+        // A nonce should only be used once per token id. We only check these
+        // fields to avoid having different configs with the same
+        // (nonce, token_id).
+        candidates.dedup_by(|(tx1, _timestamp1), (tx2, _timestamp2)| {
+            tx1.prefix.token_id == tx2.prefix.token_id && tx1.prefix.nonce == tx2.prefix.nonce
+        });
         candidates.truncate(max_elements);
         Ok(candidates)
     }
@@ -170,7 +176,13 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         txs: &[(MintTx, u64)],
         max_elements: usize,
     ) -> MintTxManagerResult<Vec<(MintTx, u64)>> {
-        let candidates = timestamp_validator::sort_and_dedup(txs.iter());
+        let mut candidates = timestamp_validator::sort_by_value_then_timestamp(txs.iter());
+        candidates.dedup_by(|(tx1, _timestamp1), (tx2, _timestamp2)| {
+            // A nonce should only be used once per token id. We only check these
+            // fields to avoid having different transactions with the same
+            // (nonce, token_id).
+            tx1.prefix.token_id == tx2.prefix.token_id && tx1.prefix.nonce == tx2.prefix.nonce
+        });
 
         let mut seen_mint_configs = HashSet::default();
         let allowed_txs = candidates

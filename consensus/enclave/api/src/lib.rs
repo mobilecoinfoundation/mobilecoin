@@ -224,6 +224,8 @@ pub struct FormBlockInputs {
     pub mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
 
     /// The timestamp to use for the block. ms since Unix epoch.
+    /// If timestamps are not supported by the block version this
+    /// value will be ignored and 0 will be used instead.
     pub timestamp: u64,
 }
 
