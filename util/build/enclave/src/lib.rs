@@ -248,7 +248,7 @@ impl Builder {
                 "--cfg",
                 "features=\"precomputed-tables\"",
                 "--cfg",
-                "curve25519_dalek_backend=\"simd\"",
+                "curve25519_dalek_backend=\"serial\"",
             ]);
 
         Ok(Self {

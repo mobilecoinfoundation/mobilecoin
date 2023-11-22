@@ -5,16 +5,16 @@
 # ...so instead we list all target triples (Tier 1 64-bit platforms)
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"', '--cfg=feature="precomputed-tables"']
+rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="serial"', '--cfg=feature="precomputed-tables"']
 
 [target.x86_64-pc-windows-gnu]
-rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"', '--cfg=feature="precomputed-tables"']
+rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="serial"', '--cfg=feature="precomputed-tables"']
 
 [target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"', '--cfg=feature="precomputed-tables"']
+rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="serial"', '--cfg=feature="precomputed-tables"']
 
 [target.x86_64-apple-darwin]
-rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="simd"', '--cfg=feature="precomputed-tables"']
+rustflags = ["-C", "target-cpu=skylake", '--cfg=curve25519_dalek_backend="serial"', '--cfg=feature="precomputed-tables"']
 
 [cargo-new]
 name = "MobileCoin"
