@@ -121,15 +121,32 @@ pub trait FogViewConnection {
 
         // Get new tx's
         let mut results = Vec::new();
-        let mut request_multiplier = 2u64; // This value doubles each round
+        let mut request_multiplier = 1u64; // This value doubles each round
                                            // A dead rng is one where, we got back fewer Tx's
                                            // than we requested for it in the previous round.
         let mut dead_rng_set: HashSet<Vec<u8>> = Default::default();
+
         loop {
+            let num_dead_rngs = dead_rng_set.len();
+            let num_total_rngs = user_rng_set.get_rngs().len();
+
             // Escape if there are no more live rngs
-            if dead_rng_set.len() >= user_rng_set.get_rngs().len() {
+            if num_dead_rngs >= num_total_rngs {
                 break;
             }
+
+            // There is some grpc limit (Recieved message larger than max).
+            // Experimentation had shown that 4096 search keys work okay and takes about 10
+            // seconds to retrieve, and still fits in a single grpc response.
+            // However, for some reason, a smaller number of search keys performs better,
+            // and through experimentation we landed on a maximum of 500 search keys per
+            // query. So we cap at that spread evenly across all live rngs.
+            let num_live_rngs = (num_total_rngs - num_dead_rngs) as u64;
+            let max_request_multiplier = core::cmp::max(500 / num_live_rngs, 1);
+
+            // Ask for twice as many values from each rng next round, so that we only need
+            // log n round trips, capped at max_request_multiplier.
+            request_multiplier = core::cmp::min(request_multiplier * 2, max_request_multiplier);
 
             // Clone the rngs so that we can figure out which ones advanced
             let old_rngs = user_rng_set.get_rngs().clone();
@@ -194,24 +211,6 @@ pub trait FogViewConnection {
                 })
                 .map(|(key, _)| key.clone())
                 .collect();
-
-            // Ask for twice as many values from each rng next round, so that we only need
-            // log n round trips.
-            request_multiplier *= 2;
-
-            // There is some grpc limit (Recieved message larger than max).
-            // Experimentation had shown that 4096 search keys work okay and takes about 10
-            // seconds to retrieve, and still fits in a single grpc response.
-            // However, for some reason, a smaller number of search keys performs better,
-            // and through experimentation we landed on a maximum of 500 search keys per
-            // query. S we cap at that spread evenly across all live rngs.
-            let num_live_rngs = (user_rng_set.get_rngs().len() - dead_rng_set.len()) as u64;
-            if num_live_rngs > 0 {
-                let max_request_multiplier = 500 / num_live_rngs;
-                if request_multiplier >= max_request_multiplier {
-                    request_multiplier = max_request_multiplier;
-                }
-            }
 
             // Missed block ranges are reported once, so we can add
             // directly without fear of repeating ranges.
