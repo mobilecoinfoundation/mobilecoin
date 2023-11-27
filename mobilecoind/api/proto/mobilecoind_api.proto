@@ -825,17 +825,20 @@ message GetBlocksDataRequest {
 }
 
 message BlockDataWithTimestamp {
+    /// The block index that was requested.
+    uint64 block_index = 1;
+
     /// Whether we found a block for the provided index.
-    bool found = 1;
+    bool found = 2;
 
     /// The block data
-    blockchain.ArchiveBlock block_data = 2;
+    blockchain.ArchiveBlock block_data = 3;
 
     // Timestamp result code
-    watcher.TimestampResultCode timestamp_result_code = 3;
+    watcher.TimestampResultCode timestamp_result_code = 4;
 
     // Timestamp (only valid if timestamp_result_code is TimestampFound)
-    uint64 timestamp = 4;
+    uint64 timestamp = 5;
 }
 
 message GetBlocksDataResponse {

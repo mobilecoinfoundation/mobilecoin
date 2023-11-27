@@ -1683,6 +1683,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 Ok(block_data) => block_data,
                 Err(LedgerError::NotFound) => {
                     results.push(api::BlockDataWithTimestamp {
+                        block_index: *block_index,
                         found: false,
                         ..Default::default()
                     });
@@ -1701,6 +1702,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 self.get_block_timestamp(*block_index);
 
             results.push(api::BlockDataWithTimestamp {
+                block_index: *block_index,
                 found: true,
                 block_data: Some(ArchiveBlock::from(&block_data)).into(),
                 timestamp_result_code: (&block_timestamp_result_code).into(),
@@ -3197,6 +3199,11 @@ mod test {
         assert!(blocks[1].found);
         assert!(!blocks[2].found);
         assert!(blocks[3].found);
+
+        assert_eq!(
+            blocks.iter().map(|b| b.block_index).collect::<Vec<_>>(),
+            request.get_blocks()
+        );
 
         assert_eq!(
             blocks[0].get_block_data(),
