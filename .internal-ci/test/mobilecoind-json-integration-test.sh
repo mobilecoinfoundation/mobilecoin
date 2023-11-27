@@ -63,11 +63,19 @@ python3 -m grpc_tools.protoc \
     -I"/proto/api" \
     -I"/proto/mobilecoind" \
     -I"/proto/consensus" \
+    -I"/proto/attest" \
+    -I"/proto/fog" \
     --python_out=. \
     --grpc_python_out=. \
     /proto/api/external.proto \
     /proto/api/blockchain.proto \
+    /proto/api/quorum_set.proto \
+    /proto/api/watcher.proto \
+    /proto/attest/attest.proto \
+    /proto/fog/fog_common.proto \
+    /proto/fog/ledger.proto \
     /proto/mobilecoind/mobilecoind_api.proto \
+    /proto/consensus/consensus_common.proto
 
 echo ""
 echo "-- Run integration_test.py"

@@ -9,6 +9,7 @@ use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
+use mc_mobilecoind_api::MobilecoindUri;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -66,12 +67,21 @@ pub struct LedgerRouterConfig {
     pub client_auth_token_max_lifetime: Duration,
 
     /// Path to ledger db (lmdb)
-    #[clap(long, env = "MC_LEDGER_DB")]
-    pub ledger_db: PathBuf,
+    #[clap(
+        long,
+        env = "MC_LEDGER_DB",
+        requires = "watcher_db",
+        conflicts_with = "mobilecoind_uri"
+    )]
+    pub ledger_db: Option<PathBuf>,
 
     /// Path to watcher db (lmdb) - includes block timestamps
     #[clap(long, env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
+    pub watcher_db: Option<PathBuf>,
+
+    /// Mobilecoind URI (to use instead of lmdb)
+    #[clap(long, env = "MC_MOBILECOIND_URI")]
+    pub mobilecoind_uri: Option<MobilecoindUri>,
 }
 
 /// Configuration parameters for the Fog Ledger Store service.
@@ -94,12 +104,21 @@ pub struct LedgerStoreConfig {
     pub client_listen_uri: KeyImageStoreUri,
 
     /// Path to ledger db (lmdb)
-    #[clap(long, value_parser(clap::value_parser!(PathBuf)), env = "MC_LEDGER_DB")]
-    pub ledger_db: PathBuf,
+    #[clap(
+        long,
+        env = "MC_LEDGER_DB",
+        requires = "watcher_db",
+        conflicts_with = "mobilecoind_uri"
+    )]
+    pub ledger_db: Option<PathBuf>,
 
     /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, value_parser(clap::value_parser!(PathBuf)), env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
+    #[clap(long, env = "MC_WATCHER_DB")]
+    pub watcher_db: Option<PathBuf>,
+
+    /// Mobilecoind URI (to use instead of lmdb)
+    #[clap(long, env = "MC_MOBILECOIND_URI")]
+    pub mobilecoind_uri: Option<MobilecoindUri>,
 
     /// IAS Api Key.
     #[clap(long, env = "MC_IAS_API_KEY")]

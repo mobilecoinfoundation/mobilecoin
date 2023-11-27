@@ -17,6 +17,6 @@ network in the cloud.
 Example usage
 
 ``` bash
-    SGX_MODE=HW IAS_MODE=DEV cargo build -p fog-test-client
-    RUST_LOG=debug ./test_client -- --key-dir ../ops/sample_data/keys --consensus mc://node1.alpha.mobilecoin.com/ --num-clients 2 --num-transactions 1 --consensus-wait 300 --transfer-amount 20 --fog-view-override fog-view.alpha.mobilecoin.com --fog-ledger fog-ledger.alpha.mobilecoin.com
+    SGX_MODE=HW IAS_MODE=DEV cargo build -p mc-fog-test-client
+    RUST_LOG=debug ./test_client -- --key-dir ../ops/sample_data/keys --consensus mc://node1.alpha.mobilecoin.com/ --num-clients 2 --num-transactions 1 --consensus-wait 300 --transfer-amount 20 --fog-view fog-view.alpha.mobilecoin.com --fog-ledger fog-ledger.alpha.mobilecoin.com
 ```

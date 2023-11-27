@@ -8,15 +8,15 @@ use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
+use mc_fog_block_provider::{BlockDataResponse, BlockProvider, Error as BlockProviderError};
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_fog_types::common::BlockRange;
-use mc_ledger_db::{self, Error as LedgerError, Ledger};
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
 };
-use mc_watcher::watcher_db::WatcherDB;
+use mc_watcher_api::TimestampResultCode;
 use retry::{delay, retry, OperationResult};
 use std::{
     cmp::min,
@@ -37,12 +37,12 @@ const BLOCKS_BEHIND: u64 = 100;
 
 /// An object for managing background data fetches from the ledger database.
 pub struct DbFetcher<
-    DB: Ledger + 'static,
     E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Send + Sync + 'static,
 > {
     /// Struct representing the thread and its context.
-    thread: Option<DbFetcherThread<DB, E, SS>>,
+    thread: Option<DbFetcherThread<E, SS>>,
+
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
 
@@ -51,16 +51,14 @@ pub struct DbFetcher<
 }
 
 impl<
-        DB: Ledger + 'static,
         E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
         SS: ShardingStrategy + Send + Sync + 'static,
-    > DbFetcher<DB, E, SS>
+    > DbFetcher<E, SS>
 {
     pub fn new(
-        db: DB,
+        block_provider: Box<dyn BlockProvider>,
         enclave: E,
         sharding_strategy: SS,
-        watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
         logger: Logger,
@@ -69,11 +67,10 @@ impl<
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = db_poll_shared_state;
         let thread = Some(DbFetcherThread::new(
-            db,
+            block_provider,
             thread_stop_requested,
             sharding_strategy,
             enclave,
-            watcher,
             thread_shared_state,
             readiness_indicator,
             logger,
@@ -112,10 +109,9 @@ impl<
 }
 
 impl<
-        DB: Ledger + 'static,
         E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
         SS: ShardingStrategy + Send + Sync + 'static,
-    > Drop for DbFetcher<DB, E, SS>
+    > Drop for DbFetcher<E, SS>
 {
     fn drop(&mut self) {
         let _ = self.stop();
@@ -123,15 +119,13 @@ impl<
 }
 
 struct DbFetcherThread<
-    DB: Ledger,
     E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Send + Sync + 'static,
 > {
-    db: DB,
+    block_provider: Box<dyn BlockProvider>,
     stop_requested: Arc<AtomicBool>,
     sharding_strategy: SS,
     enclave: E,
-    watcher: WatcherDB,
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
     readiness_indicator: ReadinessIndicator,
     logger: Logger,
@@ -140,30 +134,27 @@ struct DbFetcherThread<
 /// Background worker thread implementation that takes care of periodically
 /// polling data out of the database. Add join handle
 impl<
-        DB: Ledger,
         E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
         SS: ShardingStrategy + Send + Sync + 'static,
-    > DbFetcherThread<DB, E, SS>
+    > DbFetcherThread<E, SS>
 {
     const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
     pub fn new(
-        db: DB,
+        block_provider: Box<dyn BlockProvider>,
         stop_requested: Arc<AtomicBool>,
         sharding_strategy: SS,
         enclave: E,
-        watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
         logger: Logger,
     ) -> Self {
         Self {
-            db,
+            block_provider,
             stop_requested,
             sharding_strategy,
             enclave,
-            watcher,
             db_poll_shared_state,
             readiness_indicator,
             logger,
@@ -188,7 +179,7 @@ impl<
                 && !self.stop_requested.load(Ordering::SeqCst)
             {
                 // Hack: If we notice that we are way behind the ledger, set ourselves unready
-                match self.db.num_blocks() {
+                match self.block_provider.num_blocks() {
                     Ok(num_blocks) => {
                         // if there are > BLOCKS_BEHIND *available* blocks we haven't loaded yet,
                         // set unready
@@ -227,8 +218,8 @@ impl<
 
         let start_time = SystemTime::now();
 
-        match self.db.get_block_contents(*next_block_index) {
-            Err(LedgerError::NotFound) => may_have_more_work = false,
+        match self.block_provider.get_block_data(*next_block_index) {
+            Err(BlockProviderError::NotFound) => may_have_more_work = false,
             Err(e) => {
                 log::error!(
                     self.logger,
@@ -238,7 +229,10 @@ impl<
                 );
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
             }
-            Ok(block_contents) => {
+            Ok(BlockDataResponse {
+                result,
+                latest_block,
+            }) => {
                 // Tracing
                 let tracer = tracer!();
 
@@ -253,13 +247,21 @@ impl<
                 // Only add blocks within the epoch to the ORAM
                 if block_range.contains(*next_block_index) {
                     // Get the timestamp for the block.
-                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                        self.watcher
-                            .poll_block_timestamp(*next_block_index, watcher_timeout)
-                    });
+                    let timestamp = if result.block_timestamp_result_code
+                        == TimestampResultCode::TimestampFound
+                    {
+                        result.block_timestamp
+                    } else {
+                        tracer.in_span("poll_block_timestamp", |_cx| {
+                            self.block_provider
+                                .poll_block_timestamp(*next_block_index, watcher_timeout)
+                        })
+                    };
 
                     // Add block to enclave.
-                    let records = block_contents
+                    let records = result
+                        .block_data
+                        .contents()
                         .key_images
                         .iter()
                         .map(|key_image| KeyImageData {
@@ -281,33 +283,9 @@ impl<
                     // this is next_block_index + 1 because next_block_index is actually the block
                     // we just processed, so we have fully processed next_block_index + 1 blocks
                     shared_state.highest_processed_block_count = *next_block_index + 1;
-                    match self.db.num_txos() {
-                        Err(e) => {
-                            log::error!(
-                                self.logger,
-                                "Unexpected error when checking for ledger num txos {}: {:?}",
-                                next_block_index,
-                                e
-                            );
-                        }
-                        Ok(global_txo_count) => {
-                            // keep track of count for ledger enclave untrusted
-                            shared_state.last_known_block_cumulative_txo_count = global_txo_count;
-                        }
-                    }
-                    match self.db.get_latest_block() {
-                        Err(e) => {
-                            log::error!(
-                                self.logger,
-                                "Unexpected error when checking for ledger latest block version {}: {:?}",
-                                next_block_index,
-                                e
-                            );
-                        }
-                        Ok(block) => {
-                            shared_state.latest_block_version = block.version;
-                        }
-                    }
+                    shared_state.last_known_block_cumulative_txo_count =
+                        latest_block.cumulative_txo_count;
+                    shared_state.latest_block_version = latest_block.version;
                 });
 
                 *next_block_index += 1;

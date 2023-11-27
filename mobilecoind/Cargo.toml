@@ -54,6 +54,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-telemetry = { path = "../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher = { path = "../watcher" }
+mc-watcher-api = { path = "../watcher/api" }
 
 aes-gcm = "0.10.1"
 clap = { version = "4.1", features = ["derive", "env"] }

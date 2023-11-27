@@ -29,6 +29,7 @@ mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
+mc-mobilecoind-api = { path = "../../../mobilecoind/api" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-cli = { path = "../../../util/cli" }
@@ -45,6 +46,7 @@ mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
+mc-fog-block-provider = { path = "../../block_provider" }
 mc-fog-enclave-connection = { path = "../../enclave_connection" }
 mc-fog-ledger-enclave = { path = "../enclave" }
 mc-fog-ledger-enclave-api = { path = "../enclave/api" }

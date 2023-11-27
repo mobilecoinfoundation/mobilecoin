@@ -10,6 +10,7 @@ use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{KeyImageResultExtension, LedgerGrpcClient};
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -60,8 +61,9 @@ fn create_store_config(
             .responder_id()
             .expect("Couldn't get responder ID for store"),
         client_listen_uri: store_uri.clone(),
-        ledger_db: Default::default(),
-        watcher_db: Default::default(),
+        ledger_db: Some(Default::default()),
+        watcher_db: Some(Default::default()),
+        mobilecoind_uri: None,
         ias_api_key: Default::default(),
         ias_spid: Default::default(),
         admin_listen_uri: None,
@@ -158,8 +160,7 @@ fn create_store(
         config,
         enclave,
         ra_client,
-        ledger,
-        watcher,
+        LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::new(block_range),
         SystemTimeProvider::default(),
         logger,
@@ -205,8 +206,9 @@ fn create_router(
 
     let config = LedgerRouterConfig {
         chain_id: "local".to_string(),
-        ledger_db: ledger_db_path.to_path_buf(),
-        watcher_db: watcher_db_path.to_path_buf(),
+        ledger_db: Some(ledger_db_path.to_path_buf()),
+        watcher_db: Some(watcher_db_path.to_path_buf()),
+        mobilecoind_uri: None,
         shard_uris: test_config
             .shards
             .iter()
@@ -236,7 +238,13 @@ fn create_router(
 
     let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
 
-    let mut router = LedgerRouterServer::new(config, enclave, ra_client, ledger, watcher, logger);
+    let mut router = LedgerRouterServer::new(
+        config,
+        enclave,
+        ra_client,
+        LocalBlockProvider::new(ledger, watcher),
+        logger,
+    );
     router.start();
     router
 }
