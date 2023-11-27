@@ -82,8 +82,6 @@ spec:
         - secretRef:
             name: ipinfo
             optional: true
-        - configMapRef:
-            name: fog-mobilecoind
         env:
         - name: RUST_BACKTRACE
           value: {{ .Values.fogIngest.rust.backtrace | quote }}
@@ -148,10 +146,8 @@ spec:
           value: 'postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)'
         - name: MC_STATE_FILE
           value: /var/run/ingest-state-file
-        - name: MC_LEDGER_DB
-          value: /fog-data/ledger
-        - name: MC_WATCHER_DB
-          value: /fog-data/watcher
+        - name: MC_MOBILECOIND_URI
+          value: insecure-mobilecoind://mobilecoind:3229
         startupProbe:
           grpc:
             port: 3226
@@ -176,8 +172,6 @@ spec:
         volumeMounts:
         - name: aesm-socket-dir
           mountPath: /var/run/aesmd
-        - name: fog-data
-          mountPath: /fog-data
         - name: ingest-run-data
           mountPath: /ingest-run-data
         - name: supervisor-conf
@@ -228,10 +222,6 @@ spec:
       tolerations:
       {{- toYaml .Values.fogIngest.tolerations | nindent 6 }}
       volumes:
-      {{- if eq .Values.fogIngest.persistence.enabled false }}
-      - name: fog-data
-        emptyDir: {}
-      {{- end }}
       - name: tmp
         emptyDir: {}
       - name: aesm-socket-dir
@@ -246,15 +236,6 @@ spec:
           - configMap:
               name: {{ include "fog-ingest.fullname" . }}-supervisord-daemon
           - configMap:
-              name: {{ include "fog-ingest.fullname" . }}-supervisord-mobilecoind
-          - configMap:
               name: {{ include "fog-ingest.fullname" . }}-supervisord-fog-ingest
           - configMap:
               name: {{ include "fog-ingest.fullname" . }}-supervisord-admin
-  {{- if .Values.fogIngest.persistence.enabled }}
-  volumeClaimTemplates:
-  - metadata:
-      name: fog-data
-    spec:
-      {{- toYaml .Values.fogIngest.persistence.spec | nindent 6 }}
-  {{- end }}
