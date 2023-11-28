@@ -43,7 +43,7 @@ mc-fog-uri = { path = "../../uri" }
 rand_core = "0.6"
 rand_hc = "0.3"
 regex = "1"
-url = "2.4.1"
+url = "2.5.0"
 
 # mc
 mc-ledger-db = { path = "../../../ledger/db" }
