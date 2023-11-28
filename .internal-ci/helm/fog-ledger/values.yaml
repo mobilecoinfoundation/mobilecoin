@@ -206,9 +206,6 @@ fogLedger:
       #   MC_QUORUM_SET
 
   externalSecrets:
-    # ias:
-    #  name: ias
-
     # ipinfo is optional
     ipinfo:
       name: ipinfo
