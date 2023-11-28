@@ -53,7 +53,6 @@ where
     /// etc.)
     pub fn new(
         controller: Arc<IngestController<R, DB>>,
-
         block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> Self {
