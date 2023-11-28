@@ -53,7 +53,7 @@ rayon = "1.8"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = "0.10"
 toml = "0.8"
-url = "2.4"
+url = "2.5"
 
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }
