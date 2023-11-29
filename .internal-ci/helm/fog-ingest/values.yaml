@@ -23,17 +23,6 @@ fogIngest:
     name: fogingest
     pullPolicy: Always
 
-  ### Persistent storage for LMDB
-  persistence:
-    enabled: true
-    spec:
-      storageClassName: fast
-      accessModes:
-        - 'ReadWriteOnce'
-      resources:
-        requests:
-          storage: 512Gi
-
   rust:
     backtrace: full
     log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn

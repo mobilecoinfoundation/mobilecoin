@@ -4,6 +4,7 @@ use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_test_utils::get_blocks;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ingest_server::{
     server::{IngestServer, IngestServerConfig},
     state_file::StateFile,
@@ -235,8 +236,7 @@ impl IngestServerTestHelper {
             config,
             ra_client,
             self.recovery_db.clone(),
-            self.watcher.clone(),
-            self.ledger.clone(),
+            LocalBlockProvider::new(self.ledger.clone(), self.watcher.clone()),
             logger,
         );
         server.start().expect("Failed to start IngestServer");
