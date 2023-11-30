@@ -146,7 +146,7 @@ spec:
         args: /usr/bin/mobilecoind-dev-faucet
         envFrom:
         - secretRef:
-            name: {{ .externalSecrets.sampleKeysSeed.name }}
+            name: {{ $.Values.externalSecrets.sampleKeysSeed.name }}
             optional: true
         env:
         - name: MC_LISTEN_HOST
