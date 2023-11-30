@@ -6,8 +6,6 @@ use mc_common::logger::{log, Logger};
 
 /// Provides logic for validating a timestamp used in consensus
 
-const MAX_TIMESTAMP_AGE: u64 = 30 * 1000; // 30 seconds
-
 /// The maximum allowed skew between the system time and the timestamp. This
 /// allows the system time to be a bit behind the timestamp.
 /// The reason for this is that during consensus multiple nodes will be looking
@@ -28,8 +26,6 @@ pub enum Error {
     /** The timestamp is not newer than the last bock. last_bock timestamp: {0},
     timestamp: {1} */
     NotNewerThanLastBlock(u64, u64),
-    /// The timestamp is too far in the past now: {0}, timestamp: {1}
-    TooOld(u64, u64),
 }
 
 pub fn validate_with_logger(
@@ -51,10 +47,6 @@ pub fn validate(timestamp: u64, latest_block: &Block) -> Result<(), Error> {
 
     if timestamp > (now + ALLOWED_FUTURE_SKEW) {
         return Err(Error::InFuture(now, timestamp));
-    }
-
-    if timestamp + MAX_TIMESTAMP_AGE < now {
-        return Err(Error::TooOld(now, timestamp));
     }
 
     if timestamp <= latest_block.timestamp {
@@ -164,25 +156,6 @@ mod test {
         let latest_block = Block::default();
 
         assert_eq!(validate(skewed_now, &latest_block), Ok(()));
-    }
-
-    #[test]
-    fn timestamp_older_than_30_seconds_fails() {
-        let now = std::time::SystemTime::now();
-        // Need to add 1 since at MAX_TIMESTAMP_AGE is still good
-        let too_old = now
-            .checked_sub(std::time::Duration::from_millis(MAX_TIMESTAMP_AGE + 1))
-            .unwrap()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
-
-        let latest_block = Block::default();
-
-        assert_matches!(
-            validate(too_old, &latest_block),
-            Err(Error::TooOld(_, timestamp)) if timestamp == too_old
-        );
     }
 
     #[test]
