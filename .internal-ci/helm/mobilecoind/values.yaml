@@ -1,15 +1,5 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2023 The MobileCoin Foundation
 fullnameOverride: ''
-
-###  mc-core-common-config child chart configuration.
-#    See ../mc-core-common-config for details.
-mcCoreCommonConfig:
-  enabled: false
-
-###  mobilecoind-config child chart configuration.
-#    See ../mc-core-common-config for details.
-mobilecoindConfig:
-  enabled: false
 
 # Pods share the image tag.
 image:
@@ -17,40 +7,79 @@ image:
   tag: '' # Overrides the image tag whose default is the chart appVersion.
 
 imagePullSecrets:
-  - name: docker-credentials
+- name: docker-credentials
+
+mobilecoin:
+  network: ''
+  partner: ''
+
+initContainers: []
+
+nodeSelector: {}
+
+podAnnotations:
+  fluentbit.io/include: 'true' # collect logs with fluentbit
+  fluentbit.io/exclude-jaeger-agent: 'true'
+
+replicaCount: 1
 
 mobilecoind:
   image:
     org: ''
     name: mobilecoind
+    pullPolicy: Always
 
-  ingress:
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-production-http
-      haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
-      haproxy.org/server-ssl: "false"             # The backend (server) is http
-      haproxy.org/timeout-client: 239s            # 4 min timeout on azure
-      haproxy.org/timeout-server: 239s
-      haproxy.org/timeout-http-keep-alive: 120s
-      haproxy.org/abortonclose: "true"
-      haproxy.org/backend-config-snippet: |-
-        http-reuse aggressive
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+  resources:
+    requests:
+      memory: 5Gi
+      cpu: 1000m
+    limits:
+      memory: 5Gi
+      cpu: 4000m
 
-  configMap: {}
-    # Bootstrap ledger/watcher db from public bucket
-    # MC_LEDGER_DB_URL: ''
-    # MC_WATCHER_DB_URL: ''
+mobilecoindJson:
+  image:
+    org: ''
+    name: mobilecoind
+    pullPolicy: Always
 
-  initContainers: []
+devFaucet:
+  enabled: false
+  image:
+    org: ''
+    name: mobilecoind
+    pullPolicy: Always
 
-  nodeSelector: {}
+externalConfigMaps:
+  mobilecoind:
+    name: fog-mobilecoind
+    ### required keys:
+    #   MC_PEER
+    #   MC_TX_SOURCE_URL
+    #   MC_QUORUM_SET
+    ### optional keys:
+    #   MC_LEDGER_DB_URL
+    #   MC_WATCHER_DB_URL
 
-  podAnnotations:
-    fluentbit.io/include: 'true' # collect logs with fluentbit
-    fluentbit.io/exclude-jaeger-agent: 'true'
+externalSecrets:
+  # ipinfo is optional
+  ipinfo:
+    name: ipinfo
+    ### required keys:
+    #   MC_IP_INFO_TOKEN
+  # sample-keys-seed is optional unless dev faucet is enabled.
+  sampleKeysSeed:
+    name: sample-keys-seed
+
+persistence:
+  enabled: true
+  spec:
+    storageClassName: fast
+    accessModes:
+    - 'ReadWriteOnce'
+    resources:
+      requests:
+        storage: 512Gi
 
 jaegerTracing:
-  enabled: true
-  collector: 'dns:///jaeger-collector:14250'
+  enabled: false

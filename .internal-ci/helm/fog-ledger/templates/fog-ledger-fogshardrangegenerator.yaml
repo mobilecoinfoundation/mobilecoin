@@ -153,8 +153,6 @@ spec:
                 successThreshold: 1
                 timeoutSeconds: 1
               volumeMounts:
-              - name: fog-data
-                mountPath: /fog-data
               - name: aesm-socket-dir
                 mountPath: /var/run/aesmd
               - name: supervisor-conf
@@ -240,13 +238,6 @@ spec:
                     name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-router
                 - configMap:
                     name: {{ include "fog-ledger.fullname" $ }}-supervisord-admin
-        {{- if .persistence.enabled }}
-        volumeClaimTemplates:
-        - metadata:
-            name: fog-data
-          spec:
-            {{- toYaml .persistence.spec | nindent 12 }}
-        {{- end }}
     {{- end }}
     {{- end }}
 
@@ -387,8 +378,6 @@ spec:
             volumeMounts:
             - name: aesm-socket-dir
               mountPath: /var/run/aesmd
-            - name: fog-data
-              mountPath: /fog-data
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
               readOnly: true
@@ -401,46 +390,42 @@ spec:
             image: jaegertracing/jaeger-agent:latest
             imagePullPolicy: IfNotPresent
             ports:
-              - containerPort: 5775
-                name: zk-compact-trft
-                protocol: UDP
-              - containerPort: 5778
-                name: config-rest
-                protocol: TCP
-              - containerPort: 6831
-                name: jg-compact-trft
-                protocol: UDP
-              - containerPort: 6832
-                name: jg-binary-trft
-                protocol: UDP
-              - containerPort: 14271
-                name: admin-http
-                protocol: TCP
+            - containerPort: 5775
+              name: zk-compact-trft
+              protocol: UDP
+            - containerPort: 5778
+              name: config-rest
+              protocol: TCP
+            - containerPort: 6831
+              name: jg-compact-trft
+              protocol: UDP
+            - containerPort: 6832
+              name: jg-binary-trft
+              protocol: UDP
+            - containerPort: 14271
+              name: admin-http
+              protocol: TCP
             env:
-              - name: POD_NAME
-                valueFrom:
-                  fieldRef:
-                    apiVersion: v1
-                    fieldPath: metadata.name
-              - name: HOST_IP
-                valueFrom:
-                  fieldRef:
-                    apiVersion: v1
-                    fieldPath: status.hostIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
             args:
-              - --reporter.grpc.host-port=dns:///jaeger-collector:14250
-              - --reporter.type=grpc
-              - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fog-ledger.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
+            - --reporter.grpc.host-port=dns:///jaeger-collector:14250
+            - --reporter.type=grpc
+            - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fog-ledger.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
           {{- end }}
           nodeSelector:
             {{- toYaml .nodeSelector | nindent 12 }}
           tolerations:
           {{- toYaml .tolerations | nindent 10 }}
           volumes:
-          {{- if eq .persistence.enabled false }}
-          - name: fog-data
-            emptyDir: {}
-          {{- end }}
           - name: tmp
             emptyDir: {}
           - name: aesm-socket-dir
@@ -456,13 +441,6 @@ spec:
                   name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-store
               - configMap:
                   name: {{ include "fog-ledger.fullname" $ }}-supervisord-admin
-      {{- if .persistence.enabled }}
-      volumeClaimTemplates:
-      - metadata:
-          name: fog-data
-        spec:
-          {{- toYaml .persistence.spec | nindent 10 }}
-      {{- end }}
   {{- end }}
 ---
 {{- end }}
