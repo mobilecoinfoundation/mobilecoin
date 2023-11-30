@@ -68,8 +68,8 @@ externalSecrets:
     ### required keys:
     #   MC_IP_INFO_TOKEN
   # sample-keys-seed is optional unless dev faucet is enabled.
-  sampleKeysSeed:
-    name: sample-keys-seed
+  sampleKeysSeeds:
+    name: sample-keys-seeds
 
 persistence:
   enabled: true

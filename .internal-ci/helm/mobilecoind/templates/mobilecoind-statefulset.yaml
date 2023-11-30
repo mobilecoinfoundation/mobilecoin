@@ -117,7 +117,7 @@ spec:
           - --reporter.type=grpc
           - --agent.tags=cluster=undefined,container.name=mobilecoind,deployment.name={{ include "mobilecoind.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
       {{- end }}
-      {{- with .Values.mobilecoinJson }}
+      {{- with .Values.mobilecoindJson }}
       - name: mobilecoind-json
         image: '{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}'
         imagePullPolicy: {{ .image.pullPolicy }}
@@ -143,10 +143,11 @@ spec:
       - name: mobilecoind-dev-faucet
         image: '{{ .image.org | default $.Values.image.org }}/{{ .image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}'
         imagePullPolicy: {{ .image.pullPolicy }}
-        args: /usr/bin/mobilecoind-dev-faucet
+        args:
+        - /usr/bin/mobilecoind-dev-faucet
         envFrom:
         - secretRef:
-            name: {{ $.Values.externalSecrets.sampleKeysSeed.name }}
+            name: {{ $.Values.externalSecrets.sampleKeysSeeds.name }}
             optional: true
         env:
         - name: MC_LISTEN_HOST
@@ -166,7 +167,7 @@ spec:
         ports:
         - name: faucet
           containerPort: 9091
-        volumes:
+        volumeMounts:
         - name: wallet-seeds
           mountPath: /wallet-seeds
           readOnly: true
@@ -185,12 +186,12 @@ spec:
         emptyDir: {}
       - name: wallet-seeds
         secret:
-          secretName: {{ .Values.externalSecrets.sampleKeysSeed.name }}
+          secretName: {{ .Values.externalSecrets.sampleKeysSeeds.name }}
           optional: true
-      {{- if .Values.persistence.enabled }}
-      volumeClaimTemplates:
-      - metadata:
-          name: data
-        spec:
-          {{- toYaml .Values.persistence.spec | nindent 12 }}
-      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      {{- toYaml .Values.persistence.spec | nindent 6 }}
+  {{- end }}
