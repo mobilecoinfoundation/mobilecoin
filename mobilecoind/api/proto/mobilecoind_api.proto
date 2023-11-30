@@ -23,6 +23,7 @@ service MobilecoindAPI {
     rpc GetMonitorList (google.protobuf.Empty) returns (GetMonitorListResponse) {}
     rpc GetMonitorStatus (GetMonitorStatusRequest) returns (GetMonitorStatusResponse) {}
     rpc GetUnspentTxOutList (GetUnspentTxOutListRequest) returns (GetUnspentTxOutListResponse) {}
+    rpc GetAllUnspentTxOut (GetAllUnspentTxOutRequest) returns (GetAllUnspentTxOutResponse) {}
 
     // Utilities
     rpc GenerateRootEntropy (google.protobuf.Empty) returns (GenerateRootEntropyResponse) {}
@@ -356,6 +357,14 @@ message GetUnspentTxOutListRequest {
     uint64 token_id = 3;
 }
 message GetUnspentTxOutListResponse {
+    repeated UnspentTxOut output_list = 1;
+}
+
+// Get a list of all UnspentTxOuts for a given monitor, without any filtering
+message GetAllUnspentTxOutRequest {
+    bytes monitor_id = 1;
+}
+message GetAllUnspentTxOutResponse {
     repeated UnspentTxOut output_list = 1;
 }
 

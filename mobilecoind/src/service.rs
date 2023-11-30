@@ -347,7 +347,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<api::GetUnspentTxOutListResponse, RpcStatus> {
         // Get MonitorId from from the GRPC request.
         let monitor_id = MonitorId::try_from(&request.monitor_id)
-            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get UnspentTxOuts.
         let utxos = self
@@ -366,8 +366,33 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Convert to protos.
         let proto_utxos: Vec<api::UnspentTxOut> = utxos.iter().map(|utxo| utxo.into()).collect();
 
-        // Returrn response.
+        // Return response.
         let mut response = api::GetUnspentTxOutListResponse::new();
+        response.set_output_list(RepeatedField::from_vec(proto_utxos));
+        Ok(response)
+    }
+
+    fn get_all_unspent_tx_out_impl(
+        &mut self,
+        request: api::GetAllUnspentTxOutRequest,
+    ) -> Result<api::GetAllUnspentTxOutResponse, RpcStatus> {
+        // Get MonitorId from from the GRPC request.
+        let monitor_id = MonitorId::try_from(&request.monitor_id)
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get UnspentTxOuts.
+        let utxos = self
+            .mobilecoind_db
+            .get_utxos_for_monitor(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_utxos_for_monitor", err, &self.logger)
+            })?;
+
+        // Convert to protos.
+        let proto_utxos: Vec<api::UnspentTxOut> = utxos.iter().map(|utxo| utxo.into()).collect();
+
+        // Return response.
+        let mut response = api::GetAllUnspentTxOutResponse::new();
         response.set_output_list(RepeatedField::from_vec(proto_utxos));
         Ok(response)
     }
@@ -2464,6 +2489,7 @@ build_api! {
     get_monitor_list Empty GetMonitorListResponse get_monitor_list_impl,
     get_monitor_status GetMonitorStatusRequest GetMonitorStatusResponse get_monitor_status_impl,
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
+    get_all_unspent_tx_out GetAllUnspentTxOutRequest GetAllUnspentTxOutResponse get_all_unspent_tx_out_impl,
 
     // Utilities
     generate_root_entropy Empty GenerateRootEntropyResponse generate_root_entropy_impl,
@@ -2918,6 +2944,140 @@ mod test {
         assert_eq!(
             HashSet::from_iter(utxos.iter()),
             HashSet::from_iter(expected_utxos.iter().filter(|utxo| utxo.token_id == 2))
+        );
+    }
+
+    #[test_with_logger]
+    fn test_get_all_unspent_tx_out_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let account_key = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[account_key.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                account_key.default_subaddress(),
+            ],
+            Amount::new(1000, 2.into()),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Add a block with a non-MOB token ID, to an off subaddress
+        add_block_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                account_key.subaddress(1),
+            ],
+            Amount::new(1000, 2.into()),
+            &[KeyImage::from(102)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Query with the known id
+        let mut request = api::GetAllUnspentTxOutRequest::new();
+        request.set_monitor_id(id.to_vec());
+
+        let response = client
+            .get_all_unspent_tx_out(&request)
+            .expect("failed to get all unspent tx out");
+
+        let utxos: Vec<UnspentTxOut> = response
+            .output_list
+            .iter()
+            .map(|proto_utxo| {
+                UnspentTxOut::try_from(proto_utxo).expect("failed converting proto utxo")
+            })
+            .collect();
+
+        // Verify the data we got matches what we expected. This assumes knowledge about
+        // how the test ledger is constructed by the test utils.
+        let num_blocks = ledger_db.num_blocks().unwrap();
+        let account_tx_outs: Vec<TxOut> = (0..num_blocks)
+            .map(|idx| {
+                let block_contents = ledger_db.get_block_contents(idx).unwrap();
+                // We grab the 4th tx out in each block since the test ledger had 3 random
+                // recipients, followed by our known recipient.
+                // See the call to `get_testing_environment` at the beginning of the test.
+                block_contents.outputs[3].clone()
+            })
+            .collect();
+
+        let expected_utxos: Vec<UnspentTxOut> = account_tx_outs
+            .iter()
+            .enumerate()
+            .map(|(idx, tx_out)| {
+                let (amount, _) = tx_out
+                    .view_key_match(account_key.view_private_key())
+                    .unwrap();
+
+                // Get the expected subaddress index, based on block index. Everything is on 0
+                // except in the last block, where we used subaddrss 1.
+                let subaddress_index = if idx as u64 == num_blocks - 1 { 1 } else { 0 };
+
+                // Calculate the key image for this tx out.
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key,
+                    account_key.view_private_key(),
+                    &account_key.subaddress_spend_private(subaddress_index),
+                );
+                let key_image = KeyImage::from(&onetime_private_key);
+
+                // Craft the expected UnspentTxOut
+                UnspentTxOut {
+                    tx_out: tx_out.clone(),
+                    subaddress_index,
+                    key_image,
+                    value: amount.value,
+                    token_id: *amount.token_id,
+                    attempted_spend_height: 0,
+                    attempted_spend_tombstone: 0,
+                }
+            })
+            .collect();
+
+        // Compare - we should have one utxo in each block.
+        assert_eq!(utxos.len(), num_blocks as usize);
+        assert_eq!(
+            HashSet::from_iter(utxos.iter()),
+            HashSet::from_iter(expected_utxos.iter())
         );
     }
 
