@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{mint_tx_manager::MintTxManagerError, tx_manager::TxManagerError};
+use crate::{
+    mint_tx_manager::MintTxManagerError, timestamp_validator::Error as TimestampError,
+    tx_manager::TxManagerError,
+};
 use displaydoc::Display;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::logger::global_log;
@@ -35,6 +38,9 @@ pub enum ConsensusGrpcError {
 
     /// Mint transaction validation error `{0}`
     MintValidation(MintValidationError),
+
+    /// Timestamp validation error `{0}`
+    Timestamp(TimestampError),
 
     /// Invalid argument `{0}`
     InvalidArgument(String),
@@ -95,7 +101,14 @@ impl From<MintTxManagerError> for ConsensusGrpcError {
         match src {
             MintTxManagerError::MintValidation(err) => Self::from(err),
             MintTxManagerError::LedgerDb(err) => Self::from(err),
+            MintTxManagerError::Timestamp(err) => Self::from(err),
         }
+    }
+}
+
+impl From<TimestampError> for ConsensusGrpcError {
+    fn from(src: TimestampError) -> Self {
+        Self::Timestamp(src)
     }
 }
 

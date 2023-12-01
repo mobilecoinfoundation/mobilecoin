@@ -3011,6 +3011,7 @@ dependencies = [
 name = "mc-consensus-enclave-impl"
 version = "5.1.1"
 dependencies = [
+ "assert_matches",
  "cargo-emit",
  "hex",
  "mbedtls",
@@ -3042,6 +3043,7 @@ dependencies = [
  "rand_core",
  "rand_hc",
  "subtle",
+ "yare 2.0.0",
 ]
 
 [[package]]
@@ -3186,6 +3188,7 @@ dependencies = [
 name = "mc-consensus-service"
 version = "5.1.1"
 dependencies = [
+ "assert_matches",
  "base64 0.21.5",
  "chrono",
  "clap 4.4.8",
@@ -3245,6 +3248,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempfile",
+ "yare 2.0.0",
 ]
 
 [[package]]

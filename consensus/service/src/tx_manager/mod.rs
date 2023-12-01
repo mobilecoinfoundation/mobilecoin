@@ -8,7 +8,8 @@
 //! "working set" of transactions that the consensus service may operate on.
 
 #![allow(clippy::result_large_err)]
-use crate::counters;
+
+use crate::{counters, timestamp_validator};
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::{
     logger::{log, Logger},
@@ -21,7 +22,10 @@ use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     tx::{TxHash, TxOutMembershipProof},
 };
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    iter::repeat,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 mod error;
 mod tx_manager_trait;
@@ -111,30 +115,34 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
     fn get_cache_entries<'a, 'b, I>(
         cache: &'a MutexGuard<HashMap<TxHash, CacheEntry>>,
         tx_hashes: I,
-    ) -> Result<Vec<&'a CacheEntry>, TxManagerError>
+    ) -> Result<Vec<(&'a CacheEntry, u64)>, TxManagerError>
     where
-        I: Iterator<Item = &'b TxHash>,
+        I: Iterator<Item = &'b (TxHash, u64)>,
     {
         // Split `tx_hashes` into a list of found hashes and missing ones. This allows
         // us to return an error with the entire list of missing hashes.
         let (entries, not_found) = tx_hashes
-            .map(|tx_hash| {
-                cache
-                    .get(tx_hash)
-                    .map_or_else(|| (*tx_hash, None), |entry| (*tx_hash, Some(entry)))
+            .map(|(tx_hash, timestamp)| {
+                cache.get(tx_hash).map_or_else(
+                    || (*tx_hash, None, timestamp),
+                    |entry| (*tx_hash, Some(entry), timestamp),
+                )
             })
-            .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some());
+            .partition::<Vec<_>, _>(|(_tx_hash, result, _timestamp)| result.is_some());
 
         // If we are missing any hashes, return error.
         if !not_found.is_empty() {
-            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
+            let not_found_tx_hashes = not_found
+                .into_iter()
+                .map(|(tx_hash, _, _)| tx_hash)
+                .collect();
             return Err(TxManagerError::NotInCache(not_found_tx_hashes));
         }
 
         // Otherwise, return the found entries.
         Ok(entries
             .into_iter()
-            .map(|(_tx_hash, entry)| entry.unwrap())
+            .map(|(_tx_hash, entry, timestamp)| (entry.unwrap(), *timestamp))
             .collect())
     }
 }
@@ -216,7 +224,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
     /// Validate the transaction corresponding to the given hash against the
     /// current ledger.
-    fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
+    fn validate(&self, tx_hash: &TxHash, timestamp: Option<u64>) -> TxManagerResult<()> {
         let context_opt = {
             let cache = self.lock_cache();
             cache.get(tx_hash).map(|entry| entry.context.clone())
@@ -224,7 +232,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         if let Some(context) = context_opt {
             let _timer = counters::VALIDATE_TX_TIME.start_timer();
-            self.untrusted.is_valid(context)?;
+            self.untrusted.is_valid(context, timestamp).map_err(|e| {
+                log::warn!(self.logger, "Failed validating tx_hash {tx_hash}: {e}");
+                e
+            })?;
             Ok(())
         } else {
             log::warn!(
@@ -237,15 +248,15 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     }
 
     /// Combines the transactions that correspond to the given hashes.
-    fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
-        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().collect(); // Dedup
+    fn combine(&self, tx_hashes: &[(TxHash, u64)]) -> TxManagerResult<Vec<(TxHash, u64)>> {
+        let tx_hashes = timestamp_validator::sort_and_dedup(tx_hashes.iter());
 
         let cache = self.lock_cache();
-        let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter().copied())?;
+        let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
 
         let tx_contexts = cache_entries
             .iter()
-            .map(|entry| entry.context.clone())
+            .map(|(entry, timestamp)| (entry.context.clone(), *timestamp))
             .collect::<Vec<_>>();
 
         // Perform the combine operation.
@@ -265,11 +276,14 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         tx_hashes: &[TxHash],
     ) -> TxManagerResult<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>> {
         let cache = self.lock_cache();
-        let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
+        // We don't have a timestamp for each transaction and we aren't going
+        // to return one, so we use 0 for the timestamp used in `get_cache_entries`
+        let hashes = tx_hashes.iter().cloned().zip(repeat(0)).collect::<Vec<_>>();
+        let cache_entries = Self::get_cache_entries(&cache, hashes.iter())?;
 
         cache_entries
             .into_iter()
-            .map(|entry| {
+            .map(|(entry, _timestamp)| {
                 // Highest indices proofs must be w.r.t. the current ledger.
                 // Recreating them here is a crude way to ensure that.
                 let highest_index_proofs: Vec<_> = self
@@ -565,7 +579,7 @@ mod tests {
             .unwrap()
             .insert(tx_context.tx_hash, cache_entry);
 
-        assert!(tx_manager.validate(&tx_context.tx_hash).is_ok());
+        assert!(tx_manager.validate(&tx_context.tx_hash, Some(555)).is_ok());
     }
 
     #[test_with_logger]
@@ -580,7 +594,7 @@ mod tests {
         let mock_enclave = MockConsensusEnclave::new();
 
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
-        match tx_manager.validate(&tx_context.tx_hash) {
+        match tx_manager.validate(&tx_context.tx_hash, Some(555)) {
             Err(TxManagerError::NotInCache(_)) => {} // This is expected.
             _ => panic!(),
         }
@@ -617,7 +631,7 @@ mod tests {
             .unwrap()
             .insert(tx_context.tx_hash, cache_entry);
 
-        match tx_manager.validate(&tx_context.tx_hash) {
+        match tx_manager.validate(&tx_context.tx_hash, Some(555)) {
             Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::ContainsSpentKeyImage,
             )) => {} // This is expected.
@@ -628,7 +642,7 @@ mod tests {
     #[test_with_logger]
     // Should return Ok if the transactions are in the cache.
     fn test_combine_ok(logger: Logger) {
-        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        let tx_hashes: Vec<_> = (0..10).map(|i| (TxHash([i as u8; 32]), i)).collect();
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
         let expected: Vec<_> = tx_hashes.iter().take(5).cloned().collect();
@@ -641,7 +655,7 @@ mod tests {
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
 
         // Add transactions to the cache.
-        for tx_hash in &tx_hashes {
+        for (tx_hash, _) in &tx_hashes {
             let context = WellFormedTxContext::new(
                 Default::default(),
                 *tx_hash,
@@ -674,7 +688,9 @@ mod tests {
     // Should return Err if any transaction is not in the cache.
     fn test_combine_err_not_in_cache(logger: Logger) {
         let n_transactions = 10;
-        let tx_hashes: Vec<_> = (0..n_transactions).map(|i| TxHash([i as u8; 32])).collect();
+        let tx_hashes: Vec<_> = (0..n_transactions)
+            .map(|i| (TxHash([i as u8; 32]), i))
+            .collect();
 
         // UntrustedInterfaces should not be called.
         let mock_untrusted = MockUntrustedInterfaces::new();
@@ -684,7 +700,7 @@ mod tests {
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
 
         // Add some transactions, but not all, to the cache.
-        for tx_hash in &tx_hashes[2..] {
+        for (tx_hash, _) in &tx_hashes[2..] {
             let context = WellFormedTxContext::new(
                 Default::default(),
                 *tx_hash,

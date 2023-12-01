@@ -24,21 +24,34 @@ pub trait UntrustedInterfaces: Send + Sync {
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
-    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()>;
+    ///
+    /// # Arguments
+    /// * `context` - The tx context to validate.
+    /// * `timestamp` - The timestamp to validate. ms since Unix epoch. If None,
+    ///   then only the validity of the `context` will be checked.
+    fn is_valid(
+        &self,
+        context: Arc<WellFormedTxContext>,
+        timestamp: Option<u64>,
+    ) -> TransactionValidationResult<()>;
 
     /// Combines a set of "candidate values" into a "composite value".
     /// This assumes all values are well-formed and safe to append to the ledger
     /// individually.
     ///
     /// # Arguments
-    /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be
-    ///   individually valid.
+    /// * `tx_contexts` - "Candidate" transactions and their proposed timestamp
+    ///   in ms since Unix epoch. Each is assumed to be individually valid.
     /// * `max_elements` - Maximal number of elements to output.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that
-    /// are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[Arc<WellFormedTxContext>], max_elements: usize)
-        -> Vec<TxHash>;
+    /// are safe to append to the ledger. If there are any duplicate
+    /// transactions the ones with the largest timestamp will be returned.
+    fn combine(
+        &self,
+        tx_contexts: &[(Arc<WellFormedTxContext>, u64)],
+        max_elements: usize,
+    ) -> Vec<(TxHash, u64)>;
 
     fn get_tx_out_proof_of_memberships(
         &self,

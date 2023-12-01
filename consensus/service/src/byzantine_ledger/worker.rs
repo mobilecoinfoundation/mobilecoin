@@ -25,8 +25,8 @@ use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{LedgerSync, NetworkState, SCPNetworkState};
 use mc_peers::{
-    Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError,
-    RetryableConsensusConnection, VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, ConsensusValueWithTimestamp,
+    Error as PeerError, RetryableConsensusConnection, VerifiedConsensusMsg,
 };
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Receiver;
@@ -40,7 +40,7 @@ use std::{
         Arc, Mutex,
     },
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 /// Default number of consensus messages to process per batch.
@@ -58,7 +58,7 @@ pub struct ByzantineLedgerWorker<
     enclave: E,
 
     // SCP implementation.
-    scp_node: Box<dyn ScpNode<ConsensusValue>>,
+    scp_node: Box<dyn ScpNode<ConsensusValueWithTimestamp>>,
 
     // SCP message signing key.
     msg_signer_key: Arc<Ed25519Pair>,
@@ -147,7 +147,7 @@ impl<
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         enclave: E,
-        scp_node: Box<dyn ScpNode<ConsensusValue>>,
+        scp_node: Box<dyn ScpNode<ConsensusValueWithTimestamp>>,
         msg_signer_key: Arc<Ed25519Pair>,
         ledger: L,
         ledger_sync_service: LS,
@@ -433,6 +433,19 @@ impl<
     fn propose_pending_values(&mut self) {
         assert!(!self.pending_values.is_empty());
 
+        // The timestamp here will potentially be the timestamp that lands on
+        // the block.
+        // The timestamp is intentionally not part of the `pending_values` so
+        // that when a value doesn't land and is tried next time, it uses a new
+        // timestamp. If a new timestamp wasn't used each time the value was
+        // proposed then it would be older than the latest block and be
+        // rejected.
+        let now = SystemTime::now();
+        let timestamp = now
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed getting the system time")
+            .as_millis() as u64;
+
         // Fairness heuristics:
         // * Values are proposed in the order that they were received.
         // * Each node limits the total number of values it proposes per slot.
@@ -441,6 +454,7 @@ impl<
             .iter()
             .take(MAX_PENDING_VALUES_TO_NOMINATE)
             .cloned()
+            .map(|v| ConsensusValueWithTimestamp::new(v, timestamp))
             .collect();
 
         let msg_opt = self
@@ -538,7 +552,7 @@ impl<
         }
     }
 
-    fn complete_current_slot(&mut self, externalized: Vec<ConsensusValue>) {
+    fn complete_current_slot(&mut self, externalized: Vec<ConsensusValueWithTimestamp>) {
         let tracer = tracer!();
 
         let span = start_block_span(&tracer, "complete_current_slot", self.current_slot_index);
@@ -546,7 +560,10 @@ impl<
 
         // Update pending value processing time metrics.
         for value in externalized.iter() {
-            if let Some(received_time) = self.pending_values.get_received_time_for_value(value) {
+            if let Some(received_time) = self
+                .pending_values
+                .get_received_time_for_value(&value.value)
+            {
                 let duration = Instant::now().saturating_duration_since(received_time);
                 counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
             }
@@ -555,7 +572,7 @@ impl<
         // Invariant: pending_values only contains valid values that were not
         // externalized.
         self.pending_values
-            .retain(|value| !externalized.contains(value));
+            .retain(|value| !externalized.iter().any(|e| &e.value == value));
 
         log::info!(
             self.logger,
@@ -651,7 +668,7 @@ impl<
 
     fn fetch_missing_txs(
         &mut self,
-        scp_msg: &Msg<ConsensusValue>,
+        scp_msg: &Msg<ConsensusValueWithTimestamp>,
         from_responder_id: &ResponderId,
     ) -> bool {
         // Hashes of transactions that are not currently cached.
@@ -659,7 +676,7 @@ impl<
             .values()
             .into_iter()
             .filter_map(|value| {
-                if let ConsensusValue::TxHash(tx_hash) = value {
+                if let ConsensusValue::TxHash(tx_hash) = value.value {
                     if self.tx_manager.contains(&tx_hash) {
                         None
                     } else {
@@ -760,7 +777,10 @@ impl<
     }
 
     /// Broadcast a consensus message issued by this node.
-    fn issue_consensus_message(&mut self, msg: Msg<ConsensusValue>) -> Result<(), &'static str> {
+    fn issue_consensus_message(
+        &mut self,
+        msg: Msg<ConsensusValueWithTimestamp>,
+    ) -> Result<(), &'static str> {
         let consensus_msg =
             ConsensusMsg::from_scp_msg(&self.ledger, msg, self.msg_signer_key.as_ref())
                 .map_err(|_| "Failed creating ConsensusMsg")?;
@@ -814,7 +834,7 @@ impl<
 
     fn form_block_from_externalized_values(
         &self,
-        externalized_values: Vec<ConsensusValue>,
+        externalized_values: Vec<ConsensusValueWithTimestamp>,
     ) -> BlockData {
         let parent_block = self
             .ledger
@@ -825,9 +845,11 @@ impl<
         let mut tx_hashes = Vec::new();
         let mut mint_config_txs = Vec::new();
         let mut mint_txs = Vec::new();
+        let mut timestamps = Vec::new();
 
         for value in externalized_values {
-            match value {
+            timestamps.push(value.timestamp);
+            match value.value {
                 ConsensusValue::TxHash(tx_hash) => tx_hashes.push(tx_hash),
                 ConsensusValue::MintConfigTx(mint_config_tx) => {
                     mint_config_txs.push(mint_config_tx);
@@ -858,6 +880,14 @@ impl<
             .get_root_tx_out_membership_element()
             .expect("Failed getting root tx out membership element");
 
+        // We use the max timestamp as that should be the closest time to "now".
+        // i.e. it may have taken 100ms to process the block. The last
+        // timestamp, in an ideal system, may be 100ms later than the first
+        // timestamp in the values, but should still be slightly before now.
+        // Using the max timestamp is also called out in the
+        // [Stellar Whitepaper](https://www.stellar.org/papers/stellar-consensus-protocol).
+        let timestamp = timestamps.into_iter().max().unwrap_or(0);
+
         // Request the enclave to form the next block.
         let (block, block_contents, mut signature) = self
             .enclave
@@ -867,6 +897,7 @@ impl<
                     well_formed_encrypted_txs_with_proofs,
                     mint_config_txs,
                     mint_txs_with_config,
+                    timestamp,
                 },
                 &root_element,
             )
@@ -962,7 +993,7 @@ mod tests {
         num_blocks: u64,
     ) -> (
         MockConsensusEnclave,
-        MockScpNode<ConsensusValue>,
+        MockScpNode<ConsensusValueWithTimestamp>,
         MockLedger,
         MockLedgerSync<SCPNetworkState>,
         MockTxManager,
@@ -1325,7 +1356,7 @@ mod tests {
         for tx_hash in &tx_hashes[0..100] {
             tx_manager
                 .expect_validate()
-                .with(eq(*tx_hash))
+                .with(eq(*tx_hash), eq(None))
                 .return_const(Ok(()));
         }
 
@@ -1333,7 +1364,7 @@ mod tests {
         for tx_hash in &tx_hashes[100..103] {
             tx_manager
                 .expect_validate()
-                .with(eq(*tx_hash))
+                .with(eq(*tx_hash), eq(None))
                 .return_const(Err(TxManagerError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 )));
@@ -1343,7 +1374,7 @@ mod tests {
         for tx_hash in &tx_hashes[103..] {
             tx_manager
                 .expect_validate()
-                .with(eq(*tx_hash))
+                .with(eq(*tx_hash), eq(None))
                 .return_const(Ok(()));
         }
 
@@ -1439,7 +1470,7 @@ mod tests {
         for tx_hash in &tx_hashes {
             tx_manager
                 .expect_validate()
-                .with(eq(*tx_hash))
+                .with(eq(*tx_hash), eq(None))
                 .return_const(Err(TxManagerError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 )));
@@ -1493,7 +1524,7 @@ mod tests {
         signer_key: &Ed25519Pair,
         ledger: &L,
     ) -> VerifiedConsensusMsg {
-        let msg: Msg<ConsensusValue, NodeID> = Msg {
+        let msg: Msg<ConsensusValueWithTimestamp, NodeID> = Msg {
             sender_id: sender_id.clone(),
             slot_index: 1,
             quorum_set: QuorumSet {
@@ -1675,10 +1706,22 @@ mod tests {
             .return_const(5_usize);
         scp_node.expect_process_timeouts().return_const(Vec::new());
         scp_node.expect_get_externalized_values().return_const(vec![
-            ConsensusValue::TxHash(hash_tx1),
-            ConsensusValue::TxHash(hash_tx2),
-            ConsensusValue::TxHash(hash_tx3),
-            ConsensusValue::MintTx(mint_tx1.clone()),
+            ConsensusValueWithTimestamp {
+                value: ConsensusValue::TxHash(hash_tx1),
+                timestamp: 10,
+            },
+            ConsensusValueWithTimestamp {
+                value: ConsensusValue::TxHash(hash_tx2),
+                timestamp: 20,
+            },
+            ConsensusValueWithTimestamp {
+                value: ConsensusValue::TxHash(hash_tx3),
+                timestamp: 30,
+            },
+            ConsensusValueWithTimestamp {
+                value: ConsensusValue::MintTx(mint_tx1.clone()),
+                timestamp: 40,
+            },
         ]);
         scp_node
             .expect_get_current_slot_metrics()
@@ -1720,6 +1763,7 @@ mod tests {
 
         assert_eq!(block.index, parent_block.index + 1);
         assert_eq!(block.parent_id, parent_block.id);
+        assert_eq!(block.timestamp, 40);
 
         // The mock enclave does not mint a fee output, so the number of outputs matches
         // the number of transactions that we fed into it.

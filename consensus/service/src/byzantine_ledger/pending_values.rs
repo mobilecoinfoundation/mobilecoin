@@ -74,7 +74,7 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
             match value {
                 ConsensusValue::TxHash(tx_hash) => {
                     // A new transaction.
-                    if self.tx_manager.validate(&tx_hash).is_ok() {
+                    if self.tx_manager.validate(&tx_hash, None).is_ok() {
                         // The transaction is well-formed and valid.
                         entry.insert(received_time);
                         self.pending_values.push(value);
@@ -87,7 +87,7 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                 ConsensusValue::MintConfigTx(ref mint_config_tx) => {
                     if self
                         .mint_tx_manager
-                        .validate_mint_config_tx(mint_config_tx)
+                        .validate_mint_config_tx(mint_config_tx, None)
                         .is_ok()
                     {
                         // The transaction is well-formed and valid.
@@ -100,7 +100,7 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                 }
 
                 ConsensusValue::MintTx(ref mint_tx) => {
-                    if self.mint_tx_manager.validate_mint_tx(mint_tx).is_ok() {
+                    if self.mint_tx_manager.validate_mint_tx(mint_tx, None).is_ok() {
                         // The transaction is well-formed and valid.
                         entry.insert(received_time);
                         self.pending_values.push(value);
@@ -147,12 +147,12 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
         let tx_manager = self.tx_manager.clone();
         let mint_tx_manager = self.mint_tx_manager.clone();
         self.retain(|value| match value {
-            ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
+            ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash, None).is_ok(),
             ConsensusValue::MintConfigTx(ref mint_config_tx) => mint_tx_manager
-                .validate_mint_config_tx(mint_config_tx)
+                .validate_mint_config_tx(mint_config_tx, None)
                 .is_ok(),
             ConsensusValue::MintTx(ref mint_tx) => {
-                mint_tx_manager.validate_mint_tx(mint_tx).is_ok()
+                mint_tx_manager.validate_mint_tx(mint_tx, None).is_ok()
             }
         });
     }
@@ -181,18 +181,18 @@ mod tests {
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(values[0]))
+            .with(eq(values[0]), eq(None))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(values[1]))
+            .with(eq(values[1]), eq(None))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(values[2]))
+            .with(eq(values[2]), eq(None))
             .return_const(Ok(()));
 
         let mut pending_values =
@@ -266,18 +266,18 @@ mod tests {
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[0]))
+            .with(eq(tx_hashes[0]), eq(None))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[1]))
+            .with(eq(tx_hashes[1]), eq(None))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[2]))
+            .with(eq(tx_hashes[2]), eq(None))
             .return_const(Ok(()));
 
         // Create new PendingValues and forcefully shove the pending tx_hashes into it

@@ -351,7 +351,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         };
 
         let timestamp = if block_version.timestamps_are_supported() {
-            parent_block.timestamp + 1
+            inputs.timestamp
         } else {
             0
         };
