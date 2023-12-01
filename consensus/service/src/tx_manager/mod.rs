@@ -233,7 +233,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         if let Some(context) = context_opt {
             let _timer = counters::VALIDATE_TX_TIME.start_timer();
             self.untrusted.is_valid(context, timestamp).map_err(|e| {
-                log::warn!(self.logger, "Failed validated tx_hash: {e}");
+                log::warn!(self.logger, "Failed validating tx_hash {tx_hash}: {e}");
                 e
             })?;
             Ok(())
