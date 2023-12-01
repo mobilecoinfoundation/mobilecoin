@@ -63,10 +63,10 @@ fogLedger:
     resources:
       limits:
         intel.com/sgx: 5000
-        memory: 5Gi
+        memory: 2Gi
       requests:
         intel.com/sgx: 5000
-        memory: 5Gi
+        memory: 2Gi
         cpu: 1100m
 
     nodeSelector:
@@ -167,10 +167,10 @@ fogLedger:
     resources:
       limits:
         intel.com/sgx: 5000
-        memory: 5Gi
+        memory: 3Gi
       requests:
         intel.com/sgx: 5000
-        memory: 5Gi
+        memory: 3Gi
         cpu: 1100m
 
     nodeSelector:
