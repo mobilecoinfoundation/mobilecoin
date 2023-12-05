@@ -2520,8 +2520,8 @@ dependencies = [
  "mc-crypto-ring-signature-signer",
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-types 0.9.0",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-builder",
  "mc-transaction-core",
@@ -2563,7 +2563,7 @@ dependencies = [
  "mc-attestation-verifier",
  "mc-crypto-keys",
  "mc-crypto-noise",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
@@ -2591,8 +2591,8 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-crypto-keys",
  "mc-crypto-noise",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-types 0.9.0",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-serial",
@@ -2615,8 +2615,8 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-types 0.9.0",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -2672,11 +2672,11 @@ dependencies = [
  "mc-attestation-verifier",
  "mc-rand",
  "mc-sgx-build",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.9.0",
  "mc-sgx-dcap-ql",
  "mc-sgx-dcap-quoteverify",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-sys-types 0.9.0",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-sgx-types",
  "p256",
  "sha2 0.10.8",
@@ -2702,10 +2702,10 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-common",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
+ "mc-sgx-core-sys-types 0.9.0",
+ "mc-sgx-core-types 0.9.0",
  "mc-sgx-css",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-sgx-types",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -2727,7 +2727,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "mc-attestation-verifier",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.9.0",
  "serde",
  "serde_json",
 ]
@@ -2744,9 +2744,9 @@ dependencies = [
  "mc-attest-untrusted",
  "mc-crypto-digestible",
  "mc-crypto-keys",
- "mc-sgx-core-types",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-types 0.9.0",
+ "mc-sgx-dcap-sys-types 0.9.0",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-util-encodings",
  "mc-util-serial",
  "mc-util-test-helper",
@@ -2767,9 +2767,9 @@ dependencies = [
  "displaydoc",
  "hex",
  "mbedtls",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
- "mc-sgx-dcap-types",
+ "mc-sgx-core-sys-types 0.9.0",
+ "mc-sgx-core-types 0.9.0",
+ "mc-sgx-dcap-types 0.9.0",
  "p256",
  "serde",
  "serde_json",
@@ -5419,6 +5419,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-sgx-core-build"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e641bda5154585e0e208ffaab332bed5b07bc7932365c90a0784aa01aedc86bf"
+dependencies = [
+ "bindgen 0.66.1",
+ "cargo-emit",
+]
+
+[[package]]
 name = "mc-sgx-core-sys-types"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5426,7 +5436,20 @@ checksum = "c1e3737cd325f4fc372d5fe2efea18eeae1e32b08fd170677956e3ba81b46cf0"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
+ "mc-sgx-core-build 0.9.0",
+ "serde",
+ "serde_with",
+]
+
+[[package]]
+name = "mc-sgx-core-sys-types"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee64ad59a2ec2c7f957566c523e7fc8ce5d12f71810effa83d17d72655e7ec3c"
+dependencies = [
+ "bindgen 0.66.1",
+ "cargo-emit",
+ "mc-sgx-core-build 0.10.0",
  "serde",
  "serde_with",
 ]
@@ -5441,8 +5464,26 @@ dependencies = [
  "displaydoc",
  "getrandom",
  "hex",
- "mc-sgx-core-sys-types",
- "mc-sgx-util",
+ "mc-sgx-core-sys-types 0.9.0",
+ "mc-sgx-util 0.9.0",
+ "nom",
+ "rand_core",
+ "serde",
+ "subtle",
+]
+
+[[package]]
+name = "mc-sgx-core-types"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aff595ed82df5dcdd942c971df3986ddef2921cd628edd48c5921536181a777d"
+dependencies = [
+ "bitflags 2.4.1",
+ "displaydoc",
+ "getrandom",
+ "hex",
+ "mc-sgx-core-sys-types 0.10.0",
+ "mc-sgx-util 0.10.0",
  "nom",
  "rand_core",
  "serde",
@@ -5454,7 +5495,7 @@ name = "mc-sgx-css"
 version = "5.1.1"
 dependencies = [
  "displaydoc",
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.9.0",
  "sha2 0.10.8",
 ]
 
@@ -5474,12 +5515,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2bd9787ff00873b0916c504307a01e800e2a2003470d3f2360007e3fc3eb26e"
 dependencies = [
  "displaydoc",
- "mc-sgx-core-sys-types",
- "mc-sgx-core-types",
+ "mc-sgx-core-sys-types 0.9.0",
+ "mc-sgx-core-types 0.9.0",
  "mc-sgx-dcap-ql-sys",
  "mc-sgx-dcap-ql-types",
- "mc-sgx-dcap-types",
- "mc-sgx-util",
+ "mc-sgx-dcap-types 0.9.0",
+ "mc-sgx-util 0.9.0",
  "once_cell",
 ]
 
@@ -5491,10 +5532,10 @@ checksum = "48c83ee97e39cdc93d28e01302f179523d2cba99f00aa057d199dcedcbd6f3c3"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
- "mc-sgx-core-sys-types",
+ "mc-sgx-core-build 0.9.0",
+ "mc-sgx-core-sys-types 0.9.0",
  "mc-sgx-dcap-ql-sys-types",
- "mc-sgx-dcap-sys-types",
+ "mc-sgx-dcap-sys-types 0.9.0",
 ]
 
 [[package]]
@@ -5505,7 +5546,7 @@ checksum = "5b1135d37c0330dbdbc035589197e127e8890409681e25a2bcc828fbf7ce4f3b"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
+ "mc-sgx-core-build 0.9.0",
 ]
 
 [[package]]
@@ -5514,7 +5555,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37d5f67334175f387dbad452b5fbdec9953a4bf50a428379d816c98cc05bdeed"
 dependencies = [
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.9.0",
  "mc-sgx-dcap-ql-sys-types",
 ]
 
@@ -5528,9 +5569,9 @@ dependencies = [
  "mc-sgx-dcap-quoteverify-sys",
  "mc-sgx-dcap-quoteverify-sys-types",
  "mc-sgx-dcap-quoteverify-types",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-dcap-types",
- "mc-sgx-util",
+ "mc-sgx-dcap-sys-types 0.9.0",
+ "mc-sgx-dcap-types 0.9.0",
+ "mc-sgx-util 0.9.0",
  "once_cell",
 ]
 
@@ -5542,9 +5583,9 @@ checksum = "36c5e4e999748255dcb2fab54a255cf0ff834d8178fefee52628cf83f573891f"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
+ "mc-sgx-core-build 0.9.0",
  "mc-sgx-dcap-quoteverify-sys-types",
- "mc-sgx-dcap-sys-types",
+ "mc-sgx-dcap-sys-types 0.9.0",
 ]
 
 [[package]]
@@ -5555,8 +5596,8 @@ checksum = "803b1b4b6c1434b7088f068f240dcfd602ffdfd112ee4942264800939b7bcfae"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build",
- "mc-sgx-dcap-sys-types",
+ "mc-sgx-core-build 0.9.0",
+ "mc-sgx-dcap-sys-types 0.9.0",
 ]
 
 [[package]]
@@ -5565,7 +5606,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02959ba059f312bcb03e1f5c03cc484ae983af97ed16c9acd4bdd86adb478d8b"
 dependencies = [
- "mc-sgx-core-types",
+ "mc-sgx-core-types 0.9.0",
  "mc-sgx-dcap-quoteverify-sys-types",
 ]
 
@@ -5576,8 +5617,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59cb73d145ebc4bf8d5b894651c743633db956cf6635a6b0b40b3995d37883f8"
 dependencies = [
  "bindgen 0.66.1",
- "mc-sgx-core-build",
- "mc-sgx-core-sys-types",
+ "mc-sgx-core-build 0.9.0",
+ "mc-sgx-core-sys-types 0.9.0",
+]
+
+[[package]]
+name = "mc-sgx-dcap-sys-types"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c81f0145d31addcf9e2c06ed97654307b2f1ad5f2f4765ff25fc1e8601cf6ab7"
+dependencies = [
+ "bindgen 0.66.1",
+ "mc-sgx-core-build 0.10.0",
+ "mc-sgx-core-sys-types 0.10.0",
 ]
 
 [[package]]
@@ -5589,9 +5641,28 @@ dependencies = [
  "const-oid",
  "displaydoc",
  "hex",
- "mc-sgx-core-types",
- "mc-sgx-dcap-sys-types",
- "mc-sgx-util",
+ "mc-sgx-core-types 0.9.0",
+ "mc-sgx-dcap-sys-types 0.9.0",
+ "mc-sgx-util 0.9.0",
+ "nom",
+ "p256",
+ "serde",
+ "sha2 0.10.8",
+ "static_assertions",
+ "subtle",
+ "x509-cert",
+]
+
+[[package]]
+name = "mc-sgx-dcap-types"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ce51b0796bbb7369456c5af63c1832ee824624d2d3ff9ccce7f924f799ad778"
+dependencies = [
+ "displaydoc",
+ "mc-sgx-core-types 0.10.0",
+ "mc-sgx-dcap-sys-types 0.10.0",
+ "mc-sgx-util 0.10.0",
  "nom",
  "p256",
  "serde",
@@ -5622,7 +5693,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-enclave-api",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-util-serial",
  "serde",
 ]
@@ -5639,7 +5710,7 @@ dependencies = [
  "mc-common",
  "mc-sgx-dcap-ql",
  "mc-sgx-dcap-quoteverify",
- "mc-sgx-dcap-types",
+ "mc-sgx-dcap-types 0.10.0",
  "mc-sgx-report-cache-api",
  "mc-util-metrics",
  "retry",
@@ -5666,7 +5737,7 @@ dependencies = [
 name = "mc-sgx-types"
 version = "5.1.1"
 dependencies = [
- "mc-sgx-core-sys-types",
+ "mc-sgx-core-sys-types 0.9.0",
 ]
 
 [[package]]
@@ -5685,6 +5756,12 @@ name = "mc-sgx-util"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2afaa76b1049c04f4caa75b378656dabb079a0d8be350084bd3f1ac8426e179e"
+
+[[package]]
+name = "mc-sgx-util"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eca2266429f2bb3d4281c211cfe3af28d8503052339d1145a388d02e1e3f3f88"
 
 [[package]]
 name = "mc-test-vectors-account-keys"
