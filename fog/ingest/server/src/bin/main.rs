@@ -102,6 +102,7 @@ fn main() {
         fog_report_id: config.fog_report_id.clone(),
         state_file: Some(StateFile::new(state_file_path)),
         enclave_path,
+        poll_interval: config.poll_interval,
     };
 
     let mut server = IngestServer::new(

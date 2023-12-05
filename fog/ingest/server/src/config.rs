@@ -9,7 +9,7 @@ use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_mobilecoind_api::MobilecoindUri;
-use mc_util_parse::parse_duration_in_seconds;
+use mc_util_parse::{parse_duration_in_millis, parse_duration_in_seconds};
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
@@ -115,6 +115,10 @@ pub struct IngestConfig {
     /// Postgres config
     #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+
+    /// How many milliseconds to wait between polling.
+    #[clap(long, default_value = "250", value_parser = parse_duration_in_millis, env = "MC_POLL_INTERVAL")]
+    pub poll_interval: Duration,
 }
 
 #[cfg(test)]

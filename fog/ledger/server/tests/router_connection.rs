@@ -371,6 +371,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 client_auth_token_max_lifetime: Default::default(),
                 omap_capacity: OMAP_CAPACITY,
                 sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+                poll_interval: Duration::from_millis(250),
             };
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
@@ -948,6 +949,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 client_auth_token_max_lifetime: Default::default(),
                 omap_capacity: OMAP_CAPACITY,
                 sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+                poll_interval: Duration::from_millis(250),
             };
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),

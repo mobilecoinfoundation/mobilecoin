@@ -94,6 +94,9 @@ pub struct IngestServerConfig {
     /// During cargo tests we use a helper that searches the target/ dir for the
     /// enclave.so file.
     pub enclave_path: PathBuf,
+
+    /// Time to wait between ledger polls
+    pub poll_interval: Duration,
 }
 
 /// All of the state and grpcio objects and threads associated to the ingest
@@ -293,6 +296,7 @@ where
             self.controller.clone(),
             self.block_provider.clone(),
             self.config.watcher_timeout,
+            self.config.poll_interval,
             self.logger.clone(),
         ));
 
