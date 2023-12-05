@@ -8,6 +8,7 @@ use crate::sharding_strategy::EpochShardingStrategy;
 use clap::Parser;
 use mc_common::ResponderId;
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
+use mc_mobilecoind_api::MobilecoindUri;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
@@ -57,26 +58,21 @@ pub struct LedgerRouterConfig {
     pub client_auth_token_max_lifetime: Duration,
 
     /// Path to ledger db (lmdb)
-    #[clap(long, env = "MC_LEDGER_DB")]
-    pub ledger_db: PathBuf,
+    #[clap(
+        long,
+        env = "MC_LEDGER_DB",
+        requires = "watcher_db",
+        conflicts_with = "mobilecoind_uri"
+    )]
+    pub ledger_db: Option<PathBuf>,
 
     /// Path to watcher db (lmdb) - includes block timestamps
     #[clap(long, env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
+    pub watcher_db: Option<PathBuf>,
 
-    // TODO: Add store instance uris which are of type Vec<FogLedgerStoreUri>.
-    /// The capacity to build the OMAP (ORAM hash table) with.
-    /// About 75% of this capacity can be used.
-    /// The hash table will overflow when there are more TxOut's than this,
-    /// and the server will have to be restarted with a larger number.
-    ///
-    /// Note: At time of writing, the hash table will be allocated to use all
-    /// available SGX EPC memory, and then beyond that it will be allocated on
-    /// the heap in the untrusted side. Once the needed capacity exceeds RAM,
-    /// you will either get killed by OOM killer, or it will start being swapped
-    /// to disk by linux kernel.
-    #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
-    pub omap_capacity: u64,
+    /// Mobilecoind URI (to use instead of lmdb)
+    #[clap(long, env = "MC_MOBILECOIND_URI")]
+    pub mobilecoind_uri: Option<MobilecoindUri>,
 }
 
 /// Configuration parameters for the Fog Ledger Store service.
@@ -99,12 +95,21 @@ pub struct LedgerStoreConfig {
     pub client_listen_uri: KeyImageStoreUri,
 
     /// Path to ledger db (lmdb)
-    #[clap(long, value_parser(clap::value_parser!(PathBuf)), env = "MC_LEDGER_DB")]
-    pub ledger_db: PathBuf,
+    #[clap(
+        long,
+        env = "MC_LEDGER_DB",
+        requires = "watcher_db",
+        conflicts_with = "mobilecoind_uri"
+    )]
+    pub ledger_db: Option<PathBuf>,
 
     /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, value_parser(clap::value_parser!(PathBuf)), env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
+    #[clap(long, env = "MC_WATCHER_DB")]
+    pub watcher_db: Option<PathBuf>,
+
+    /// Mobilecoind URI (to use instead of lmdb)
+    #[clap(long, env = "MC_MOBILECOIND_URI")]
+    pub mobilecoind_uri: Option<MobilecoindUri>,
 
     /// Optional admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]

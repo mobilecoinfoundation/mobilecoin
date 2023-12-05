@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind"
-version = "5.1.1"
+version = "5.2.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -53,6 +53,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-telemetry = { path = "../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher = { path = "../watcher" }
+mc-watcher-api = { path = "../watcher/api" }
 
 aes-gcm = "0.10.3"
 clap = { version = "4.4", features = ["derive", "env"] }

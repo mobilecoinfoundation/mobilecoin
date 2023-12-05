@@ -4,6 +4,7 @@
 //! Fog Ingest target
 
 use mc_common::logger::{log, o};
+use mc_fog_block_provider::{BlockProvider, LocalBlockProvider, MobilecoindBlockProvider};
 use mc_fog_ingest_enclave::ENCLAVE_FILE;
 use mc_fog_ingest_server::{
     config::IngestConfig,
@@ -58,10 +59,29 @@ fn main() {
         panic!("fog-ingest cannot connect to database '{database_url}': {err:?}")
     });
 
-    let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
+    let (block_provider, ledger_db) = match (
+        config.ledger_db.as_ref(),
+        config.watcher_db.as_ref(),
+        config.mobilecoind_uri.as_ref(),
+    ) {
+        (Some(ledger_db_path), Some(watcher_db_path), None) => {
+            let ledger_db = LedgerDB::open(ledger_db_path).expect("Could not read ledger DB");
+            let watcher = WatcherDB::open_ro(watcher_db_path, logger.clone())
+                .expect("Could not open watcher DB");
 
-    let watcher =
-        WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
+            (
+                LocalBlockProvider::new(ledger_db.clone(), watcher) as Box<dyn BlockProvider>,
+                Some(ledger_db),
+            )
+        }
+
+        (None, None, Some(mobilecoind_uri)) => (
+            MobilecoindBlockProvider::new(mobilecoind_uri, &logger) as Box<dyn BlockProvider>,
+            None,
+        ),
+
+        _ => panic!("invalid configuration, need either ledger_db+watcher_db or mobilecoind_uri"),
+    };
 
     // Start ingest server.
     let server_config = IngestServerConfig {
@@ -79,13 +99,7 @@ fn main() {
         enclave_path,
     };
 
-    let mut server = IngestServer::new(
-        server_config,
-        recovery_db,
-        watcher,
-        ledger_db,
-        logger.clone(),
-    );
+    let mut server = IngestServer::new(server_config, recovery_db, block_provider, logger.clone());
 
     server.start().expect("Failed starting Ingest Service");
 
@@ -100,12 +114,21 @@ fn main() {
             config.local_node_id.to_string(),
             Some(get_config_json),
             vec![],
-            logger,
+            logger.clone(),
         )
         .expect("Failed starting fog-ingest admin server")
     });
 
     loop {
+        if let Some(ledger_db) = ledger_db.as_ref() {
+            // The ledger database is read by this service, but updated by another service.
+            // In order to keep this service's metrics up to date, we need to update them
+            // periodically.
+            if let Err(e) = ledger_db.update_metrics() {
+                log::error!(logger, "Error updating ledger metrics: {:?}", e);
+            }
+        }
+
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }

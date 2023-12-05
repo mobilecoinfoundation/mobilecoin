@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-server"
-version = "5.1.1"
+version = "5.2.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -37,6 +37,7 @@ mc-common = { path = "../../../common", features = ["loggers"] }
 mc-connection = { path = "../../../connection" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-ledger-db = { path = "../../../ledger/db" }
+mc-mobilecoind-api = { path = "../../../mobilecoind/api" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../../transaction/core" }
@@ -52,6 +53,7 @@ mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
 mc-fog-api = { path = "../../api" }
+mc-fog-block-provider = { path = "../../block_provider" }
 mc-fog-ingest-enclave = { path = "../enclave" }
 mc-fog-ingest-enclave-api = { path = "../enclave/api" }
 mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }

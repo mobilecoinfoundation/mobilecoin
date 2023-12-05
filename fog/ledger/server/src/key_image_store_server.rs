@@ -1,27 +1,24 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::sync::{Arc, Mutex};
-
+use crate::{
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
+    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
+};
 use futures::executor::block_on;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
 };
 use mc_fog_api::ledger_grpc;
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
-use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
 };
-use mc_watcher::watcher_db::WatcherDB;
-
-use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
-    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
-};
+use std::sync::{Arc, Mutex};
 
 pub struct KeyImageStoreServer<E, SS>
 where
@@ -30,7 +27,7 @@ where
 {
     server: grpcio::Server,
     client_listen_uri: KeyImageStoreUri,
-    db_fetcher: DbFetcher<LedgerDB, E, SS>,
+    db_fetcher: DbFetcher<E, SS>,
     enclave: E,
     report_cache_thread: Option<ReportCacheThread>,
     logger: Logger,
@@ -45,8 +42,7 @@ where
     pub fn new_from_config(
         config: LedgerStoreConfig,
         enclave: E,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
@@ -66,8 +62,7 @@ where
             client_authenticator,
             config.client_listen_uri,
             enclave,
-            ledger,
-            watcher,
+            block_provider,
             sharding_strategy,
             logger,
         )
@@ -77,8 +72,7 @@ where
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
         logger: Logger,
     ) -> KeyImageStoreServer<E, SS> {
@@ -93,8 +87,6 @@ where
 
         let key_image_service = KeyImageService::new(
             uri,
-            ledger,
-            watcher,
             enclave.clone(),
             shared_state,
             client_authenticator,
@@ -104,15 +96,17 @@ where
             key_image_service,
             client_listen_uri,
             enclave,
+            block_provider,
             sharding_strategy,
             logger,
         )
     }
 
     pub fn new_from_service(
-        mut key_image_service: KeyImageService<LedgerDB, E>,
+        mut key_image_service: KeyImageService<E>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
+        block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
         logger: Logger,
     ) -> KeyImageStoreServer<E, SS> {
@@ -151,10 +145,9 @@ where
             .expect("Could not build Key Image Store Server");
 
         let db_fetcher = DbFetcher::new(
-            key_image_service.get_ledger(),
+            block_provider,
             enclave.clone(),
             sharding_strategy,
-            key_image_service.get_watcher(),
             key_image_service.get_db_poll_shared_state(),
             readiness_indicator,
             logger.clone(),
