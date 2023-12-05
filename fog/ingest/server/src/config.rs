@@ -117,7 +117,7 @@ pub struct IngestConfig {
     pub postgres_config: SqlRecoveryDbConnectionConfig,
 
     /// How many milliseconds to wait between polling.
-    #[clap(long, default_value = "250", value_parser = parse_duration_in_millis, env = "MC_POLL_INTERVAL")]
+    #[clap(long = "poll_interval_ms", default_value = "250", value_parser = parse_duration_in_millis, env = "MC_POLL_INTERVAL_MS")]
     pub poll_interval: Duration,
 }
 
