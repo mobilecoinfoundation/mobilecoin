@@ -17,7 +17,7 @@ mc-attest-untrusted = { path = "../../../attest/untrusted" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-sgx-dcap-ql = "0.9.0"
-mc-sgx-dcap-quoteverify = "0.9.0"
+mc-sgx-dcap-quoteverify = "0.10.0"
 mc-sgx-dcap-types = "0.9.0"
 mc-sgx-report-cache-api = { path = "../api" }
 mc-util-metrics = { path = "../../../util/metrics" }
