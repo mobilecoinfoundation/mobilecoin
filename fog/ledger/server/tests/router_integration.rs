@@ -35,6 +35,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
+    time::Duration,
 };
 use tempfile::TempDir;
 use url::Url;
@@ -71,6 +72,7 @@ fn create_store_config(
         client_auth_token_max_lifetime: Default::default(),
         omap_capacity,
         sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::new(block_range)),
+        poll_interval: Duration::from_millis(250),
     }
 }
 

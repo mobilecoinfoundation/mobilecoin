@@ -61,6 +61,7 @@ impl<
         sharding_strategy: SS,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
+        poll_interval: Duration,
         logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -73,6 +74,7 @@ impl<
             enclave,
             thread_shared_state,
             readiness_indicator,
+            poll_interval,
             logger,
         ));
 
@@ -128,6 +130,7 @@ struct DbFetcherThread<
     enclave: E,
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
     readiness_indicator: ReadinessIndicator,
+    poll_interval: Duration,
     logger: Logger,
 }
 
@@ -138,7 +141,6 @@ impl<
         SS: ShardingStrategy + Send + Sync + 'static,
     > DbFetcherThread<E, SS>
 {
-    const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
     pub fn new(
@@ -148,6 +150,7 @@ impl<
         enclave: E,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
+        poll_interval: Duration,
         logger: Logger,
     ) -> Self {
         Self {
@@ -157,6 +160,7 @@ impl<
             enclave,
             db_poll_shared_state,
             readiness_indicator,
+            poll_interval,
             logger,
         }
     }
@@ -204,7 +208,7 @@ impl<
             // Setting ourselves unready when we notice we are way behind is a workaround.
             self.readiness_indicator.set_ready();
 
-            std::thread::sleep(Self::POLLING_FREQUENCY);
+            std::thread::sleep(self.poll_interval);
         }
     }
 
