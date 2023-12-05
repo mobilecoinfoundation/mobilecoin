@@ -16,6 +16,7 @@ const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
 const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 8;
 const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
 const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
+const CONSENSUS_ENCLAVE_BUILD_DIR: &str = "enclave";
 
 fn main() {
     let env = Environment::default();
@@ -71,7 +72,7 @@ fn main() {
     }
 
     builder
-        .target_dir(env.target_dir().join(CONSENSUS_ENCLAVE_NAME).as_path())
+        .target_dir(env.target_dir().join(CONSENSUS_ENCLAVE_BUILD_DIR).as_path())
         .config_builder
         .debug(sgx.sgx_mode() == SgxMode::Simulation || env.profile() != "release")
         .prod_id(CONSENSUS_ENCLAVE_PRODUCT_ID)
