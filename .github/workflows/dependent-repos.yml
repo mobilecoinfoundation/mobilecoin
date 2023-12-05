@@ -12,7 +12,7 @@ env:
 jobs:
   android-bindings:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.31
+    container: mobilecoin/builder-install:v0.0.32
 
     permissions:
       pull-requests: write
@@ -32,7 +32,7 @@ jobs:
 
   full-service:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/builder-install:v0.0.31
+    container: mobilecoin/builder-install:v0.0.32
 
     permissions:
       pull-requests: write
