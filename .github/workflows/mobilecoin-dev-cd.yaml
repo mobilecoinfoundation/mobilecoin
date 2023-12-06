@@ -137,6 +137,7 @@ jobs:
           -p mc-fog-report-server \
           -p mc-fog-sql-recovery-db \
           -p mc-fog-test-client \
+          -p mc-fog-view-load-test \
           -p mc-fog-view-server \
           -p mc-ledger-distribution \
           -p mc-ledger-from-archive \
