@@ -4,6 +4,7 @@
 //! LedgerDB for new blocks, then gets all the key images associated to those
 //! blocks and adds them to the enclave.
 use crate::{counters, sharding_strategy::ShardingStrategy, DbPollSharedState};
+use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, Logger},
     trace_time,
@@ -169,29 +170,42 @@ impl<
         let block_range = self.sharding_strategy.get_block_range();
         let mut next_block_index = block_range.start_block;
         loop {
-            loop {
-                let num_blocks = self.load_block_data(&mut next_block_index);
+            if block_range.contains(next_block_index) {
+                loop {
+                    let num_blocks = self.load_block_data(&mut next_block_index);
 
-                let end = min(num_blocks, block_range.end_block);
+                    let end = min(num_blocks, block_range.end_block);
 
-                if next_block_index < end.saturating_sub(BLOCKS_BEHIND) {
-                    self.readiness_indicator.set_unready();
-                } else {
-                    self.readiness_indicator.set_ready();
+                    if next_block_index < end.saturating_sub(BLOCKS_BEHIND) {
+                        self.readiness_indicator.set_unready();
+                    } else {
+                        self.readiness_indicator.set_ready();
+                    }
+
+                    if end <= next_block_index {
+                        break;
+                    }
+
+                    if self.stop_requested.load(Ordering::SeqCst) {
+                        break;
+                    }
                 }
-
-                if end <= next_block_index {
-                    break;
-                }
-
-                if self.stop_requested.load(Ordering::SeqCst) {
-                    break;
-                }
-            }
-
-            if !block_range.contains(next_block_index) {
-                log::info!(self.logger, "Db fetcher thread reached end of block range.");
-                break;
+            } else {
+                // Due to the way collation works in the enclave, we need to
+                // keep updating the db poll shared state even if we have all of the
+                // blocks we need.
+                match self.block_provider.get_latest_block() {
+                    Ok(latest_block) => {
+                        self.update_db_poll_shared_state(&latest_block, latest_block.index + 1);
+                    }
+                    Err(err) => {
+                        log::error!(
+                            self.logger,
+                            "Could not get the latest block from db: {}",
+                            err
+                        );
+                    }
+                };
             }
 
             if self.stop_requested.load(Ordering::SeqCst) {
@@ -267,20 +281,25 @@ impl<
 
                 *next_block_index += 1;
 
-                // Update shared state.
-                tracer.in_span("update_shared_state", |_cx| {
-                    let mut shared_state =
-                        self.db_poll_shared_state.lock().expect("mutex poisoned");
-                    shared_state.highest_processed_block_count = *next_block_index;
-                    shared_state.last_known_block_cumulative_txo_count =
-                        latest_block.cumulative_txo_count;
-                    shared_state.latest_block_version = latest_block.version;
-                });
+                self.update_db_poll_shared_state(&latest_block, *next_block_index);
 
                 // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
                 latest_block.index + 1
             }
         }
+    }
+
+    fn update_db_poll_shared_state(
+        &mut self,
+        latest_block: &Block,
+        highest_processed_block_count: u64,
+    ) {
+        tracer!().in_span("update_shared_state", |_cx| {
+            let mut shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
+            shared_state.highest_processed_block_count = highest_processed_block_count;
+            shared_state.last_known_block_cumulative_txo_count = latest_block.cumulative_txo_count;
+            shared_state.latest_block_version = latest_block.version;
+        });
     }
 
     fn add_records_to_enclave(&mut self, block_index: u64, records: Vec<KeyImageData>) {
