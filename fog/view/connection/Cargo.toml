@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-connection"
-version = "5.2.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"

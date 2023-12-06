@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-api"
-version = "5.2.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 description = """
 The ECALL API declarations and API for operating a ledger enclave.
