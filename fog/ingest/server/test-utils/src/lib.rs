@@ -226,6 +226,7 @@ impl IngestServerTestHelper {
             state_file: Some(StateFile::new(state_file_path.clone())),
             enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
             omap_capacity: OMAP_CAPACITY,
+            poll_interval: Duration::from_millis(250),
         };
 
         let mut server = IngestServer::new(

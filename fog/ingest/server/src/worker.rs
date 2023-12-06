@@ -30,8 +30,6 @@ pub struct IngestWorker {
 }
 
 impl IngestWorker {
-    /// Poll for new data every 10 ms
-    const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     /// If a database invariant is violated, e.g. we get block but not block
     /// contents, it typically will not be fixed and so we won't be able to
     /// proceed. But bringing the server down is costly from ops POV because
@@ -49,6 +47,9 @@ impl IngestWorker {
     /// Arguments:
     /// * Controller for this ingest server
     /// * BlockProvider to read blocks and timestamps from
+    /// * Watcher timeout (how long before we log a warning about failing to get
+    ///   a timestamp)
+    /// * Polling interval (how long to wait between polls)
     /// * Logger to send log messages to
     ///
     /// Returns a freshly started IngestWorker thread handle
@@ -56,6 +57,7 @@ impl IngestWorker {
         controller: Arc<IngestController<DB>>,
         block_provider: Box<dyn BlockProvider>,
         watcher_timeout: Duration,
+        poll_interval: Duration,
         logger: Logger,
     ) -> Self
     where
@@ -80,7 +82,7 @@ impl IngestWorker {
                     }
 
                     if is_idle {
-                        std::thread::sleep(Self::POLLING_FREQUENCY);
+                        std::thread::sleep(poll_interval);
                         continue;
                     }
 
@@ -108,7 +110,7 @@ impl IngestWorker {
                             } else {
                                 last_not_found_log = Some(LastNotFound::new(next_block_index));
                             }
-                            std::thread::sleep(Self::POLLING_FREQUENCY)
+                            std::thread::sleep(poll_interval)
                         }
                         Err(e) => {
                             log::error!(

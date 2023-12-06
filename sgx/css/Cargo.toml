@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-css"
-version = "5.2.0"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
