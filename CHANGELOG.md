@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.2.1]
+
+### Changed
+
+- Made polling interval of fog ledger block fetching configurable ([#3674])
+- Improved performance of fog ledger shard block fetching ([#3765])
+
+[#3674]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3674
+[#3675]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3675
+
 ## [5.2.0]
 
 ### Added
