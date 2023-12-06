@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-measurement"
-version = "5.2.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 description = "MobileCoin Consensus Enclave - Application Code"
 edition = "2021"

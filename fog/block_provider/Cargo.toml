@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-block-provider"
-version = "5.2.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Provide blocks from a local or remote ledger database"
