@@ -90,7 +90,7 @@ pub struct IngestConfig {
 
     /// The amount we add to current block height to compute pubkey_expiry in
     /// reports
-    #[clap(long, default_value = "100", env = "MC_PUBKEY_EXPIRY_WINDOW")]
+    #[clap(long, default_value = "10", env = "MC_PUBKEY_EXPIRY_WINDOW")]
     pub pubkey_expiry_window: u64,
 
     /// How often the active server checks up on each of the peer backups

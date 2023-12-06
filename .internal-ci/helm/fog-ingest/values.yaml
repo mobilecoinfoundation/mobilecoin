@@ -57,8 +57,6 @@ fogIngest:
       POSTGRES_MAX_LIFETIME: '120'
       POSTGRES_CONNECTION_TIMEOUT: '5'
       POSTGRES_MAX_CONNECTIONS: '3'
-      FOG_PUBKEY_EXPIRY_WINDOW: '10'
-
 
   externalConfigMaps:
     # sentry is optional
