@@ -3,13 +3,13 @@
 use crate::{controller::IngestController, error::IngestServiceError};
 use mc_blockchain_types::BlockIndex;
 use mc_common::logger::{log, Logger};
+use mc_fog_block_provider::{BlockDataResponse, BlockProvider, Error as BlockProviderError};
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
-use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
 };
-use mc_watcher::watcher_db::WatcherDB;
+use mc_watcher_api::TimestampResultCode;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -48,15 +48,13 @@ impl IngestWorker {
     ///
     /// Arguments:
     /// * Controller for this ingest server
-    /// * LedgerDB to read blocks from
-    /// * WatcherDB to read block timestamps from
+    /// * BlockProvider to read blocks and timestamps from
     /// * Logger to send log messages to
     ///
     /// Returns a freshly started IngestWorker thread handle
     pub fn new<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>(
         controller: Arc<IngestController<DB>>,
-        db: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         watcher_timeout: Duration,
         logger: Logger,
     ) -> Self
@@ -88,8 +86,8 @@ impl IngestWorker {
 
                     let start_time = SystemTime::now();
 
-                    match db.get_block_data(next_block_index) {
-                        Err(LedgerError::NotFound) => {
+                    match block_provider.get_block_data(next_block_index) {
+                        Err(BlockProviderError::NotFound) => {
                             if let Some(rec) = &mut last_not_found_log {
                                 if rec.block_index == next_block_index {
                                     // Log at debug level every 1 min
@@ -121,14 +119,8 @@ impl IngestWorker {
                             );
                             std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
                         }
-                        Ok(block_data) => {
+                        Ok(BlockDataResponse { result, .. }) => {
                             last_not_found_log = None;
-                            // If we were able to load a new block, update the ledger metrics. They
-                            // won't get updated automatically since the block got appended by an
-                            // external process (mobilecoind).
-                            if let Err(err) = db.update_metrics() {
-                                log::warn!(logger, "Failed updating ledger db metrics: {}", err);
-                            }
 
                             // Tracing
                             let tracer = tracer!();
@@ -145,14 +137,21 @@ impl IngestWorker {
                             let _active = mark_span_as_active(span);
 
                             // Get the timestamp for the block.
-                            let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                                watcher.poll_block_timestamp(next_block_index, watcher_timeout)
-                            });
+                            let timestamp = if result.block_timestamp_result_code
+                                == TimestampResultCode::TimestampFound
+                            {
+                                result.block_timestamp
+                            } else {
+                                tracer.in_span("poll_block_timestamp", |_cx| {
+                                    block_provider
+                                        .poll_block_timestamp(next_block_index, watcher_timeout)
+                                })
+                            };
 
                             tracer.in_span("process_next_block", |_cx| {
                                 controller.process_next_block(
-                                    block_data.block(),
-                                    block_data.contents(),
+                                    result.block_data.block(),
+                                    result.block_data.contents(),
                                     timestamp,
                                 );
                             });

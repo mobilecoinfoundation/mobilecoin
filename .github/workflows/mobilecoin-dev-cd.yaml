@@ -359,7 +359,6 @@ jobs:
         - consensus-node
         - consensus-node-config
         - fog-ingest
-        - fog-ingest-config
         - fog-test-client
         - mc-core-common-config
         - mc-core-dev-env-setup

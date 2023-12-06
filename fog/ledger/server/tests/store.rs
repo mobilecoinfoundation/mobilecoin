@@ -16,6 +16,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_crypto_keys::X25519;
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_enclave::{
     CheckKeyImagesResponse, KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE,
 };
@@ -113,8 +114,9 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             chain_id: test_name.as_ref().to_string(),
             client_responder_id: responder_id.clone(),
             client_listen_uri: test_uri,
-            ledger_db: ledger_path,
-            watcher_db: PathBuf::from(db_tmp.path()),
+            ledger_db: Some(ledger_path),
+            watcher_db: Some(PathBuf::from(db_tmp.path())),
+            mobilecoind_uri: None,
             admin_listen_uri: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
@@ -161,8 +163,6 @@ pub fn direct_key_image_store_check(logger: Logger) {
     let client_listen_uri = store_config.client_listen_uri;
     let store_service = KeyImageService::new(
         client_listen_uri.clone(),
-        ledger,
-        watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally
         shared_state.clone(),
         Arc::new(AnonymousAuthenticator),
@@ -173,6 +173,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         store_service,
         client_listen_uri,
         enclave.clone(),
+        LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::default(),
         logger,
     );

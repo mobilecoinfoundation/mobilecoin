@@ -87,7 +87,6 @@ impl RouterTestEnvironment {
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
-            omap_capacity,
             admin_listen_uri,
         };
         let router_server = Self::create_router_server(config, store_clients, &logger);
@@ -125,7 +124,6 @@ impl RouterTestEnvironment {
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
-            omap_capacity,
             admin_listen_uri,
         };
         let router_server = Self::create_router_server(config, store_clients, &logger);
@@ -148,7 +146,7 @@ impl RouterTestEnvironment {
         let enclave = SgxViewEnclave::new(
             get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
             config.client_responder_id.clone(),
-            config.omap_capacity,
+            0,
             logger.clone(),
         );
         let mut router_server =

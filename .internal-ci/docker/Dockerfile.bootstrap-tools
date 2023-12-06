@@ -52,6 +52,8 @@ COPY .internal-ci/util/ /util/
 COPY api/proto/* /proto/api/
 COPY mobilecoind/api/proto/* /proto/mobilecoind/
 COPY consensus/api/proto/* /proto/consensus/
+COPY attest/api/proto/* /proto/attest/
+COPY fog/api/proto/* /proto/fog/
 
 # Python tests
 COPY mobilecoind/strategies/ /test/mobilecoind/strategies/

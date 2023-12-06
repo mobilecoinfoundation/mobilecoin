@@ -21,13 +21,12 @@ use mc_fog_api::{
     ingest_common::{IngestControllerMode, IngestSummary},
     ingest_grpc, ingest_peer_grpc,
 };
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
-use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
-use mc_watcher::watcher_db::WatcherDB;
 use std::{collections::BTreeSet, path::PathBuf, sync::Arc, time::Duration};
 
 /// The configuration options accepted by the IngestServer
@@ -99,8 +98,7 @@ where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
     config: IngestServerConfig,
-    ledger_db: LedgerDB,
-    watcher: WatcherDB,
+    block_provider: Box<dyn BlockProvider>,
     controller: Arc<IngestController<DB>>,
     server: Option<grpcio::Server>,
     peer_server: Option<grpcio::Server>,
@@ -119,8 +117,7 @@ where
     pub fn new(
         config: IngestServerConfig,
         recovery_db: DB,
-        watcher: WatcherDB,
-        ledger_db: LedgerDB,
+        block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> Self {
         // Validate peer list in config:
@@ -150,8 +147,7 @@ where
 
         Self {
             config,
-            ledger_db,
-            watcher,
+            block_provider,
             controller,
             server: None,
             peer_server: None,
@@ -191,7 +187,7 @@ where
         // Package it into grpc service
         let ingest_service = ingest_grpc::create_account_ingest_api(IngestService::new(
             self.controller.clone(),
-            self.ledger_db.clone(),
+            self.block_provider.clone(),
             self.logger.clone(),
         ));
 
@@ -283,8 +279,7 @@ where
         log::info!(self.logger, "Starting ingest worker");
         self.ingest_worker = Some(IngestWorker::new(
             self.controller.clone(),
-            self.ledger_db.clone(),
-            self.watcher.clone(),
+            self.block_provider.clone(),
             self.config.watcher_timeout,
             self.logger.clone(),
         ));
@@ -362,7 +357,7 @@ where
     /// Tell the server to activate.
     /// This is used in tests when it would be simpler than making an RPC client
     pub fn activate(&self) -> Result<IngestSummary, IngestServiceError> {
-        self.controller.activate(self.ledger_db.num_blocks()?)
+        self.controller.activate(self.block_provider.num_blocks()?)
     }
 
     /// Tell the server to retire

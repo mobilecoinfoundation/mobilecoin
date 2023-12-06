@@ -19,6 +19,18 @@ fn main() {
     let mut all_proto_dirs = api_proto_path.split(':').collect::<Vec<&str>>();
     all_proto_dirs.push(proto_str);
 
+    let fog_api_proto_path = env
+        .depvar("MC_FOG_API_PROTOS_PATH")
+        .expect("Could not read fog api's protos path")
+        .to_owned();
+    all_proto_dirs.extend(fog_api_proto_path.split(':'));
+
+    let attest_api_proto_path = env
+        .depvar("MC_ATTEST_API_PROTOS_PATH")
+        .expect("Could not read attest api's protos path")
+        .to_owned();
+    all_proto_dirs.extend(attest_api_proto_path.split(':'));
+
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         all_proto_dirs.as_slice(),
         &["mobilecoind_api.proto"],

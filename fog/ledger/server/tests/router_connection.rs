@@ -13,6 +13,7 @@ use mc_common::{
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
@@ -121,8 +122,9 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             .unwrap();
             let config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
                 client_responder_id: client_listen_uri
@@ -132,13 +134,12 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
@@ -147,8 +148,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             let mut ledger_server = LedgerRouterServer::new(
                 config,
                 enclave,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
@@ -346,8 +346,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for store"),
                 client_listen_uri: store_uri.clone(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir.clone(),
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir.clone()),
+                mobilecoind_uri: None,
                 admin_listen_uri: Some(store_admin_uri),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
@@ -357,14 +358,13 @@ fn fog_ledger_key_images_test(logger: Logger) {
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &store_config.client_responder_id,
-                OMAP_CAPACITY,
+                store_config.omap_capacity,
                 logger.clone(),
             );
             let mut store_server = KeyImageStoreServer::new_from_config(
                 store_config,
                 store_enclave,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 EpochShardingStrategy::default(),
                 SystemTimeProvider,
                 logger.clone(),
@@ -383,8 +383,9 @@ fn fog_ledger_key_images_test(logger: Logger) {
             .unwrap();
             let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
                 shard_uris: vec![store_uri],
@@ -394,21 +395,19 @@ fn fog_ledger_key_images_test(logger: Logger) {
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &router_config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
             let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
@@ -570,8 +569,9 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         .unwrap();
         let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
+            ledger_db: Some(db_full_path.to_path_buf()),
+            watcher_db: Some(watcher_dir),
+            mobilecoind_uri: None,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
             client_responder_id: client_listen_uri
@@ -581,13 +581,12 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
-            omap_capacity: OMAP_CAPACITY,
         };
 
         let enclave = LedgerSgxEnclave::new(
             get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
-            OMAP_CAPACITY,
+            0,
             logger.clone(),
         );
 
@@ -596,8 +595,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ledger.clone(),
-            watcher.clone(),
+            LocalBlockProvider::new(ledger.clone(), watcher.clone()),
             logger.clone(),
         );
 
@@ -730,8 +728,9 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         .unwrap();
         let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
+            ledger_db: Some(db_full_path.to_path_buf()),
+            watcher_db: Some(watcher_dir),
+            mobilecoind_uri: None,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
             client_responder_id: client_listen_uri
@@ -741,13 +740,12 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
-            omap_capacity: OMAP_CAPACITY,
         };
 
         let enclave = LedgerSgxEnclave::new(
             get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
-            OMAP_CAPACITY,
+            0,
             logger.clone(),
         );
 
@@ -756,8 +754,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ledger.clone(),
-            watcher.clone(),
+            LocalBlockProvider::new(ledger.clone(), watcher.clone()),
             logger.clone(),
         );
 
@@ -898,8 +895,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for store"),
                 client_listen_uri: store_uri.clone(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir.clone(),
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir.clone()),
+                mobilecoind_uri: None,
                 admin_listen_uri: Some(store_admin_uri),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
@@ -909,14 +907,13 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &store_config.client_responder_id,
-                OMAP_CAPACITY,
+                store_config.omap_capacity,
                 logger.clone(),
             );
             let mut store_server = KeyImageStoreServer::new_from_config(
                 store_config,
                 store_enclave,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 EpochShardingStrategy::default(),
                 SystemTimeProvider,
                 logger.clone(),
@@ -935,8 +932,9 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             .unwrap();
             let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: router_client_listen_uri.clone(),
                 client_responder_id: router_client_listen_uri
@@ -946,21 +944,19 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &router_config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
             let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-
+use grpcio::RpcStatusCode;
 use mc_attest_ake::Error as AkeError;
 use mc_connection::AttestationError;
 use mc_crypto_noise::CipherError;
@@ -32,6 +32,11 @@ impl AttestationError for Error {
 
     fn should_retry(&self) -> bool {
         match self {
+            Error::Rpc(grpcio::Error::RpcFailure(rpc_status)) => {
+                // Retry but only if the error code is not RESOURCE_EXHAUSTED, which is what is
+                // returned when the response size is too large
+                rpc_status.code() != RpcStatusCode::RESOURCE_EXHAUSTED
+            }
             Error::Rpc(_) | Error::Cipher(_) | Error::ProtoDecode(_) => true,
             Error::Ake(AkeError::AttestationEvidenceVerification(_)) => false,
             Error::Ake(_) => true,
