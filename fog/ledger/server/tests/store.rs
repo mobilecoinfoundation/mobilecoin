@@ -5,6 +5,7 @@ use std::{
     path::PathBuf,
     str::FromStr,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
@@ -122,6 +123,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             client_auth_token_max_lifetime: Default::default(),
             omap_capacity,
             sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+            poll_interval: Duration::from_millis(250),
         };
 
         Self {
@@ -175,6 +177,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         enclave.clone(),
         LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::default(),
+        store_config.poll_interval,
         logger,
     );
     store_server.start();

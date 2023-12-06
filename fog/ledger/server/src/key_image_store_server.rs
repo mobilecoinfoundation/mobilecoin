@@ -18,7 +18,10 @@ use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
 };
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 pub struct KeyImageStoreServer<E, SS>
 where
@@ -64,6 +67,7 @@ where
             enclave,
             block_provider,
             sharding_strategy,
+            config.poll_interval,
             logger,
         )
     }
@@ -74,6 +78,7 @@ where
         enclave: E,
         block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
+        poll_interval: Duration,
         logger: Logger,
     ) -> KeyImageStoreServer<E, SS> {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
@@ -98,6 +103,7 @@ where
             enclave,
             block_provider,
             sharding_strategy,
+            poll_interval,
             logger,
         )
     }
@@ -108,6 +114,7 @@ where
         enclave: E,
         block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
+        poll_interval: Duration,
         logger: Logger,
     ) -> KeyImageStoreServer<E, SS> {
         let readiness_indicator = ReadinessIndicator::default();
@@ -150,6 +157,7 @@ where
             sharding_strategy,
             key_image_service.get_db_poll_shared_state(),
             readiness_indicator,
+            poll_interval,
             logger.clone(),
         );
 
