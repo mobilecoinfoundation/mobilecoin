@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-zip-exact"
-version = "5.2.0"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "An iterator helper"

@@ -9,7 +9,7 @@ use clap::Parser;
 use mc_common::ResponderId;
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_mobilecoind_api::MobilecoindUri;
-use mc_util_parse::parse_duration_in_seconds;
+use mc_util_parse::{parse_duration_in_millis, parse_duration_in_seconds};
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, str::FromStr, time::Duration};
@@ -143,6 +143,10 @@ pub struct LedgerStoreConfig {
     /// process.
     #[clap(long, default_value = "default", env = "MC_SHARDING_STRATEGY")]
     pub sharding_strategy: ShardingStrategy,
+
+    /// How many milliseconds to wait between polling.
+    #[clap(long = "poll_interval_ms", default_value = "250", value_parser = parse_duration_in_millis, env = "MC_POLL_INTERVAL_MS")]
+    pub poll_interval: Duration,
 }
 
 /// Enum for parsing strategy from command line w/ clap

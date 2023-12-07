@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-api"
-version = "5.2.0"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "mc-fog-api"

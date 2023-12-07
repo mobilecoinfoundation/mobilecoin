@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-u64-ratio"
-version = "5.2.0"
+version = "5.2.2"
 authors = ["MobileCoin"]
 description = "A helper for computing with ratios of u64 numbers"
 edition = "2021"
