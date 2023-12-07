@@ -1099,7 +1099,7 @@ dependencies = [
  "mc-attest-verifier-types",
  "mc-attestation-verifier",
  "mc-common",
- "mc-sgx-core-sys-types 0.9.0",
+ "mc-sgx-core-sys-types",
  "mc-sgx-core-types",
  "mc-sgx-css",
  "mc-sgx-dcap-types",
@@ -1145,7 +1145,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "mbedtls",
- "mc-sgx-core-sys-types 0.10.0",
+ "mc-sgx-core-sys-types",
  "mc-sgx-core-types",
  "mc-sgx-dcap-types",
  "p256",
@@ -1656,16 +1656,6 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-build"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a11c52ab87959e701a4cfadef6347598c6177b0de5ddfa4ce4918b71048d569c"
-dependencies = [
- "bindgen 0.66.1",
- "cargo-emit",
-]
-
-[[package]]
-name = "mc-sgx-core-build"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e641bda5154585e0e208ffaab332bed5b07bc7932365c90a0784aa01aedc86bf"
@@ -1676,26 +1666,13 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-sys-types"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1e3737cd325f4fc372d5fe2efea18eeae1e32b08fd170677956e3ba81b46cf0"
-dependencies = [
- "bindgen 0.66.1",
- "cargo-emit",
- "mc-sgx-core-build 0.9.0",
- "serde",
- "serde_with",
-]
-
-[[package]]
-name = "mc-sgx-core-sys-types"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee64ad59a2ec2c7f957566c523e7fc8ce5d12f71810effa83d17d72655e7ec3c"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
- "mc-sgx-core-build 0.10.0",
+ "mc-sgx-core-build",
  "serde",
  "serde_with",
 ]
@@ -1710,7 +1687,7 @@ dependencies = [
  "displaydoc",
  "getrandom",
  "hex",
- "mc-sgx-core-sys-types 0.10.0",
+ "mc-sgx-core-sys-types",
  "mc-sgx-util",
  "nom",
  "rand_core",
@@ -1734,8 +1711,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c81f0145d31addcf9e2c06ed97654307b2f1ad5f2f4765ff25fc1e8601cf6ab7"
 dependencies = [
  "bindgen 0.66.1",
- "mc-sgx-core-build 0.10.0",
- "mc-sgx-core-sys-types 0.10.0",
+ "mc-sgx-core-build",
+ "mc-sgx-core-sys-types",
 ]
 
 [[package]]
@@ -1837,7 +1814,7 @@ dependencies = [
 name = "mc-sgx-types"
 version = "5.2.2"
 dependencies = [
- "mc-sgx-core-sys-types 0.10.0",
+ "mc-sgx-core-sys-types",
 ]
 
 [[package]]
