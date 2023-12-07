@@ -304,7 +304,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           # FIXME: This fails with Python 3.10: "AttributeError: module
           # 'importlib' has no attribute 'abc'. Did you mean: '_abc'?"
@@ -344,7 +344,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3'
       - name: Setup Rust
@@ -531,7 +531,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3'
       - name: Setup Rust
