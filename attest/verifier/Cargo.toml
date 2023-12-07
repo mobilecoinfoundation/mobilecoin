@@ -48,7 +48,7 @@ p256 = { version = "0.13.0", default-features = false }
 textwrap = "0.16"
 
 [build-dependencies]
-mc-sgx-core-sys-types = "0.9.0"
+mc-sgx-core-sys-types = "0.10.0"
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }
 
