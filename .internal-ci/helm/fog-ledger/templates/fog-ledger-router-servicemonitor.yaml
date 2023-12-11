@@ -23,5 +23,9 @@ spec:
       replacement: {{ $network }}
     - targetLabel: partner
       replacement: {{ $partner }}
+    - action: replace
+      sourceLabels:
+      - __meta_kubernetes_pod_label_stack
+      targetLabel: ledger_stack
 ---
 {{- end }}
