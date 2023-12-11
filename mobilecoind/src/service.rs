@@ -591,24 +591,20 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let index = self
             .ledger_db
             .get_tx_out_index_by_public_key(&compressed_tx_public_key)
-            .map_err(|err| {
-                rpc_internal_error(
+            .map_err(|err| match err {
+                LedgerError::NotFound => {
+                    RpcStatus::with_message(RpcStatusCode::NOT_FOUND, format!("tx_out not found"))
+                }
+                _ => rpc_internal_error(
                     "ledger_db.get_tx_out_index_by_public_key",
                     err,
                     &self.logger,
-                )
+                ),
             })?;
 
-        let tx_out = self
-            .ledger_db
-            .get_tx_out_by_index(index)
-            .map_err(|err| match err {
-                LedgerError::NotFound => RpcStatus::with_message(
-                    RpcStatusCode::NOT_FOUND,
-                    format!("tx_out {index} not found"),
-                ),
-                _ => rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger),
-            })?;
+        let tx_out = self.ledger_db.get_tx_out_by_index(index).map_err(|err| {
+            rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger)
+        })?;
 
         // Use bip39 or root entropy to construct AccountKey.
         let account_key = if !transfer_payload.get_bip39_entropy().is_empty() {
