@@ -809,7 +809,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                             RpcStatusCode::NOT_FOUND,
                             format!("tx_out {idx} not found"),
                         ),
-                        _ => rpc_internal_error("ledger_error", err, &self.logger),
+                        _ => rpc_internal_error("get_tx_out_index_by_hash", err, &self.logger),
                     })
             })
             .collect::<Result<Vec<u64>, RpcStatus>>()?;
