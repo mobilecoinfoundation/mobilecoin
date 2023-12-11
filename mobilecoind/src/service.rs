@@ -599,9 +599,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 )
             })?;
 
-        let tx_out = self.ledger_db.get_tx_out_by_index(index).map_err(|err| {
-            rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger)
-        })?;
+        let tx_out = self
+            .ledger_db
+            .get_tx_out_by_index(index)
+            .map_err(|err| match err {
+                LedgerError::NotFound => RpcStatus::with_message(
+                    RpcStatusCode::NOT_FOUND,
+                    format!("tx_out {index} not found"),
+                ),
+                _ => rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger),
+            })?;
 
         // Use bip39 or root entropy to construct AccountKey.
         let account_key = if !transfer_payload.get_bip39_entropy().is_empty() {
@@ -793,9 +800,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let excluded_indexes = excluded
             .iter()
-            .map(|tx_out| self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash()))
-            .collect::<Result<Vec<u64>, LedgerError>>()
-            .map_err(|e| rpc_internal_error("ledger_error", e, &self.logger))?; // TODO better error handling
+            .enumerate()
+            .map(|(idx, tx_out)| {
+                self.ledger_db
+                    .get_tx_out_index_by_hash(&tx_out.hash())
+                    .map_err(|err| match err {
+                        LedgerError::NotFound => RpcStatus::with_message(
+                            RpcStatusCode::NOT_FOUND,
+                            format!("tx_out {idx} not found"),
+                        ),
+                        _ => rpc_internal_error("ledger_error", err, &self.logger),
+                    })
+            })
+            .collect::<Result<Vec<u64>, RpcStatus>>()?;
 
         let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
             .transactions_manager
@@ -830,9 +847,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .get_indices()
                 .iter()
                 .map(|idx| {
-                    self.ledger_db.get_tx_out_by_index(*idx).map_err(|err| {
-                        rpc_invalid_arg_error("get_tx_out_by_index", err, &self.logger)
-                    })
+                    self.ledger_db
+                        .get_tx_out_by_index(*idx)
+                        .map_err(|err| match err {
+                            LedgerError::NotFound => RpcStatus::with_message(
+                                RpcStatusCode::NOT_FOUND,
+                                format!("tx_out {idx} not found"),
+                            ),
+                            _ => rpc_invalid_arg_error("get_tx_out_by_index", err, &self.logger),
+                        })
                 })
                 .collect::<Result<Vec<TxOut>, RpcStatus>>()?,
 
