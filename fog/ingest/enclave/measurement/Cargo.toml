@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-enclave-measurement"
-version = "5.2.2"
+version = "5.2.3"
 authors = ["MobileCoin"]
 description = "MobileCoin Ingest Enclave - Measurement"
 edition = "2021"

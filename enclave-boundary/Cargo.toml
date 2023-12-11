@@ -1,6 +1,6 @@
 [package]
 name = "mc-enclave-boundary"
-version = "5.2.2"
+version = "5.2.3"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
