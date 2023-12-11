@@ -593,7 +593,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .get_tx_out_index_by_public_key(&compressed_tx_public_key)
             .map_err(|err| match err {
                 LedgerError::NotFound => {
-                    RpcStatus::with_message(RpcStatusCode::NOT_FOUND, format!("tx_out not found"))
+                    RpcStatus::with_message(RpcStatusCode::NOT_FOUND, "tx_out not found".into())
                 }
                 _ => rpc_internal_error(
                     "ledger_db.get_tx_out_index_by_public_key",
