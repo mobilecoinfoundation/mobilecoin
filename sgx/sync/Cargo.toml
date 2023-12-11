@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-sync"
-version = "5.2.2"
+version = "5.2.3"
 authors = ["MobileCoin"]
 license = "GPL-3.0"
 readme = "README.md"
