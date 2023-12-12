@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ake-enclave"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -21,7 +21,7 @@ mc-util-serial = { path = "../../../util/serial" }
 
 aes-gcm = "0.10.1"
 digest = "0.10"
-mc-attestation-verifier = "0.4.1"
+mc-attestation-verifier = "0.4.2"
 sha2 = { version = "0.10", default-features = false }
 
 [build-dependencies]

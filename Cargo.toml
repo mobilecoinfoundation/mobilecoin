@@ -52,6 +52,7 @@ members = [
     "crypto/x509/utils",
     "enclave-boundary",
     "fog/api",
+    "fog/block_provider",
     "fog/distribution",
     "fog/enclave_connection",
     "fog/ingest/client",

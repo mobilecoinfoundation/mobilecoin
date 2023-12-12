@@ -41,40 +41,6 @@ Configure a `values.yaml` file or pre-populate your namespace with the following
       ledger-distribution-sentry-dsn: <dsn-url>
     ```
 
-- `supervisord-mobilecoind`
-
-    `mobilecoind` configuration for in container supervisord.  Example values are for MobileCoin MainNet.
-
-    `mobilecoind` needs direct connections to each node. The `--peer` url must have `?responder-id=<loadbalancer-url>` query string if the peer is part of a load balanced set.
-
-    Set `--peer` and `--tx-source-url` (associated public s3 bucket https:// url) per node that you want to watch.
-
-    ```yaml
-    apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: supervisord-mobilecoind
-    data:
-      mobilecoind.conf: |
-        [program:mobilecoind-sync]
-        command=/usr/bin/mobilecoind
-          --peer mc://node1.prod.mobilecoinww.com:443/
-          --tx-source-url https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com
-          --peer mc://node2.prod.mobilecoinww.com:443/
-          --tx-source-url https://ledger.mobilecoinww.com/node2.prod.mobilecoinww.com
-          --peer mc://node3.prod.mobilecoinww.com:443/
-          --tx-source-url https://ledger.mobilecoinww.com/node3.prod.mobilecoinww.com
-          --ledger-db /fog-data/ledger
-          --watcher-db /fog-data/watcher
-          --poll-interval 1
-
-        stdout_logfile=/dev/fd/1
-        stdout_logfile_maxbytes=0
-        stderr_logfile=/dev/fd/2
-        stderr_logfile_maxbytes=0
-        autorestart=true
-    ```
-
 - `fog-recovery-postgresql` ConfigMap
 
     If you're using an cluster external database, populate the ConfigMap and Secret with the connection values.

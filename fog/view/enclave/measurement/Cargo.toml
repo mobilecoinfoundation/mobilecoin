@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave-measurement"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 description = "MobileCoin Fog View Enclave - Application Code"
 edition = "2021"
@@ -14,7 +14,7 @@ sgx-sim = []
 
 [dependencies]
 mc-attest-core = { path = "../../../../attest/core" }
-mc-attestation-verifier = "0.4.1"
+mc-attestation-verifier = "0.4.2"
 mc-sgx-css = { path = "../../../../sgx/css" }
 
 [build-dependencies]

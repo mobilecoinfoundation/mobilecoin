@@ -1,6 +1,6 @@
 [package]
 name = "mc-core"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Library"
@@ -33,7 +33,7 @@ mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 [dev-dependencies]
 
 anyhow = { version = "1.0.75" }
-clap = { version = "4.4.10", features = [ "derive" ] }
+clap = { version = "4.4.11", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
 rand_core = { version = "0.6.3", default-features = false }

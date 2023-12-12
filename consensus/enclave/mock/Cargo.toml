@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-mock"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -25,4 +25,4 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 
-mockall = "0.11"
+mockall = "0.12"

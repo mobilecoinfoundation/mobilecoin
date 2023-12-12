@@ -4,7 +4,10 @@ use super::Error;
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
 use mc_attestation_verifier::TrustedIdentity;
-use mc_common::logger::{o, Logger};
+use mc_common::{
+    logger::{o, Logger},
+    trace_time,
+};
 use mc_fog_api::ledger_grpc::FogMerkleProofApiClient;
 use mc_fog_enclave_connection::EnclaveConnection;
 use mc_fog_types::ledger::{GetOutputsRequest, GetOutputsResponse, OutputResult};
@@ -21,6 +24,8 @@ pub struct FogMerkleProofGrpcClient {
     grpc_retry_config: GrpcRetryConfig,
     /// Uri to connect to
     uri: FogLedgerUri,
+    /// Logger
+    logger: Logger,
 }
 
 impl FogMerkleProofGrpcClient {
@@ -49,9 +54,16 @@ impl FogMerkleProofGrpcClient {
         let grpc_client = FogMerkleProofApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(chain_id, uri.clone(), grpc_client, identities, logger),
+            conn: EnclaveConnection::new(
+                chain_id,
+                uri.clone(),
+                grpc_client,
+                identities,
+                logger.clone(),
+            ),
             grpc_retry_config,
             uri,
+            logger,
         }
     }
 
@@ -61,6 +73,8 @@ impl FogMerkleProofGrpcClient {
         indices: Vec<u64>,
         merkle_root_block: u64,
     ) -> Result<GetOutputsResponse, Error> {
+        trace_time!(self.logger, "FogMerkeProofGrpcClient::get_outputs");
+
         let request = GetOutputsRequest {
             indices,
             merkle_root_block,

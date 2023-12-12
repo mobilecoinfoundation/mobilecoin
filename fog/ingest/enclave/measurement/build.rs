@@ -10,12 +10,13 @@ use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.21.100.1";
+const SGX_VERSION: &str = "2.22.100.3";
 
 const INGEST_ENCLAVE_PRODUCT_ID: u16 = 4;
 const INGEST_ENCLAVE_SECURITY_VERSION: u16 = 7;
 const INGEST_ENCLAVE_NAME: &str = "ingest-enclave";
 const INGEST_ENCLAVE_DIR: &str = "../trusted";
+const INGEST_ENCLAVE_BUILD_DIR: &str = "enclave";
 
 fn main() {
     let env = Environment::default();
@@ -71,7 +72,7 @@ fn main() {
     }
 
     builder
-        .target_dir(env.target_dir().join(INGEST_ENCLAVE_NAME).as_path())
+        .target_dir(env.target_dir().join(INGEST_ENCLAVE_BUILD_DIR).as_path())
         .config_builder
         .debug(sgx.sgx_mode() == SgxMode::Simulation || env.profile() != "release")
         .prod_id(INGEST_ENCLAVE_PRODUCT_ID)

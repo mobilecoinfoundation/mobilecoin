@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-trusted"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"

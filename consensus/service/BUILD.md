@@ -93,12 +93,11 @@ We provide an example install_sgx script that we use in our deployment in [docke
 Recommended SDK and package installation:
 
 ```bash
-# Download Drivers, Setup SGX Package Repository
+# Setup SGX Package Repository
 (
 	. /etc/os-release
 
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.21/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.21.100.1.bin"
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.21/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_driver_2.11.54c9c4c.bin"
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.22/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.22.100.3.bin"
 
 	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
 )
@@ -112,8 +111,8 @@ chmod +x ./sgx_linux_x64_driver_2.11.054c9c4c.bin
 ./sgx_linux_x64_driver_2.11.054c9c4c.bin
 
 # Install the SDK to /opt/intel/sgxsdk
-chmod +x ./sgx_linux_x64_sdk_2.21.100.1.bin
-./sgx_linux_x64_sdk_2.21.100.1.bin --prefix=/opt/intel
+chmod +x ./sgx_linux_x64_sdk_2.22.100.3.bin
+./sgx_linux_x64_sdk_2.22.100.3.bin --prefix=/opt/intel
 
 apt install libsgx-uae-service sgx-aesm-service
 

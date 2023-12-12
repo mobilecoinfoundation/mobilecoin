@@ -1,7 +1,7 @@
 [package]
 authors = ["MobileCoin"]
 name = "mc-sgx-types"
-version = "5.1.1"
+version = "5.2.2"
 repository = "https://github.com/baidu/rust-sgx-sdk"
 license-file = "LICENSE"
 documentation = "https://dingelish.github.io/"
@@ -28,4 +28,4 @@ crate-type = ["rlib"]
 default = []
 
 [dependencies]
-mc-sgx-core-sys-types = "0.9.0"
+mc-sgx-core-sys-types = "0.10.1"

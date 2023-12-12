@@ -8,6 +8,7 @@ use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{KeyImageResultExtension, LedgerGrpcClient};
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -32,6 +33,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
+    time::Duration,
 };
 use tempfile::TempDir;
 use url::Url;
@@ -58,13 +60,15 @@ fn create_store_config(
             .responder_id()
             .expect("Couldn't get responder ID for store"),
         client_listen_uri: store_uri.clone(),
-        ledger_db: Default::default(),
-        watcher_db: Default::default(),
+        ledger_db: Some(Default::default()),
+        watcher_db: Some(Default::default()),
+        mobilecoind_uri: None,
         admin_listen_uri: None,
         client_auth_token_secret: None,
         client_auth_token_max_lifetime: Default::default(),
         omap_capacity,
         sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::new(block_range)),
+        poll_interval: Duration::from_millis(250),
     }
 }
 
@@ -152,8 +156,7 @@ fn create_store(
     let mut store = KeyImageStoreServer::new_from_config(
         config,
         enclave,
-        ledger,
-        watcher,
+        LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::new(block_range),
         SystemTimeProvider,
         logger,
@@ -199,8 +202,9 @@ fn create_router(
 
     let config = LedgerRouterConfig {
         chain_id: "local".to_string(),
-        ledger_db: ledger_db_path.to_path_buf(),
-        watcher_db: watcher_db_path.to_path_buf(),
+        ledger_db: Some(ledger_db_path.to_path_buf()),
+        watcher_db: Some(watcher_db_path.to_path_buf()),
+        mobilecoind_uri: None,
         shard_uris: test_config
             .shards
             .iter()
@@ -217,17 +221,21 @@ fn create_router(
         client_auth_token_secret: None,
         client_auth_token_max_lifetime: Default::default(),
         query_retries: 3,
-        omap_capacity: test_config.omap_capacity,
     };
 
     let enclave = LedgerSgxEnclave::new(
         get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
         &config.client_responder_id,
-        config.omap_capacity,
+        0,
         logger.clone(),
     );
 
-    let mut router = LedgerRouterServer::new(config, enclave, ledger, watcher, logger);
+    let mut router = LedgerRouterServer::new(
+        config,
+        enclave,
+        LocalBlockProvider::new(ledger, watcher),
+        logger,
+    );
     router.start();
     router
 }
@@ -325,7 +333,6 @@ struct TestEnvironmentConfig {
     router_address: SocketAddr,
     router_admin_address: SocketAddr,
     shards: Vec<ShardConfig>,
-    omap_capacity: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -382,7 +389,6 @@ async fn smoke_test() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
-        omap_capacity: 1000,
     };
 
     let mut blocks_config = vec![];
@@ -499,7 +505,6 @@ async fn overlapping_stores() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
-        omap_capacity: 1000,
     };
 
     let mut blocks_config = vec![];

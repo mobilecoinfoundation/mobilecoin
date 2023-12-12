@@ -112,6 +112,24 @@ jobs:
     - consensus-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
+    - name: Generate mobilecoind values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/mobilecoind-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        persistence:
+          enabled: false
+
+        devFaucet:
+          enabled: true
+        EOF
+
     - name: Mobilecoind nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -119,8 +137,7 @@ jobs:
         chart_repo: ${{ inputs.chart_repo }}
         chart_name: mobilecoind
         chart_version: ${{ inputs.version }}
-        chart_set: |
-          --set=image.org=${{ inputs.docker_image_org }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
         chart_wait_timeout: 5m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
@@ -266,6 +283,7 @@ jobs:
   fog-ledger-deploy:
     needs:
     - consensus-deploy
+    - mobilecoind-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Generate fog-ledger values file
@@ -286,17 +304,12 @@ jobs:
               responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
             - partner: b
               responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
-            persistance:
-              enabled: false
             ingress:
               common:
                 blocklist:
                   enabled: false
                 tls:
                   clusterIssuer: google-public-ca
-          store:
-            persistance:
-              enabled: false
 
 
     - name: Deploy fog-ledger
@@ -317,6 +330,7 @@ jobs:
   fog-ingest-deploy:
     needs:
     - consensus-deploy
+    - mobilecoind-deploy
     runs-on: [self-hosted, Linux, small]
     steps:
     - name: Generate fog-ingest values file
@@ -325,10 +339,9 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
-        fogIngest:
-          persistence:
-            enabled: false
-        EOF
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
 
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13

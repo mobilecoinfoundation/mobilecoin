@@ -17,10 +17,10 @@ use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
     Empty,
 };
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::IngestPeerUri;
-use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::{
     rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
     rpc_precondition_error, rpc_unavailable_error, send_result,
@@ -35,7 +35,7 @@ where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     controller: Arc<IngestController<DB>>,
-    ledger_db: LedgerDB,
+    block_provider: Box<dyn BlockProvider>,
     logger: Logger,
 }
 
@@ -45,10 +45,14 @@ where
 {
     /// Creates a new ingest node (but does not create sockets and start it
     /// etc.)
-    pub fn new(controller: Arc<IngestController<DB>>, ledger_db: LedgerDB, logger: Logger) -> Self {
+    pub fn new(
+        controller: Arc<IngestController<DB>>,
+        block_provider: Box<dyn BlockProvider>,
+        logger: Logger,
+    ) -> Self {
         Self {
             controller,
-            ledger_db,
+            block_provider,
             logger,
         }
     }
@@ -105,7 +109,7 @@ where
     pub fn activate_impl(&mut self, _: Empty, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
         self.controller
             .activate(
-                self.ledger_db
+                self.block_provider
                     .num_blocks()
                     .map_err(|err| rpc_database_err(err, logger))?,
             )
