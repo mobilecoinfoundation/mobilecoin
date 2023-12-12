@@ -16,6 +16,7 @@ const VIEW_ENCLAVE_PRODUCT_ID: u16 = 3;
 const VIEW_ENCLAVE_SECURITY_VERSION: u16 = 7;
 const VIEW_ENCLAVE_NAME: &str = "view-enclave";
 const VIEW_ENCLAVE_DIR: &str = "../trusted";
+const VIEW_ENCLAVE_BUILD_DIR: &str = "enclave";
 
 fn main() {
     let env = Environment::default();
@@ -71,7 +72,7 @@ fn main() {
     }
 
     builder
-        .target_dir(env.target_dir().join(VIEW_ENCLAVE_NAME).as_path())
+        .target_dir(env.target_dir().join(VIEW_ENCLAVE_BUILD_DIR).as_path())
         .config_builder
         .debug(sgx.sgx_mode() == SgxMode::Simulation || env.profile() != "release")
         .prod_id(VIEW_ENCLAVE_PRODUCT_ID)
