@@ -28,8 +28,8 @@ jobs:
 
     strategy:
       matrix:
-        num_runners: [2]
-        runner_index: [1, 2]
+        num_runners: [3]
+        runner_index: [1, 2, 3]
       # Run each shard to completion.
       fail-fast: false
     env:
