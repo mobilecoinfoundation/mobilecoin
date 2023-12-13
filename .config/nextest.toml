@@ -10,3 +10,7 @@ status-level = "slow"
 # Output a JUnit report under `target/nextest/ci/junit.xml`.
 # See https://nexte.st/book/junit.html for more details.
 path = "junit.xml"
+
+[[profile.ci.overrides]]
+filter = 'test(/\bmc-fog-\b/)'
+threads-required = 2
