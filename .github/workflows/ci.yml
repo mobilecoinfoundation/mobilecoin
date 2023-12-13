@@ -35,8 +35,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          # This build dies with linker OOM, so limit the number of concurrent jobs.
-          args: --locked -j 4
+          args: --locked
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
@@ -55,8 +54,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          # This build dies with linker OOM, so limit the number of concurrent jobs.
-          args: --locked -j 4
+          args: --locked
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
@@ -273,9 +271,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
-          # The fog-overseer tests are large and sometimes fail to build;
-          # limiting the number of build-jobs helps with that.
-          args: $(cat /tmp/fog-test-packages) --build-jobs 4
+          args: $(cat /tmp/fog-test-packages)
           junit_xml_filename: junit-fog-tests-${{matrix.runner_index}}.xml
         env:
           # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
