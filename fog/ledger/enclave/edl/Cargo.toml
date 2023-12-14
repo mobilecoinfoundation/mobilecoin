@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-edl"
-version = "5.2.2"
+version = "5.2.3"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "ledger_enclave_edl"
