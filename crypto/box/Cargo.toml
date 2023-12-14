@@ -14,7 +14,7 @@ mc-crypto-keys = { path = "../keys", default-features = false }
 aead = { version = "0.5", default-features = false, features = ["alloc"] }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
-hkdf = "0.12.3"
+hkdf = "0.12.4"
 mc-oblivious-aes-gcm = { version = "0.10.1", default-features = false, features = ["aes", "alloc", "zeroize"] }
 rand_core = { version = "0.6", default-features = false }
 
