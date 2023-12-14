@@ -13,4 +13,4 @@ path = "junit.xml"
 
 [[profile.ci.overrides]]
 filter = 'test(/\bmc-fog-\b/)'
-threads-required = 2
+threads-required = 4
