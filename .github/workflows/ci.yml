@@ -135,7 +135,12 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Generate docs
-        run: cargo doc --no-deps
+        run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
+      - name: Store docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc.tgz
+          path: /tmp/doc.tgz
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
