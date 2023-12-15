@@ -135,12 +135,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Generate docs
-        run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
-      - name: Store docs
-        uses: actions/upload-artifact@v3
-        with:
-          name: doc.tgz
-          path: /tmp/doc.tgz
+        run: cargo doc --no-deps
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
@@ -184,7 +179,7 @@ jobs:
         uses: ./.github/actions/run-mc-tests
         with:
           args: $(cat /tmp/mc-test-packages)
-          junit_xml_filename: junit-mc-tests-${{matrix.runner_index}}.xml
+          junit_artifact: junit-mc-tests-${{matrix.runner_index}}
 
 
   consensus-tests:
@@ -217,7 +212,7 @@ jobs:
         uses: ./.github/actions/run-mc-tests
         with:
           args: $(cat /tmp/consensus-test-packages)
-          junit_xml_filename: junit-consensus-tests-${{matrix.runner_index}}.xml
+          junit_artifact: junit-consensus-tests-${{matrix.runner_index}}
 
 
   fog-tests:
@@ -272,7 +267,7 @@ jobs:
         uses: ./.github/actions/run-mc-tests
         with:
           args: $(cat /tmp/fog-test-packages)
-          junit_xml_filename: junit-fog-tests-${{matrix.runner_index}}.xml
+          junit_artifact: junit-fog-tests-${{matrix.runner_index}}
         env:
           # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
           # create and drop PG databases.
@@ -305,7 +300,7 @@ jobs:
         with:
           # These tests time out without release mode.
           args: -p 'mc-fog-ingest-*' --release
-          junit_xml_filename: junit-fog-ingest-tests.xml
+          junit_artifact: junit-fog-ingest-tests
         env:
           # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
           # create and drop PG databases.
@@ -522,8 +517,6 @@ jobs:
     - name: Download XML reports
       if: success() || failure()
       uses: actions/download-artifact@v4
-      with:
-        name: junit-xml
     - name: Publish Test Report
       if: success() || failure()
       uses: mikepenz/action-junit-report@v4
