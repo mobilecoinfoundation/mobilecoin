@@ -137,7 +137,7 @@ jobs:
       - name: Generate docs
         run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
       - name: Store docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: doc.tgz
           path: /tmp/doc.tgz
