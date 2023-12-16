@@ -21,11 +21,9 @@ use p256::{
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
-    env,
-    fs::write,
+    env, fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    time::SystemTime,
 };
 
 use p256::pkcs8::{
@@ -50,10 +48,8 @@ lazy_static::lazy_static! {
             },
             Err(_) => {
                 cargo_emit::warning!(
-                    "Using thread_rng() to generate mock attestation report signatories for simulation-mode enclaves"
+                    "Using default seed to generate mock attestation report signatories for simulation-mode enclaves"
                 );
-                let mut csprng = rand::thread_rng();
-                csprng.fill_bytes(&mut seed[..]);
             }
         }
         Hc128Rng::from_seed(seed)
@@ -83,7 +79,7 @@ fn main() {
     // This is to reuse the generated files between the main build and the enclave
     // builds. There is not a good way to communicate a common build directory
     // between the different builds.
-    let base_dir = env::var("CARGO_MANIFEST_DIR").expect("Could not read manifest dir");
+    let base_dir = env::var("OUT_DIR").expect("Could not read manifest dir");
     let data_path = PathBuf::from(base_dir).join("data").join("sim");
 
     let env = Environment::default();
@@ -93,9 +89,9 @@ fn main() {
         cargo_emit::rustc_cfg!("feature=\"sgx-sim\"");
     }
 
-    if should_generating_sim_files(&data_path) {
-        generate_sim_files(&data_path);
-    }
+    cargo_emit::rerun_if_env_changed!("MC_SEED");
+
+    generate_sim_files(data_path);
 }
 
 const ROOT_ANCHOR_FILENAME: &str = "root_anchor.pem";
@@ -103,14 +99,6 @@ const SIGNER_KEY_FILENAME: &str = "signer.key";
 const CHAIN_FILENAME: &str = "chain.pem";
 const QE_IDENTITY_FILENAME: &str = "qe_identity.json";
 const TCB_INFO_FILENAME: &str = "tcb_info.json";
-
-const GENERATED_FILENAMES: &[&str] = &[
-    ROOT_ANCHOR_FILENAME,
-    SIGNER_KEY_FILENAME,
-    CHAIN_FILENAME,
-    QE_IDENTITY_FILENAME,
-    TCB_INFO_FILENAME,
-];
 
 /// An issuer of a certificate. This is the one that signs a certificate.
 struct Issuer<'a> {
@@ -154,6 +142,8 @@ impl Validity {
 fn generate_sim_files(data_path: impl AsRef<Path>) {
     let data_path = data_path.as_ref();
 
+    fs::create_dir_all(data_path).expect("failed to create data directory");
+
     let root_anchor_path = data_path.join(ROOT_ANCHOR_FILENAME);
     let signer_key_path = data_path.join(SIGNER_KEY_FILENAME);
     let chain_path = data_path.join(CHAIN_FILENAME);
@@ -179,7 +169,7 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
         extensions: vec![],
     };
     let (root_cert_pem, root_key) = create_certificate(None, &subject);
-    write(root_anchor_path, &root_cert_pem).expect("Unable to write root anchor");
+    fs::write(root_anchor_path, &root_cert_pem).expect("Unable to write root anchor");
 
     let issuer = Issuer {
         key: root_key,
@@ -193,48 +183,11 @@ fn generate_sim_files(data_path: impl AsRef<Path>) {
         extensions: vec![dcap_extensions()],
     };
     let (signer_cert_pem, signer_key) = create_certificate(issuer, &subject);
-    write(chain_path, signer_cert_pem + &root_cert_pem).expect("Unable to write cert chain");
+    fs::write(chain_path, signer_cert_pem + &root_cert_pem).expect("Unable to write cert chain");
     write_signing_key(signer_key_path, &signer_key);
 
     generate_qe_identity(qe_identity_path, &validity, &signer_key);
     generate_tcb_info(tcb_info_path, &validity, &signer_key);
-}
-
-/// Returns true of the build script should generate the sim files
-fn should_generating_sim_files(data_path: impl AsRef<Path>) -> bool {
-    let data_path = data_path.as_ref();
-    cargo_emit::rerun_if_env_changed!("MC_SEED");
-
-    let generated_files = GENERATED_FILENAMES
-        .iter()
-        .map(|file| data_path.join(file))
-        .collect::<Vec<_>>();
-    for file in generated_files.iter() {
-        cargo_emit::rerun_if_changed!(file.to_str().expect("Could not stringify path"));
-    }
-
-    let regenerate_time = SystemTime::now()
-        - Duration::weeks(1)
-            .to_std()
-            .expect("Failed to convert to std duration");
-
-    if generated_files.iter().any(|file| {
-        file.metadata()
-            .and_then(|f| f.modified().map(|t| t < regenerate_time))
-            .unwrap_or(true)
-    }) {
-        return true;
-    }
-
-    // If we got this far we assume that the MC_SEED environment variable was
-    // changed. The downside to this approach is that if the MC_SEED is set
-    // initially there will always be one incremental build:
-    // - first build the generated files are created, which tells cargo to re-run
-    //   this build script
-    // - The second build will get down to here, see the MC_SEED env variable is set
-    //   and regenerate the files.
-    // - The third build cargo should skip this build script.
-    env::var("MC_SEED").is_ok()
 }
 
 /// Create a certificate
@@ -326,7 +279,7 @@ fn write_signing_key(signer_key_path: impl AsRef<Path>, signer_key: &SigningKey)
     let der_signer_key = signer_key
         .to_pkcs8_der()
         .expect("Could not export privkey to DER");
-    write(
+    fs::write(
         signer_key_path,
         der_signer_key
             .to_pem("PRIVATE KEY", LineEnding::LF)
@@ -582,5 +535,5 @@ fn sign_and_write_json(
     let hex_signature = hex::encode(json_signature.to_bytes());
     let json_with_signature =
         format!("{{\"{json_tag}\":{json_string},\"signature\":\"{hex_signature}\"}}");
-    write(json_path, json_with_signature).expect("Unable to write json");
+    fs::write(json_path, json_with_signature).expect("Unable to write json");
 }
