@@ -76,19 +76,19 @@ node:
     sgx.intel.com/quote-provider: node
 
   nodeSelector:
-    dcap: "true"
+    dcap: 'true'
 
   resources:
     limits:
-      sgx.intel.com/epc: "512Ki"
+      sgx.intel.com/epc: 512Ki
     requests:
-      sgx.intel.com/epc: "512Ki"
+      sgx.intel.com/epc: 512Ki
 
   tolerations:
-  - key: "dcap"
-    operator: "Equal"
-    value: "true"
-    effect: "NoSchedule"
+  - key: dcap
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
 
   initContainers: []
 
