@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-server-test-utils"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -18,6 +18,7 @@ mc-util-from-random = { path = "../../../../util/from-random" }
 mc-watcher = { path = "../../../../watcher" }
 
 # fog
+mc-fog-block-provider = { path = "../../../block_provider" }
 mc-fog-ingest-enclave = { path = "../../enclave" }
 mc-fog-ingest-server = { path = ".." }
 mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }

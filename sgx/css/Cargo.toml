@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-css"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -10,5 +10,5 @@ rust-version = "1.74.0"
 
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
-mc-sgx-core-types = "0.9.0"
+mc-sgx-core-types = "0.10.1"
 sha2 = { version = "0.10", default-features = false }

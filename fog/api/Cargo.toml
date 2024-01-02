@@ -1,8 +1,9 @@
 [package]
 name = "mc-fog-api"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
+links = "mc-fog-api"
 license = "Apache-2.0"
 readme = "README.md"
 rust-version = { workspace = true }

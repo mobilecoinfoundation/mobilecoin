@@ -1,10 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
+use crate::{
+    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
+    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
-
 use futures::executor::block_on;
 use grpcio::ChannelBuilder;
 use mc_common::{
@@ -12,20 +11,18 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_fog_api::ledger_grpc;
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
-use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel,
     ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
-use mc_watcher::watcher_db::WatcherDB;
-
-use crate::{
-    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
 };
 
 pub struct LedgerRouterServer<E>
@@ -50,8 +47,7 @@ where
     pub fn new(
         config: LedgerRouterConfig,
         enclave: E,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> LedgerRouterServer<E> {
         let mut ledger_store_grpc_clients = HashMap::new();
@@ -114,7 +110,7 @@ where
         let merkle_proof_service =
             ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
                 config.chain_id.clone(),
-                ledger.clone(),
+                block_provider.clone(),
                 enclave.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
@@ -123,16 +119,14 @@ where
         let untrusted_tx_out_service =
             ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
                 config.chain_id.clone(),
-                ledger.clone(),
-                watcher.clone(),
+                block_provider.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
             ));
         // Init block service
         let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
             config.chain_id.clone(),
-            ledger,
-            watcher,
+            block_provider,
             client_authenticator,
             logger.clone(),
         ));

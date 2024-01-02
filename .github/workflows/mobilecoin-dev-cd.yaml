@@ -74,7 +74,7 @@ jobs:
     - generate-metadata
     runs-on: [self-hosted, Linux, large-cd]
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.31
+      image: mobilecoin/rust-sgx-base:v0.0.32
 
     env:
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
@@ -136,6 +136,7 @@ jobs:
           -p mc-fog-report-server \
           -p mc-fog-sql-recovery-db \
           -p mc-fog-test-client \
+          -p mc-fog-view-load-test \
           -p mc-fog-view-server \
           -p mc-ledger-distribution \
           -p mc-ledger-from-archive \
@@ -359,7 +360,6 @@ jobs:
         - consensus-node
         - consensus-node-config
         - fog-ingest
-        - fog-ingest-config
         - fog-test-client
         - mc-core-common-config
         - mc-core-dev-env-setup

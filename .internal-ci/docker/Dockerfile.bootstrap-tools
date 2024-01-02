@@ -43,6 +43,7 @@ COPY ${RUST_BIN_PATH}/mc-util-seeded-ed25519-key-gen /usr/local/bin/
 COPY ${RUST_BIN_PATH}/fog-report-cli /usr/local/bin/
 COPY ${RUST_BIN_PATH}/read-pubfile /usr/local/bin/
 COPY ${RUST_BIN_PATH}/mc-util-grpc-token-generator /usr/local/bin/
+COPY ${RUST_BIN_PATH}/fog-view-load-test /usr/local/bin/
 
 # Test wrappers and util scripts
 COPY .internal-ci/test/ /test/
@@ -52,6 +53,8 @@ COPY .internal-ci/util/ /util/
 COPY api/proto/* /proto/api/
 COPY mobilecoind/api/proto/* /proto/mobilecoind/
 COPY consensus/api/proto/* /proto/consensus/
+COPY attest/api/proto/* /proto/attest/
+COPY fog/api/proto/* /proto/fog/
 
 # Python tests
 COPY mobilecoind/strategies/ /test/mobilecoind/strategies/

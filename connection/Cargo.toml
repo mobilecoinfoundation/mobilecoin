@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -28,7 +28,7 @@ aes-gcm = "0.10.3"
 cookie = "0.18"
 displaydoc = "0.2"
 grpcio = "0.13"
-mc-attestation-verifier = "0.4.1"
+mc-attestation-verifier = "0.4.2"
 mc-rand = "1"
 retry = "2.0"
 secrecy = "0.8"

@@ -6,6 +6,75 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.2.2]
+
+### Changed
+
+- Changed default for fog pubkey expiry from 100 to 10 ([#3773])
+
+### Fixed
+
+- Fog ledger shard last known block info ([#3771])
+
+[#3771]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3771
+[#3773]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3773
+
+## [5.2.1]
+
+### Changed
+
+- Made polling interval of fog ledger block fetching configurable ([#3764])
+- Improved performance of fog ledger shard block fetching ([#3765])
+
+[#3764]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3764
+[#3765]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3765
+
+## [5.2.0]
+
+### Added
+
+- A `GetAllUnspentTxOuts` API call to mobilecoind ([#3752])
+- Added the ability for Fog ledger and Fog ingest to get ledger data from a
+  mobilecoind instance ([#3701], [#3748]) 
+
+### Changed
+
+- Improve parallel processing of monitor in mobilecoind ([#3673])
+- Improve performance of SCP network tests ([#3713])
+- Improve performance of fog test client ([#3737], [#3727])
+
+#### Deployments
+
+- Reduced fog ledger memory requests ([#3754])
+- Fog ledger and ingest to use a network mobilecoind ([#3753])
+- Refactored fog services chart  ([#3720], [#3707])
+
+### Removed
+
+- Removed use of OMAP in fog ledger router and fog veiw router ([#3718],
+  [#3721])
+
+### Fixed
+
+#### Deployments
+
+- Fixed alpha dev [(#3703)]
+
+[#3673]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3673
+[#3701]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3701
+[#3703]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3703
+[#3707]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3707
+[#3713]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3713
+[#3718]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3718
+[#3720]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3720
+[#3721]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3721
+[#3727]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3727
+[#3737]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3737
+[#3748]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3748
+[#3752]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3752
+[#3753]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3753
+[#3754]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3754
+
 ## [5.1.1]
 
 ### Fixed

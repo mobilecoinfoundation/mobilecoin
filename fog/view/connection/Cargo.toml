@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-connection"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -34,6 +34,6 @@ aes-gcm = "0.10.3"
 der = "0.7.8"
 futures = "0.3"
 grpcio = "0.13"
-mc-attestation-verifier = "0.4.1"
+mc-attestation-verifier = "0.4.2"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

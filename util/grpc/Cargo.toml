@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc"
-version = "5.1.1"
+version = "5.2.2"
 authors = ["MobileCoin"]
 description = "Runtime gRPC Utilities"
 edition = "2021"

@@ -2,24 +2,24 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "fogIngest.fullname" . }}
+  name: {{ include "fog-ingest.fullname" . }}
   labels:
-    {{- include "fogIngest.labels" . | nindent 4 }}
+    {{- include "fog-ingest.labels" . | nindent 4 }}
 spec:
   podManagementPolicy: Parallel
   replicas: {{ .Values.fogIngest.replicaCount }}
   selector:
     matchLabels:
       app: fog-ingest
-      {{- include "fogIngest.selectorLabels" . | nindent 6 }}
-  serviceName: {{ include "fogIngest.fullname" . }}
+      {{- include "fog-ingest.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "fog-ingest.fullname" . }}
   template:
     metadata:
       annotations:
         {{- toYaml .Values.fogIngest.podAnnotations | nindent 8 }}
       labels:
         app: fog-ingest
-        {{- include "fogIngest.labels" . | nindent 8 }}
+        {{- include "fog-ingest.labels" . | nindent 8 }}
     spec:
       # Try to balance pods across zones
       topologySpreadConstraints:
@@ -31,8 +31,8 @@ spec:
           matchLabels:
             # match on this helm chart install
             app: fog-ingest
-            helm.sh/chart: {{ include "fogIngest.chart" . }}
-            {{- include "fogIngest.selectorLabels" . | nindent 12 }}
+            helm.sh/chart: {{ include "fog-ingest.chart" . }}
+            {{- include "fog-ingest.selectorLabels" . | nindent 12 }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -41,8 +41,8 @@ spec:
             labelSelector:
               # match on this helm chart install
               app: fog-ingest
-              helm.sh/chart: {{ include "fogIngest.chart" . }}
-              {{- include "fogIngest.selectorLabels" . | nindent 14 }}
+              helm.sh/chart: {{ include "fog-ingest.chart" . }}
+              {{- include "fog-ingest.selectorLabels" . | nindent 14 }}
       imagePullSecrets:
       {{- toYaml .Values.imagePullSecrets | nindent 6 }}
       terminationGracePeriodSeconds: 30
@@ -51,7 +51,17 @@ spec:
         - name: ndots
           value: "1"
       initContainers:
-      {{- tpl (toYaml .Values.fogIngest.initContainers) . | nindent 6 }}
+      - name: sysctl
+        image: ubuntu:20.04
+        imagePullPolicy: Always
+        command:
+        - sysctl
+        - -w
+        - net.ipv4.tcp_retries2=5
+        securityContext:
+          privileged: true
+          runAsUser: 0
+          runAsNonRoot: False
       containers:
       - name: fog-ingest
         image: "{{ .Values.fogIngest.image.org | default .Values.image.org }}/{{ .Values.fogIngest.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -66,97 +76,98 @@ spec:
           containerPort: 8000
         envFrom:
         - configMapRef:
-            name: fog-ingest
+            name: {{ include "fog-ingest.fullname" . }}
         - secretRef:
             name: ipinfo
             optional: true
-        - configMapRef:
-            name: fog-mobilecoind
         env:
         - name: RUST_BACKTRACE
           value: {{ .Values.fogIngest.rust.backtrace | quote }}
         - name: RUST_LOG
           value: {{ .Values.fogIngest.rust.log | quote }}
-        - name: MC_LEDGER_DB_MIGRATE
-          value: "true"
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        {{- if eq $.Values.jaegerTracing.enabled true }}
+        - name: MC_TELEMETRY
+          value: "true"
+        {{- end }}
         # LOCAL_NODE_ID on ingest needs to be the name of the Service object that points to THIS ingest server
-        - name: LOCAL_NODE_ID
-          value: "$(MY_POD_NAME).{{ include "fogIngest.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:8090"
-        - name: FOG_INGEST_SENTRY_DSN
+        - name: MC_LOCAL_NODE_ID
+          value: "$(MY_POD_NAME).{{ include "fog-ingest.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:8090"
+        - name: MC_CLIENT_LISTEN_URI
+          value: insecure-fog-ingest://0.0.0.0:3226/
+        - name: MC_PEER_LISTEN_URI
+          value: insecure-igp://0.0.0.0:8090/
+        - name: MC_ADMIN_LISTEN_URI
+          value: insecure-mca://127.0.0.1:8001/
+        - name: MC_SENTRY_DSN
           valueFrom:
             configMapKeyRef:
-              name: sentry
+              name: {{ .Values.fogIngest.externalConfigMaps.sentry.name }}
               key: fog-ingest-sentry-dsn
+              optional: true
         # Maps to Sentry Environment
         - name: MC_BRANCH
-          valueFrom:
-            configMapKeyRef:
-              name: mobilecoin-network
-              key: network
+          value: {{ .Values.mobilecoin.network }}
         - name: MC_CHAIN_ID
-          valueFrom:
-            configMapKeyRef:
-              name: mobilecoin-network
-              key: network
+          value: {{ .Values.mobilecoin.network }}
         - name: FOGDB_HOST
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-postgresql
+              name: {{ .Values.fogIngest.externalConfigMaps.postgres.name }}
               key: postgres-hostname
         - name: FOGDB_USER
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-postgresql
+              name: {{ .Values.fogIngest.externalConfigMaps.postgres.name }}
               key: postgres-username
         - name: FOGDB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: fog-recovery-postgresql
+              name: {{ .Values.fogIngest.externalSecrets.postgres.name }}
               key: postgres-password
         - name: FOGDB_DATABASE
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-postgresql
+              name: {{ .Values.fogIngest.externalConfigMaps.postgres.name }}
               key: postgres-database
         - name: FOGDB_SSL_OPTIONS
           valueFrom:
             configMapKeyRef:
-              name: fog-recovery-postgresql
+              name: {{ .Values.fogIngest.externalConfigMaps.postgres.name }}
               key: postgres-ssl-options
         - name: DATABASE_URL
           value: 'postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)'
-        - name: STATE_FILE
+        - name: MC_STATE_FILE
           value: /var/run/ingest-state-file
+        - name: MC_MOBILECOIND_URI
+          value: insecure-mobilecoind://mobilecoind:3229
         startupProbe:
-          exec:
-            command:
-            - "/usr/local/bin/grpc_health_probe"
-            - "-addr=:3226"
+          grpc:
+            port: 3226
           failureThreshold: 300
           periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
         livenessProbe:
-          exec:
-            command:
-            - '/usr/local/bin/grpc_health_probe'
-            - '-addr=:3226'
+          grpc:
+            port: 3226
           failureThreshold: 5
           periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 1
         readinessProbe:
-          exec:
-            command:
-            - '/usr/local/bin/grpc_health_probe'
-            - '-addr=:3226'
+          grpc:
+            port: 3226
           failureThreshold: 2
-          periodSeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
         volumeMounts:
         - name: aesm-socket-dir
           mountPath: /var/run/aesmd
-        - name: fog-data
-          mountPath: /fog-data
         - name: ingest-run-data
           mountPath: /ingest-run-data
         - name: supervisor-conf
@@ -171,48 +182,42 @@ spec:
         image: jaegertracing/jaeger-agent:latest
         imagePullPolicy: IfNotPresent
         ports:
-          - containerPort: 5775
-            name: zk-compact-trft
-            protocol: UDP
-          - containerPort: 5778
-            name: config-rest
-            protocol: TCP
-          - containerPort: 6831
-            name: jg-compact-trft
-            protocol: UDP
-          - containerPort: 6832
-            name: jg-binary-trft
-            protocol: UDP
-          - containerPort: 14271
-            name: admin-http
-            protocol: TCP
+        - containerPort: 5775
+          name: zk-compact-trft
+          protocol: UDP
+        - containerPort: 5778
+          name: config-rest
+          protocol: TCP
+        - containerPort: 6831
+          name: jg-compact-trft
+          protocol: UDP
+        - containerPort: 6832
+          name: jg-binary-trft
+          protocol: UDP
+        - containerPort: 14271
+          name: admin-http
+          protocol: TCP
         env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: HOST_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.hostIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
         args:
-          - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
-          - --reporter.type=grpc
-          - --agent.tags=cluster=undefined,container.name=fog-ingest,deployment.name={{ include "fogIngest.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+        - --reporter.grpc.host-port=dns:///jaeger-collector:14250
+        - --reporter.type=grpc
+        - --agent.tags=cluster=undefined,container.name=fog-ingest,deployment.name={{ include "fog-ingest.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
       {{- end }}
       nodeSelector:
         {{- toYaml .Values.fogIngest.nodeSelector | nindent 8 }}
       tolerations:
       {{- toYaml .Values.fogIngest.tolerations | nindent 6 }}
-      affinity:
-        {{- toYaml .Values.fogIngest.affinity | nindent 8 }}
       volumes:
-      {{- if eq .Values.fogIngest.persistence.enabled false }}
-      - name: fog-data
-        emptyDir: {}
-      {{- end }}
       - name: tmp
         emptyDir: {}
       - name: aesm-socket-dir
@@ -223,19 +228,10 @@ spec:
         projected:
           sources:
           - configMap:
-              name: {{ include "fogIngest.fullname" . }}-supervisord-sgx
+              name: {{ include "fog-ingest.fullname" . }}-supervisord-sgx
           - configMap:
-              name: {{ include "fogIngest.fullname" . }}-supervisord-daemon
+              name: {{ include "fog-ingest.fullname" . }}-supervisord-daemon
           - configMap:
-              name: {{ include "fogIngest.fullname" . }}-supervisord-mobilecoind
+              name: {{ include "fog-ingest.fullname" . }}-supervisord-fog-ingest
           - configMap:
-              name: {{ include "fogIngest.fullname" . }}-supervisord-fog-ingest
-          - configMap:
-              name: {{ include "fogIngest.fullname" . }}-supervisord-admin
-  {{- if .Values.fogIngest.persistence.enabled }}
-  volumeClaimTemplates:
-  - metadata:
-      name: fog-data
-    spec:
-      {{- toYaml .Values.fogIngest.persistence.spec | nindent 6 }}
-  {{- end }}
+              name: {{ include "fog-ingest.fullname" . }}-supervisord-admin

@@ -12,6 +12,7 @@ use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, o, Logger},
     time::{SystemTimeProvider, TimeProvider},
+    trace_time,
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
@@ -146,7 +147,8 @@ impl LedgerGrpcClient {
         &mut self,
         key_images: &[KeyImage],
     ) -> Result<CheckKeyImagesResponse, Error> {
-        log::trace!(self.logger, "Check key images was called");
+        trace_time!(self.logger, "LedgerGrpcClient::check_key_images");
+
         if !self.is_attested() {
             let verification_report = self.attest().await;
             verification_report?;
