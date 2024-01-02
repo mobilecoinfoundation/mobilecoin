@@ -62,21 +62,21 @@ fogView:
 
     resources:
       limits:
-        sgx.intel.com/epc: "512Ki"
+        sgx.intel.com/epc: 512Ki
         memory: 3Gi
       requests:
-        sgx.intel.com/epc: "512Ki"
+        sgx.intel.com/epc: 512Ki
         memory: 3Gi
         cpu: 1100m
 
     nodeSelector:
-      dcap: "true"
+      dcap: 'true'
 
     tolerations:
-    - key: "dcap"
-      operator: "Equal"
-      value: "true"
-      effect: "NoSchedule"
+    - key: dcap
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
 
     # disable affinity rules for single node testing
     podManagementPolicy: Parallel
@@ -148,21 +148,21 @@ fogView:
     ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
     resources:
       limits:
-        sgx.intel.com/epc: "512Ki"
+        sgx.intel.com/epc: 512Ki
         memory: 5Gi
       requests:
-        sgx.intel.com/epc: "512Ki"
+        sgx.intel.com/epc: 512Ki
         memory: 5Gi
         cpu: 1100m
 
     nodeSelector:
-      dcap: "true"
+      dcap: 'true'
 
     tolerations:
-    - key: "dcap"
-      operator: "Equal"
-      value: "true"
-      effect: "NoSchedule"
+    - key: dcap
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
 
     configMap:
       data:
