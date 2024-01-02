@@ -133,10 +133,6 @@ pub fn sgx_mode() -> &'static str {{ "{sgx_mode}" }}
     // Check the current contents and see if they are different
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR environment not set?"));
     let out_file = out_dir.join("build_info_generated.rs");
-    println!(
-        "cargo:rerun-if-changed={}",
-        out_file.clone().into_os_string().into_string().unwrap()
-    );
     if let Ok(current_contents) = fs::read_to_string(out_file.clone()) {
         eprintln!("current contents:\n{current_contents}");
         eprintln!("gen contents:\n{gen_contents}");
