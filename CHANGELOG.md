@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [5.2.3]
+
+### Fixed 
+
+- Fixed mobilecoind returning a gRPC invalid argument error instead of a not
+  found error when ledger data is not found ([#3787])
+
+### Changed
+
+#### Deployments
+
+- Add stack labels for service monitoring services ([#3782])
+
+[#3787]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3787
+[#3782]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3782
+
 ## [5.2.2]
 
 ### Changed

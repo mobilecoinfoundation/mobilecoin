@@ -1,6 +1,6 @@
 [package]
 name = "mc-account-keys"
-version = "5.2.2"
+version = "5.2.3"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -19,7 +19,7 @@ curve25519-dalek = { version = "4.1.1", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
-hkdf = "0.12.3"
+hkdf = "0.12.4"
 prost = { version = "0.12", optional = true, default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false }

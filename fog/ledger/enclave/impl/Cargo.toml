@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-impl"
-version = "5.2.2"
+version = "5.2.3"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "This crate contains the actual implementation of a ledger enclave."

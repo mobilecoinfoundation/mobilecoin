@@ -47,7 +47,7 @@ runs:
       shell: bash
       run: mv target/nextest/ci/junit.xml target/${{ inputs.junit_xml_filename }}
     - name: Upload JUnit XML
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success() || failure()
       with:
         name: ${{ inputs.junit_artifact }}
