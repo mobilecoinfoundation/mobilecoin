@@ -180,7 +180,7 @@ jobs:
 
     - name: Upload artifacts
       if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: rust-binaries
         path: rust_build_artifacts/
@@ -227,7 +227,7 @@ jobs:
 
     - name: Upload Artifacts
       if: ${{ ! contains(github.event.head_commit.message, '[skip build]') }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: go-binaries
         path: go_build_artifacts/

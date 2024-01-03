@@ -27,16 +27,16 @@ use mc_attestation_verifier::Error as AttestationVerifierError;
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
         /// The build-time generated mock IAS signing root authority
-        pub const SIM_ROOT_ANCHOR: &str = include_str!("../data/sim/root_anchor.pem");
+        pub const SIM_ROOT_ANCHOR: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/root_anchor.pem"));
         /// The build-time generated mock IAS signing certificate chain
-        pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
+        pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!(concat!(env!("OUT_DIR"), "/data/sim/chain.pem")), "\0");
         /// The build-time generated mock IAS signing private key
-        pub const IAS_SIM_SIGNING_KEY: &str = include_str!("../data/sim/signer.key");
+        pub const IAS_SIM_SIGNING_KEY: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/signer.key"));
         /// A CRL that can be used in the simulated collateral
         pub const SIM_CRL: &[u8] = include_bytes!("../data/sim/root_crl.der");
-        pub const SIM_TCB_INFO: &str = include_str!("../data/sim/tcb_info.json");
+        pub const SIM_TCB_INFO: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/tcb_info.json"));
         /// The build-time generated fake QE identity
-        pub const SIM_QE_IDENTITY: &str = include_str!("../data/sim/qe_identity.json");
+        pub const SIM_QE_IDENTITY: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/qe_identity.json"));
 
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
