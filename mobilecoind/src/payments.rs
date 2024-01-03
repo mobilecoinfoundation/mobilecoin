@@ -1778,12 +1778,12 @@ mod test {
             utxos[3].value = 300 * MILLIMOB_TO_PICOMOB;
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
-            utxo[0].token_id = eusd;
-            utxo[1].token_id = eusd;
-            utxo[2].token_id = eusd;
-            utxo[3].token_id = eusd;
-            utxo[4].token_id = eusd;
-            utxo[5].token_id = eusd;
+            utxos[0].token_id = *eusd;
+            utxos[1].token_id = *eusd;
+            utxos[2].token_id = *eusd;
+            utxos[3].token_id = *eusd;
+            utxos[4].token_id = *eusd;
+            utxos[5].token_id = *eusd;
 
             let selected_utxos = TransactionsManager::<
                 ThickClient<HardcodedCredentialsProvider>,
