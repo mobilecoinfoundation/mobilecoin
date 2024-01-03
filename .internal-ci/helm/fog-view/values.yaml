@@ -90,6 +90,7 @@ fogView:
     podAnnotations:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       fluentbit.io/exclude-jaeger-agent: 'true'
+      # This is the container name that needs to use sgx resources
       sgx.intel.com/quote-provider: fog-view-router
 
     ingress:
@@ -138,6 +139,7 @@ fogView:
     podAnnotations:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       fluentbit.io/exclude-jaeger-agent: 'true'
+      # This is the container name that needs to use sgx resources
       sgx.intel.com/quote-provider: fog-view-store
 
     # disable affinity rules for single node testing
