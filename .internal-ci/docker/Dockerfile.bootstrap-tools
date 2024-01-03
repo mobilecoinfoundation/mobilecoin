@@ -16,17 +16,17 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Install updates
 RUN apt-get update \
-  && apt-get install -y \
-  ca-certificates \
-  gettext \
-  libssl1.1 \
-  jq \
-  vim \
-  python3-pip \
-  zstd \
-  openssl \
-  && rm -rf /var/cache/apt \
-  && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y \
+        ca-certificates \
+        gettext \
+        libssl1.1 \
+        jq \
+        vim \
+        python3-pip \
+        zstd \
+        openssl \
+ && rm -rf /var/cache/apt \
+ && rm -rf /var/lib/apt/lists/*
 
 # update pip
 RUN pip3 install --upgrade pip
