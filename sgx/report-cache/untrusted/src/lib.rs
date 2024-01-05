@@ -6,7 +6,7 @@
 use displaydoc::Display;
 use mc_attest_core::{DcapEvidence, QuoteError, VerifyError};
 use mc_attest_untrusted::{DcapQuotingEnclave, TargetInfoError};
-use mc_common::logger::{log, o, Logger};
+use mc_common::logger::{log, o, Logger, global_log};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
 use mc_sgx_dcap_sys_types::sgx_ql_log_level_t;
 use mc_sgx_core_sys_types::sgx_status_t;
@@ -106,10 +106,13 @@ extern "C" fn logging_callback(level: sgx_ql_log_level_t, message: *const c_char
     let message = unsafe { std::ffi::CStr::from_ptr(message).to_string_lossy() };
     match level {
         sgx_ql_log_level_t::SGX_QL_LOG_ERROR => {
-            log::error!(log::logger(), "{}", message);
+            global_log::error!("{}", message);
         }
         sgx_ql_log_level_t::SGX_QL_LOG_INFO => {
-            log::info!(log::logger(), "{}", message);
+            global_log::info!("{}", message);
+        }
+        _ => {
+            global_log::error!("Bad log level {}", message);
         }
     }
 }
