@@ -3,6 +3,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "consensusNode.fullname" . }}
+  annotations:
+    sgx.intel.com/quote-provider: node
   labels:
     app: consensus-node
     {{- include "consensusNode.labels" . | nindent 4 }}

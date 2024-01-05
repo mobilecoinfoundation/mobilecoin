@@ -84,11 +84,6 @@ jobs:
         global:
           certManagerClusterIssuer: google-public-ca
         node:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
           persistence:
             enabled: false
           ingress:
@@ -344,11 +339,9 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
-
         mobilecoin:
           network: ${{ inputs.namespace }}
           partner: dev
-        EOF
 
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13

@@ -247,7 +247,7 @@ jobs:
       id: docker_meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.DOCKER_ORG }}/runtime-base
+        images: ${{ env.DOCKER_ORG }}/dcap-runtime-base
         flavor: |
           latest=true
         tags: |
@@ -269,7 +269,7 @@ jobs:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
         context: .
-        file: .internal-ci/docker/Dockerfile.runtime-base
+        file: .internal-ci/docker/Dockerfile.dcap-runtime-base
         labels: ${{ steps.docker_meta.outputs.labels }}
         push: true
         tags: ${{ steps.docker_meta.outputs.tags }}
