@@ -89,7 +89,7 @@ on:
 
 jobs:
   cd-integration-tests:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     env:
       SRC_KEYS_DIR: /tmp/sample_data/keys
       SRC_FOG_KEYS_DIR: /tmp/sample_data/fog_keys

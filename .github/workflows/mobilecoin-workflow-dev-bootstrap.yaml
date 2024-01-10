@@ -44,7 +44,7 @@ jobs:
     secrets: inherit
 
   restore-s3-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - reset
     container:
@@ -89,7 +89,7 @@ jobs:
   #  We now have a db with setup-environment
   #  Note this only works if we are in the same cluster as the dev env.
   restore-db-from-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - setup-environment
     container:

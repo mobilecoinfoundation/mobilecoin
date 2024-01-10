@@ -46,7 +46,7 @@ jobs:
     secrets: inherit
 
   consensus-restart:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - setup-environment
     strategy:

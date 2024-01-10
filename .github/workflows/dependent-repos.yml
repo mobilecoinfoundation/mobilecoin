@@ -11,7 +11,7 @@ env:
 
 jobs:
   android-bindings:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.32
 
     permissions:
@@ -31,7 +31,7 @@ jobs:
         buildCmd: cargo build
 
   full-service:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.32
 
     permissions:
