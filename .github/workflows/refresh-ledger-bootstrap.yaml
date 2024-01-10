@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   refresh-ledger:
-    runs-on: [self-hosted, Linux, large-cd]
+    runs-on: mcf-dev-large-x64
     container:
       image: mobilecoin/gha-azure-helper:latest
     strategy:
