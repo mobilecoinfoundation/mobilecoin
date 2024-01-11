@@ -87,6 +87,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 #### Python Dependencies
 
 - Bump flask from 1.1.2 to 2.3.2 ([#3343], [#3344])
+- Bump jinja2 from 2.11.3 to 3.1.3 ([#3851])
 - Bump grpcio from 1.32.0 to 1.53.0 ([#3403], [#3404], [#3405], [#3406])
 - Bump requests from 2.27.1 to 2.31.0 ([#3359])
 - Bump urllib3 from 1.26.8 to 1.26.18 ([#3624], [#3598])
@@ -554,6 +555,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3847]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3847
 [#3848]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3848
 [#3849]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3849
+[#3851]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3851
 
 ## [5.2.3]
 
