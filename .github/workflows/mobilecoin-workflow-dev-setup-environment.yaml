@@ -131,7 +131,7 @@ env:
 
 jobs:
   setup-environment:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -222,8 +222,6 @@ jobs:
 
     - name: Generate environment values file
       env:
-        DEV_IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
-        DEV_IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
         LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
         LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
         IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}

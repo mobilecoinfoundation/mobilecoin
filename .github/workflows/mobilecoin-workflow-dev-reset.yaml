@@ -37,7 +37,7 @@ on:
 
 jobs:
   reset-helm:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     strategy:
       matrix:
         chart:
@@ -67,7 +67,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   reset-k8s:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - reset-helm
     steps:
@@ -91,7 +91,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   reset-s3:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     container:
       image: mobilecoin/gha-s3-pg-helper:v0
     steps:

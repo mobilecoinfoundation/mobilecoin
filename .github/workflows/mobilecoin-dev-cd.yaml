@@ -38,7 +38,7 @@ jobs:
   generate-metadata:
     if: ${{ ! startsWith(github.head_ref, 'dependabot/') }}
     name: 👾 Environment Info 👾
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     outputs:
       namespace: ${{ steps.meta.outputs.namespace }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -72,7 +72,7 @@ jobs:
   build-rust-hardware-projects:
     needs:
     - generate-metadata
-    runs-on: [self-hosted, Linux, large-cd]
+    runs-on: mcf-dev-large-x64
     container:
       image: mobilecoin/rust-sgx-base:v0.0.32
 
@@ -186,7 +186,7 @@ jobs:
         path: rust_build_artifacts/
 
   build-go-projects:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - generate-metadata
     container:
@@ -236,7 +236,7 @@ jobs:
 # Create/Refresh base runtime image
 ########################################
   docker-base:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - generate-metadata
     steps:
@@ -278,7 +278,7 @@ jobs:
 # Build/Publish public artifacts
 #########################################
   docker:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - build-go-projects
     - build-rust-hardware-projects
@@ -350,7 +350,7 @@ jobs:
         tags: ${{ steps.docker_meta.outputs.tags }}
 
   charts:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - docker
     - generate-metadata
@@ -465,7 +465,7 @@ jobs:
 
   mobilecoin-cd-complete:
     # Dummy step for a standard GHA Check that won't change when we update the tests.
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - test-current-bv3-release
     steps:
