@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Cargo build (SW)
@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Cargo build (HW)
@@ -64,7 +64,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -81,7 +81,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -98,7 +98,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -131,7 +131,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Generate docs
@@ -160,7 +160,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: List packages to test
@@ -203,7 +203,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: List packages to test
@@ -248,7 +248,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: List packages to test
@@ -297,7 +297,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Run tests
@@ -330,7 +330,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -381,7 +381,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
