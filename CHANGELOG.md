@@ -42,6 +42,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Changed
 
+- Bump ISV SVN for enclaves ([#3855])
 - The enclaves now use DCAP attestation. Clients now need to pass a vec of
   `TrustedIdentity` instead of a verifier. This allows clients to consume this
   version of the code and attest with both the legacy EPID enclaves and the
@@ -556,6 +557,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3848]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3848
 [#3849]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3849
 [#3851]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3851
+[#3855]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3855
 
 ## [5.2.3]
 
