@@ -18,7 +18,7 @@ jobs:
       pull-requests: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: mobilecoinofficial/gh-actions/checkout@5ec4c64c949162b232d3e33d2649cb8416637d5e
       with:
         path: mobilecoin
     - name: Check that android-bindings still builds
@@ -38,7 +38,7 @@ jobs:
       pull-requests: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: mobilecoinofficial/gh-actions/checkout@5ec4c64c949162b232d3e33d2649cb8416637d5e
       with:
         path: mobilecoin
     - name: Check that full-service still builds

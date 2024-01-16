@@ -24,7 +24,7 @@ runs:
     uses: ./mobilecoin/.github/actions/setup-rust
 
   # Checkout the repository we are going to try upreving in
-  - uses: actions/checkout@v3
+  - uses: mobilecoinofficial/gh-actions/checkout@5ec4c64c949162b232d3e33d2649cb8416637d5e
     with:
       repository: ${{ inputs.remoteRepo }}
       submodules: 'recursive'
