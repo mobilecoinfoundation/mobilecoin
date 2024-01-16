@@ -1,9 +1,10 @@
 name: Set up Rust and associated tools
+description: Set up Rust and associated tools
 
 inputs:
   components:
     description: Comma-separated list of the additional components to install, e.g. 'clippy, rustfmt'
-    default:
+    default: ''
     required: false
   default:
     description: Set installed toolchain as a default toolchain
