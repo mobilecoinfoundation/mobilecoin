@@ -23,6 +23,7 @@ jobs:
     - uses: mobilecoinofficial/gh-actions/checkout@5ec4c64c949162b232d3e33d2649cb8416637d5e
       with:
         path: mobilecoin
+        submodules: 'false'
     - name: Check that android-bindings still builds
       uses: ./mobilecoin/.github/actions/check-dependent-rust-repo
       with:
@@ -43,6 +44,7 @@ jobs:
     - uses: mobilecoinofficial/gh-actions/checkout@5ec4c64c949162b232d3e33d2649cb8416637d5e
       with:
         path: mobilecoin
+        submodules: 'false'
     - name: Check that full-service still builds
       uses: ./mobilecoin/.github/actions/check-dependent-rust-repo
       with:
