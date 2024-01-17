@@ -33,24 +33,17 @@ runs:
       set -e
       set -o pipefail
 
+      # Change to remote repo base
       pushd "workdir-${ID}"
 
-      STATE_DIR="${GITHUB_WORKSPACE}/state-${ID}"
-      mkdir -p "${STATE_DIR}"
-      CUR_BRANCH="${GITHUB_REF//\//_}""
-
-      # If this file exists, it means we have failed building this branch at least once.
-      STATE_FILE="${STATE_DIR}/${CUR_BRANCH}-failed"
-
-      # Attempt to uprev the submodule to the latest revision in the current PR this action is running in
-
+      # Change to submodule path under remote repo
       pushd "${SUBMODULE_PATH}"
 
-      # git remote set-url origin ${{ github.repositoryUrl }} - this is git:// and GHA doesn't seem to like it
-      git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}"
-      git fetch origin "${GITHUB_REF}:uprev-test"
-      git checkout uprev-test
-      git log -1 --format='%H'
-      cd ..
+      # Update submodule to current git ref
+      git checkout "${GITHUB_REF}"
 
+      # Back out to remote repo base
+      popd
+
+      # Run build command
       ${BUILD_CMD}
