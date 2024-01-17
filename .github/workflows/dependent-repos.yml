@@ -19,7 +19,7 @@ jobs:
       pull-requests: write
     steps:
     - name: Check that android-bindings still builds
-      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@308fdbf5122e21f3ba8bb7358ea551f335b37175
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
       with:
         remote_repo: mobilecoinofficial/android-bindings
         submodule_path: mobilecoin
@@ -31,7 +31,7 @@ jobs:
       pull-requests: write
     steps:
     - name: Check that full-service still builds
-      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@308fdbf5122e21f3ba8bb7358ea551f335b37175
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
       with:
         remote_repo: mobilecoinofficial/full-service
         submodule_path: mobilecoin
