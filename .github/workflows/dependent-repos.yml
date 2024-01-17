@@ -15,9 +15,11 @@ jobs:
   android-bindings:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.32
+    permissions:
+      pull-requests: write
     steps:
     - name: Check that android-bindings still builds
-      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@cec7ef6329ace915ed58397a96e5604fdf77c8e5
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@837b7150c52dc5d155213ed120300a927a063945
       with:
         remote_repo: mobilecoinofficial/android-bindings
         submodule_path: mobilecoin
@@ -25,9 +27,11 @@ jobs:
   full-service:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.32
+    permissions:
+      pull-requests: write
     steps:
     - name: Check that android-bindings still builds
-      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@cec7ef6329ace915ed58397a96e5604fdf77c8e5
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@837b7150c52dc5d155213ed120300a927a063945
       with:
         remote_repo: mobilecoinofficial/full-service
         submodule_path: mobilecoin
