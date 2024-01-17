@@ -17,7 +17,7 @@ jobs:
     container: mobilecoin/builder-install:v0.0.32
     steps:
     - name: Check that android-bindings still builds
-      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@8f72a8e880871aaa8e6162b83351bf682566a977
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@cec7ef6329ace915ed58397a96e5604fdf77c8e5
       with:
         remote_repo: mobilecoinofficial/android-bindings
         submodule_path: mobilecoin
@@ -27,7 +27,7 @@ jobs:
     container: mobilecoin/builder-install:v0.0.32
     steps:
     - name: Check that android-bindings still builds
-      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@8f72a8e880871aaa8e6162b83351bf682566a977
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@cec7ef6329ace915ed58397a96e5604fdf77c8e5
       with:
         remote_repo: mobilecoinofficial/full-service
         submodule_path: mobilecoin
