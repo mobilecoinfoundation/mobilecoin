@@ -3,8 +3,10 @@ name: Check that repositories submoduling us will still build after this PR
 on:
   pull_request:
     branches:
-      - master
-      - main
+    - main
+    - 'release/**'
+    paths-ignore:
+    - '**.md'
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,47 +15,24 @@ jobs:
   android-bindings:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.32
-
     permissions:
       pull-requests: write
-
     steps:
-    - uses: actions/checkout@v4
-      with:
-        path: mobilecoin
     - name: Check that android-bindings still builds
-      uses: ./mobilecoin/.github/actions/check-dependent-rust-repo
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
       with:
-        remoteRepo: mobilecoinofficial/android-bindings
-        submodulePath: mobilecoin
-        id: android-bindings
-        githubToken: ${{ secrets.GITHUB_TOKEN }}
-        buildCmd: cargo build
+        remote_repo: mobilecoinofficial/android-bindings
+        submodule_path: mobilecoin
 
   full-service:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.32
-
     permissions:
       pull-requests: write
-
     steps:
-    - uses: actions/checkout@v4
-      with:
-        path: mobilecoin
     - name: Check that full-service still builds
-      uses: ./mobilecoin/.github/actions/check-dependent-rust-repo
+      uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
       with:
-        remoteRepo: mobilecoinofficial/full-service
-        submodulePath: mobilecoin
-        id: full-service
-        githubToken: ${{ secrets.GITHUB_TOKEN }}
-        buildCmd: |
-          export CONSENSUS_ENCLAVE_CSS=$PWD/consensus-enclave.css
-          echo "CONSENSUS_ENCLAVE_CSS = $CONSENSUS_ENCLAVE_CSS"
-          if [ ! -f "$CONSENSUS_ENCLAVE_CSS" ]; then
-            CONSENSUS_SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | jq -r .consensus.sigstruct)
-            curl -O https://enclave-distribution.test.mobilecoin.com/${CONSENSUS_SIGSTRUCT_URI}
-          fi
+        remote_repo: mobilecoinofficial/full-service
+        submodule_path: mobilecoin
 
-          SGX_MODE=SW cargo test

@@ -103,7 +103,7 @@ jobs:
       END_KEYS: '499'
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
     - name: Delete existing keys
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
