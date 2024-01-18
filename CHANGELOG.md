@@ -55,7 +55,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
   [#3436], [#3634], [#3580], [#3503], [#3589], [#3613], [#3608], [#3438],
   [#3439], [#3440], [#3441], [#3523], [#3735], [#3445], [#3444], [#3442],
   [#3434], [#3443], [#3435], [#3449], [#3421], [#3620], [#3607], [#3585],
-  [#3454], [#3592])
+  [#3454], [#3592], [#3856])
 - Rename primary development branch from `master` branch to `main` ([#3633])
 - Limit `cargo sort` in `tools/lint.sh` to only modify incorrect files. ([#3595])
 - Update lint script to lint root workspace once ([#3501])
@@ -558,6 +558,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3849]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3849
 [#3851]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3851
 [#3855]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3855
+[#3856]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3856
 
 ## [5.2.3]
 
