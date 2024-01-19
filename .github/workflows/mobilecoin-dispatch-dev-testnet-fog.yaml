@@ -37,7 +37,7 @@ env:
 
 jobs:
   setup:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Create namespace
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -200,7 +200,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   restore-db-from-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - setup
     container:
@@ -229,7 +229,7 @@ jobs:
   fog-ingest-deploy:
     needs:
     - restore-db-from-archive
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
@@ -280,7 +280,7 @@ jobs:
   fog-services-deploy:
     needs:
     - fog-ingest-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-services values file
       run: |

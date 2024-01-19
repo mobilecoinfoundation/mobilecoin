@@ -5,7 +5,7 @@ on:
 
 jobs:
   build_publish:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     container: gcr.io/mobilenode-211420/android-bindings-builder:1_4
 
     steps:

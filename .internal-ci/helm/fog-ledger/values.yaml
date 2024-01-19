@@ -62,18 +62,18 @@ fogLedger:
 
     resources:
       limits:
-        intel.com/sgx: 5000
+        sgx.intel.com/epc: 512Ki
         memory: 2Gi
       requests:
-        intel.com/sgx: 5000
+        sgx.intel.com/epc: 512Ki
         memory: 2Gi
         cpu: 1100m
 
     nodeSelector:
-      sgx-enabled-node: 'true'
+      dcap: 'true'
 
     tolerations:
-    - key: sgx
+    - key: dcap
       operator: Equal
       value: 'true'
       effect: NoSchedule
@@ -100,6 +100,8 @@ fogLedger:
     podAnnotations:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       fluentbit.io/exclude-jaeger-agent: 'true'
+      # This is the container name that needs to use sgx resources
+      sgx.intel.com/quote-provider: fog-ledger-router
 
     ingress:
       enabled: true
@@ -157,6 +159,8 @@ fogLedger:
     podAnnotations:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       fluentbit.io/exclude-jaeger-agent: 'true'
+      # This is the container name that needs to use sgx resources
+      sgx.intel.com/quote-provider: fog-ledger-store
 
     # disable affinity rules for single node testing
     podManagementPolicy: Parallel
@@ -166,18 +170,18 @@ fogLedger:
     ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
     resources:
       limits:
-        intel.com/sgx: 5000
+        sgx.intel.com/epc: 512Ki
         memory: 3Gi
       requests:
-        intel.com/sgx: 5000
+        sgx.intel.com/epc: 512Ki
         memory: 3Gi
         cpu: 1100m
 
     nodeSelector:
-      sgx-enabled-node: 'true'
+      dcap: 'true'
 
     tolerations:
-    - key: sgx
+    - key: dcap
       operator: Equal
       value: 'true'
       effect: NoSchedule
@@ -194,12 +198,6 @@ fogLedger:
       #   fog-ledger-sentry-dsn
 
   externalSecrets:
-    ias:
-      name: ias
-      ### required keys:
-      #   MC_IAS_API_KEY
-      #   MC_IAS_SPID
-
     # ipinfo is optional
     ipinfo:
       name: ipinfo

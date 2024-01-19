@@ -9,7 +9,7 @@ on: delete
 jobs:
   metadata:
     if: startsWith(github.event.ref, 'feature/')
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     outputs:
       namespace: ${{ steps.meta.outputs.namespace }}
 
