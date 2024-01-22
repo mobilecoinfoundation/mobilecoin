@@ -340,7 +340,7 @@ jobs:
     secrets: inherit
 
 ###############################################
-# Deploy current version to namespace block v3
+# Deploy current version to namespace block v4
 ###############################################
   deploy-current-bv4-release:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
