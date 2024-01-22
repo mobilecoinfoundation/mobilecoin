@@ -21,7 +21,7 @@ on:
         description: "Consensus block_version"
         type: string
         required: true
-        default: '3'
+        default: '4'
       bootstrap_version:
         description: "Bootstrap Blockchain from selected version"
         type: choice
@@ -72,7 +72,7 @@ jobs:
     if: inputs.bootstrap_version != 'none'
     uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
     with:
-      block_version: '3'
+      block_version: '4'
       chart_repo: ${{ inputs.chart_repo }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.bootstrap_version }}
