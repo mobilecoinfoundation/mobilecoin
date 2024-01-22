@@ -21,7 +21,7 @@ on:
         description: "Consensus block_version"
         type: string
         required: true
-        default: '3'
+        default: '4'
       bootstrap_version:
         description: "Bootstrap Blockchain from selected version"
         type: choice
