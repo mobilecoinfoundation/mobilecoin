@@ -26,6 +26,7 @@ MobileCoin is a privacy-preserving payments network designed for use on mobile d
 - [Support](#support)
 
 ## License
+
 MobileCoin is available under open-source licenses. Look for the *LICENSE* file in each crate for more information.
 
 ## Cryptography Notice
