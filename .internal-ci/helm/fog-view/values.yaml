@@ -18,7 +18,7 @@ fogView:
       # Assume default is a dev network. We can always define a "network" value if needed.
       default:
         shardSize: 20_000
-        exceedBlockHeightBy: 5_000
+        exceedBlockHeightBy: 0
         shardOverlap: 0
         count: 2
         blockHeightRetrieval:
@@ -28,7 +28,7 @@ fogView:
           requestBody: ''
       test:
         shardSize: 400_000
-        exceedBlockHeightBy: 10_000
+        exceedBlockHeightBy: 0
         shardOverlap: 0
         count: 2
         blockHeightRetrieval:
