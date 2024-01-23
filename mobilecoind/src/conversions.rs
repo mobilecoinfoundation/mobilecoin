@@ -65,11 +65,8 @@ fn bytes_to_tx_private_key(bytes: &[u8]) -> Result<Option<RistrettoPrivate>, Con
         return Ok(None);
     }
 
-    if let Ok(bytes) = <&[u8; 32] as TryFrom<&[u8]>>::try_from(bytes) {
-        Ok(Some(RistrettoPrivate::from_bytes_mod_order(bytes)))
-    } else {
-        Err(ConversionError::ArrayCastError)
-    }
+    let bytes = <&[u8; 32] as TryFrom<&[u8]>>::try_from(bytes)?;
+    Ok(Some(RistrettoPrivate::from_bytes_mod_order(bytes)))
 }
 
 impl From<&Outlay> for api::Outlay {
