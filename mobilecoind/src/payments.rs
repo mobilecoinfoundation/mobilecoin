@@ -12,7 +12,7 @@ use mc_common::{
 use mc_connection::{
     BlockInfo, BlockchainConnection, ConnectionManager, RetryableUserTxConnection, UserTxConnection,
 };
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
@@ -60,6 +60,9 @@ pub struct Outlay {
 
     /// Destination.
     pub receiver: PublicAddress,
+
+    /// Optional tx private key to use.
+    pub tx_private_key: Option<RistrettoPrivate>,
 }
 
 /// An outlay, with token id information.
@@ -72,6 +75,9 @@ pub struct OutlayV2 {
 
     /// Destination.
     pub receiver: PublicAddress,
+
+    /// Optional tx private key to use.
+    pub tx_private_key: Option<RistrettoPrivate>,
 }
 
 /// A single pending transaction.
@@ -304,6 +310,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map(|outlay_v1| OutlayV2 {
                 receiver: outlay_v1.receiver.clone(),
                 amount: Amount::new(outlay_v1.value, token_id),
+                tx_private_key: outlay_v1.tx_private_key.clone(),
             })
             .collect();
 
@@ -681,6 +688,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlays = vec![OutlayV2 {
             receiver: monitor_data.account_key.subaddress(subaddress_index),
             amount: Amount::new(total_value - fee, token_id),
+            tx_private_key: None,
         }];
 
         // Build and return the TxProposal object
@@ -785,6 +793,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlays = vec![OutlayV2 {
             receiver: receiver.clone(),
             amount: Amount::new(total_value - fee, token_id),
+            tx_private_key: None,
         }];
 
         // Build and return the TxProposal object
@@ -1276,7 +1285,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 confirmation,
                 ..
             } = tx_builder
-                .add_output(outlay.amount, &outlay.receiver, rng)
+                .add_output_with_tx_private_key(
+                    outlay.amount,
+                    &outlay.receiver,
+                    outlay.tx_private_key.clone(),
+                    rng,
+                )
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {err}")))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);

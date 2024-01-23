@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Utility for building and signing a transaction.
 //!
@@ -448,6 +448,56 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         recipient: &PublicAddress,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
+        self.add_output_with_tx_private_key(amount, recipient, None, rng)
+    }
+
+    /// Add a non-change output to the transaction, optionally with a specified
+    /// tx_private_key.
+    ///
+    /// Specifying the tx_private_key gives you two things:
+    ///
+    /// * Together with the amount and recipient, fixes the generated TxOut
+    ///   public key, target key, and blinding factor for amount. Because the
+    ///   blockchain enforces that TxOut public keys are unique, this is a point
+    ///   of mutual exclusion, and you can use this to create idempotent payment
+    ///   interfaces.
+    /// * If you know the tx private key, you can prove to an untrusting third
+    ///   party what the amount and recipient of the tx out is. You can use this
+    ///   resolve disputes. The TxOut shared secret and confirmation numbers
+    ///   don't accomplish this because they don't reveal the recipient.
+    ///
+    /// If the tx_private_key is not pseudorandom, it will harm the privacy of
+    /// transactions. For a merchant or exchange, a reasonable way to derive
+    /// it is to hash the payment id, or the withdrawal id, together with a
+    /// 32 byte secret. (You could use your private spend key or similar for
+    /// example, but you may wish to rotate that from time to time, and you
+    /// may not expect that idempotence would break across that key rotation.
+    /// It's up to the application developer to decide the most suitable
+    /// scheme.) You must ensure 32 bytes of pseudo-entropy to avoid
+    /// undermining the transaction protocol.
+    ///
+    /// An alternative is to seed the RNG that is used with the transaction
+    /// builder and then call add_output as usual. However, this approach
+    /// means that upgrading your RNG is a way that idempotence can break,
+    /// and in many cases, breaking idempotence means risk of double payments /
+    /// loss of funds. Setting the tx_private_key directly is possibly
+    /// simpler and with fewer hazards. Additionally, this approach allows
+    /// you to easily determine and record the tx_private_key, which you may
+    /// want for other reasons as described.
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of this output
+    /// * `recipient` - The recipient's public address
+    /// * `tx_private_key` - Optionally, a specific tx_private_key to use for
+    ///   this output.
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_output_with_tx_private_key<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        recipient: &PublicAddress,
+        tx_private_key: Option<RistrettoPrivate>,
+        rng: &mut RNG,
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
@@ -459,6 +509,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             amount,
             recipient,
             recipient,
+            tx_private_key,
             |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
             rng,
         );
@@ -524,6 +575,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
+            None,
             |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
             rng,
         );
@@ -570,6 +622,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             amount,
             &reserved_subaddresses.gift_code_subaddress,
             &reserved_subaddresses.primary_address,
+            None,
             |memo_ctxt| {
                 mb.make_memo_for_output(
                     amount,
@@ -600,13 +653,17 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `fog_hint_address` - The public address used to create the fog hint
+    /// * `tx_private_key` - Optional. If unspecified, generated randomly using
+    ///   rng.
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
-    /// * `rng` - RNG used to generate blinding for commitment
+    /// * `rng` - RNG used to generate tx private key (if not specified), and
+    ///   encrypted fog hint
     fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
+        tx_private_key: Option<RistrettoPrivate>,
         memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
@@ -621,8 +678,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ));
         }
 
-        let (tx_out, shared_secret, tx_private_key) =
-            create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
+        let tx_private_key = tx_private_key.unwrap_or_else(|| RistrettoPrivate::from_random(rng));
+
+        let (tx_out, shared_secret) = create_output_with_fog_hint(
+            self.block_version,
+            amount,
+            recipient,
+            hint,
+            memo_fn,
+            &tx_private_key,
+        )?;
 
         let (amount, blinding) = tx_out
             .get_masked_amount()
@@ -851,7 +916,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 }
 
 /// Creates a TxOut that sends `value` to `recipient` using the provided
-/// `fog_hint`.
+/// `fog_hint` and `tx_private_key`.
 ///
 /// # Arguments
 /// * `block_version` - Block version rules to conform to
@@ -859,32 +924,30 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 /// * `recipient` - Recipient's address.
 /// * `fog_hint` - The encrypted fog hint to use
 /// * `memo_fn` - The memo function to use -- see TxOut::new_with_memo docu
-/// * `rng` -
+/// * `tx_private_key` - The tx private key to use. This should be pseudorandom.
 ///
 /// # Returns
 /// * TxOut
 /// * tx_out_shared_secret
-/// * tx_private_key
-pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
+pub(crate) fn create_output_with_fog_hint(
     block_version: BlockVersion,
     amount: Amount,
     recipient: &PublicAddress,
     fog_hint: EncryptedFogHint,
     memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
-    rng: &mut RNG,
-) -> Result<(TxOut, RistrettoPublic, RistrettoPrivate), TxBuilderError> {
-    let tx_private_key = RistrettoPrivate::from_random(rng);
+    tx_private_key: &RistrettoPrivate,
+) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let tx_out = TxOut::new_with_memo(
         block_version,
         amount,
         recipient,
-        &tx_private_key,
+        tx_private_key,
         fog_hint,
         memo_fn,
     )?;
 
     let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
-    Ok((tx_out, shared_secret, tx_private_key))
+    Ok((tx_out, shared_secret))
 }
 
 /// Create a fog hint, using the fog_resolver collection in self.

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
 //! types.
@@ -10,6 +10,7 @@ use crate::{
 use mc_account_keys::PublicAddress;
 use mc_api::ConversionError;
 use mc_common::HashMap;
+use mc_crypto_keys::RistrettoPrivate;
 use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
@@ -59,12 +60,27 @@ impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
     }
 }
 
+fn bytes_to_tx_private_key(bytes: &[u8]) -> Result<Option<RistrettoPrivate>, ConversionError> {
+    if bytes.is_empty() {
+        return Ok(None);
+    }
+
+    if let Ok(bytes) = <&[u8; 32] as TryFrom<&[u8]>>::try_from(bytes) {
+        Ok(Some(RistrettoPrivate::from_bytes_mod_order(bytes)))
+    } else {
+        Err(ConversionError::ArrayCastError)
+    }
+}
+
 impl From<&Outlay> for api::Outlay {
     fn from(src: &Outlay) -> Self {
         let mut dst = Self::new();
 
         dst.set_value(src.value);
         dst.set_receiver((&src.receiver).into());
+        if let Some(key) = src.tx_private_key {
+            dst.set_tx_private_key(key.to_bytes().to_vec());
+        }
 
         dst
     }
@@ -76,8 +92,13 @@ impl TryFrom<&api::Outlay> for Outlay {
     fn try_from(src: &api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
         let receiver = PublicAddress::try_from(src.get_receiver())?;
+        let tx_private_key = bytes_to_tx_private_key(src.get_tx_private_key())?;
 
-        Ok(Self { value, receiver })
+        Ok(Self {
+            value,
+            receiver,
+            tx_private_key,
+        })
     }
 }
 
@@ -88,6 +109,9 @@ impl From<&OutlayV2> for api::OutlayV2 {
         dst.set_value(src.amount.value);
         dst.set_token_id(*src.amount.token_id);
         dst.set_receiver((&src.receiver).into());
+        if let Some(key) = src.tx_private_key {
+            dst.set_tx_private_key(key.to_bytes().to_vec());
+        }
 
         dst
     }
@@ -99,8 +123,13 @@ impl TryFrom<&api::OutlayV2> for OutlayV2 {
     fn try_from(src: &api::OutlayV2) -> Result<Self, Self::Error> {
         let amount = Amount::new(src.value, TokenId::from(src.token_id));
         let receiver = PublicAddress::try_from(src.get_receiver())?;
+        let tx_private_key = bytes_to_tx_private_key(src.get_tx_private_key())?;
 
-        Ok(Self { amount, receiver })
+        Ok(Self {
+            amount,
+            receiver,
+            tx_private_key,
+        })
     }
 }
 
@@ -298,6 +327,24 @@ mod test {
         let rust = Outlay {
             receiver: public_addr.clone(),
             value: 1234,
+            tx_private_key: None,
+        };
+        let proto = api::Outlay::from(&rust);
+
+        assert_eq!(proto.value, rust.value);
+        assert_eq!(
+            PublicAddress::try_from(proto.get_receiver()).unwrap(),
+            public_addr
+        );
+
+        // Proto -> Rust
+        assert_eq!(rust, Outlay::try_from(&proto).unwrap());
+
+        // Rust -> Proto, with tx private key
+        let rust = Outlay {
+            receiver: public_addr.clone(),
+            value: 1234,
+            tx_private_key: Some(RistrettoPrivate::from_random(&mut rng)),
         };
         let proto = api::Outlay::from(&rust);
 
@@ -371,6 +418,7 @@ mod test {
             OutlayV2 {
                 receiver: public_addr,
                 amount: Amount::new(1234, TokenId::from(0)),
+                tx_private_key: Some(RistrettoPrivate::from_random(&mut rng)),
             }
         };
 

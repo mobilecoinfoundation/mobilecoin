@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Utilities that help with testing the transaction builder and related objects
 
@@ -8,7 +8,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::{NoKeysRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
@@ -44,13 +44,14 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let (hint, _pubkey_expiry) =
         crate::transaction_builder::create_fog_hint(recipient, fog_resolver, rng)?;
-    let (tx_out, shared_secret, _) = crate::transaction_builder::create_output_with_fog_hint(
+    let tx_private_key = RistrettoPrivate::from_random(rng);
+    let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
         block_version,
         amount,
         recipient,
         hint,
         |_| Ok(MemoPayload::default()),
-        rng,
+        &tx_private_key,
     )?;
     Ok((tx_out, shared_secret))
 }
