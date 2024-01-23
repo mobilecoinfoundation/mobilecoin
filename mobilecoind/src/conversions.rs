@@ -333,14 +333,15 @@ mod test {
             PublicAddress::try_from(proto.get_receiver()).unwrap(),
             public_addr
         );
+
+        // Proto -> Rust
+        assert_eq!(rust, Outlay::try_from(&proto).unwrap());
     }
 
     #[test]
     fn test_outlay_conversion_with_tx_private_key() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let public_addr = AccountKey::random(&mut rng).default_subaddress();
-
-        assert_eq!(rust, Outlay::try_from(&proto).unwrap());
 
         // Rust -> Proto, with tx private key
         let rust = Outlay {
