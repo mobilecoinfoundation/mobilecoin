@@ -4,6 +4,4 @@
 
 set -eo pipefail
 
-/usr/local/bin/ledger-download.sh /fog-data
-
 exec "$@"

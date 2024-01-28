@@ -4,7 +4,6 @@
 
 use clap::Parser;
 use grpcio::EnvBuilder;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{o, Logger};
 use mc_connection::{
     HardcodedCredentialsProvider, Result as ConnectionResult, SyncConnection, ThickClient,
@@ -97,14 +96,7 @@ impl Config {
         &self,
         logger: &Logger,
     ) -> ConnectionResult<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>> {
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-        mr_signer_verifier
-            .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
-
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-
+        let identity = mc_consensus_enclave_measurement::mr_signer_identity(None);
         self.peers
             .as_ref()
             .unwrap()
@@ -121,7 +113,7 @@ impl Config {
                     // TODO: Supply a chain-id to fog distribution?
                     String::default(),
                     uri.clone(),
-                    verifier.clone(),
+                    [identity.clone()],
                     env,
                     HardcodedCredentialsProvider::from(uri),
                     logger.clone(),

@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-enclave-api"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 description = """
 no_std structs used commonly in enclave api's in connection with attestation and key exchange
@@ -14,6 +14,7 @@ rust-version = { workspace = true }
 mc-attest-ake = { path = "../ake", default-features = false }
 mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
+mc-attestation-verifier = "0.4.2"
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 mc-sgx-compat = { path = "../../sgx/compat" }
 mc-util-serial = { path = "../../util/serial" }

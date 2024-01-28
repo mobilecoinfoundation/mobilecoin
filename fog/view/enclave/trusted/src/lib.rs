@@ -109,13 +109,12 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         }
         ViewEnclaveRequest::GetIdentity => mc_util_serial::serialize(&ENCLAVE.get_identity()),
         ViewEnclaveRequest::NewEReport(target_info) => serialize(&ENCLAVE.new_ereport(target_info)),
-        ViewEnclaveRequest::VerifyQuote(quote, report) => {
-            serialize(&ENCLAVE.verify_quote(quote, report))
+        ViewEnclaveRequest::VerifyAttestationEvidence(attestation_evidence) => {
+            serialize(&ENCLAVE.verify_attestation_evidence(attestation_evidence))
         }
-        ViewEnclaveRequest::VerifyIasReport(verification_report) => {
-            serialize(&ENCLAVE.verify_ias_report(verification_report))
+        ViewEnclaveRequest::GetAttestationEvidence => {
+            serialize(&ENCLAVE.get_attestation_evidence())
         }
-        ViewEnclaveRequest::GetIasReport => serialize(&ENCLAVE.get_ias_report()),
         ViewEnclaveRequest::ClientAccept(msg) => serialize(&ENCLAVE.client_accept(msg)),
         ViewEnclaveRequest::ViewStoreInit(view_store_id) => {
             serialize(&ENCLAVE.view_store_init(view_store_id))

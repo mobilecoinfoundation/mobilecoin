@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-extra"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ rust-version = { workspace = true }
 cfg-if = "1.0"
 displaydoc = { version = "0.2", default-features = false }
 hmac = "0.12"
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 rand = { version = "0.8", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
@@ -38,7 +38,7 @@ mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+curve25519-dalek = { version = "4.1.1", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sig"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Verify Fog Signatures"
@@ -16,12 +16,12 @@ mc-fog-sig-authority = { path = "./authority" }
 mc-fog-sig-report = { path = "./report" }
 
 displaydoc = "0.2"
-pem = "2.0"
-signature = { version = "2.0.0" }
+pem = "3.0"
+signature = { version = "2.1.0" }
 x509-signature = "0.5"
 
 [dev-dependencies]
-mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-from-random = { path = "../../util/from-random" }
 

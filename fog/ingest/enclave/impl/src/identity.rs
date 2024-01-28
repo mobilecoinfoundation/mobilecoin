@@ -17,7 +17,7 @@ pub struct RistrettoIdentity {
 impl Default for RistrettoIdentity {
     fn default() -> Self {
         Self {
-            private_key: Mutex::new(RistrettoPrivate::from_random(&mut McRng::default())),
+            private_key: Mutex::new(RistrettoPrivate::from_random(&mut McRng)),
         }
     }
 }
@@ -31,7 +31,7 @@ impl RistrettoIdentity {
 }
 
 impl EnclaveIdentity for RistrettoIdentity {
-    /// Get the bytes for the IAS report
+    /// Get the bytes for the attestation evidence
     fn get_bytes_for_report(&self) -> [u8; 32] {
         self.get_public_key().to_bytes()
     }

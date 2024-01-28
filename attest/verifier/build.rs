@@ -1,33 +1,40 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
-use chrono::{
-    offset::{TimeZone, Utc},
-    Datelike, Duration, Timelike,
-};
+use chrono::{offset::Utc, DateTime, Datelike, Duration, SecondsFormat::Secs, Timelike};
 use core::{ptr::null_mut, slice::from_raw_parts_mut};
 use mbedtls::{
     hash::Type as HashType,
     pk::Pk,
     rng::RngCallback,
-    x509::{
-        certificate::{Builder, Certificate},
-        KeyUsage, Time,
-    },
+    x509::{certificate::Builder, KeyUsage, Time},
 };
 use mbedtls_sys::types::{
     raw_types::{c_int, c_uchar, c_void},
     size_t,
 };
 use mc_util_build_script::Environment;
-use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode};
+use mc_util_build_sgx::{SgxEnvironment, SgxMode};
+use p256::{
+    ecdsa::{signature::Signer, Signature, SigningKey},
+    pkcs8::{EncodePrivateKey, LineEnding},
+};
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
-    env,
-    fs::{read, remove_file, write},
+    env, fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
+
+use p256::pkcs8::{
+    der::{
+        asn1::{Int, OctetString, SequenceOf},
+        Any, Encode, EncodeValue, SliceWriter, Tag, Tagged,
+    },
+    ObjectIdentifier,
+};
+
+const FMSPC: &str = "0123456789AB";
 
 lazy_static::lazy_static! {
     static ref RNG: Arc<Mutex<Hc128Rng>> = Arc::new(Mutex::new({
@@ -41,10 +48,8 @@ lazy_static::lazy_static! {
             },
             Err(_) => {
                 cargo_emit::warning!(
-                    "Using thread_rng() to generate mock attestation report signatories for simulation-mode enclaves"
+                    "Using default seed to generate mock attestation report signatories for simulation-mode enclaves"
                 );
-                let mut csprng = rand::thread_rng();
-                csprng.fill_bytes(&mut seed[..]);
             }
         }
         Hc128Rng::from_seed(seed)
@@ -68,214 +73,14 @@ impl RngCallback for RngForMbedTls {
         null_mut()
     }
 }
-fn purge_expired_cert(path: &Path) {
-    let mut bytes = match read(path) {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            return;
-        }
-    };
-
-    // mbedtls says "Input must be NULL-terminated".
-    bytes.push(0);
-
-    match Certificate::from_pem_multiple(&bytes).map(|certs| {
-        let ts = certs
-            .iter()
-            .last()
-            .expect("no certs")
-            .not_after()
-            .unwrap_or_else(|e| panic!("invalid certificate expiration time: {e:?}"));
-        Utc.with_ymd_and_hms(
-            ts.year as i32,
-            ts.month as u32,
-            ts.day as u32,
-            ts.hour as u32,
-            ts.minute as u32,
-            ts.second as u32,
-        )
-        .single()
-        .unwrap_or_else(|| panic!("Invalid expiration time: {ts:?}."))
-    }) {
-        Ok(not_after) => {
-            let utc_now = Utc::now();
-
-            // If certificate expired or expires in the next 24 hours, delete it so it gets
-            // regenerated.
-            if utc_now + Duration::hours(24) > not_after {
-                remove_file(path)
-                    .unwrap_or_else(|e| panic!("failed deleting expired cert {path:?}: {e:?}"));
-            }
-        }
-        Err(_) => {
-            // Failed getting expiration date from certificate, delete it so it gets
-            // regenerated.
-            remove_file(path)
-                .unwrap_or_else(|e| panic!("failed deleting non-parseable cert {path:?}: {e:?}"));
-        }
-    }
-}
 
 fn main() {
-    // Generate simulation IAS certificates
-    let base_dir = env::var("CARGO_MANIFEST_DIR").expect("Could not read manifest dir");
-    let mut data_path = PathBuf::from(base_dir);
-    data_path.push("data");
-    data_path.push("sim");
-
-    let mut root_anchor_path = data_path.clone();
-    root_anchor_path.push("root_anchor.pem");
-
-    let mut signer_key_path = data_path.clone();
-    signer_key_path.push("signer.key");
-
-    let mut chain_path = data_path;
-    chain_path.push("chain.pem");
-
-    cargo_emit::rerun_if_env_changed!("MC_SEED");
-    cargo_emit::rerun_if_changed!(root_anchor_path
-        .to_str()
-        .expect("Could not stringify root anchor path"));
-    cargo_emit::rerun_if_changed!(signer_key_path
-        .to_str()
-        .expect("Could not stringify signer key path"));
-    cargo_emit::rerun_if_changed!(chain_path
-        .to_str()
-        .expect("Could not stringify signer chain path"));
-
-    purge_expired_cert(&root_anchor_path);
-    purge_expired_cert(&chain_path);
-
-    if !(root_anchor_path.exists() && signer_key_path.exists() && chain_path.exists())
-        || env::var("MC_SEED").is_ok()
-    {
-        const ROOT_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signing CA\0";
-        const SIGNER_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signer\0";
-
-        let mut serial: [u8; 1] = [1u8];
-
-        let now = Utc::now();
-        let end_now = now;
-        // Starting 1 hour ago
-        let start_time = now - Duration::hours(1);
-        // Good for 30 days
-        let end_time = end_now + Duration::weeks(1);
-
-        let mut csprng = RngForMbedTls {};
-
-        // ROOT CERTIFICATE
-        let mut root_subject_key =
-            Pk::generate_rsa(&mut csprng, 3072, 65537).expect("Could not generate privkey");
-        let mut root_issuer_key = Pk::from_private_key(
-            &root_subject_key
-                .write_private_der_vec()
-                .expect("Could not export privkey to DER"),
-            None,
-        )
-        .expect("Could not parse privkey from DER");
-        // Intermediate authority will be signed by this key.
-        let mut signer_issuer_key = Pk::from_private_key(
-            &root_subject_key
-                .write_private_der_vec()
-                .expect("Could not export privkey to DER"),
-            None,
-        )
-        .expect("Could not parse privkey from DER");
-
-        let root_not_before = Time::new(
-            u16::try_from(start_time.year()).expect("Year not a u16"),
-            u8::try_from(start_time.month()).expect("Month not a u8"),
-            u8::try_from(start_time.day()).expect("Day not a u8"),
-            u8::try_from(start_time.hour()).expect("Hour not a u8"),
-            u8::try_from(start_time.minute()).expect("Minute not a u8"),
-            u8::try_from(start_time.second()).expect("Second not a u8"),
-        )
-        .expect("Could not create a not_before time");
-        let root_not_after = Time::new(
-            u16::try_from(end_time.year()).expect("Year not a u16"),
-            u8::try_from(end_time.month()).expect("Month not a u8"),
-            u8::try_from(end_time.day()).expect("Day not a u8"),
-            u8::try_from(end_time.hour()).expect("Hour not a u8"),
-            u8::try_from(end_time.minute()).expect("Minute not a u8"),
-            u8::try_from(end_time.second()).expect("Second not a u8"),
-        )
-        .expect("Could not create a not_after time");
-
-        let mut root_builder = Builder::new();
-        let root_cert_pem = root_builder
-            .subject_with_nul(ROOT_SUBJECT)
-            .expect("Could not set subject")
-            .issuer_with_nul(ROOT_SUBJECT)
-            .expect("Could not set issuer")
-            .basic_constraints(true, Some(0))
-            .expect("Could not set basic constraints")
-            .key_usage(KeyUsage::CRL_SIGN | KeyUsage::KEY_CERT_SIGN)
-            .expect("Could not set key usage")
-            .validity(root_not_before, root_not_after)
-            .expect("Could not set time validity range")
-            .serial(&serial[..])
-            .expect("Could not set serial number")
-            .subject_key(&mut root_subject_key)
-            .issuer_key(&mut root_issuer_key)
-            .signature_hash(HashType::Sha256)
-            .write_pem_string(&mut csprng)
-            .expect("Could not create PEM string of certificate");
-        write(root_anchor_path, &root_cert_pem).expect("Unable to write root anchor");
-
-        // IAS SIGNER CERT
-        let mut signer_subject_key =
-            Pk::generate_rsa(&mut csprng, 2048, 65537).expect("Could not generate privkey");
-        write(
-            signer_key_path,
-            signer_subject_key
-                .write_private_pem_string()
-                .expect("Could not create PEM for signer key."),
-        )
-        .expect("Could not write signer key PEM to file");
-
-        let signer_not_before = Time::new(
-            u16::try_from(start_time.year()).expect("Year not a u16"),
-            u8::try_from(start_time.month()).expect("Month not a u8"),
-            u8::try_from(start_time.day()).expect("Day not a u8"),
-            u8::try_from(start_time.hour()).expect("Hour not a u8"),
-            u8::try_from(start_time.minute()).expect("Minute not a u8"),
-            u8::try_from(start_time.second()).expect("Second not a u8"),
-        )
-        .expect("Could not create a not_before time");
-        let signer_not_after = Time::new(
-            u16::try_from(end_time.year()).expect("Year not a u16"),
-            u8::try_from(end_time.month()).expect("Month not a u8"),
-            u8::try_from(end_time.day()).expect("Day not a u8"),
-            u8::try_from(end_time.hour()).expect("Hour not a u8"),
-            u8::try_from(end_time.minute()).expect("Minute not a u8"),
-            u8::try_from(end_time.second()).expect("Second not a u8"),
-        )
-        .expect("Could not create a not_after time");
-
-        serial[0] += 1;
-
-        let mut builder = Builder::new();
-        let signer_cert_pem = builder
-            .subject_with_nul(SIGNER_SUBJECT)
-            .expect("Could not set subject")
-            .issuer_with_nul(ROOT_SUBJECT)
-            .expect("Could not set issuer")
-            .basic_constraints(false, None)
-            .expect("Could not set basic constraints")
-            .key_usage(KeyUsage::DIGITAL_SIGNATURE | KeyUsage::NON_REPUDIATION)
-            .expect("Could not set key usage")
-            .validity(signer_not_before, signer_not_after)
-            .expect("Could not set time validity range")
-            .serial(&serial[..])
-            .expect("Could not set serial number")
-            .subject_key(&mut signer_subject_key)
-            .issuer_key(&mut signer_issuer_key)
-            .signature_hash(HashType::Sha256)
-            .write_pem_string(&mut csprng)
-            .expect("Could not create PEM string of certificate");
-
-        write(chain_path, root_cert_pem + &signer_cert_pem).expect("Unable to write cert chain");
-    }
+    // This path is inside of the repo and not the normal output directory.
+    // This is to reuse the generated files between the main build and the enclave
+    // builds. There is not a good way to communicate a common build directory
+    // between the different builds.
+    let base_dir = env::var("OUT_DIR").expect("Could not read manifest dir");
+    let data_path = PathBuf::from(base_dir).join("data").join("sim");
 
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not parse SGX environment");
@@ -284,7 +89,451 @@ fn main() {
         cargo_emit::rustc_cfg!("feature=\"sgx-sim\"");
     }
 
-    if sgx.ias_mode() == IasMode::Development {
-        cargo_emit::rustc_cfg!("feature=\"ias-dev\"");
+    cargo_emit::rerun_if_env_changed!("MC_SEED");
+
+    generate_sim_files(data_path);
+}
+
+const ROOT_ANCHOR_FILENAME: &str = "root_anchor.pem";
+const SIGNER_KEY_FILENAME: &str = "signer.key";
+const CHAIN_FILENAME: &str = "chain.pem";
+const QE_IDENTITY_FILENAME: &str = "qe_identity.json";
+const TCB_INFO_FILENAME: &str = "tcb_info.json";
+
+/// An issuer of a certificate. This is the one that signs a certificate.
+struct Issuer<'a> {
+    /// The key used to sign issued certificates
+    key: SigningKey,
+    /// A description of the issuer, in the form of a Distinguished Name (DN)
+    description: &'a str,
+}
+
+/// The subject of a certificate.
+struct Subject<'a> {
+    /// The serial number of the certificate. Since this is only used in sim
+    /// environments we can limit this to 1 byte.
+    serial: u8,
+    /// The description of the subject, in the form of a Distinguished Name (DN)
+    description: &'a str,
+    /// Is this a CA certificate?
+    is_ca: bool,
+    /// The validity times of the certificate
+    validity: Validity,
+    /// The optional extensions (oid, value)
+    extensions: Vec<(Vec<u8>, Vec<u8>)>,
+}
+
+/// Validity times
+#[derive(Debug, Clone)]
+struct Validity {
+    not_before: DateTime<Utc>,
+    not_after: DateTime<Utc>,
+}
+
+impl Validity {
+    /// Returns mbedtls times, `(not_before, not_after)`.
+    fn to_mbedtls_times(&self) -> (Time, Time) {
+        let not_before = to_mbdetls_time(self.not_before);
+        let not_after = to_mbdetls_time(self.not_after);
+        (not_before, not_after)
     }
+}
+
+fn generate_sim_files(data_path: impl AsRef<Path>) {
+    let data_path = data_path.as_ref();
+
+    fs::create_dir_all(data_path).expect("failed to create data directory");
+
+    let root_anchor_path = data_path.join(ROOT_ANCHOR_FILENAME);
+    let signer_key_path = data_path.join(SIGNER_KEY_FILENAME);
+    let chain_path = data_path.join(CHAIN_FILENAME);
+    let qe_identity_path = data_path.join(QE_IDENTITY_FILENAME);
+    let tcb_info_path = data_path.join(TCB_INFO_FILENAME);
+
+    const ROOT_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signing CA\0";
+    const SIGNER_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signer\0";
+
+    let now = Utc::now();
+    let not_before = now - Duration::hours(1);
+    let not_after = not_before + Duration::days(30);
+    let validity = Validity {
+        not_before,
+        not_after,
+    };
+
+    let subject = Subject {
+        serial: 1,
+        description: ROOT_SUBJECT,
+        is_ca: true,
+        validity: validity.clone(),
+        extensions: vec![],
+    };
+    let (root_cert_pem, root_key) = create_certificate(None, &subject);
+    fs::write(root_anchor_path, &root_cert_pem).expect("Unable to write root anchor");
+
+    let issuer = Issuer {
+        key: root_key,
+        description: ROOT_SUBJECT,
+    };
+    let subject = Subject {
+        serial: 2,
+        description: SIGNER_SUBJECT,
+        is_ca: false,
+        validity: validity.clone(),
+        extensions: vec![dcap_extensions()],
+    };
+    let (signer_cert_pem, signer_key) = create_certificate(issuer, &subject);
+    fs::write(chain_path, signer_cert_pem + &root_cert_pem).expect("Unable to write cert chain");
+    write_signing_key(signer_key_path, &signer_key);
+
+    generate_qe_identity(qe_identity_path, &validity, &signer_key);
+    generate_tcb_info(tcb_info_path, &validity, &signer_key);
+}
+
+/// Create a certificate
+///
+/// # Aruments:
+/// * `issuer` - The issuer of the certificate. If `None` then the certificate
+///   is self signed.
+/// * `subject` - The subject of the certificate
+///
+/// # Returns:
+/// The PEM encoded certificate and the signing key of the certificate
+fn create_certificate<'a>(
+    issuer: impl Into<Option<Issuer<'a>>>,
+    subject: &Subject,
+) -> (String, SigningKey) {
+    let subject_signing_key = SigningKey::random(&mut *RNG.lock().expect("mutex poisoned"));
+
+    // No issuer means it's self signed
+    let issuer = issuer.into().unwrap_or_else(|| Issuer {
+        key: subject_signing_key.clone(),
+        description: subject.description,
+    });
+
+    let mut issuer_key = to_mbedtls_key_context(&issuer.key);
+    let mut subject_key = to_mbedtls_key_context(&subject_signing_key);
+    let (not_before, not_after) = subject.validity.to_mbedtls_times();
+
+    let key_usage = if subject.is_ca {
+        KeyUsage::CRL_SIGN | KeyUsage::KEY_CERT_SIGN
+    } else {
+        KeyUsage::DIGITAL_SIGNATURE | KeyUsage::NON_REPUDIATION
+    };
+
+    let mut csprng = RngForMbedTls {};
+    let mut builder = Builder::new();
+    builder
+        .subject_with_nul(subject.description)
+        .expect("Could not set subject")
+        .issuer_with_nul(issuer.description)
+        .expect("Could not set issuer")
+        .basic_constraints(subject.is_ca, Some(0))
+        .expect("Could not set basic constraints")
+        .key_usage(key_usage)
+        .expect("Could not set key usage")
+        .validity(not_before, not_after)
+        .expect("Could not set time validity range")
+        .serial(&[subject.serial])
+        .expect("Could not set serial number")
+        .subject_key(&mut subject_key)
+        .issuer_key(&mut issuer_key)
+        .signature_hash(HashType::Sha256);
+    for (oid, value) in subject.extensions.iter() {
+        builder
+            .extension(oid, value, false)
+            .expect("Could not set extension");
+    }
+    let cert_pem = builder
+        .write_pem_string(&mut csprng)
+        .expect("Could not create PEM string of certificate");
+    (cert_pem, subject_signing_key)
+}
+
+/// Convert the provided `key` into an mbedtls key context.
+///
+/// The mbedtls key context contains both the public and private keys.
+fn to_mbedtls_key_context(key: &SigningKey) -> Pk {
+    let der_key = key
+        .to_pkcs8_der()
+        .expect("Could not export private key to DER");
+    let key_context = Pk::from_private_key(der_key.as_bytes(), None)
+        .expect("Could not parse private key from DER");
+    key_context
+}
+
+fn to_mbdetls_time(time: DateTime<Utc>) -> Time {
+    Time::new(
+        u16::try_from(time.year()).expect("Year not a u16"),
+        u8::try_from(time.month()).expect("Month not a u8"),
+        u8::try_from(time.day()).expect("Day not a u8"),
+        u8::try_from(time.hour()).expect("Hour not a u8"),
+        u8::try_from(time.minute()).expect("Minute not a u8"),
+        u8::try_from(time.second()).expect("Second not a u8"),
+    )
+    .expect("Could not create a valid mbedtls time")
+}
+
+fn write_signing_key(signer_key_path: impl AsRef<Path>, signer_key: &SigningKey) {
+    let signer_key_path = signer_key_path.as_ref();
+    let der_signer_key = signer_key
+        .to_pkcs8_der()
+        .expect("Could not export privkey to DER");
+    fs::write(
+        signer_key_path,
+        der_signer_key
+            .to_pem("PRIVATE KEY", LineEnding::LF)
+            .expect("Could not encode signer key to PEM"),
+    )
+    .expect("Could not write signer key PEM to file");
+}
+
+/// Returns the mandatory DCAP OID extensions, `(oid, bytes)`
+///
+/// The extensions (and OID values) are documented at
+/// <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf#%5B%7B%22num%22%3A193%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C690%2C0%5D>
+fn dcap_extensions() -> (Vec<u8>, Vec<u8>) {
+    // We use 0 for all the SVNs in the unlikely event this cert tries to
+    // get used to verify against real TCB info, the real TCB Info will have a
+    // higher SVN. The IDs and FMSPC uses an incrementing sequence of numbers
+    // hoping to avoid real values seen in the wild.
+
+    let ppid = sequence_of_2(
+        "1.2.840.113741.1.13.1.1",
+        OctetString::new("1234562890123456").expect("failed to create octet string"),
+    );
+
+    let mut tcb_sequence = SequenceOf::<_, 18>::new();
+    for i in 1..=16 {
+        let comp_svn = sequence_of_2(
+            &format!("1.2.840.113741.1.13.1.2.{i}"),
+            Int::new(&[0]).expect("failed to create integer"),
+        );
+        tcb_sequence
+            .add(comp_svn)
+            .expect("failed to add component sequence");
+    }
+    let pce_svn = sequence_of_2(
+        "1.2.840.113741.1.13.1.2.17",
+        Int::new(&[0]).expect("failed to create integer"),
+    );
+    tcb_sequence.add(pce_svn).expect("failed to add pce svn");
+    let cpu_svn = sequence_of_2(
+        "1.2.840.113741.1.13.1.2.18",
+        OctetString::new("0000000000000000").expect("failed to create octet string"),
+    );
+    tcb_sequence.add(cpu_svn).expect("failed to add cpu svn");
+    let tcb = sequence_of_2("1.2.840.113741.1.13.1.2", tcb_sequence);
+
+    let pce_id = sequence_of_2(
+        "1.2.840.113741.1.13.1.3",
+        OctetString::new("12").expect("failed to create octet string"),
+    );
+    let fmspc = sequence_of_2(
+        "1.2.840.113741.1.13.1.4",
+        OctetString::new(hex::decode(FMSPC).expect("failed to decode FMSPC"))
+            .expect("failed to create octet string"),
+    );
+    let sgx_type = sequence_of_2(
+        "1.2.840.113741.1.13.1.4",
+        Any::new(
+            Tag::Enumerated,
+            // Zero is `Standard`
+            Int::new(&[0]).expect("failed to create integer").as_bytes(),
+        )
+        .expect("failed to create any"),
+    );
+    let mut extensions_sequence = SequenceOf::<_, 5>::new();
+    for extension in [ppid, tcb, pce_id, fmspc, sgx_type] {
+        extensions_sequence
+            .add(extension)
+            .expect("failed to add extension");
+    }
+
+    (
+        ObjectIdentifier::new_unwrap("1.2.840.113741.1.13.1")
+            .as_bytes()
+            .to_vec(),
+        extensions_sequence
+            .to_der()
+            .expect("failed to serialize extensions sequence"),
+    )
+}
+
+/// Create a 2 element SEQUENCE
+///
+/// The extension format is:
+///
+///    extension ::= SEQUENCE {
+///         oid OID,
+///         value ANY DEFINED BY oid }
+fn sequence_of_2<T: EncodeValue + Tagged>(oid: impl AsRef<str>, value: T) -> SequenceOf<Any, 2> {
+    let oid = ObjectIdentifier::new(oid.as_ref()).expect("failed to create oid");
+
+    // Most types have a `value()` method, but it isn't on a trait. So to keep this
+    // function generic we leverage the `EncodeValue` trait, which require a bit
+    // more work to get to the value.
+    let length = u32::from(value.value_len().expect("failed to get value len"));
+    let mut buf = vec![0; length as usize];
+    let mut writer = SliceWriter::new(buf.as_mut_slice());
+    value
+        .encode_value(&mut writer)
+        .expect("failed to encode value");
+
+    let mut sequence = SequenceOf::<_, 2>::new();
+    sequence
+        .add(Any::new(oid.tag(), oid.as_bytes()).expect("failed to create any"))
+        .expect("failed to add oid");
+    sequence
+        .add(Any::new(value.tag(), buf).expect("failed to create any"))
+        .expect("failed to add oid");
+    sequence
+}
+
+/// Update the TCB info file if it's expired or doesn't exist.
+fn generate_tcb_info(tcb_path: impl AsRef<Path>, validity: &Validity, signing_key: &SigningKey) {
+    // The example TCB info from
+    // <https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v4>
+    // with unnecessary fields omitted.
+    let tcb_info = format!(
+        r#"
+        {{
+          "id": "SGX",
+          "version": 3,
+          "issueDate": "{}",
+          "nextUpdate": "{}",
+          "fmspc": "{}",
+          "pceId": "0000",
+          "tcbType": 0,
+          "tcbEvaluationDataNumber": 12,
+          "tcbLevels": [
+            {{
+              "tcb": {{
+                "sgxtcbcomponents": [
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }},
+                  {{
+                    "svn": 0
+                  }}
+                ],
+                "pcesvn": 0
+              }},
+              "tcbDate": "2021-11-10T00:00:00Z",
+              "tcbStatus": "UpToDate"
+            }}
+          ]
+        }}"#,
+        validity.not_before.to_rfc3339_opts(Secs, true),
+        validity.not_after.to_rfc3339_opts(Secs, true),
+        FMSPC
+    );
+
+    sign_and_write_json(tcb_path, signing_key, &tcb_info, "tcbInfo");
+}
+
+/// Update the QE identity file if it's expired or doesn't exist.
+fn generate_qe_identity(
+    qe_identity_path: impl AsRef<Path>,
+    validity: &Validity,
+    signing_key: &SigningKey,
+) {
+    // The example QE identity from
+    // <https://api.portal.trustedservices.intel.com/documentation#pcs-enclave-identity-v4>
+    // with unnecessary fields omitted.
+    let qe_identity = format!(
+        r#"
+        {{
+          "id": "QE",
+          "version": 2,
+          "issueDate": "{}",
+          "nextUpdate": "{}",
+          "tcbEvaluationDataNumber": 12,
+          "miscselect": "00000000",
+          "miscselectMask": "FFFFFFFF",
+          "attributes": "00000000000000000000000000000000",
+          "attributesMask": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "mrsigner": "1234567890ABCDEFFEDCBA09876543211234567890ABCDEFFEDCBA0987654321",
+          "isvprodid": 0,
+          "tcbLevels": [
+            {{
+              "tcb": {{
+                "isvsvn": 0
+              }},
+              "tcbDate": "2021-11-10T00:00:00Z",
+              "tcbStatus": "UpToDate"
+            }}
+          ]
+        }}"#,
+        validity.not_before.to_rfc3339_opts(Secs, true),
+        validity.not_after.to_rfc3339_opts(Secs, true)
+    );
+    sign_and_write_json(
+        qe_identity_path,
+        signing_key,
+        &qe_identity,
+        "enclaveIdentity",
+    );
+}
+
+fn sign_and_write_json(
+    json_path: impl AsRef<Path>,
+    signing_key: &SigningKey,
+    json: &str,
+    json_tag: &str,
+) {
+    let mut json_string = json.to_owned();
+    // The signature is sensitive to the whitespace or lack thereof. The
+    // <https://api.portal.trustedservices.intel.com/documentation> says:
+    //      "signature calculated over tcbInfo body without whitespaces"
+    // Both the qe_identity and tcb_info json have no intermediate whitespace.
+    json_string.retain(|c| !c.is_whitespace());
+    let json_signature = (signing_key as &dyn Signer<Signature>).sign(json_string.as_bytes());
+
+    let hex_signature = hex::encode(json_signature.to_bytes());
+    let json_with_signature =
+        format!("{{\"{json_tag}\":{json_string},\"signature\":\"{hex_signature}\"}}");
+    fs::write(json_path, json_with_signature).expect("Unable to write json");
 }

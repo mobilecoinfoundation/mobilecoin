@@ -7,7 +7,7 @@ use crate::{
     WellFormedEncryptedTx,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,
@@ -86,25 +86,17 @@ pub enum EnclaveCall {
     /// Creates a new report for the enclave with the provided target info.
     NewEreport(TargetInfo),
 
-    /// The [ConsensusEnclave::verify_quote()] method.
+    /// The [ConsensusEnclave::verify_attestation_evidence()] method.
     ///
-    /// * Verifies that the Quoting Enclave is sane,
-    /// * Verifies that the Quote matches the previously generated report.
-    /// * Caches the quote.
-    VerifyQuote(Quote, Report),
+    /// * Verifies the attestation evidence.
+    /// * Caches the attestation evidence.. This cached report may be
+    ///   overwritten by later calls.
+    VerifyAttestationEvidence(DcapEvidence),
 
-    /// The [ConsensusEnclave::verify_ias_report()] method.
+    /// The [ConsensusEnclave::get_attestation_evidence()] method.
     ///
-    /// * Verifies the signed report from IAS matches the previously received
-    ///   quote,
-    /// * Caches the signed report. This cached report may be overwritten by
-    ///   later calls.
-    VerifyReport(VerificationReport),
-
-    /// The [ConsensusEnclave::get_ias_report()] method.
-    ///
-    /// Retrieves a previously cached report, if any.
-    GetReport,
+    /// Retrieves a previously cached evidence, if any.
+    GetAttestationEvidence,
 
     /// The [ConsensusEnclave::client_tx_propose()] method.
     ///

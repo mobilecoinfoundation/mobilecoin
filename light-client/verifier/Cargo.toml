@@ -1,0 +1,26 @@
+[package]
+name = "mc-light-client-verifier"
+version = "4.1.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "Apache-2.0"
+rust-version = { workspace = true }
+
+[dependencies]
+base64 = "0.21"
+displaydoc = "0.2"
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_with = { version = "3.4", default-features = false, features = ["hex"] }
+
+mc-blockchain-types = { path = "../../blockchain/types" }
+mc-common = { path = "../../common" }
+mc-consensus-scp-types = { path = "../../consensus/scp/types" }
+mc-crypto-digestible = { path = "../../crypto/digestible" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-core = { path = "../../transaction/core" }
+
+[dev-dependencies]
+mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-test-helper = { path = "../../util/test-helper" }

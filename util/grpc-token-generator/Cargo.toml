@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc-token-generator"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -15,5 +15,5 @@ mc-common = { path = "../../common", features = ["std"] }
 mc-util-grpc = { path = "../grpc" }
 mc-util-parse = { path = "../parse" }
 
-clap = { version = "4.1", features = ["derive", "env"] }
-percent-encoding = "2.2.0"
+clap = { version = "4.4", features = ["derive", "env"] }
+percent-encoding = "2.3.1"

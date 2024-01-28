@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-keyfile"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -36,11 +36,11 @@ mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
 
 base64 = "0.21"
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = "0.2"
 hex = "0.4"
-pem = "2.0"
-prost = "0.11"
+pem = "3.0"
+prost = "0.12"
 rand = "0.8"
 rand_core = "0.6.4"
 rand_hc = "0.3"
@@ -53,4 +53,4 @@ x509-signature = "0.5"
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-tempfile = "3.4"
+tempfile = "3.9"

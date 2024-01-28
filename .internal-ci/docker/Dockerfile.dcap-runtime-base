@@ -1,0 +1,66 @@
+# Copyright (c) 2023 The MobileCoin Foundation
+#
+# Dockerfile.dcap-runtime-base
+#  A minimal base runtime image for MobileCoin applications.
+#
+FROM ubuntu:focal-20230801
+
+SHELL ["/bin/bash", "-c"]
+
+RUN  apt-get update \
+  && apt-get upgrade -y \
+  && apt-get --no-install-recommends install -y \
+      ca-certificates \
+      curl \
+      gnupg \
+      supervisor \
+      libpq5 \
+      jq \
+  && apt-get clean \
+  && rm -r /var/lib/apt/lists
+
+# Install SGX SDK
+COPY .internal-ci/docker/support/intel-sgx-archive-keyring.gpg /etc/apt/trusted.gpg.d/
+RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ focal main" > /etc/apt/sources.list.d/intel-sgx.list
+
+ARG SGX_SDK_VERSION=2.22.100.3-focal1
+ENV SGX_SDK_VERSION=${SGX_SDK_VERSION}
+
+# Explicitly call out *all* dependency versions. This is because the Intel
+# packages don't pin the dependency versions and instead use "<dependency>=<version>"
+RUN  apt-get update \
+  && apt-get --no-install-recommends install -y \
+     libsgx-ae-pce=${SGX_SDK_VERSION} \
+     libsgx-enclave-common=${SGX_SDK_VERSION} \
+     libsgx-urts=${SGX_SDK_VERSION} \
+  && apt-get clean \
+  && rm -r /var/lib/apt/lists
+
+# Install DCAP libraries
+ARG DCAP_VERSION=1.19.100.3-focal1
+ENV DCAP_VERSION=${DCAP_VERSION}
+
+# Explicitly call out *all* dependency versions. This is because the Intel
+# packages don't pin the dependency versions and instead use "<dependency>=<version>"
+RUN  apt-get update \
+  && apt-get --no-install-recommends install -y \
+     libsgx-pce-logic=${DCAP_VERSION} \
+     libsgx-qe3-logic=${DCAP_VERSION} \
+     libsgx-ae-qe3=${DCAP_VERSION} \
+     libsgx-ae-id-enclave=${DCAP_VERSION} \
+     libsgx-dcap-ql=${DCAP_VERSION} \
+     libsgx-dcap-default-qpl=${DCAP_VERSION} \
+     libsgx-dcap-quote-verify=${DCAP_VERSION} \
+  && apt-get clean \
+  && rm -r /var/lib/apt/lists
+
+# The config installed with `libsgx-dcap-default-qpl` is for a local PCCS service.
+# We copy the Azure PCCS config after installing `libsgx-dcap-default-qpl` to
+# override this default config.
+COPY .internal-ci/docker/support/sgx_default_qcnl_azure.conf /etc/sgx_default_qcnl.conf
+
+# Install GRPC health probe
+ARG GRPC_HEALTH_UTILITY_URL=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.9/grpc_health_probe-linux-amd64
+
+RUN  curl --retry 5 -fL ${GRPC_HEALTH_UTILITY_URL} -o /usr/local/bin/grpc_health_probe \
+  && chmod +x /usr/local/bin/grpc_health_probe

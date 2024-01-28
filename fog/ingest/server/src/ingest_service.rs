@@ -9,7 +9,6 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_api::external;
-use mc_attest_net::RaClient;
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
@@ -18,10 +17,10 @@ use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
     Empty,
 };
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::IngestPeerUri;
-use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::{
     rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
     rpc_precondition_error, rpc_unavailable_error, send_result,
@@ -31,34 +30,29 @@ use std::{str::FromStr, sync::Arc};
 
 /// Implements the ingest grpc api
 #[derive(Clone)]
-pub struct IngestService<
-    R: RaClient + Send + Sync + 'static,
-    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
+pub struct IngestService<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+where
     Error: From<<DB as RecoveryDb>::Error>,
 {
-    controller: Arc<IngestController<R, DB>>,
-    ledger_db: LedgerDB,
+    controller: Arc<IngestController<DB>>,
+    block_provider: Box<dyn BlockProvider>,
     logger: Logger,
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestService<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> IngestService<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Creates a new ingest node (but does not create sockets and start it
     /// etc.)
     pub fn new(
-        controller: Arc<IngestController<R, DB>>,
-        ledger_db: LedgerDB,
+        controller: Arc<IngestController<DB>>,
+        block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> Self {
         Self {
             controller,
-            ledger_db,
+            block_provider,
             logger,
         }
     }
@@ -115,7 +109,7 @@ where
     pub fn activate_impl(&mut self, _: Empty, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
         self.controller
             .activate(
-                self.ledger_db
+                self.block_provider
                     .num_blocks()
                     .map_err(|err| rpc_database_err(err, logger))?,
             )
@@ -268,10 +262,8 @@ where
     }
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+    mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {

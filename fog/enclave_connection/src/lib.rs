@@ -8,13 +8,15 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
+use der::DateTime;
 use grpcio::{CallOption, Metadata, MetadataBuilder, Result as GrpcResult};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
+use mc_attest_core::EvidenceKind;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_common::{
     logger::{log, Logger},
+    time::{SystemTimeProvider, TimeProvider},
     trace_time,
 };
 use mc_connection::{AttestationError, AttestedConnection, Connection};
@@ -60,8 +62,8 @@ pub struct EnclaveConnection<U: ConnectionUri, G: EnclaveGrpcChannel> {
     grpc: G,
     /// The AKE state machine object, if one is available.
     attest_cipher: Option<Ready<Aes256Gcm>>,
-    /// An object which can verify a fog node's provided IAS report
-    verifier: Verifier,
+    /// The identities that a fog node's attestation evidence must match, one of
+    identities: Vec<TrustedIdentity>,
     /// Credentials to use for all GRPC calls (this allows authentication
     /// username/password to go through, if provided).
     creds: BasicCredentials,
@@ -87,12 +89,12 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         self.attest_cipher.is_some()
     }
 
-    fn attest(&mut self) -> Result<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> Result<EvidenceKind, Self::Error> {
         trace_time!(self.logger, "FogClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
 
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let initiator = Start::new(self.uri.responder_id()?.to_string());
 
@@ -116,15 +118,19 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
             )
         }
 
+        let epoch_time = SystemTimeProvider
+            .since_epoch()
+            .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| Error::Other("Time out of range".to_owned()))?;
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
-        let (initiator, verification_report) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(evidence)
     }
 
     fn deattest(&mut self) {
@@ -140,7 +146,13 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
 }
 
 impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
-    pub fn new(chain_id: String, uri: U, grpc: G, verifier: Verifier, logger: Logger) -> Self {
+    pub fn new(
+        chain_id: String,
+        uri: U,
+        grpc: G,
+        identities: impl Into<Vec<TrustedIdentity>>,
+        logger: Logger,
+    ) -> Self {
         let creds = BasicCredentials::new(&uri.username(), &uri.password());
         let cookies = CookieJar::default();
 
@@ -149,7 +161,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
             uri,
             grpc,
             attest_cipher: None,
-            verifier,
+            identities: identities.into(),
             creds,
             cookies,
             logger,
@@ -304,6 +316,6 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> Ord for EnclaveConnection<U, G> {
 
 impl<U: ConnectionUri, G: EnclaveGrpcChannel> PartialOrd for EnclaveConnection<U, G> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }

@@ -37,7 +37,7 @@ on:
 
 jobs:
   reset-helm:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     strategy:
       matrix:
         chart:
@@ -51,6 +51,10 @@ jobs:
         - mobilecoind
         - mc-core-common-config
         - mc-core-dev-env-setup
+        - fog-report-a
+        - fog-report-b
+        - fog-view
+        - fog-ledger
     steps:
     - name: Delete release
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -63,7 +67,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   reset-k8s:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - reset-helm
     steps:
@@ -87,7 +91,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   reset-s3:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     container:
       image: mobilecoin/gha-s3-pg-helper:v0
     steps:

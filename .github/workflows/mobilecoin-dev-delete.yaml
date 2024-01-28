@@ -4,24 +4,23 @@
 
 name: Mobilecoin Dev Clean Up
 
-on:
-  delete: {}
+on: delete
 
 jobs:
   metadata:
     if: startsWith(github.event.ref, 'feature/')
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     outputs:
       namespace: ${{ steps.meta.outputs.namespace }}
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
     - name: Generate version metadata
       id: meta
       env:
-        # Use the ref name from the payload. The GITHUB_REF_NAME will always be "master"
+        # Use the ref name from the payload. The GITHUB_REF_NAME will always be "main"
         DELETE_REF_NAME: ${{ github.event.ref }}
       run: |
         .internal-ci/util/metadata.sh

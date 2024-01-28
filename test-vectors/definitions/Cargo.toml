@@ -1,6 +1,6 @@
 [package]
 name = "mc-test-vectors-definitions"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -10,4 +10,3 @@ rust-version = { workspace = true }
 mc-util-test-vector = { path = "../../util/test-vector" }
 
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-serde-big-array = { version = "0.3.2", features = ["const-generics"] }

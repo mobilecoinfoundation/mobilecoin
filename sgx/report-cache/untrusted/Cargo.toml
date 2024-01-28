@@ -1,11 +1,11 @@
 [package]
 name = "mc-sgx-report-cache-untrusted"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
-rust-version = "1.68.0"
+rust-version = "1.74.0"
 
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
@@ -13,9 +13,11 @@ retry = "2.0"
 
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
-mc-attest-net = { path = "../../../attest/net" }
 mc-attest-untrusted = { path = "../../../attest/untrusted" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
+mc-sgx-dcap-ql = "0.10.1"
+mc-sgx-dcap-quoteverify = "0.10.1"
+mc-sgx-dcap-types = "0.10.1"
 mc-sgx-report-cache-api = { path = "../api" }
 mc-util-metrics = { path = "../../../util/metrics" }

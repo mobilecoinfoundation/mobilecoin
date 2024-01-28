@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-api"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "mc-fog-report-api"
@@ -10,18 +10,19 @@ rust-version = { workspace = true }
 
 [dependencies]
 futures = "0.3"
-grpcio = "0.12.1"
+grpcio = "0.13"
 protobuf = "2.27.1"
 
 mc-api = { path = "../../../api" }
 mc-attest-api = { path = "../../../attest/api" }
+mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
 mc-consensus-api = { path = "../../../consensus/api" }
 mc-fog-report-types = { path = "../types" }
 
 [dev-dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-fog-report-api-test-utils = { path = "test-utils" }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }

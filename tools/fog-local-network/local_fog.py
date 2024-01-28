@@ -33,9 +33,6 @@ BASE_NGINX_CLIENT_PORT = 8200
 
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
-IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
-
 FOG_SQL_DATABASE_NAME = 'fog_local'
 # Use env.DATABASE_URL if it exists, else use postgres://$PGHOST/fog_local,
 # falling back to postgres://localhost/fog_local.
@@ -123,8 +120,6 @@ class FogIngest:
             f'--client-listen-uri={self.client_listen_url}',
             f'--peer-listen-uri=insecure-igp://{LISTEN_HOST}:{self.peer_port}/',
             f'--peers=insecure-igp://localhost:{self.peer_port}/',
-            f'--ias-api-key={IAS_API_KEY}',
-            f'--ias-spid={IAS_SPID}',
             f'--local-node-id localhost:{self.peer_port}',
             f'--state-file {self.state_file_path}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
@@ -211,9 +206,7 @@ class FogViewRouter:
             f'exec {self.target_dir}/fog_view_router',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
-            f'--ias-api-key={IAS_API_KEY}',
             f'--shard-uris={",".join(self.shard_uris)}',
-            f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
         ])
         self.view_router_process = log_and_popen_shell(cmd)
@@ -265,8 +258,6 @@ class FogViewStore:
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
             f'--sharding-strategy={self.sharding_strategy}',
-            f'--ias-api-key={IAS_API_KEY}',
-            f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
         ])
         self.view_server_process = log_and_popen_shell(cmd)
@@ -344,7 +335,7 @@ class FogLedgerRouter:
 
         self.admin_port = admin_port
         self.admin_http_gateway_port = admin_http_gateway_port
-        
+
         self.shard_uris = shard_uris
 
         self.release = release
@@ -367,8 +358,6 @@ class FogLedgerRouter:
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
-            f'--ias-api-key={IAS_API_KEY}',
-            f'--ias-spid={IAS_SPID}',
             f'--shard-uris={",".join(self.shard_uris)}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
             f'--watcher-db {self.watcher_db_path}',
@@ -391,7 +380,7 @@ class FogLedgerRouter:
 class FogKeyImageStore:
     def __init__(self, name, client_port, admin_port, admin_http_gateway_port, release, sharding_strategy, ledger_db_path, watcher_db_path):
         self.name = name
-        
+
         self.client_port = client_port
         self.client_responder_id = f'{LISTEN_HOST}:{self.client_port}'
         self.sharding_strategy = sharding_strategy
@@ -399,10 +388,10 @@ class FogKeyImageStore:
         self.sharding_strategy = sharding_strategy
         self.ledger_db_path = ledger_db_path
         self.watcher_db_path = watcher_db_path
-        
+
         self.admin_port = admin_port
         self.admin_http_gateway_port = admin_http_gateway_port
-        
+
         self.release = release
         self.target_dir = os.path.join(PROJECT_DIR, target_dir(self.release))
 
@@ -427,8 +416,6 @@ class FogKeyImageStore:
             f'--sharding-strategy={self.sharding_strategy}',
             f'--ledger-db={self.ledger_db_path}',
             f'--watcher-db={self.watcher_db_path}',
-            f'--ias-api-key={IAS_API_KEY}',
-            f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
         ])
         self.key_image_store_process = log_and_popen_shell(cmd)

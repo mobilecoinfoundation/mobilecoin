@@ -6,7 +6,7 @@ use alloc::string::{String, ToString};
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
-use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, QuoteError, SgxError};
+use mc_attest_core::{IntelSealingError, NonceError, ParseSealedError, SgxError};
 use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_noise::CipherError;
 use mc_sgx_compat::sync::PoisonError;
@@ -17,7 +17,7 @@ pub type Result<T> = StdResult<T, Error>;
 
 /// An enumeration of errors which can occur inside an enclave, in connection to
 /// attestation or AKE
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /// Enclave not initialized
     NotInit,
@@ -38,14 +38,12 @@ pub enum Error {
      * There was an error while handling a nonce: {0}
      *
      * This can represent a significant programming bug in the nonce
-     * generation or report parsing code, or a simple mismatch.
+     * generation or attestation evidence parsing code, or a simple
+     * mismatch.
      */
     Nonce(NonceError),
 
-    /// The local quote could not be verified: {0}
-    Quote(QuoteError),
-
-    /// The local report could not be verified: {0}
+    /// The local attestation evidence could not be verified: {0}
     Verify(VerifierError),
 
     /// Another thread crashed while holding a lock
@@ -61,15 +59,15 @@ pub enum Error {
      * Invalid state for call
      *
      * This indicates a bug in the calling code, typically attempting to
-     * re-submit an already-verified quote or IAS report.
+     * re-submit an already-verified quote or attestation evidence.
      */
     InvalidState,
 
-    /// No IAS report has been verified yet
-    NoReportAvailable,
+    /// No attestation evidence has been verified yet
+    NoAttestationEvidenceAvailable,
 
-    /// Too many IAS reports are already in-flight
-    TooManyPendingReports,
+    /// Too many attestation evidence instances are already in-flight
+    TooManyPendingAttestationEvidenceInstances,
 
     /// Encoding error
     Encode(String),
@@ -108,12 +106,6 @@ impl From<SgxError> for Error {
 impl From<NonceError> for Error {
     fn from(src: NonceError) -> Error {
         Error::Nonce(src)
-    }
-}
-
-impl From<QuoteError> for Error {
-    fn from(src: QuoteError) -> Error {
-        Error::Quote(src)
     }
 }
 

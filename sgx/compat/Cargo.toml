@@ -1,21 +1,21 @@
 [package]
 name = "mc-sgx-compat"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
-rust-version = "1.68.0"
+rust-version = "1.74.0"
 
 # All dependencies are optional
 [dependencies]
 cfg-if = "1.0"
 mc-sgx-alloc = { path = "../alloc", optional = true }
-mc-sgx-panic = { path = "../panic", optional = true }
-mc-sgx-sync = { path = "../sync", optional = true }
 mc-sgx-debug = { path = "../debug", optional = true }
+mc-sgx-panic = { path = "../panic", optional = true }
 mc-sgx-service = { path = "../service", optional = true }
+mc-sgx-sync = { path = "../sync", optional = true }
 mc-sgx-types = { path = "../types" }
 
 [features]

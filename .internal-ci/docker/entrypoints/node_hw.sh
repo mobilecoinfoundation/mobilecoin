@@ -18,8 +18,6 @@
 # MC_CLIENT_RESPONDER_ID - fully qualified name:port that fronts the client port
 #   example client1.test.mobilecoin.com:443
 # MC_MSG_SIGNER_KEY - private key for signing messages
-# MC_IAS_API_KEY - Intel IAS API key
-# MC_IAS_SPID - Intel IAS spid
 
 # Optional Vars consensus-service
 # MC_TX_SOURCE_URL - http url to retrieve archive (s3) blocks for node
@@ -105,8 +103,6 @@ then
     is_set MC_PEER_RESPONDER_ID
     is_set MC_CLIENT_RESPONDER_ID
     is_set MC_MSG_SIGNER_KEY
-    is_set MC_IAS_API_KEY
-    is_set MC_IAS_SPID
     is_set MC_DEST
     is_set AWS_ACCESS_KEY_ID
     is_set AWS_SECRET_ACCESS_KEY

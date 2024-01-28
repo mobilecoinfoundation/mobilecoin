@@ -5,17 +5,18 @@
 use cargo_emit::{rerun_if_env_changed, rustc_cfg};
 use mc_util_build_enclave::Builder;
 use mc_util_build_script::Environment;
-use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
+use mc_util_build_sgx::{SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.19.100.3";
+const SGX_VERSION: &str = "2.22.100.3";
 
 const VIEW_ENCLAVE_PRODUCT_ID: u16 = 3;
-const VIEW_ENCLAVE_SECURITY_VERSION: u16 = 7;
+const VIEW_ENCLAVE_SECURITY_VERSION: u16 = 8;
 const VIEW_ENCLAVE_NAME: &str = "view-enclave";
 const VIEW_ENCLAVE_DIR: &str = "../trusted";
+const VIEW_ENCLAVE_BUILD_DIR: &str = "enclave";
 
 fn main() {
     let env = Environment::default();
@@ -71,13 +72,9 @@ fn main() {
     }
 
     builder
-        .target_dir(env.target_dir().join(VIEW_ENCLAVE_NAME).as_path())
+        .target_dir(env.target_dir().join(VIEW_ENCLAVE_BUILD_DIR).as_path())
         .config_builder
-        .debug(
-            sgx.sgx_mode() == SgxMode::Simulation
-                || sgx.ias_mode() == IasMode::Development
-                || env.profile() != "release",
-        )
+        .debug(sgx.sgx_mode() == SgxMode::Simulation || env.profile() != "release")
         .prod_id(VIEW_ENCLAVE_PRODUCT_ID)
         .isv_security_version(VIEW_ENCLAVE_SECURITY_VERSION)
         .tcs_num(32)

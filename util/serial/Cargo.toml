@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-serial"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -16,11 +16,11 @@ std = ["serde/std", "serde_cbor/std", "serde_with"]
 test_utils = ["protobuf"]
 
 [dependencies]
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 protobuf = { version = "2.27", optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_cbor = { version = "0.11.1", default-features = false, features = ["alloc"] }
-serde_with = { version = "2.0", default-features = false, features = ["macros"], optional = true }
+serde_with = { version = "3.1", default-features = false, features = ["macros"], optional = true }
 
 [dev-dependencies]
 serde_json = "1.0"

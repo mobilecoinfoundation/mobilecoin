@@ -3,8 +3,8 @@
 //! Data access abstraction for minting configuration stored in the ledger.
 //!
 //! This store maintains three LMDB databases:
-//! 1) A mapping of token id -> currently active mint configurations.
-//!    This database is used for two things:
+//! 1) A mapping of token id -> currently active mint configurations. This
+//!    database is used for two things:
 //!      1) It allows transaction validation code to figure out if a mint
 //! transaction is allowed to mint.
 //!      2) It enables keeping track of how much was minted using a given

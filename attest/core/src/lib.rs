@@ -15,7 +15,6 @@ mod error;
 mod ias;
 mod nonce;
 mod quote;
-mod report;
 mod seal;
 mod sigrl;
 mod traits;
@@ -26,36 +25,30 @@ pub use crate::{
         EpidPseudonymError, IasQuoteError, IasQuoteResult, JsonError, NonceError, PibError,
         PseManifestError, PseManifestHashError, PseManifestResult, QuoteError, QuoteSignTypeError,
         QuoteVerifyError, ReportBodyVerifyError, ReportDetailsError, RevocationCause, SgxError,
-        SgxResult, SignatureError, TargetInfoError, VerifyError,
+        SgxResult, SignatureError, VerifyError,
     },
     ias::verify::{EpidPseudonym, VerificationReportData},
-    nonce::{IasNonce, Nonce, QuoteNonce},
+    nonce::{IasNonce, Nonce},
     quote::{Quote, QuoteSignType},
-    report::Report,
     seal::{IntelSealed, IntelSealingError, ParseSealedError, Sealed},
     sigrl::SigRL,
     types::{
-        attributes::Attributes,
-        basename::Basename,
-        config_id::ConfigId,
-        cpu_svn::CpuSecurityVersion,
-        epid_group_id::EpidGroupId,
-        ext_prod_id::ExtendedProductId,
-        family_id::FamilyId,
-        key_id::KeyId,
-        mac::Mac,
-        measurement::{Measurement, MrEnclave, MrSigner},
-        pib::PlatformInfoBlob,
-        report_body::ReportBody,
-        report_data::{ReportData, ReportDataMask},
-        spid::ProviderId,
-        target_info::TargetInfo,
-        update_info::*,
-        ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
+        basename::Basename, epid_group_id::EpidGroupId, key_id::KeyId, mac::Mac,
+        measurement::Measurement, pib::PlatformInfoBlob, report_data::ReportDataMask,
+        spid::ProviderId, update_info::*,
     },
 };
 
-pub use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
+pub use mc_attest_verifier_types::{
+    DcapEvidence, EnclaveReportDataContents, EvidenceKind, VerificationReport,
+    VerificationSignature,
+};
+
+pub use mc_sgx_core_types::{
+    Attributes, ConfigId, ConfigSvn, CpuSvn, ExtendedProductId, FamilyId, IsvProductId, IsvSvn,
+    MiscellaneousSelect, MrEnclave, MrSigner, QuoteNonce, Report, ReportBody, ReportData,
+    TargetInfo,
+};
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;

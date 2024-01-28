@@ -3,6 +3,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "consensusNode.fullname" . }}
+  annotations:
+    sgx.intel.com/quote-provider: node
   labels:
     app: consensus-node
     {{- include "consensusNode.labels" . | nindent 4 }}
@@ -97,8 +99,6 @@ spec:
             name: {{ include "consensusNode.ledgerDistribution.secret.name" . }}
         - secretRef:
             name: {{ include "consensusNode.msgSignerKey.secret.name" . }}
-        - secretRef:
-            name: ias
         - configMapRef:
             name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
         - secretRef:

@@ -9,11 +9,53 @@
 
 extern crate alloc;
 
+use ::prost::Message;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
-use mc_attest_core::VerificationReport;
+use mc_attest_verifier_types::{prost, EvidenceKind, VerificationReport};
 use mc_crypto_digestible::Digestible;
-use prost::Message;
 use serde::{Deserialize, Serialize};
+
+/// The attestation evidence variants for a report.
+#[derive(Clone, ::prost::Oneof, Deserialize, Eq, PartialEq, Serialize, Digestible)]
+#[digestible(transparent)]
+pub enum AttestationEvidence {
+    /// The attestation evidence is a [VerificationReport].
+    #[prost(message, tag = 2)]
+    VerificationReport(VerificationReport),
+    /// DCAP evidence
+    #[prost(message, tag = 4)]
+    DcapEvidence(prost::DcapEvidence),
+}
+
+impl From<VerificationReport> for AttestationEvidence {
+    fn from(report: VerificationReport) -> Self {
+        Self::VerificationReport(report)
+    }
+}
+
+impl From<prost::DcapEvidence> for AttestationEvidence {
+    fn from(evidence: prost::DcapEvidence) -> Self {
+        Self::DcapEvidence(evidence)
+    }
+}
+
+impl From<EvidenceKind> for AttestationEvidence {
+    fn from(kind: EvidenceKind) -> Self {
+        match kind {
+            EvidenceKind::Epid(report) => report.into(),
+            EvidenceKind::Dcap(evidence) => evidence.into(),
+        }
+    }
+}
+
+impl From<AttestationEvidence> for EvidenceKind {
+    fn from(evidence: AttestationEvidence) -> Self {
+        match evidence {
+            AttestationEvidence::VerificationReport(report) => report.into(),
+            AttestationEvidence::DcapEvidence(evidence) => evidence.into(),
+        }
+    }
+}
 
 /// A fog report from the report server
 #[derive(Clone, Digestible, Eq, PartialEq, Serialize, Deserialize, Message)]
@@ -22,9 +64,10 @@ pub struct Report {
     #[prost(string, tag = "1")]
     #[digestible(never_omit)]
     pub fog_report_id: String,
-    /// The bytes of the verification report
-    #[prost(message, required, tag = "2")]
-    pub report: VerificationReport,
+    /// Attestation evidence for the enclave.
+    #[prost(oneof = "AttestationEvidence", tags = "2, 4")]
+    #[digestible(name = "report")]
+    pub attestation_evidence: Option<AttestationEvidence>,
     /// The pubkey expiry value (a block index)
     #[prost(fixed64, tag = "3")]
     pub pubkey_expiry: u64,
@@ -79,3 +122,72 @@ pub struct ReportResponse {
 /// HashMap, except that it is slightly more portable, only requiring the alloc
 /// crate.
 pub type FogReportResponses = BTreeMap<String, ReportResponse>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use mc_crypto_digestible::MerlinTranscript;
+    use mc_util_test_helper::{Rng, RngCore};
+
+    /// A fog report used with EPID attestation, prior to DCAP attestation
+    #[derive(Clone, Digestible, Eq, PartialEq, Serialize, Deserialize, Message)]
+    #[digestible(name = "Report")]
+    pub struct EpidReport {
+        /// The fog_report_id of the report
+        #[prost(string, tag = "1")]
+        #[digestible(never_omit)]
+        pub fog_report_id: String,
+        /// The bytes of the verification report
+        #[prost(message, required, tag = "2")]
+        pub report: VerificationReport,
+        /// The pubkey expiry value (a block index)
+        #[prost(fixed64, tag = "3")]
+        pub pubkey_expiry: u64,
+    }
+
+    #[test]
+    fn empty_report_back_and_forth() {
+        let epid_report = EpidReport::default();
+        let bytes = mc_util_serial::encode(&epid_report);
+        let dcap_report = Report::decode(bytes.as_slice()).expect("failed to decode");
+        assert_eq!(epid_report.fog_report_id, dcap_report.fog_report_id);
+        assert_eq!(
+            Some(AttestationEvidence::VerificationReport(
+                epid_report.report.clone()
+            )),
+            dcap_report.attestation_evidence
+        );
+        assert_eq!(epid_report.pubkey_expiry, dcap_report.pubkey_expiry);
+
+        let epid_digest = epid_report.digest32::<MerlinTranscript>(b"");
+        let dcap_digest = dcap_report.digest32::<MerlinTranscript>(b"");
+        assert_eq!(epid_digest, dcap_digest);
+    }
+
+    #[test]
+    fn epid_report_works_with_new_dcap_report() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let string_length = rng.gen_range(1..=100);
+            let epid_report = EpidReport {
+                fog_report_id: mc_util_test_helper::random_str(string_length, &mut rng),
+                report: mc_blockchain_test_utils::make_verification_report(&mut rng),
+                pubkey_expiry: rng.next_u64(),
+            };
+
+            let bytes = mc_util_serial::encode(&epid_report);
+            let dcap_report = Report::decode(bytes.as_slice()).expect("failed to decode");
+            assert_eq!(epid_report.fog_report_id, dcap_report.fog_report_id);
+            assert_eq!(
+                Some(AttestationEvidence::VerificationReport(
+                    epid_report.report.clone()
+                )),
+                dcap_report.attestation_evidence
+            );
+            assert_eq!(epid_report.pubkey_expiry, dcap_report.pubkey_expiry);
+
+            let epid_digest = epid_report.digest32::<MerlinTranscript>(b"");
+            let dcap_digest = dcap_report.digest32::<MerlinTranscript>(b"");
+            assert_eq!(epid_digest, dcap_digest);
+        })
+    }
+}

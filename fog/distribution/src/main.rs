@@ -22,7 +22,6 @@
 use core::{cell::RefCell, cmp::max};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{create_app_logger, log, o, Logger},
     HashMap, HashSet,
@@ -474,14 +473,8 @@ fn build_fog_resolver(
     )
     .expect("Could not contact fog report server");
 
-    let report_verifier = {
-        let mr_signer_verifier = mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
-        let mut verifier = Verifier::default();
-        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-        verifier
-    };
-
-    FogResolver::new(responses, &report_verifier).expect("Could not get FogResolver")
+    let identity = mc_fog_ingest_enclave_measurement::mr_signer_identity(None);
+    FogResolver::new(responses, [&identity]).expect("Could not get FogResolver")
 }
 
 /// Entry point for a worker thread which tries to pull spendable tx outs rom
@@ -718,13 +711,8 @@ fn build_tx(
     let fee_amount = Amount::new(MOB_FEE.load(Ordering::SeqCst), token_id);
 
     // Create tx_builder.
-    let mut tx_builder = TransactionBuilder::new(
-        block_version,
-        fee_amount,
-        fog_resolver,
-        EmptyMemoBuilder::default(),
-    )
-    .unwrap();
+    let mut tx_builder =
+        TransactionBuilder::new(block_version, fee_amount, fog_resolver, EmptyMemoBuilder).unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -843,7 +831,7 @@ fn get_membership_proofs(
         .collect();
     let proofs = ledger_db.get_tx_out_proof_of_memberships(&indexes).unwrap();
 
-    utxos.iter().cloned().zip(proofs.into_iter()).collect()
+    utxos.iter().cloned().zip(proofs).collect()
 }
 
 /// Get ring mixins for a transaction from the ledger
@@ -871,7 +859,7 @@ fn get_rings(
         .unwrap();
 
     // Create an iterator that returns (index, proof) elements.
-    let mut indexes_and_proofs_iterator = sampled_indices_vec.into_iter().zip(proofs.into_iter());
+    let mut indexes_and_proofs_iterator = sampled_indices_vec.into_iter().zip(proofs);
 
     // Convert that into a Vec<Vec<TxOut, TxOutMembershipProof>>
     let mut rings_with_proofs = Vec::new();

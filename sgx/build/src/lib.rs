@@ -54,19 +54,6 @@ pub fn handle_sgx_sim_feature() {
     }
 }
 
-// Conditionally apply ias-dev feature to current crate based on IAS_MODE
-pub fn handle_ias_dev_feature() {
-    if *conf::IAS_MODE_DEV {
-        println!(
-            "cargo:warning=Compiling {} for IAS dev mode",
-            std::env::var("CARGO_PKG_NAME").expect("Could not get package name from environment")
-        );
-        println!("cargo:rustc-cfg=feature=\"ias-dev\"");
-    } else if std::env::var("CARGO_FEATURE_IAS_DEV").is_ok() {
-        panic!("ias-dev feature is set by cargo, but IAS_MODE is PROD");
-    }
-}
-
 // Tell cargo to rebuild if any *.rs, *.edl, *.proto, Cargo.toml, Cargo.lock or
 // a directory itself in a given path has changed.
 pub fn rerun_if_code_changed(dir: &str) {

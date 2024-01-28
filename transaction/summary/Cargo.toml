@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-summary"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 readme = "README.md"
@@ -39,7 +39,7 @@ mc-transaction-types = { path = "../types", default-features = false, features =
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact", default-features = false }
 
-prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", optional = true, default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }

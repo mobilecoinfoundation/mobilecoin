@@ -173,7 +173,7 @@ mod peer_tests {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
             Duration::from_secs(60),
-            SystemTimeProvider::default(),
+            SystemTimeProvider,
         ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
@@ -239,7 +239,7 @@ mod client_tests {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
             Duration::from_secs(60),
-            SystemTimeProvider::default(),
+            SystemTimeProvider,
         ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 

@@ -44,7 +44,7 @@ jobs:
     secrets: inherit
 
   restore-s3-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - reset
     container:
@@ -58,12 +58,21 @@ jobs:
         BUCKET: mobilecoin.eu.development.chain
         NAMESPACE: ${{ inputs.namespace }}
         VERSION: ${{ inputs.version }}
+      shell: bash
       run: |
         for i in 1 2 3
         do
-          aws s3 cp --only-show-errors --recursive --acl public-read \
-            "s3://${BUCKET}/prebuilt/${VERSION}/chain/node${i}" \
-            "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com"
+            aws s3 cp --only-show-errors --recursive --acl public-read \
+              "s3://${BUCKET}/prebuilt/${VERSION}/chain/node${i}" \
+              "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
+            # capture pids
+            pids[${i}]=$!
+        done
+
+        # wait for all pids to finish
+        for pid in ${pids[*]}
+        do
+            wait ${pid}
         done
 
   setup-environment:
@@ -80,7 +89,7 @@ jobs:
   #  We now have a db with setup-environment
   #  Note this only works if we are in the same cluster as the dev env.
   restore-db-from-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - setup-environment
     container:

@@ -177,7 +177,7 @@ pub fn get_unsigned_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver
         block_version,
         Amount::new(Mob::MINIMUM_FEE, token_id),
         fog_resolver.clone(),
-        EmptyMemoBuilder::default(),
+        EmptyMemoBuilder,
     )
     .unwrap();
     let input_value = 1000;

@@ -5,39 +5,31 @@
 use crate::{controller::IngestController, error::IngestServiceError, SVC_COUNTERS};
 use grpcio::{RpcContext, UnarySink};
 use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApi};
-use mc_attest_net::RaClient;
 use mc_common::logger::{log, Logger};
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result};
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct AttestedApiService<
-    R: RaClient + Send + Sync + 'static,
-    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
-{
-    controller: Arc<IngestController<R, DB>>,
-    logger: Logger,
-}
-
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > AttestedApiService<R, DB>
+pub struct AttestedApiService<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
-    pub fn new(controller: Arc<IngestController<R, DB>>, logger: Logger) -> Self {
+    controller: Arc<IngestController<DB>>,
+    logger: Logger,
+}
+
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> AttestedApiService<DB>
+where
+    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+{
+    pub fn new(controller: Arc<IngestController<DB>>, logger: Logger) -> Self {
         Self { controller, logger }
     }
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > AttestedApi for AttestedApiService<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> AttestedApi
+    for AttestedApiService<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {

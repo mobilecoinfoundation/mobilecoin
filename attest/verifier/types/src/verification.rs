@@ -2,18 +2,94 @@
 
 //! Attestation Verification Report type.
 
+use crate::prost;
+use ::prost::{
+    bytes::{Buf, BufMut},
+    encoding::{self, DecodeContext, WireType},
+    DecodeError, Message,
+};
 use alloc::{string::String, vec::Vec};
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use core::fmt::{Debug, Display};
 use hex_fmt::{HexFmt, HexList};
 use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::X25519Public;
+use mc_sgx_core_types::QuoteNonce;
+use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
-use prost::{
-    bytes::{Buf, BufMut},
-    encoding::{self, DecodeContext, WireType},
-    DecodeError, Message,
-};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct DcapEvidence {
+    pub quote: Quote3<Vec<u8>>,
+    pub collateral: Collateral,
+    pub report_data: EnclaveReportDataContents,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum EvidenceKind {
+    Epid(VerificationReport),
+    Dcap(prost::DcapEvidence),
+}
+
+impl From<VerificationReport> for EvidenceKind {
+    fn from(report: VerificationReport) -> Self {
+        EvidenceKind::Epid(report)
+    }
+}
+
+impl From<prost::DcapEvidence> for EvidenceKind {
+    fn from(evidence: prost::DcapEvidence) -> Self {
+        EvidenceKind::Dcap(evidence)
+    }
+}
+
+impl EvidenceKind {
+    /// Convert [`EvidenceKind`] into a byte stream.
+    ///
+    /// This is for backwards compatibility for places that used to stream
+    /// `VerificationReport` directly.
+    /// This should not be used for new code. Prefer using serde or protobufs
+    /// for newer implementations.
+    pub fn into_bytes(&self) -> Vec<u8> {
+        match self {
+            EvidenceKind::Dcap(evidence) => {
+                let decoder = DcapEvidenceDecoder {
+                    dcap: Some(evidence.clone()),
+                };
+                decoder.encode_to_vec()
+            }
+            EvidenceKind::Epid(report) => report.encode_to_vec(),
+        }
+    }
+
+    /// Convert a byte stream into [`EvidenceKind`].
+    ///
+    /// This is for backwards compatibility for places that used to stream
+    /// `VerificationReport` directly.
+    /// This should not be used for new code. Prefer using serde or protobufs
+    /// for newer implementations.
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, DecodeError> {
+        let bytes = bytes.as_ref();
+        let dcap_evidence = DcapEvidenceDecoder::decode(bytes)?;
+        if let Some(dcap_evidence) = dcap_evidence.dcap {
+            return Ok(EvidenceKind::Dcap(dcap_evidence));
+        }
+        let report = VerificationReport::decode(bytes)?;
+        Ok(EvidenceKind::Epid(report))
+    }
+}
+
+// A local only struct to make it nest a `prost::DcapEvidence` behind a tag.
+// This allows `DcapEvidence` to be used in prior locations where
+// `VerificationReport` was used. The tag is `4` to avoid collisions with the
+// `VerificationReport` tags.
+#[derive(Message)]
+struct DcapEvidenceDecoder {
+    #[prost(message, tag = 4)]
+    pub dcap: Option<prost::DcapEvidence>,
+}
 
 /// Container for holding the quote verification sent back from IAS.
 ///
@@ -151,10 +227,76 @@ impl Message for VerificationSignature {
     }
 }
 
+/// Structure for holding the contents of the Enclave's Report Data.
+/// The Enclave Quote's ReportData member contains a SHA256 hash of this
+/// structure's contents.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct EnclaveReportDataContents {
+    nonce: QuoteNonce,
+    key: X25519Public,
+    custom_identity: Option<[u8; 32]>,
+}
+
+impl EnclaveReportDataContents {
+    /// Create a new EnclaveReportDataContents.
+    ///
+    /// # Arguments
+    /// * `nonce` - The nonce provided from the enclave when generating the
+    ///   Report.
+    /// * `key` - The public key of the enclave. Previously this was bytes 0..32
+    ///   of the enclave's [`ReportData`](mc-sgx-core-types::ReportData).
+    /// * `custom_identity` - The custom identity of the enclave. Previously
+    ///   this was bytes 32..64 of the enclave's
+    ///   [`ReportData`](mc-sgx-core-types::ReportData).
+    pub fn new(
+        nonce: QuoteNonce,
+        key: X25519Public,
+        custom_identity: impl Into<Option<[u8; 32]>>,
+    ) -> Self {
+        Self {
+            nonce,
+            key,
+            custom_identity: custom_identity.into(),
+        }
+    }
+
+    /// Get the nonce
+    pub fn nonce(&self) -> &QuoteNonce {
+        &self.nonce
+    }
+
+    /// Get the public key
+    pub fn key(&self) -> &X25519Public {
+        &self.key
+    }
+
+    ///  Get the custom identity
+    pub fn custom_identity(&self) -> Option<&[u8; 32]> {
+        self.custom_identity.as_ref()
+    }
+
+    /// Returns a SHA256 hash of the contents of this structure.
+    ///
+    /// This is the value that is stored in bytes 0..32 of the enclave's
+    /// [`ReportData`](mc-sgx-core-types::ReportData).
+    pub fn sha256(&self) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.update(&self.nonce);
+        hasher.update(&self.key);
+        if let Some(custom_identity) = &self.custom_identity {
+            hasher.update(custom_identity);
+        }
+        hasher.finalize().into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::{format, vec};
+    use mc_attest_untrusted::DcapQuotingEnclave;
+    use mc_sgx_core_types::Report;
+    use mc_util_test_helper::Rng;
 
     #[test]
     fn test_signature_debug() {
@@ -173,5 +315,84 @@ mod tests {
             format!("{}", &report),
             "VerificationReport { sig: deadbeefcafe, chain: [abcd, cdef, 1234], http_body: \"some_body\" }"
         );
+    }
+
+    #[test]
+    fn enclave_report_data_contents_sha256_without_custom_id() {
+        let nonce: QuoteNonce = [0x2u8; 16].into();
+        let key_bytes = [0x33u8; 32];
+        let key: X25519Public = key_bytes.as_slice().try_into().expect("bad key");
+        let zeroed_custom_identity = [0x0u8; 32];
+        let report_data_without_custom_id =
+            EnclaveReportDataContents::new(nonce.clone(), key.clone(), None);
+
+        let report_data_with_zeroed_custom_id =
+            EnclaveReportDataContents::new(nonce, key, zeroed_custom_identity);
+
+        assert_ne!(
+            report_data_without_custom_id.sha256(),
+            report_data_with_zeroed_custom_id.sha256()
+        );
+    }
+
+    #[test]
+    fn evidence_kind_to_from_verification_report() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let string_length = rng.gen_range(1..=100);
+            let chain_len = rng.gen_range(2..42);
+            let report = VerificationReport {
+                sig: mc_util_test_helper::random_bytes_vec(32, &mut rng).into(),
+                chain: (1..=chain_len)
+                    .map(|n| mc_util_test_helper::random_bytes_vec(n as usize, &mut rng))
+                    .collect(),
+                http_body: mc_util_test_helper::random_str(string_length, &mut rng),
+            };
+            let bytes = report.encode_to_vec();
+
+            // For backwards compatibility `EvidenceKind` should decode directly
+            // from a `VerificationReport` byte stream
+            let evidence = EvidenceKind::from_bytes(bytes.as_slice())
+                .expect("Failed to decode to EvidenceKind");
+            assert_eq!(EvidenceKind::Epid(report.clone()), evidence);
+
+            // For backwards compatibility the encoding of `EvidenceKind` when
+            // it's a `VerificationReport` should be able to decode to a
+            // `VerificationReport`.
+            let evidence_bytes = evidence.into_bytes();
+            let decoded_report = VerificationReport::decode(evidence_bytes.as_slice())
+                .expect("Failed to decode to VerificationReport");
+            assert_eq!(report, decoded_report);
+        })
+    }
+
+    #[test]
+    fn evidence_kind_dcap_encode_and_decode() {
+        let report_data = EnclaveReportDataContents::new(
+            [0x20u8; 16].into(),
+            [0x63u8; 32].as_slice().try_into().expect("bad key"),
+            [0xAEu8; 32],
+        );
+        let mut report = Report::default();
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
+
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        let dcap_evidence = prost::DcapEvidence {
+            quote: Some((&quote).into()),
+            collateral: Some(
+                (&collateral)
+                    .try_into()
+                    .expect("Failed to convert collateral"),
+            ),
+            report_data: Some((&report_data).into()),
+        };
+
+        let evidence_kind = EvidenceKind::Dcap(dcap_evidence);
+
+        let bytes = evidence_kind.into_bytes();
+
+        let decoded_evidence_kind =
+            EvidenceKind::from_bytes(bytes).expect("Failed to decode to EvidenceKind");
+        assert_eq!(evidence_kind, decoded_evidence_kind);
     }
 }

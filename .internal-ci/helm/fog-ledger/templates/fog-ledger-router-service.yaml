@@ -1,0 +1,28 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- range $routerHosts := $.Values.fogLedger.router.hosts }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
+  labels:
+    app: fog-ledger-router
+    partner: {{ $routerHosts.partner }}
+    {{- include "fog-ledger.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: fog-ledger-router
+    partner: {{ $routerHosts.partner }}
+    {{- include "fog-ledger.selectorLabels" $ | nindent 4 }}
+  ports:
+  - name: ledger-grpc
+    port: 3228
+    targetPort: ledger-grpc
+  - name: mgmt-http
+    port: 8000
+    targetPort: mgmt-http
+  - name: ledger-http
+    port: 8228
+    targetPort: ledger-http
+---
+{{- end }}

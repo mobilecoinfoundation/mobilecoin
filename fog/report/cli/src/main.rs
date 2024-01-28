@@ -17,10 +17,9 @@
 use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
+use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_evidence;
 use mc_fog_report_connection::{Error, GrpcFogReportConnection};
 use mc_fog_report_resolver::FogResolver;
 use mc_fog_report_types::FogReportResponses;
@@ -74,7 +73,7 @@ struct Config {
     pub fog_report_id: Option<String>,
 
     /// The fog authority spki, in base 64
-    /// If omitted, then NO verification of any kind (IAS, MRSIGNER, cert
+    /// If omitted, then NO verification of any kind (MRSIGNER, cert
     /// chains) will be performed.
     /// If a public address is supplied, this cannot be supplied.
     #[clap(long, short = 's', env = "MC_FOG_SPKI")]
@@ -89,7 +88,7 @@ struct Config {
     #[clap(long, short = 'v', env = "MC_SHOW_EXPIRY")]
     pub show_expiry: bool,
 
-    /// Skip all validation of the fog response, including IAS, cert checking,
+    /// Skip all validation of the fog response, cert checking,
     /// and fog authority signature.
     #[clap(long, short, env = "MC_NO_VALIDATE")]
     pub no_validate: bool,
@@ -134,16 +133,10 @@ fn get_validated_pubkey(
     pub_addr: PublicAddress,
     logger: &Logger,
 ) -> FullyValidatedFogPubkey {
-    let mut verifier = Verifier::default();
+    let identity = mc_fog_ingest_enclave_measurement::mr_signer_identity(None);
+    log::debug!(logger, "Ingest MRSIGNER identity: {:?}", &identity);
 
-    {
-        let mr_signer_verifier = mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
-        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-    }
-
-    log::debug!(logger, "IAS verifier: {:?}", &verifier);
-
-    let resolver = FogResolver::new(responses, &verifier);
+    let resolver = FogResolver::new(responses, [&identity]);
     resolver
         .expect("Could not get FogPubkey resolved")
         .get_fog_pubkey(&pub_addr)
@@ -166,9 +159,13 @@ fn get_unvalidated_pubkey(
         .find(|rep| rep.fog_report_id == fog_report_id)
         .expect("Didn't find report with the right report id");
     let pubkey_expiry = rep.pubkey_expiry;
-    // This parses the fog report and extracts the ingress key
-    let ingress_pubkey = try_extract_unvalidated_ingress_pubkey_from_fog_report(&rep.report)
-        .expect("Could not parse report");
+    let attestation_evidence = rep
+        .attestation_evidence
+        .as_ref()
+        .expect("Report didn't contain attestation evidence");
+    let ingress_pubkey =
+        try_extract_unvalidated_ingress_pubkey_from_fog_evidence(attestation_evidence)
+            .expect("Could not parse key from evidence");
     let pubkey =
         RistrettoPublic::try_from(&ingress_pubkey).expect("report didn't contain a valid key");
     (pubkey, pubkey_expiry)

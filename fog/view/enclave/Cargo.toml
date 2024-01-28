@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -12,7 +12,6 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
-mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
 mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
@@ -36,7 +35,7 @@ mc-fog-view-enclave-measurement = { path = "./measurement" }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-from-random = { path = "../../../util/from-random" }

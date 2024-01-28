@@ -1,11 +1,11 @@
 [package]
 name = "mc-sgx-report-cache-api"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
-rust-version = "1.68.0"
+rust-version = "1.74.0"
 
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
@@ -13,4 +13,5 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
+mc-sgx-dcap-types = "0.10.1"
 mc-util-serial = { path = "../../../util/serial", default-features = false }

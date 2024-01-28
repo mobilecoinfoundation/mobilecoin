@@ -52,7 +52,7 @@ message Message {
 /// An AEAD message with an explicit nonce.
 ///
 /// This message is technically compatible with [`Message`], but exists to
-// ensure generated code doesn't use Message.
+/// ensure generated code doesn't use Message.
 message NonceMessage {
         /// A byte array containing plaintext authenticated data.
         bytes aad = 1;

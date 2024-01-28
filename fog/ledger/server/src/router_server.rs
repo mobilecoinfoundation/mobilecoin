@@ -1,38 +1,33 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
+use crate::{
+    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
+    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
 };
-
 use futures::executor::block_on;
 use grpcio::ChannelBuilder;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
 use mc_fog_api::ledger_grpc;
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
-use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioChannel,
     ConnectionUriGrpcioServer, TokenAuthenticator,
 };
 use mc_util_uri::AdminUri;
-use mc_watcher::watcher_db::WatcherDB;
-
-use crate::{
-    config::LedgerRouterConfig, counters, router_admin_service::LedgerRouterAdminService,
-    router_service::LedgerRouterService, BlockService, MerkleProofService, UntrustedTxOutService,
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
 };
 
-pub struct LedgerRouterServer<E, RC>
+pub struct LedgerRouterServer<E>
 where
     E: LedgerEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     router_server: grpcio::Server,
     admin_service: LedgerRouterAdminService,
@@ -40,25 +35,21 @@ where
     admin_listen_uri: AdminUri,
     config: LedgerRouterConfig,
     enclave: E,
-    ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
     logger: Logger,
     admin_server: Option<AdminServer>,
 }
 
-impl<E, RC> LedgerRouterServer<E, RC>
+impl<E> LedgerRouterServer<E>
 where
     E: LedgerEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     pub fn new(
         config: LedgerRouterConfig,
         enclave: E,
-        ra_client: RC,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         logger: Logger,
-    ) -> LedgerRouterServer<E, RC> {
+    ) -> LedgerRouterServer<E> {
         let mut ledger_store_grpc_clients = HashMap::new();
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
@@ -80,10 +71,10 @@ where
                 Arc::new(TokenAuthenticator::new(
                     *shared_secret,
                     config.client_auth_token_max_lifetime,
-                    SystemTimeProvider::default(),
+                    SystemTimeProvider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         let env = Arc::new(
@@ -119,7 +110,7 @@ where
         let merkle_proof_service =
             ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
                 config.chain_id.clone(),
-                ledger.clone(),
+                block_provider.clone(),
                 enclave.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
@@ -128,16 +119,14 @@ where
         let untrusted_tx_out_service =
             ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
                 config.chain_id.clone(),
-                ledger.clone(),
-                watcher.clone(),
+                block_provider.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
             ));
         // Init block service
         let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
             config.chain_id.clone(),
-            ledger,
-            watcher,
+            block_provider,
             client_authenticator,
             logger.clone(),
         ));
@@ -166,7 +155,6 @@ where
             admin_listen_uri: config.admin_listen_uri.clone(),
             config,
             enclave,
-            ra_client,
             report_cache_thread: None,
             logger,
             admin_server: None,
@@ -178,9 +166,7 @@ where
         self.report_cache_thread = Some(
             ReportCacheThread::start(
                 self.enclave.clone(),
-                self.ra_client.clone(),
-                self.config.ias_spid,
-                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
                 self.logger.clone(),
             )
             .expect("failed starting report cache thread"),
@@ -224,10 +210,9 @@ where
     }
 }
 
-impl<E, RC> Drop for LedgerRouterServer<E, RC>
+impl<E> Drop for LedgerRouterServer<E>
 where
     E: LedgerEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         self.stop();

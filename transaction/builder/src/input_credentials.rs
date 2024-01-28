@@ -66,10 +66,8 @@ impl InputCredentials {
         // Sort the ring and the corresponding proofs. This ensures that the ordering
         // of mixins in the transaction does not depend on the user's implementation for
         // obtaining mixins.
-        let mut ring_and_proofs: Vec<(TxOut, TxOutMembershipProof)> = ring
-            .into_iter()
-            .zip(membership_proofs.into_iter())
-            .collect();
+        let mut ring_and_proofs: Vec<(TxOut, TxOutMembershipProof)> =
+            ring.into_iter().zip(membership_proofs).collect();
 
         ring_and_proofs
             .sort_by(|(tx_out_a, _), (tx_out_b, _)| tx_out_a.public_key.cmp(&tx_out_b.public_key));

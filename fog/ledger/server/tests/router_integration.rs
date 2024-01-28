@@ -2,14 +2,13 @@
 
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
-use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_blockchain_types::BlockVersion;
 use mc_common::{
     logger,
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{KeyImageResultExtension, LedgerGrpcClient};
 use mc_fog_ledger_enclave::LedgerSgxEnclave;
 use mc_fog_ledger_server::{
@@ -34,6 +33,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
+    time::Duration,
 };
 use tempfile::TempDir;
 use url::Url;
@@ -60,15 +60,15 @@ fn create_store_config(
             .responder_id()
             .expect("Couldn't get responder ID for store"),
         client_listen_uri: store_uri.clone(),
-        ledger_db: Default::default(),
-        watcher_db: Default::default(),
-        ias_api_key: Default::default(),
-        ias_spid: Default::default(),
+        ledger_db: Some(Default::default()),
+        watcher_db: Some(Default::default()),
+        mobilecoind_uri: None,
         admin_listen_uri: None,
         client_auth_token_secret: None,
         client_auth_token_max_lifetime: Default::default(),
         omap_capacity,
         sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::new(block_range)),
+        poll_interval: Duration::from_millis(250),
     }
 }
 
@@ -77,7 +77,7 @@ fn add_block_to_ledger(
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
-    watcher: &mut WatcherDB,
+    watcher: &WatcherDB,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);
     let block_data = mc_ledger_db::test_utils::add_block_to_ledger(
@@ -106,7 +106,7 @@ fn add_block_to_ledger(
     block_index + 1
 }
 
-fn populate_ledger(blocks_config: &BlockConfig, ledger: &mut LedgerDB, watcher: &mut WatcherDB) {
+fn populate_ledger(blocks_config: &BlockConfig, ledger: &mut LedgerDB, watcher: &WatcherDB) {
     let mut rng = thread_rng();
 
     let alice = AccountKey::random_with_fog(&mut rng);
@@ -129,7 +129,7 @@ fn create_store(
     watcher_db_path: &Path,
     ledger_db_path: &Path,
     logger: Logger,
-) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient> {
+) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy> {
     let uri = KeyImageStoreUri::from_str(&format!(
         "insecure-key-image-store://{}",
         test_config.address
@@ -149,19 +149,16 @@ fn create_store(
     );
 
     let mut ledger = recreate_ledger_db(ledger_db_path);
-    let mut watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
+    let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
-    populate_ledger(blocks_config, &mut ledger, &mut watcher);
+    populate_ledger(blocks_config, &mut ledger, &watcher);
 
-    let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
     let mut store = KeyImageStoreServer::new_from_config(
         config,
         enclave,
-        ra_client,
-        ledger,
-        watcher,
+        LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::new(block_range),
-        SystemTimeProvider::default(),
+        SystemTimeProvider,
         logger,
     );
     store.start();
@@ -186,7 +183,7 @@ fn create_router(
     watcher_db_path: &Path,
     ledger_db_path: &Path,
     logger: Logger,
-) -> LedgerRouterServer<LedgerSgxEnclave, AttestClient> {
+) -> LedgerRouterServer<LedgerSgxEnclave> {
     let uri = FogLedgerUri::from_str(&format!(
         "insecure-fog-ledger://{}",
         test_config.router_address
@@ -199,14 +196,15 @@ fn create_router(
     .unwrap();
 
     let mut ledger = recreate_ledger_db(ledger_db_path);
-    let mut watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
+    let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
 
-    populate_ledger(blocks_config, &mut ledger, &mut watcher);
+    populate_ledger(blocks_config, &mut ledger, &watcher);
 
     let config = LedgerRouterConfig {
         chain_id: "local".to_string(),
-        ledger_db: ledger_db_path.to_path_buf(),
-        watcher_db: watcher_db_path.to_path_buf(),
+        ledger_db: Some(ledger_db_path.to_path_buf()),
+        watcher_db: Some(watcher_db_path.to_path_buf()),
+        mobilecoind_uri: None,
         shard_uris: test_config
             .shards
             .iter()
@@ -220,24 +218,24 @@ fn create_router(
             .expect("Couldn't get responder ID for router"),
         client_listen_uri: uri,
         admin_listen_uri: admin_uri,
-        ias_spid: Default::default(),
-        ias_api_key: Default::default(),
         client_auth_token_secret: None,
         client_auth_token_max_lifetime: Default::default(),
         query_retries: 3,
-        omap_capacity: test_config.omap_capacity,
     };
 
     let enclave = LedgerSgxEnclave::new(
         get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
         &config.client_responder_id,
-        config.omap_capacity,
+        0,
         logger.clone(),
     );
 
-    let ra_client = AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
-    let mut router = LedgerRouterServer::new(config, enclave, ra_client, ledger, watcher, logger);
+    let mut router = LedgerRouterServer::new(
+        config,
+        enclave,
+        LocalBlockProvider::new(ledger, watcher),
+        logger,
+    );
     router.start();
     router
 }
@@ -250,14 +248,8 @@ fn create_router_client(
     let uri = FogLedgerUri::from_str(&format!("insecure-fog-ledger://{}", config.router_address))
         .unwrap();
 
-    let mut mr_signer_verifier =
-        MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-    mr_signer_verifier
-        .allow_hardening_advisories(mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES);
-    let mut verifier = Verifier::default();
-    verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-
-    LedgerGrpcClient::new(uri, verifier, grpc_env, logger)
+    let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
+    LedgerGrpcClient::new(uri, [identity], grpc_env, logger)
 }
 
 fn create_env(
@@ -315,9 +307,9 @@ fn create_env(
 
 struct TestEnvironment {
     router_client: LedgerGrpcClient,
-    _router: LedgerRouterServer<LedgerSgxEnclave, AttestClient>,
+    _router: LedgerRouterServer<LedgerSgxEnclave>,
     shards: Vec<ShardProxyServer>,
-    stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy, AttestClient>>,
+    stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy>>,
     _tempdirs: Vec<TempDir>,
 }
 
@@ -341,7 +333,6 @@ struct TestEnvironmentConfig {
     router_address: SocketAddr,
     router_admin_address: SocketAddr,
     shards: Vec<ShardConfig>,
-    omap_capacity: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -398,7 +389,6 @@ async fn smoke_test() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
-        omap_capacity: 1000,
     };
 
     let mut blocks_config = vec![];
@@ -515,7 +505,6 @@ async fn overlapping_stores() {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
         shards: shards_config,
-        omap_capacity: 1000,
     };
 
     let mut blocks_config = vec![];

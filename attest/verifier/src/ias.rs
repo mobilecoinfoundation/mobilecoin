@@ -4,8 +4,8 @@
 //! [`VerificationReport`](::mc_attest_core::VerificationReport)
 //! structure.
 
-use crate::{avr::Kind as AvrKind, Error, StatusKind, Verify};
-use alloc::{vec, vec::Vec};
+use crate::{avr::Kind as AvrKind, Error, StatusVerifier, Verify};
+use alloc::{format, vec, vec::Vec};
 use mbedtls::{
     alloc::{Box as MbedtlsBox, List as MbedtlsList},
     hash::Type as HashType,
@@ -26,7 +26,7 @@ pub struct IasReportVerifier {
     /// chain against.
     trust_anchors: Vec<MbedtlsBox<Certificate>>,
     /// A vector of report verifiers, one of which must succeed.
-    or_verifiers: Vec<StatusKind>,
+    or_verifiers: Vec<StatusVerifier>,
     /// A vector of report verifiers, all of which must succeed.
     and_verifiers: Vec<AvrKind>,
 }
@@ -35,7 +35,7 @@ impl IasReportVerifier {
     /// Create a new IAS report verifier
     pub fn new(
         trust_anchors: Vec<MbedtlsBox<Certificate>>,
-        or_verifiers: Vec<StatusKind>,
+        or_verifiers: Vec<StatusVerifier>,
         and_verifiers: Vec<AvrKind>,
     ) -> Self {
         Self {
@@ -50,13 +50,12 @@ impl IasReportVerifier {
         // Here's the background information for this code:
         //
         //  1. An X509 certificate can be signed by only one issuer.
-        //  2. mbedtls' certificates-list API demands certs in the RFC5246
-        //     order (endpoint cert first, every other cert signed the
-        //     cert preceeding it in the list).
-        //  3. I don't recall Intel's specification mentioning certificate
-        //     ordering at all (meaning they can change it w/o warning).
-        //  4. mbedtls' certificates-list API isn't actually exposed to us,
-        //     anyways.
+        //  2. mbedtls' certificates-list API demands certs in the RFC5246 order
+        //     (endpoint cert first, every other cert signed the cert preceeding it in
+        //     the list).
+        //  3. I don't recall Intel's specification mentioning certificate ordering at
+        //     all (meaning they can change it w/o warning).
+        //  4. mbedtls' certificates-list API isn't actually exposed to us, anyways.
         //
         // As a result, we need to find the cert which signed the data (this
         // doubles as the signature check), then find a way back up the
@@ -104,7 +103,7 @@ impl IasReportVerifier {
         // will support
         let profile = Profile::new(
             vec![HashType::Sha256, HashType::Sha384, HashType::Sha512],
-            vec![PkType::Rsa, PkType::Ecdsa],
+            vec![PkType::Rsa, PkType::Eckey, PkType::Ecdsa],
             vec![
                 EcGroupId::Curve25519,
                 EcGroupId::SecP256K1,
@@ -237,7 +236,7 @@ impl IasReportVerifier {
         {
             Ok(report_data)
         } else {
-            Err(Error::Verification(report_data))
+            Err(Error::Verification(format!("{report_data:?}")))
         }
     }
 }

@@ -72,10 +72,10 @@ Once you fetch the sigstruct artifact, you must provide the sigstruct to mobilec
 
 This invocation connects to two validator nodes in the MobileCoin demo network, uses their respective S3 buckets to download new blocks, polls every second for updates and provides a MobileCoinD API on port 4444.
 
->Note: The MobileCoin Daemon validates attestation evidence from the validator nodes, and so needs to know whether those validators are running with hardware SGX or in simulation mode, via the `SGX_MODE` variable. In addiiton it needs to know whether the enclave was built in debug or relase, via the `IAS_MODE` variable.
+>Note: The MobileCoin Daemon validates attestation evidence from the validator nodes, and so needs to know whether those validators are running with hardware SGX or in simulation mode, via the `SGX_MODE` variable.
 
 ```
-SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+SGX_MODE=HW CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     MC_LOG=debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error \
     cargo run --release -p mc-mobilecoind -- \
     --ledger-db /path/to/ledger \

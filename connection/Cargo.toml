@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -9,6 +9,7 @@ rust-version = { workspace = true }
 
 [dependencies]
 
+der = "0.7.8"
 mc-attest-ake = { path = "../attest/ake" }
 mc-attest-api = { path = "../attest/api" }
 mc-attest-core = { path = "../attest/core" }
@@ -23,10 +24,11 @@ mc-util-grpc = { path = "../util/grpc" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
-aes-gcm = "0.10.1"
-cookie = "0.17"
+aes-gcm = "0.10.3"
+cookie = "0.18"
 displaydoc = "0.2"
-grpcio = "0.12.1"
+grpcio = "0.13"
+mc-attestation-verifier = "0.4.2"
 mc-rand = "1"
 retry = "2.0"
 secrecy = "0.8"

@@ -33,6 +33,11 @@ on:
         description: "block_version"
         type: string
         required: true
+      minimum_block:
+        description: "The minimum block height before the enviroment is ready"
+        type: string
+        required: false
+        default: "500"
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -61,7 +66,7 @@ jobs:
   consensus-deploy:
     needs:
     - setup-environment
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     strategy:
       matrix:
         release_name:
@@ -79,11 +84,6 @@ jobs:
         global:
           certManagerClusterIssuer: google-public-ca
         node:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
           persistence:
             enabled: false
           ingress:
@@ -110,8 +110,26 @@ jobs:
   mobilecoind-deploy:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
+    - name: Generate mobilecoind values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/mobilecoind-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        persistence:
+          enabled: false
+
+        devFaucet:
+          enabled: true
+        EOF
+
     - name: Mobilecoind nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -119,8 +137,7 @@ jobs:
         chart_repo: ${{ inputs.chart_repo }}
         chart_name: mobilecoind
         chart_version: ${{ inputs.version }}
-        chart_set: |
-          --set=image.org=${{ inputs.docker_image_org }}
+        chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
         chart_wait_timeout: 5m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
@@ -128,72 +145,183 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
-  fog-services-deploy:
+  # run two copies of fog-report a/b
+  fog-report-deploy-a:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
-    - name: Generate fog-services values file
+    - name: Generate fog-report values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
-        cat <<EOF > "${VALUES_BASE_PATH}/fog-services-values.yaml"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
-        global:
-          certManagerClusterIssuer: google-public-ca
-        fogLedgerRouter:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-          persistence:
-            enabled: false
-        fogLedger:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-          persistence:
-            enabled: false
-        fogViewRouter:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-        fogView:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-        blockHeighRetrieval:
-          url: 'https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
-          responseJQ: '.index'
-          requestBody: ' '
-          queryInterval: 5m
-        fogViewShardRangeGenerator:
-          override: &stores
-            shardSize: 10_000
-            exceedBlockHeightBy: 5_000
-            shardOverlap: 0
-            count: 2
-        fogLedgerShardRangeGenerator:
-          override: *stores
-        EOF
 
-    - name: Deploy fog-services
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogReport:
+          hosts:
+          - fog.${{ inputs.namespace }}.development.mobilecoin.com
+          ingress:
+            common:
+              blocklist:
+                enabled: false
+              tls:
+                clusterIssuer: google-public-ca
+          externalSecrets:
+            signingCert:
+              name: fog-report-signing-cert-a
+
+    - name: Deploy fog-report-a
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-services
+        chart_name: fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
-        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-services-values.yaml
-        release_name: fog-services
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
+        release_name: fog-report-a
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  fog-report-deploy-b:
+    needs:
+    - consensus-deploy
+    runs-on: mcf-dev-small-x64
+    steps:
+    - name: Generate fog-report-b values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogReport:
+          hosts:
+          - fog-b.${{ inputs.namespace }}.development.mobilecoin.com
+          - fog-report-b.${{ inputs.namespace }}.development.mobilecoin.com
+          ingress:
+            common:
+              blocklist:
+                enabled: false
+              tls:
+                clusterIssuer: google-public-ca
+          externalSecrets:
+            signingCert:
+              name: fog-report-signing-cert-b
+
+    - name: Deploy fog-report-b
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-report
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
+        release_name: fog-report-b
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  fog-view-deploy:
+    needs:
+    - consensus-deploy
+    runs-on: mcf-dev-small-x64
+    steps:
+    - name: Generate fog-view values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-view-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogView:
+          router:
+            hosts:
+            - partner: a
+              responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+            - partner: b
+              responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
+            ingress:
+              common:
+                blocklist:
+                  enabled: false
+                tls:
+                  clusterIssuer: google-public-ca
+
+    - name: Deploy fog-view
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-view
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-values.yaml
+        release_name: fog-view
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+  fog-ledger-deploy:
+    needs:
+    - consensus-deploy
+    - mobilecoind-deploy
+    runs-on: mcf-dev-small-x64
+    steps:
+    - name: Generate fog-ledger values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-values.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogLedger:
+          router:
+            hosts:
+            - partner: a
+              responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+            - partner: b
+              responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
+            ingress:
+              common:
+                blocklist:
+                  enabled: false
+                tls:
+                  clusterIssuer: google-public-ca
+
+
+    - name: Deploy fog-ledger
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ledger
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-values.yaml
+        release_name: fog-ledger
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -202,7 +330,8 @@ jobs:
   fog-ingest-deploy:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    - mobilecoind-deploy
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-ingest values file
       run: |
@@ -210,15 +339,9 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
-        fogIngest:
-          resources:
-            limits:
-              intel.com/sgx: 2000
-            requests:
-              intel.com/sgx: 2000
-          persistence:
-            enabled: false
-        EOF
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
 
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
@@ -270,8 +393,11 @@ jobs:
   wait-for-up:
     needs:
     - fog-ingest-deploy
-    - fog-services-deploy
-    runs-on: [self-hosted, Linux, small]
+    - fog-view-deploy
+    - fog-ledger-deploy
+    - fog-report-deploy-a
+    - fog-report-deploy-b
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Check end points up.
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
@@ -283,15 +409,5 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
-          # Get fog report
-          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/report.ReportAPI/GetReports"
-
-          # Get fog ledger
-          /test/check-ingress-ready.sh --url "https://fog.${{ inputs.namespace }}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks"
-
-          # Get consensus client ports
-          /test/check-ingress-ready.sh --url "https://node1.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-          /test/check-ingress-ready.sh --url "https://node2.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-          /test/check-ingress-ready.sh --url "https://node3.${{ inputs.namespace }}.development.mobilecoin.com/gw/consensus_client.ConsensusClientAPI/GetNodeConfig"
-
-          # no unauthenticated endpoints for view :(
+          /test/check-env-status.sh --minimum-block ${{ inputs.minimum_block }} \
+              --namespace ${{ inputs.namespace }}

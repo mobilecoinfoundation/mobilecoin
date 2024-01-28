@@ -9,6 +9,7 @@ use crate::{
     mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
+use mc_attest_verifier_types::prost;
 use mc_blockchain_types::{BlockData, BlockID, BlockMetadata, BlockMetadataContents};
 use mc_common::{
     logger::{log, Logger},
@@ -738,7 +739,7 @@ impl<
                     let entry = self
                         .unavailable_tx_hashes
                         .entry(from_responder_id.clone())
-                        .or_insert_with(BTreeSet::default);
+                        .or_default();
                     entry.extend(tx_hashes);
                     return false;
                 }
@@ -880,13 +881,23 @@ impl<
     }
 
     fn get_block_metadata(&self, block_id: &BlockID) -> BlockMetadata {
-        let verification_report = self.enclave.get_ias_report().unwrap_or_else(|err| {
-            panic!("Failed to fetch verification report after forming block {block_id:?}: {err}")
+        let dcap_evidence = self
+            .enclave
+            .get_attestation_evidence()
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to fetch attestation evidence after forming block {block_id:?}: {err}"
+                )
+            });
+        let prost_evidence = prost::DcapEvidence::try_from(&dcap_evidence).unwrap_or_else(|err| {
+            panic!(
+                "Failed to convert attestation evidence to prost after forming block {block_id:?}: {err}"
+            )
         });
         let contents = BlockMetadataContents::new(
             block_id.clone(),
             self.scp_node.quorum_set(),
-            verification_report,
+            prost_evidence.into(),
             self.scp_node.node_id().responder_id,
         );
 
@@ -906,7 +917,7 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use mc_account_keys::AccountKey;
-    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
+    use mc_blockchain_types::{AttestationEvidence, Block, BlockContents, BlockVersion};
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_enclave::GovernorsMap;
     use mc_consensus_enclave_mock::{ConsensusServiceMockEnclave, MockConsensusEnclave};
@@ -1580,7 +1591,7 @@ mod tests {
 
                 create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     &tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1607,7 +1618,7 @@ mod tests {
             broadcast,
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
-        let report = enclave.get_ias_report().unwrap();
+        let attestation_evidence = enclave.get_attestation_evidence().unwrap();
 
         let tx_manager = TxManagerImpl::new(
             enclave.clone(),
@@ -1731,7 +1742,12 @@ mod tests {
         let contents = metadata.contents();
         assert_eq!(&block.id, contents.block_id());
         assert_eq!(&quorum_set, contents.quorum_set());
-        assert_eq!(&report, contents.verification_report());
+        let prost_evidence = prost::DcapEvidence::try_from(&attestation_evidence)
+            .expect("Failed decoding attestation evidence");
+        assert_eq!(
+            &AttestationEvidence::DcapEvidence(prost_evidence),
+            contents.attestation_evidence()
+        );
         assert_eq!(&local_node_id.responder_id, contents.responder_id());
     }
 

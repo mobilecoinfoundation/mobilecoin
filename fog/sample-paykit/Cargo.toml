@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sample-paykit"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -19,7 +19,6 @@ path = "src/bin/sample_paykit_remote_wallet.rs"
 # mobilecoin
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
-mc-attest-verifier = { path = "../../attest/verifier" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
@@ -53,11 +52,12 @@ mc-fog-view-connection = { path = "../view/connection" }
 mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.1"
+grpcio = "0.13"
 link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
+mc-attestation-verifier = "0.4.2"
 protobuf = "2.27.1"
 rand = "0.8"
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }

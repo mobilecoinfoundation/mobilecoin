@@ -1,6 +1,5 @@
 self-hosted-runner:
   # Labels of self-hosted runner in array of string
   labels:
-  - small
-  - large
-  - large-cd
+  - mcf-dev-large-x64
+  - mcf-dev-small-x64

@@ -277,9 +277,11 @@ impl CachedTxData {
         // and try again.
         log::trace!(
             self.logger,
-            "computing balance at num_blocks = {}",
-            num_blocks
+            "computing balance at num_blocks={} num_owned_tx_outs={} (set MC_VERBOSE_TX_OUT_LOG=1 to list them)",
+            num_blocks,
+            self.owned_tx_outs.len(),
         );
+        let verbose_tx_out_log = std::env::var("MC_VERBOSE_TX_OUT_LOG").unwrap_or_default() == "1";
         let balance = self
             .owned_tx_outs
             .values()
@@ -307,7 +309,11 @@ impl CachedTxData {
                             true
                         }
                     };
-                log::trace!(self.logger, "{}: global_index {} block_index {} amount {:?} status {}", result, our_txo.global_index, our_txo.block_index, our_txo.amount, our_txo.status);
+
+
+                if verbose_tx_out_log {
+                    log::trace!(self.logger, "{}: global_index {} block_index {} amount {:?} status {}", result, our_txo.global_index, our_txo.block_index, our_txo.amount, our_txo.status);
+                }
                 result
             })
             .fold(HashMap::default(), |mut running_balance, our_txo| {
@@ -475,31 +481,33 @@ impl CachedTxData {
         }
 
         self.missed_block_ranges.extend(new_missed_block_ranges);
-        let fog_common_block_ranges: Vec<fog_common::BlockRange> = self
-            .missed_block_ranges
-            .iter()
-            .map(fog_common::BlockRange::from)
-            .collect::<Vec<_>>();
-        match fog_block_client.get_missed_block_ranges(fog_common_block_ranges) {
-            Ok(block_response) => {
-                let tx_out_records_from_missed_blocks: Vec<TxOutRecord> =
-                    self.create_tx_out_records(&block_response);
-                txo_records.extend(tx_out_records_from_missed_blocks);
-                let updated_missed_block_ranges =
-                    CachedTxData::calculate_updated_missed_block_ranges(
-                        &self.missed_block_ranges,
-                        &block_response.blocks.into_vec(),
+        if !self.missed_block_ranges.is_empty() {
+            let fog_common_block_ranges: Vec<fog_common::BlockRange> = self
+                .missed_block_ranges
+                .iter()
+                .map(fog_common::BlockRange::from)
+                .collect::<Vec<_>>();
+            match fog_block_client.get_missed_block_ranges(fog_common_block_ranges) {
+                Ok(block_response) => {
+                    let tx_out_records_from_missed_blocks: Vec<TxOutRecord> =
+                        self.create_tx_out_records(&block_response);
+                    txo_records.extend(tx_out_records_from_missed_blocks);
+                    let updated_missed_block_ranges =
+                        CachedTxData::calculate_updated_missed_block_ranges(
+                            &self.missed_block_ranges,
+                            &block_response.blocks.into_vec(),
+                        );
+                    self.missed_block_ranges = updated_missed_block_ranges;
+                }
+                Err(err) => {
+                    log::error!(
+                        self.logger,
+                        "Fog Ledger retrieving BlockResponse from missed block ranges error: {}",
+                        err
                     );
-                self.missed_block_ranges = updated_missed_block_ranges;
-            }
-            Err(err) => {
-                log::error!(
-                    self.logger,
-                    "Fog Ledger retrieving BlockResponse from missed block ranges error: {}",
-                    err
-                );
-            }
-        };
+                }
+            };
+        }
 
         let num_txos = txo_records.len();
         if !txo_records.is_empty() {
@@ -1474,7 +1482,7 @@ mod tests {
 
     #[test]
     fn calculate_updated_missed_block_ranges_multiple_indices_returns_block_range_with_indices() {
-        let indices = vec![(5, 11), (34, 40), (1, 3)];
+        let indices = [(5, 11), (34, 40), (1, 3)];
         let mut missed_block_ranges = Vec::new();
 
         for (start_block, end_block) in indices.iter() {

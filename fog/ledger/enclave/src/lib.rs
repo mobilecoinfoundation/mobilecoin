@@ -11,9 +11,7 @@ pub use mc_fog_ledger_enclave_api::{
     KeyImageResultCode, LedgerEnclave, LedgerEnclaveProxy, OutputContext, OutputResult, Result,
 };
 
-use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
-};
+use mc_attest_core::{DcapEvidence, EnclaveReportDataContents, Report, SgxError, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession, SealedClientMessage,
@@ -42,26 +40,28 @@ pub struct LedgerSgxEnclave {
 }
 
 impl ReportableEnclave for LedgerSgxEnclave {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
+    fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: DcapEvidence,
+    ) -> ReportableEnclaveResult<()> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyAttestationEvidence(
+            attestation_evidence,
+        ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetAttestationEvidence)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
@@ -295,8 +295,7 @@ extern "C" {
     ///  1. Application Code
     ///  2. Untrusted generated_enclave_api(eid, retval, inbuf, ...) function
     ///  3. Trusted, generated_enclave_api(inbuf, ...) ECALL
-    ///  4. Target enclave_api(inbuf, ...) method inside rust in the
-    ///     enclave.
+    ///  4. Target enclave_api(inbuf, ...) method inside rust in the enclave.
     pub fn ledger_enclave_call(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,

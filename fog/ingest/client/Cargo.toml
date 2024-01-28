@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-client"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -16,7 +16,6 @@ name = "fog_ingest_client"
 path = "src/main.rs"
 
 [dev-dependencies]
-mc-attest-net = { path = "../../../attest/net" }
 mc-fog-ingest-enclave = { path = "../enclave" }
 mc-fog-ingest-server = { path = "../server" }
 mc-fog-ingest-server-test-utils = { path = "../server/test-utils" }
@@ -28,15 +27,15 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-watcher = { path = "../../../watcher" }
 
 # third party
-assert_cmd = "2.0.10"
+assert_cmd = "2.0.12"
 predicates = "3"
 rand = "0.8"
 
 [dependencies]
 # third party
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.1"
+grpcio = "0.13"
 hex = "0.4"
 protobuf = "2.27.1"
 retry = "2.0"
@@ -49,7 +48,6 @@ mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-util-cli = { path = "../../../util/cli" }
 mc-util-grpc = { path = "../../../util/grpc" }
-mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-uri = { path = "../../../util/uri" }
 

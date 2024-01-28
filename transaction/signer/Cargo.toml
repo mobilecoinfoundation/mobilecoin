@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-signer"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,11 +11,11 @@ rust-version = { workspace = true }
 
 [dependencies]
 # External dependencies
-anyhow = "1.0.69"
-clap = { version = "4.1", features = [ "derive" ] }
+anyhow = "1.0.79"
+clap = { version = "4.4", features = [ "derive" ] }
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4.2", default_features = false }
-log = "0.4.17"
+log = "0.4.20"
 rand_core = "0.6.4"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "*"
@@ -32,7 +32,6 @@ mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-transaction-core = { path = "../../transaction/core" }
-mc-transaction-extra = { path = "../../transaction/extra" }
 mc-transaction-summary = { path = "../../transaction/summary" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../../util/serial", default-features = false }

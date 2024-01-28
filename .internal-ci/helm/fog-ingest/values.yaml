@@ -1,26 +1,19 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-### Chart wide values.
 nameOverride: ''
 fullnameOverride: ''
 
 imagePullSecrets:
 - name: docker-credentials
 
-# mc-core-common-config child chart configuration.
-# See ../mc-core-common-config for details.
-mcCoreCommonConfig:
-  enabled: false
-
-# fog-ingest-config child chart configuration.
-# See ../fog-ingest-config for details.
-fogIngestConfig:
-  enabled: false
-
 # Pods share the image tag.
 image:
   org: mobilecoin
   tag: '' # Overrides the image tag whose default is the chart appVersion.
 
+# Mobilecoin network instance
+mobilecoin:
+  network: ''
+  partner: ''
 
 ### Fog Ingest Service Configuration
 fogIngest:
@@ -30,17 +23,6 @@ fogIngest:
     name: fogingest
     pullPolicy: Always
 
-  ### Persistent storage for LMDB
-  persistence:
-    enabled: true
-    spec:
-      storageClassName: fast
-      accessModes:
-        - 'ReadWriteOnce'
-      resources:
-        requests:
-          storage: 512Gi
-
   rust:
     backtrace: full
     log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn
@@ -48,50 +30,76 @@ fogIngest:
   podAnnotations:
     fluentbit.io/include: 'true' # collect logs with fluentbit
     fluentbit.io/exclude-jaeger-agent: 'true'
+    # This is the container name that needs to use sgx resources
+    sgx.intel.com/quote-provider: fog-ingest
 
   ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
   resources:
     limits:
-      intel.com/sgx: 5000
+      sgx.intel.com/epc: 512Ki
       memory: 3Gi
     requests:
-      intel.com/sgx: 5000
+      sgx.intel.com/epc: 512Ki
       memory: 3Gi
+      cpu: 1000m
 
   nodeSelector:
-    sgx-enabled-node: 'true'
+    dcap: 'true'
 
   tolerations:
-  - key: sgx
+  - key: dcap
     operator: Equal
     value: 'true'
     effect: NoSchedule
 
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - fog-ingest
-          topologyKey: 'kubernetes.io/hostname'
+  configMap:
+    data:
+      # https://docs.diesel.rs/diesel/r2d2/struct.Builder.html
+      POSTGRES_IDLE_TIMEOUT: '60'
+      POSTGRES_MAX_LIFETIME: '120'
+      POSTGRES_CONNECTION_TIMEOUT: '5'
+      POSTGRES_MAX_CONNECTIONS: '3'
 
-  initContainers:
-  - name: sysctl
-    image: ubuntu:20.04
-    imagePullPolicy: Always
-    command:
-    - sysctl
-    - -w
-    - net.ipv4.tcp_retries2=5
-    securityContext:
-      privileged: true
-      runAsUser: 0
-      runAsNonRoot: False
+  externalConfigMaps:
+    # sentry is optional
+    sentry:
+      name: sentry
+      ### required keys:
+      #   fog-ledger-sentry-dsn
+    mobilecoind:
+      name: fog-mobilecoind
+      ### required keys:
+      #   MC_PEER
+      #   MC_TX_SOURCE_URL
+      #   MC_QUORUM_SET
+      ### optional keys:
+      #   MC_LEDGER_DB_URL
+      #   MC_WATCHER_DB_URL
+    postgres:
+      name: fog-recovery-postgresql
+      ### required keys:
+      #   postgresql-ssl-options
+      #   postgresql-database
+      #   postgresql-username
+      #   postgresql-hostname
+
+  externalSecrets:
+    ias:
+      name: ias
+      ### required keys:
+      #   MC_IAS_API_KEY
+      #   MC_IAS_SPID
+
+    postgres:
+      name: fog-recovery-postgresql
+      ### required keys:
+      #   postgresql-password
+
+    # ipinfo is optional
+    ipinfo:
+      name: ipinfo
+      ### required keys:
+      #   MC_IP_INFO_TOKEN
 
 ### Toolbox deployment. Used for activating and retiring.
 toolbox:
@@ -101,14 +109,19 @@ toolbox:
     pullPolicy: Always
     tag: '' # Overrides the image tag whose default is the chart appVersion.
 
-  nodeSelector:
-    builder-node: 'false'
-    sgx-enabled-node: 'false'
+  nodeSelector: {}
 
   tolerations: []
 
   affinity: {}
 
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 100m
+    limits:
+      memory: 4Gi
+      cpu: 2000m
+
 jaegerTracing:
-  enabled: true
-  collector: 'dns:///jaeger-collector:14250'
+  enabled: false

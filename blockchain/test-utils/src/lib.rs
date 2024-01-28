@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Helpers for block-related tests.
 #![deny(missing_docs)]
@@ -120,7 +120,7 @@ pub fn get_blocks_with_recipients<R: RngCore + CryptoRng>(
         let signature = make_block_signature(&block, rng);
         let metadata = make_block_metadata(block.id.clone(), rng);
 
-        let block_data = BlockData::new(block, block_contents, signature, metadata);
+        let block_data = BlockData::new(block, block_contents, signature, Some(metadata));
 
         blocks.push(block_data);
     }
@@ -171,7 +171,7 @@ pub fn make_block_metadata_contents(
     BlockMetadataContents::new(
         block_id,
         make_quorum_set(rng),
-        make_verification_report(rng),
+        make_verification_report(rng).into(),
         ResponderId::from_str("test.mobilecoin.com:443").unwrap(),
     )
 }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-server"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -21,10 +21,10 @@ path = "src/bin/router.rs"
 
 [dependencies]
 # third party
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.12.1"
+grpcio = "0.13"
 lazy_static = "1.4"
 prometheus = "0.13"
 
@@ -33,7 +33,6 @@ mc-api = { path = "../../../api" }
 mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
-mc-attest-net = { path = "../../../attest/net" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
@@ -51,7 +50,6 @@ mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-util-cli = { path = "../../../util/cli" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }
-mc-util-metered-channel = { path = "../../../util/metered-channel" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
@@ -62,6 +60,7 @@ serde_json = "1.0"
 
 [dev-dependencies]
 mc-attest-verifier = { path = "../../../attest/verifier" }
+mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
 mc-blockchain-types = { path = "../../../blockchain/types" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
@@ -79,8 +78,7 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
-pem = "2.0"
 portpicker = "0.1.1"
 rand = "0.8"
 rand_core = "0.6"
-yare = "1.0.2"
+yare = "2.0.0"

@@ -6,8 +6,8 @@
 
 use displaydoc::Display;
 use mc_watcher::{
+    attestation_evidence_collector::AttestationEvidenceCollector,
     config::WatcherConfig,
-    verification_reports_collector::VerificationReportsCollector,
     watcher::{SyncResult, Watcher},
     watcher_db::create_or_open_rw_watcher_db,
 };
@@ -44,7 +44,7 @@ fn main() {
     let watcher = Watcher::new(watcher_db.clone(), config.store_block_data, logger.clone())
         .expect("Failed creating watcher");
 
-    let _verification_reports_collector = <VerificationReportsCollector>::new(
+    let _verification_reports_collector = <AttestationEvidenceCollector>::new(
         watcher_db,
         sources_config.sources().to_vec(),
         config.poll_interval,

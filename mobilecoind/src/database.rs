@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! The mobilecoind database
 
@@ -217,6 +217,14 @@ impl Database {
     ) -> Result<Vec<UnspentTxOut>, Error> {
         let db_txn = self.env.begin_ro_txn()?;
         self.utxo_store.get_utxos(&db_txn, monitor_id, index)
+    }
+
+    pub fn get_utxos_for_monitor(
+        &self,
+        monitor_id: &MonitorId,
+    ) -> Result<Vec<UnspentTxOut>, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.utxo_store.get_utxos_for_monitor(&db_txn, monitor_id)
     }
 
     pub fn update_attempted_spend(

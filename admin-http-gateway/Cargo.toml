@@ -1,6 +1,6 @@
 [package]
 name = "mc-admin-http-gateway"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -12,9 +12,9 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-uri = { path = "../util/uri" }
 
-clap = { version = "4.1", features = ["derive", "env"] }
-grpcio = "0.12.1"
-rocket = { version = "0.5.0-rc.2", features = ["json"] }
+clap = { version = "4.4", features = ["derive", "env"] }
+grpcio = "0.13"
+rocket = { version = "0.5.0", features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"

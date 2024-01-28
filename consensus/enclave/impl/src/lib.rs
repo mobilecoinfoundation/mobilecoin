@@ -34,7 +34,7 @@ use core::cmp::min;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    DcapEvidence, EnclaveReportDataContents, EvidenceKind, IntelSealed, Report, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -122,7 +122,7 @@ pub struct TxList {
 pub struct SgxConsensusEnclave {
     /// All AKE and attestation related state including responder ids,
     /// established channels for peers and clients, and any pending quotes
-    /// or ias reports.
+    /// or attestation evidence.
     ake: AkeEnclaveState<Ed25519Identity>,
 
     /// Cipher used to encrypt locally-cached transactions.
@@ -149,10 +149,8 @@ impl SgxConsensusEnclave {
     pub fn new(logger: Logger) -> Self {
         Self {
             ake: Default::default(),
-            locally_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng::default())),
-            well_formed_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(
-                &mut McRng::default(),
-            )),
+            locally_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng)),
+            well_formed_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng)),
             logger,
             blockchain_config: Default::default(),
             ct_min_fee_map: Default::default(),
@@ -429,21 +427,23 @@ impl SgxConsensusEnclave {
 }
 
 impl ReportableEnclave for SgxConsensusEnclave {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         Ok(self.ake.new_ereport(qe_info)?)
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        Ok(self.ake.verify_quote(quote, qe_report)?)
-    }
-
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
-        self.ake.verify_ias_report(ias_report)?;
+    fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: DcapEvidence,
+    ) -> ReportableEnclaveResult<()> {
+        self.ake.verify_attestation_evidence(attestation_evidence)?;
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(self.ake.get_ias_report()?)
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
+        Ok(self.ake.get_attestation_evidence()?)
     }
 }
 
@@ -574,7 +574,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         // Inject the blockchain config hash before passing off to the AKE
         let peer_id = self
             .blockchain_config
@@ -610,7 +610,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Convert to TxContext
         let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
             let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
-            let mut rng = McRng::default();
+            let mut rng = McRng;
 
             Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
         };
@@ -639,7 +639,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let txs = mc_util_serial::decode::<TxList>(&data)?.txs;
 
         // Convert to TxContexts
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         txs.into_iter()
             .map(|tx| {
                 let tx_bytes = mc_util_serial::encode(&tx);
@@ -701,7 +701,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_token_id = TokenId::from(tx.prefix.fee_token_id);
 
         // Validate.
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
         let minimum_fee = ct_min_fee_map
             .get(&fee_token_id)
             .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
@@ -769,7 +769,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         inputs: FormBlockInputs,
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         let config = self
             .blockchain_config
             .get()
@@ -1165,7 +1165,7 @@ mod tests {
 
             let tx = create_transaction(
                 block_version,
-                &mut ledger,
+                &ledger,
                 &tx_out,
                 &sender,
                 &recipient.default_subaddress(),
@@ -1252,7 +1252,7 @@ mod tests {
 
             let tx = create_transaction(
                 block_version,
-                &mut ledger,
+                &ledger,
                 &tx_out,
                 &sender,
                 &recipient.default_subaddress(),
@@ -1394,7 +1394,7 @@ mod tests {
 
                     create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &tx_out,
                         &sender,
                         &recipient.default_subaddress(),
@@ -1533,7 +1533,7 @@ mod tests {
 
                     create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &tx_out,
                         &sender,
                         &recipient.default_subaddress(),
@@ -1565,7 +1565,7 @@ mod tests {
 
                     let tx = create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &spendable_output,
                         &sender,
                         &recipient.default_subaddress(),
@@ -1733,7 +1733,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1749,7 +1749,7 @@ mod tests {
 
                 create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1844,7 +1844,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1861,7 +1861,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -1958,7 +1958,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -2064,7 +2064,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -2152,7 +2152,7 @@ mod tests {
 
                 let tx = create_transaction(
                     block_version,
-                    &mut ledger,
+                    &ledger,
                     tx_out,
                     &sender,
                     &recipient.default_subaddress(),
@@ -3190,7 +3190,7 @@ mod tests {
 
                     create_transaction(
                         block_version,
-                        &mut ledger,
+                        &ledger,
                         &tx_out,
                         &sender,
                         &recipient.default_subaddress(),

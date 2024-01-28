@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2023 The MobileCoin Foundation
 
 set -e  # exit on error
 
@@ -35,14 +35,34 @@ cargo install --version 1.0.9 --locked cargo-sort
 
 # We want to check with --all-targets since it checks test code, but that flag
 # leads to build errors in enclave workspaces, so check it here.
-cargo clippy --all --all-features --all-targets
+cargo fmt -- --unstable-features $CHECK
+cargo clippy --all --all-features --all-targets -- -D warnings
 
-for toml in $(grep --exclude-dir cargo --exclude-dir rust-mbedtls --include=Cargo.toml -r . -e '\[workspace\]' | cut -d: -f1); do
+# Run on all the nested workspaces.
+# We exclude `cargo` paths as these are crates from `[patch.crates-io]`
+for toml in $(find . -mindepth 2 -type f -not -path '*/cargo/*' -name Cargo.toml -exec grep -l -e '\[workspace\]' {} +); do
   pushd $(dirname $toml) >/dev/null
   echo "Linting in $PWD"
-  cargo sort --workspace --grouped $CHECK
   cargo fmt -- --unstable-features $CHECK
-  cargo clippy --all --all-features
+  cargo clippy --all --all-features -- -D warnings
   echo "Linting in $PWD complete."
+  popd >/dev/null
+done
+
+# `cargo sort` is a bit too aggressive at modifying files. When not provided the
+# `--check` flag it will *always* re-write the files it's sorting. This results
+# in cargo seeing the `Cargo.toml` files as modified and often requiring a
+# rebuild of a package. To work around this, we first check and only if it fails
+# will we fix. We operate on each `Cargo.toml` file individually to minimize the
+# incremental build impact of fixing a file.
+SORT_COMMAND="cargo sort --grouped --check"
+if [ -z "$CHECK" ]
+then
+    SORT_COMMAND="$SORT_COMMAND || cargo sort --grouped"
+fi
+
+for toml in $(find . -type f -not -path '*/cargo/*' -name Cargo.toml); do
+  pushd $(dirname $toml) >/dev/null
+  eval $SORT_COMMAND
   popd >/dev/null
 done

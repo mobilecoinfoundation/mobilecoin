@@ -21,17 +21,18 @@
 //! # Fog Report Signatures
 //!
 //! A fog report server uses the signing key and certificate provided by the fog
-//! operator in order to cryptographically sign a list of IAS verification
-//! report structures created by ingest nodes. This resulting data (chain,
-//! signature, and reports) is then returned from the fog report server to a
-//! senders when they want to send coins to the destination account owner.
+//! operator in order to cryptographically sign a list of attestation evidence
+//! structures created by ingest nodes. This resulting data (chain,
+//! signature, and attestation evidence) is then returned from the fog report
+//! server to a sender when they want to send coins to the destination account
+//! owner.
 //!
 //! # Sender Verification
 //!
 //! The sender must verify the user's signature over the root certificate, the
 //! certificate chain to the report server, and the report server's signature
 //! over the report list, in order to determine which
-//! [`VerificationReport`](mc_attest_core::VerificationReport) belongs
+//! [`DcapEvidence`](mc_attest_core::DcapEvidence) belongs
 //! to the destination fog ingest enclave.
 //!
 //! At this point, the sender has verified that the account owner has delegated

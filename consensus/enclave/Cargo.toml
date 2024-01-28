@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Consensus Enclave - Application Code"
@@ -36,7 +36,7 @@ pkg-config = "0.3"
 [dev-dependencies]
 mc-attest-ake = { path = "../../attest/ake" }
 mc-attest-api = { path = "../../attest/api" }
-mc-attest-net = { path = "../../attest/net" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-fog-test-infra = { path = "../../fog/test_infra" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-rand = "1.0"
@@ -44,6 +44,6 @@ mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-metrics = { path = "../../util/metrics" }
 
-aes-gcm = "0.10.1"
+aes-gcm = "0.10.3"
 lazy_static = "1"
 sha2 = "0.10"

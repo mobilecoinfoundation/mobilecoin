@@ -18,6 +18,7 @@ mod schema;
 mod sql_types;
 
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
+use ::prost::Message;
 use chrono::NaiveDateTime;
 use clap::Parser;
 use diesel::{
@@ -25,7 +26,7 @@ use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
-use mc_attest_core::VerificationReport;
+use mc_attest_verifier_types::EvidenceKind;
 use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, Logger},
@@ -44,7 +45,6 @@ use mc_fog_types::{
     ETxOutRecord,
 };
 use mc_util_parse::parse_duration_in_seconds;
-use prost::Message;
 use proto_types::ProtoIngestedBlockData;
 use retry::{delay, Error as RetryError, OperationResult};
 use serde::Serialize;
@@ -590,10 +590,7 @@ impl SqlRecoveryDb {
                     let proto_ingested_block_data = ProtoIngestedBlockData {
                         e_tx_out_records: txs.to_vec(),
                     };
-                    let mut bytes =
-                        Vec::<u8>::with_capacity(proto_ingested_block_data.encoded_len());
-                    proto_ingested_block_data.encode(&mut bytes)?;
-                    bytes
+                    proto_ingested_block_data.encode_to_vec()
                 };
 
                 // Add an IngestedBlock record.
@@ -1150,12 +1147,12 @@ impl SqlRecoveryDb {
             .load::<(Option<i64>, String, Vec<u8>, i64)>(conn)?
             .into_iter()
             .map(|(ingest_invocation_id, report_id, report, pubkey_expiry)| {
-                let report = VerificationReport::decode(&*report)?;
+                let attestation_evidence = EvidenceKind::from_bytes(report)?;
                 Ok((
                     report_id,
                     ReportData {
                         ingest_invocation_id: ingest_invocation_id.map(IngestInvocationId::from),
-                        report,
+                        attestation_evidence: attestation_evidence.into(),
                         pubkey_expiry: pubkey_expiry as u64,
                     },
                 ))
@@ -1220,8 +1217,8 @@ impl SqlRecoveryDb {
                     return Ok(result);
                 }
 
-                let mut report_bytes = Vec::with_capacity(data.report.encoded_len());
-                data.report.encode(&mut report_bytes)?;
+                let report_bytes =
+                    EvidenceKind::from(data.attestation_evidence.clone()).into_bytes();
                 let report = models::NewReport {
                     ingress_public_key: ingress_key.as_ref(),
                     ingest_invocation_id: data.ingest_invocation_id.map(i64::from),
@@ -1617,15 +1614,16 @@ fn unpack_retry_error(src: RetryError<Error>) -> Error {
 mod tests {
     use super::*;
     use chrono::prelude::*;
+    use mc_attest_verifier_types::prost;
     use mc_common::{
         logger::{log, test_with_logger, Logger},
         HashSet,
     };
     use mc_crypto_keys::RistrettoPublic;
+    use mc_fog_report_types::AttestationEvidence;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_fog_types::view::FixedTxOutSearchResult;
     use mc_util_from_random::FromRandom;
-    use pem::Pem;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
 
     #[test_with_logger]
@@ -2118,7 +2116,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 20,
                 ingest_invocation_id: None,
-                report: Default::default(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -2132,7 +2130,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 40,
                 ingest_invocation_id: None,
-                report: Default::default(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -2517,18 +2515,18 @@ mod tests {
         assert_eq!(db.get_highest_known_block_index().unwrap(), Some(125));
     }
 
-    fn create_report(name: &str) -> VerificationReport {
-        let chain = pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
-            .expect("Could not parse PEM contents")
-            .into_iter()
-            .map(Pem::into_contents)
-            .collect();
-
-        VerificationReport {
-            sig: format!("{name} sig").into_bytes().into(),
-            chain,
-            http_body: format!("{name} body"),
+    fn create_attestation_evidence(name: &str) -> AttestationEvidence {
+        let report_data = prost::EnclaveReportDataContents {
+            nonce: format!("{name} nonce").into_bytes(),
+            key: format!("{name} key").into_bytes(),
+            custom_identity: format!("{name} custom_identity").into_bytes(),
+        };
+        prost::DcapEvidence {
+            quote: None,
+            collateral: None,
+            report_data: Some(report_data),
         }
+        .into()
     }
 
     #[test_with_logger]
@@ -2555,7 +2553,7 @@ mod tests {
         let report_id1 = "";
         let report1 = ReportData {
             ingest_invocation_id: Some(invoc_id1),
-            report: create_report(report_id1),
+            attestation_evidence: create_attestation_evidence(report_id1),
             pubkey_expiry: 102030,
         };
         let key_status = db.set_report(&ingress_key, report_id1, &report1).unwrap();
@@ -2570,7 +2568,7 @@ mod tests {
         let report_id2 = "report 2";
         let report2 = ReportData {
             ingest_invocation_id: Some(invoc_id2),
-            report: create_report(report_id2),
+            attestation_evidence: create_attestation_evidence(report_id2),
             pubkey_expiry: 10203040,
         };
         let key_status = db.set_report(&ingress_key, report_id2, &report2).unwrap();
@@ -2587,7 +2585,7 @@ mod tests {
         // Update an existing report.
         let updated_report1 = ReportData {
             ingest_invocation_id: Some(invoc_id2),
-            report: create_report("updated_report1"),
+            attestation_evidence: create_attestation_evidence("updated_report1"),
             pubkey_expiry: 424242,
         };
 
@@ -2619,7 +2617,7 @@ mod tests {
 
         let report1 = ReportData {
             ingest_invocation_id: Some(invoc_id1),
-            report: create_report(report_id1),
+            attestation_evidence: create_attestation_evidence(report_id1),
             pubkey_expiry: 10203050,
         };
         let key_status = db.set_report(&ingress_key, report_id1, &report1).unwrap();
@@ -2633,7 +2631,7 @@ mod tests {
 
         let report1 = ReportData {
             ingest_invocation_id: Some(invoc_id1),
-            report: create_report(report_id1),
+            attestation_evidence: create_attestation_evidence(report_id1),
             pubkey_expiry: 10203060,
         };
         let key_status = db.set_report(&ingress_key, report_id1, &report1).unwrap();
@@ -2861,7 +2859,7 @@ mod tests {
             "",
             &ReportData {
                 ingest_invocation_id: None,
-                report: create_report(""),
+                attestation_evidence: create_attestation_evidence(""),
                 pubkey_expiry: 888,
             },
         )
@@ -3262,7 +3260,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 20,
                 ingest_invocation_id: None,
-                report: Default::default(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -3499,7 +3497,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 5,
                 ingest_invocation_id: None,
-                report: Default::default(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();
@@ -3574,7 +3572,7 @@ mod tests {
             &ReportData {
                 pubkey_expiry: 15,
                 ingest_invocation_id: None,
-                report: Default::default(),
+                attestation_evidence: create_attestation_evidence(""),
             },
         )
         .unwrap();

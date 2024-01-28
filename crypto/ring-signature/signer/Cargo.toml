@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-ring-signature-signer"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -14,7 +14,7 @@ alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "curve25519-dalek/allo
 default = ["serde", "alloc", "curve25519-dalek/default"]
 
 [dependencies]
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+curve25519-dalek = { version = "4.1.1", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
@@ -26,7 +26,7 @@ mc-crypto-keys = { path = "../../keys", default-features = false }
 mc-crypto-ring-signature = { path = "..", default-features = false, features = [ "alloc", "serde", "prost" ] }
 mc-transaction-types = { path = "../../../transaction/types" }
 mc-util-serial = { path = "../../../util/serial" }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
@@ -36,6 +36,6 @@ zeroize = { version = "1", default-features = false }
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }
 mc-rand = "1.0"
 # Enable all default features not known to break code coverage builds
-proptest = { version = "1.1", default-features = false, features = ["default-code-coverage"] }
+proptest = { version = "1.4", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
 rand_hc = "0.3"

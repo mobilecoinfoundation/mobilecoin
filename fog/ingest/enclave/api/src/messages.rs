@@ -2,7 +2,7 @@
 
 //! The message types used by the ingest_enclave_api.
 
-use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, TargetInfo};
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_fog_types::ingest::TxsForIngest;
 use serde::{Deserialize, Serialize};
@@ -78,25 +78,18 @@ pub enum EnclaveCall {
     /// Creates a new report for the enclave with the provided target info.
     NewEreport(TargetInfo),
 
-    /// The [IngestEnclave::verify_quote()] method.
+    /// The [IngestEnclave::verify_attestation_evidence()] method.
     ///
-    /// * Verifies that the Quoting Enclave is sane,
-    /// * Verifies that the Quote matches the previously generated report.
-    /// * Caches the quote.
-    VerifyQuote(Quote, Report),
-
-    /// The [IngestEnclave::verify_ias_report()] method.
-    ///
-    /// * Verifies the signed report from IAS matches the previously received
+    /// * Verifies the attestation evidence matches the previously received
     ///   quote,
-    /// * Caches the signed report. This cached report may be overwritten by
-    ///   later calls.
-    VerifyReport(VerificationReport),
+    /// * Caches the attestation evidence. This cached attestation evidence may
+    ///   be overwritten by later calls.
+    VerifyAttestationEvidence(DcapEvidence),
 
-    /// The [IngestEnclave::get_ias_report()] method.
+    /// The [IngestEnclave::get_attestation_evidence()] method.
     ///
-    /// Retrieves a previously cached report, if any.
-    GetReport,
+    /// Retrieves a previously cached attestation evidence, if any.
+    GetAttestationEvidence,
 
     /// The [IngestEnclave::peer_init()] method.
     PeerInit(ResponderId),

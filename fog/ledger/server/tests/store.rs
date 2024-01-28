@@ -5,19 +5,19 @@ use std::{
     path::PathBuf,
     str::FromStr,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
-use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::Verifier;
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
     logger::{test_with_logger, Logger},
     ResponderId,
 };
 use mc_crypto_keys::X25519;
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_enclave::{
     CheckKeyImagesResponse, KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE,
 };
@@ -31,7 +31,6 @@ use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_rand::{CryptoRng, RngCore};
 use mc_util_grpc::AnonymousAuthenticator;
-use mc_util_metrics::{IntGauge, OpMetrics};
 use mc_util_test_helper::{Rng, RngType, SeedableRng};
 use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
@@ -116,15 +115,15 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             chain_id: test_name.as_ref().to_string(),
             client_responder_id: responder_id.clone(),
             client_listen_uri: test_uri,
-            ledger_db: ledger_path,
-            watcher_db: PathBuf::from(db_tmp.path()),
-            ias_api_key: Default::default(),
-            ias_spid: Default::default(),
+            ledger_db: Some(ledger_path),
+            watcher_db: Some(PathBuf::from(db_tmp.path())),
+            mobilecoind_uri: None,
             admin_listen_uri: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             omap_capacity,
             sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+            poll_interval: Duration::from_millis(250),
         };
 
         Self {
@@ -139,14 +138,6 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
             watcher_path: db_tmp,
         }
     }
-}
-
-lazy_static::lazy_static! {
-    pub static ref TEST_OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("consensus_service");
-}
-
-lazy_static::lazy_static! {
-    pub static ref TEST_ENCLAVE_REPORT_TIMESTAMP: IntGauge = TEST_OP_COUNTERS.gauge("enclave_report_timestamp");
 }
 
 #[test_with_logger]
@@ -171,28 +162,22 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
-    let client_listen_uri = store_config.client_listen_uri.clone();
+    let client_listen_uri = store_config.client_listen_uri;
     let store_service = KeyImageService::new(
         client_listen_uri.clone(),
-        ledger,
-        watcher,
         enclave.clone(), //LedgerSgxEnclave is an Arc<SgxEnclave> internally
         shared_state.clone(),
-        Arc::new(AnonymousAuthenticator::default()),
+        Arc::new(AnonymousAuthenticator),
         logger.clone(),
     );
 
-    // Set up IAS verficiation
-    // This will be a SimClient in testing contexts.
-    let ias_client =
-        AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
     let mut store_server = KeyImageStoreServer::new_from_service(
         store_service,
         client_listen_uri,
         enclave.clone(),
-        ias_client,
-        store_config.ias_spid,
+        LocalBlockProvider::new(ledger, watcher),
         EpochShardingStrategy::default(),
+        store_config.poll_interval,
         logger,
     );
     store_server.start();
@@ -242,7 +227,8 @@ pub fn direct_key_image_store_check(logger: Logger) {
     // AuthResponseOutput
     let auth_message = attest::AuthMessage::from(client_auth_response);
     // Initiator accepts responder's message.
-    let auth_response_event = AuthResponseInput::new(auth_message.into(), Verifier::default());
+    let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
+    let auth_response_event = AuthResponseInput::new(auth_message.into(), [identity], None);
     // Should be a valid noise connection at this point.
     let (mut noise_connection, _verification_report) = initiator
         .try_next(&mut rng, auth_response_event)

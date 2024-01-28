@@ -1,6 +1,6 @@
 [package]
 name = "mc-connection-test-utils"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 rust-version = { workspace = true }
@@ -8,7 +8,6 @@ rust-version = { workspace = true }
 [dependencies]
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-connection = { path = "../../connection" }
-mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-uri = { path = "../../util/uri" }

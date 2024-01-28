@@ -102,7 +102,6 @@ impl Display for LengthMismatch {
     }
 }
 
-////
 // Suggested Implementations:
 // These macros provide instances of what can be thought of as "blanket
 // implementations" on a per-type basis.
@@ -112,7 +111,6 @@ impl Display for LengthMismatch {
 // There are two types of suggested impls:
 // - Impls of other traits in terms of ReprBytes
 // - Impls of ReprBytes in terms of other traits
-////
 
 /// Derive [ReprBytes] from [AsRef<[u8]>], [TryFrom<&[u8]>], and Size as a
 /// typenum. This is expected to be the right implementation for almost all
@@ -388,8 +386,7 @@ macro_rules! derive_core_cmp_from_as_ref {
     ($mytype:ty, $asref:ty) => {
         impl PartialOrd for $mytype {
             fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
-                <Self as AsRef<$asref>>::as_ref(self)
-                    .partial_cmp(<Self as AsRef<$asref>>::as_ref(other))
+                Some(self.cmp(other))
             }
         }
 

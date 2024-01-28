@@ -8,11 +8,12 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Client, Request, Response, Server,
 };
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, EnclaveReportDataContents, Report, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession,
 };
+use mc_attest_untrusted::DcapQuotingEnclave;
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
@@ -38,20 +39,40 @@ use tokio::{sync::oneshot, task::JoinHandle};
 pub struct MockEnclave {}
 
 impl ReportableEnclave for MockEnclave {
-    fn new_ereport(&self, _qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
-        Ok((Report::default(), QuoteNonce::default()))
+    fn new_ereport(
+        &self,
+        _qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
+        let report_data = EnclaveReportDataContents::new(
+            Default::default(),
+            [0u8; 32].as_slice().try_into().expect("bad key"),
+            None,
+        );
+        Ok((Report::default(), report_data))
     }
 
-    fn verify_quote(&self, _quote: Quote, _qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        Ok(IasNonce::default())
-    }
-
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_attestation_evidence(
+        &self,
+        _attestation_evidence: DcapEvidence,
+    ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
+        let report_data = EnclaveReportDataContents::new(
+            [0x1au8; 16].into(),
+            [0x50u8; 32].as_slice().try_into().expect("bad key"),
+            [0x34u8; 32],
+        );
+        let mut report = Report::default();
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        Ok(DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        })
     }
 }
 
@@ -345,7 +366,7 @@ impl ShardProxyServer {
         let server = Server::bind(address).serve(make_service);
         let graceful = server.with_graceful_shutdown(Self::shutdown(rx));
 
-        let server_handle = tokio::spawn(async move { graceful.await });
+        let server_handle = tokio::spawn(graceful);
 
         Self {
             server_handle: Some(server_handle),

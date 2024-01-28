@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-parse"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Helpers for parsing, particularly, for use with Clap and similar"
@@ -10,5 +10,5 @@ rust-version = { workspace = true }
 
 [dependencies]
 hex = { version = "0.4", default-features = false }
-itertools = "0.10"
+itertools = "0.12"
 mc-sgx-css = { path = "../../sgx/css" }

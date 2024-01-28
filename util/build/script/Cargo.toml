@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-script"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 description = "Cargo build-script assistance, from MobileCoin."
 edition = "2021"
@@ -12,5 +12,5 @@ rust-version = { workspace = true }
 cargo-emit = "0.2.1"
 displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
-url = "2.3"
-walkdir = "2.3"
+url = "2.5"
+walkdir = "2.4"

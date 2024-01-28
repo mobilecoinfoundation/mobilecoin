@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-api"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -16,7 +16,7 @@ mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 futures = "0.3"
-grpcio = "0.12.1"
+grpcio = "0.13"
 protobuf = "2.27.1"
 
 [dev-dependencies]

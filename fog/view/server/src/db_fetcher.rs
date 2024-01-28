@@ -399,13 +399,12 @@ where
 mod tests {
     use super::*;
     use crate::sharding_strategy::EpochShardingStrategy;
-    use mc_attest_core::VerificationReport;
+    use mc_attest_verifier_types::prost;
     use mc_common::logger::test_with_logger;
     use mc_fog_recovery_db_iface::{IngressPublicKeyStatus, ReportData, ReportDb};
     use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
-    use pem::Pem;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{thread::sleep, time::Duration};
 
@@ -604,7 +603,7 @@ mod tests {
             "",
             &ReportData {
                 ingest_invocation_id: None,
-                report: create_report(""),
+                attestation_evidence: prost::DcapEvidence::default().into(),
                 pubkey_expiry: 45,
             },
         )
@@ -775,20 +774,6 @@ mod tests {
             assert_eq!(fetched_record.ingress_key, blocks_and_records[i].0);
             assert_eq!(fetched_record.block_index, blocks_and_records[i].1.index);
             assert_eq!(blocks_and_records[i].2, fetched_record.records);
-        }
-    }
-
-    fn create_report(name: &str) -> VerificationReport {
-        let chain = pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
-            .expect("Could not parse PEM chain")
-            .into_iter()
-            .map(Pem::into_contents)
-            .collect();
-
-        VerificationReport {
-            sig: format!("{name} sig").into_bytes().into(),
-            chain,
-            http_body: format!("{name} body"),
         }
     }
 }

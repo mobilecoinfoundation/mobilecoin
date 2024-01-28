@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-vec-map"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 description = "A map object based on heapless Vec"
 edition = "2021"
@@ -10,4 +10,4 @@ rust-version = { workspace = true }
 
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
-heapless = { version = "0.7.16", default-features = false }
+heapless = { version = "0.8.0", default-features = false }

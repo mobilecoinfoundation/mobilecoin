@@ -3,7 +3,7 @@
 use super::Error;
 use grpcio::{ChannelBuilder, Environment};
 use mc_blockchain_types::BlockIndex;
-use mc_common::logger::Logger;
+use mc_common::{logger::Logger, trace_time};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc};
 use mc_fog_uri::FogLedgerUri;
@@ -56,6 +56,8 @@ impl FogUntrustedLedgerGrpcClient {
         &self,
         block_ranges: impl IntoIterator<Item = &'a Range<BlockIndex>>,
     ) -> Result<ledger::BlockResponse, Error> {
+        trace_time!(self.logger, "FogUntrustedLedgerGrpcClient::get_blocks");
+
         let mut request = ledger::BlockRequest::new();
         for iter_range in block_ranges.into_iter() {
             request.ranges.push({
@@ -84,6 +86,8 @@ impl FogUntrustedLedgerGrpcClient {
         &self,
         tx_out_pubkeys: impl IntoIterator<Item = CompressedRistrettoPublic>,
     ) -> Result<ledger::TxOutResponse, Error> {
+        trace_time!(self.logger, "FogUntrustedLedgerGrpcClient::get_tx_outs");
+
         let mut request = ledger::TxOutRequest::new();
         for pubkey in tx_out_pubkeys.into_iter() {
             // Convert to external::CompressedRistretto

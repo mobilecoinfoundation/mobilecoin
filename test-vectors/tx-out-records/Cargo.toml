@@ -1,6 +1,6 @@
 [package]
 name = "mc-test-vectors-tx-out-records"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -22,7 +22,6 @@ mc-fog-types = { path = "../../fog/types" }
 mc-fog-view-protocol = { path = "../../fog/view/protocol" }
 mc-oblivious-traits = "2.3"
 mc-test-vectors-definitions = { path = "../definitions" }
-mc-transaction-builder = { path = "../../transaction/builder" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", default-features = false }

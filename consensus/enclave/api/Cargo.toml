@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-api"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 description = """
 The ECALL API declarations and API for operating an enclave.

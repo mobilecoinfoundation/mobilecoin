@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-types"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -13,7 +13,6 @@ mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-common = { path = "../../common/", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-transaction-core = { path = "../../transaction/core" }
-mc-watcher-api = { path = "../../watcher/api" }
 
 # fog
 mc-fog-kex-rng = { path = "../kex_rng" }
@@ -21,7 +20,7 @@ mc-fog-kex-rng = { path = "../kex_rng" }
 # third-party
 crc = { version = "3.0.1", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [dev_dependencies]

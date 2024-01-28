@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave-api"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,7 +11,6 @@ rust-version = { workspace = true }
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }
 mc-common = { path = "../../../../common", default-features = false }
-mc-crypto-ake-enclave = { path = "../../../../crypto/ake/enclave", default-features = false }
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../../../crypto/noise", default-features = false }
 mc-sgx-compat = { path = "../../../../sgx/compat", default-features = false }

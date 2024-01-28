@@ -1,14 +1,12 @@
 [package]
 name = "mc-fog-view-server-test-utils"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
 # MC
-mc-attest-net = { path = "../../../../attest/net" }
-mc-attest-verifier = { path = "../../../../attest/verifier" }
 mc-blockchain-types = { path = "../../../../blockchain/types" }
 mc-common = { path = "../../../../common", features = ["log"] }
 mc-transaction-core = { path = "../../../../transaction/core" }
@@ -30,5 +28,6 @@ mc-fog-view-protocol = { path = "../../protocol" }
 mc-fog-view-server = { path = "../." }
 
 # Third-party
-grpcio = "0.12.0"
+grpcio = "0.13"
+mc-attestation-verifier = "0.4.2"
 portpicker = "0.1.1"

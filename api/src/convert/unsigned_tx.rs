@@ -133,7 +133,7 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 

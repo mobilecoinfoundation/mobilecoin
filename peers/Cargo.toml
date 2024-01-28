@@ -1,6 +1,6 @@
 [package]
 name = "mc-peers"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -30,8 +30,8 @@ mc-util-uri = { path = "../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.12.1"
-mockall = "0.11.3"
+grpcio = "0.13"
+mockall = "0.12.1"
 protobuf = "2.27.1"
 retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

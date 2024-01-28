@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-mint-client"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -35,11 +35,12 @@ mc-util-grpc = { path = "../../util/grpc" }
 mc-util-parse = { path = "../../util/parse" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = "0.2"
-grpcio = "0.12.1"
+grpcio = "0.13"
 hex = { version = "0.4", features = ["serde"] }
-pem = "2.0"
+mc-attestation-verifier = "0.4.2"
+pem = "3.0"
 protobuf = "2.27.1"
 rand = "0.8"
 serde = "1"

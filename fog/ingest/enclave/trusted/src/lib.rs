@@ -54,11 +54,10 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         // Report Caching
         EnclaveCall::GetIdentity => serialize(&ENCLAVE.get_identity()),
         EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
-        EnclaveCall::VerifyQuote(quote, qe_report) => {
-            serialize(&ENCLAVE.verify_quote(quote, qe_report))
+        EnclaveCall::VerifyAttestationEvidence(attestation_evidence) => {
+            serialize(&ENCLAVE.verify_attestation_evidence(attestation_evidence))
         }
-        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report)),
-        EnclaveCall::GetReport => serialize(&ENCLAVE.get_ias_report()),
+        EnclaveCall::GetAttestationEvidence => serialize(&ENCLAVE.get_attestation_evidence()),
         EnclaveCall::PeerInit(peer_id) => serialize(&ENCLAVE.peer_init(&peer_id)),
         EnclaveCall::PeerAccept(req) => serialize(&ENCLAVE.peer_accept(req)),
         EnclaveCall::PeerConnect(peer_id, msg) => serialize(&ENCLAVE.peer_connect(&peer_id, msg)),

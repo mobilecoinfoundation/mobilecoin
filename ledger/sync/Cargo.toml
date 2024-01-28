@@ -1,6 +1,6 @@
 [package]
 name = "mc-ledger-sync"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -10,16 +10,16 @@ rust-version = { workspace = true }
 [[bin]]
 name = "ledger-sync-test-app"
 path = "src/test_app/main.rs"
+required-features = ["mc-consensus-enclave-measurement"]
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
-mc-attest-verifier = { path = "../../attest/verifier" }
 mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
-mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement", optional = true }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
@@ -29,15 +29,16 @@ mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.12.1"
-mockall = "0.11.3"
+grpcio = "0.13"
+mc-attestation-verifier = "0.4.2"
+mockall = "0.12.1"
 protobuf = "2.27.1"
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-tempfile = "3.4"
-url = "2.3"
+tempfile = "3.9"
+url = "2.5"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

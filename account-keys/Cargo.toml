@@ -1,6 +1,6 @@
 [package]
 name = "mc-account-keys"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -15,12 +15,12 @@ default = ["std", "prost", "serde", "mc-util-serial", "mc-crypto-digestible/defa
 
 [dependencies]
 
-curve25519-dalek = { version = "4.0.0-rc.1", default-features = false }
+curve25519-dalek = { version = "4.1.1", default-features = false }
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
-hkdf = "0.12.3"
-prost = { version = "0.11", optional = true, default-features = false, features = ["prost-derive"] }
+hkdf = "0.12.4"
+prost = { version = "0.12", optional = true, default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = [ "alloc", "derive" ] }
 subtle = { version = "2", default-features = false }
@@ -38,7 +38,7 @@ mc-util-repr-bytes = { path = "../util/repr-bytes", default-features = false }
 mc-util-serial = { path = "../util/serial", optional = true }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 
 mc-test-vectors-account-keys = { path = "../test-vectors/account-keys" }
 mc-util-test-helper = { path = "../util/test-helper" }

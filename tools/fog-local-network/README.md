@@ -47,14 +47,12 @@ In order to use it, the following steps are necessary.
 
 5) Start a local network, for example:
     ```
-    SGX_MODE=SW IAS_MODE=DEV \
+    SGX_MODE=SW \
     MC_LOG="trace,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
     GRAFANA_PASSWORD="... (get this from a team member, optional) \"
     LOGSTASH_HOST="... (get this from a team member, optional)" \
     LOG_BRANCH=eran-local \
     LEDGER_BASE=$(pwd)/ledger \
-    IAS_SPID="..." \
-    IAS_API_KEY="..." \
     python3 ../tools/fog-local-network/fog_local_network.py --network-type dense5
     ```
     Note that all of the above arguments are identical to the mobilecoin local_network.py script.
@@ -74,7 +72,7 @@ In order to use it, the following steps are necessary.
         --fog-authority-root $(${CARGO_TARGET_DIR:-target}/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
 
     # Run the distribution script. This takes awhile and you should see transactions going through by looking at the logs.
-    SGX_MODE=SW IAS_MODE=DEV MC_LOG=debug \
+    SGX_MODE=SW MC_LOG=debug \
     INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
@@ -93,7 +91,7 @@ In order to use it, the following steps are necessary.
 
 8) When its done, wait for consensus to complete processing the transactions (by looking at the logs). Afterwards you should be able to successfully run the test client:
     ```
-    SGX_MODE=SW IAS_MODE=DEV MC_LOG=trace \
+    SGX_MODE=SW MC_LOG=trace \
     INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
@@ -128,7 +126,6 @@ in order to control which one is ahead or behind.
 Usage
 -----
 
-1. Set `IAS_API_KEY` and `IAS_SPID` if needed, otherwise they will default to all zeros. In a DEV IAS build that is fine.
 1. Create a new Python3 virtual env: `python3 -mvenv env`
 1. Activate the virtualenv: `. ./env/bin/activate`
 1. Install requirements: `pip install --upgrade pip && pip install -r requirements.txt`

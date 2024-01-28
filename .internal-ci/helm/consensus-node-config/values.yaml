@@ -26,11 +26,11 @@ global:
     ### Node configuration settings
     nodeConfig:
       ### Block version - set to upgrade block version.
-      blockVersion: 0
+      blockVersion: 4
 
     ### Ledger distribution settings. The default for awsPath is auto-generated based on
     #   this values, but can be overridden.
-    #   https://github.com/mobilecoinfoundation/mobilecoin/tree/master/ledger/distribution
+    #   https://github.com/mobilecoinfoundation/mobilecoin/tree/main/ledger/distribution
     ledgerDistribution:
       awsAccessKeyId: ''
       awsSecretAccessKey: ''
@@ -42,7 +42,7 @@ global:
     ### Network config list of settings to generate the network.toml file.
     #   You can list all the peers here. When we generate the node's config we
     #   will skip the the local node.
-    #   https://github.com/mobilecoinfoundation/mobilecoin/tree/master/consensus/service
+    #   https://github.com/mobilecoinfoundation/mobilecoin/tree/main/consensus/service
     networkConfig:
       threshold: ''
       peers: {}

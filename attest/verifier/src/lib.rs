@@ -12,43 +12,45 @@
 #![allow(clippy::result_large_err)]
 
 mod avr;
+mod dcap;
 mod ias;
 mod quote;
 mod report_body;
 mod status;
+pub use crate::dcap::DcapVerifier;
 
 extern crate alloc;
 
-pub use crate::status::{MrEnclaveVerifier, MrSignerVerifier};
+pub use crate::status::{Kind as StatusVerifier, MrEnclaveVerifier, MrSignerVerifier};
+use mc_attestation_verifier::Error as AttestationVerifierError;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
         /// The build-time generated mock IAS signing root authority
-        pub const IAS_SIM_ROOT_ANCHORS: &str =
-            concat!(include_str!("../data/sim/root_anchor.pem"), "\0");
+        pub const SIM_ROOT_ANCHOR: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/root_anchor.pem"));
         /// The build-time generated mock IAS signing certificate chain
-        pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
+        pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!(concat!(env!("OUT_DIR"), "/data/sim/chain.pem")), "\0");
         /// The build-time generated mock IAS signing private key
-        pub const IAS_SIM_SIGNING_KEY: &str = concat!(include_str!("../data/sim/signer.key"), "\0");
+        pub const IAS_SIM_SIGNING_KEY: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/signer.key"));
+        /// A CRL that can be used in the simulated collateral
+        pub const SIM_CRL: &[u8] = include_bytes!("../data/sim/root_crl.der");
+        pub const SIM_TCB_INFO: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/tcb_info.json"));
+        /// The build-time generated fake QE identity
+        pub const SIM_QE_IDENTITY: &str = include_str!(concat!(env!("OUT_DIR"), "/data/sim/qe_identity.json"));
 
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[IAS_SIM_ROOT_ANCHORS];
-    } else if #[cfg(feature = "ias-dev")] {
-        /// Whether or not enclaves should be run and validated in debug mode
-        pub const DEBUG_ENCLAVE: bool = true;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
-            "../data/Dev_AttestationReportSigningCACert.pem"
-        ), "\0")];
+        /// Root anchor PEM file for use with IAS
+        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = SIM_ROOT_ANCHOR;
+        /// Root anchor PEM file for use with DCAP
+        pub const DCAP_ROOT_ANCHOR: &str = SIM_ROOT_ANCHOR;
     } else {
         /// Debug enclaves in prod mode are not supported.
         pub const DEBUG_ENCLAVE: bool = false;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
-            "../data/AttestationReportSigningCACert.pem"
-        ), "\0")];
+        /// Root anchor PEM file for use with IAS
+        pub const IAS_SIGNING_ROOT_CERT_PEM: &str = include_str!("../data/AttestationReportSigningCACert.pem");
+        /// Root anchor PEM file for use with DCAP
+        pub const DCAP_ROOT_ANCHOR: &str = include_str!("../data/DcapRootCACert.pem");
     }
 }
 
@@ -60,7 +62,6 @@ use crate::{
         ConfigVersionVerifier, DebugVerifier, Kind as ReportBodyKind, MiscSelectVerifier,
         ProductIdVerifier, VersionVerifier,
     },
-    status::Kind as StatusKind,
 };
 use alloc::{
     borrow::ToOwned,
@@ -72,10 +73,11 @@ use displaydoc::Display;
 use hex_fmt::HexList;
 use mbedtls::{alloc::Box as MbedtlsBox, x509::Certificate, Error as TlsError};
 use mc_attest_core::{
-    Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
-    ExtendedProductId, FamilyId, IasNonce, MiscSelect, ProductId, Quote, QuoteSignType,
-    ReportDataMask, SecurityVersion, VerificationReport, VerificationReportData, VerifyError,
+    Attributes, Basename, ConfigId, ConfigSvn, CpuSvn, EpidGroupId, ExtendedProductId, FamilyId,
+    IasNonce, IsvProductId, IsvSvn, MiscellaneousSelect, Quote, QuoteSignType, ReportDataMask,
+    VerificationReport, VerificationReportData, VerifyError,
 };
+use mc_attestation_verifier::TrustedIdentity;
 use serde::{Deserialize, Serialize};
 
 /// Private macros used inside this crate.
@@ -121,7 +123,7 @@ trait Verify<T>: Clone {
 }
 
 /// An enumeration of errors which a [`Verifier`] can produce.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /**
      * The user-provided array of trust anchor PEM contains an invalid
@@ -137,11 +139,15 @@ pub enum Error {
     BadSignature,
     /// There was an error parsing the JSON contents: {0}
     Parse(VerifyError),
+
+    /// Attestation verifier error: {0}
+    AttestationVerify(AttestationVerifierError),
+
     /**
-     * The report was properly constructed, but did not meet security
-     * requirements, report contents: {0:?}
+     * The evidence was properly constructed, but did not meet security
+     * requirements:\n{0}
      */
-    Verification(VerificationReportData),
+    Verification(String),
 }
 
 impl From<VerifyError> for Error {
@@ -150,23 +156,29 @@ impl From<VerifyError> for Error {
     }
 }
 
+impl From<AttestationVerifierError> for Error {
+    fn from(src: AttestationVerifierError) -> Self {
+        Error::AttestationVerify(src)
+    }
+}
+
 /// A builder structure used to construct a report verifier based on the
 /// criteria specified.
-#[derive(Clone, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, PartialEq)]
 pub struct Verifier {
     /// A list of DER-encoded trust anchor certificates.
     trust_anchors: Vec<Vec<u8>>,
     report_body_verifiers: Vec<ReportBodyKind>,
     quote_verifiers: Vec<QuoteKind>,
     avr_verifiers: Vec<AvrKind>,
-    status_verifiers: Vec<StatusKind>,
+    status_verifiers: Vec<StatusVerifier>,
 }
 
 /// Construct a new builder using the baked-in IAS root certificates and debug
 /// settings.
 impl Default for Verifier {
     fn default() -> Self {
-        Self::new(IAS_SIGNING_ROOT_CERT_PEMS).expect("Invalid hard-coded certificates found")
+        Self::new(&[IAS_SIGNING_ROOT_CERT_PEM]).expect("Invalid hard-coded certificates found")
     }
 }
 
@@ -249,14 +261,14 @@ impl Verifier {
 
     /// Verify that the quoting enclave's security version is at least the given
     /// version.
-    pub fn qe_security_version(&mut self, qe_svn: SecurityVersion) -> &mut Self {
+    pub fn qe_security_version(&mut self, qe_svn: IsvSvn) -> &mut Self {
         self.quote_verifiers.push(QuoteKind::QeSvn(qe_svn.into()));
         self
     }
 
     /// Verify that the quoting enclave's security version is at least the given
     /// version.
-    pub fn pce_security_version(&mut self, pce_svn: SecurityVersion) -> &mut Self {
+    pub fn pce_security_version(&mut self, pce_svn: IsvSvn) -> &mut Self {
         self.quote_verifiers.push(QuoteKind::PceSvn(pce_svn.into()));
         self
     }
@@ -281,20 +293,20 @@ impl Verifier {
 
     /// Verify the report body config ID matches the given value.
     pub fn config_id(&mut self, config_id: &ConfigId) -> &mut Self {
-        self.report_body_verifiers.push((*config_id).into());
+        self.report_body_verifiers.push(config_id.clone().into());
         self
     }
 
     /// Verify the report body config version is at least the given value.
-    pub fn config_version(&mut self, config_svn: ConfigSecurityVersion) -> &mut Self {
+    pub fn config_version(&mut self, config_svn: ConfigSvn) -> &mut Self {
         self.report_body_verifiers
             .push(ConfigVersionVerifier::from(config_svn).into());
         self
     }
 
     /// Verify the report body CPU version is at least the given value.
-    pub fn cpu_version(&mut self, cpu_svn: &CpuSecurityVersion) -> &mut Self {
-        self.report_body_verifiers.push((*cpu_svn).into());
+    pub fn cpu_version(&mut self, cpu_svn: &CpuSvn) -> &mut Self {
+        self.report_body_verifiers.push(cpu_svn.clone().into());
         self
     }
 
@@ -307,52 +319,76 @@ impl Verifier {
 
     /// Verify the report data matches the data mask given
     pub fn report_data(&mut self, report_data: &ReportDataMask) -> &mut Self {
-        self.report_body_verifiers.push((*report_data).into());
+        self.report_body_verifiers.push(report_data.clone().into());
         self
     }
 
     /// Verify the report body extended product ID matches the given value.
     pub fn extended_product_id(&mut self, ext_prod_id: &ExtendedProductId) -> &mut Self {
-        self.report_body_verifiers.push((*ext_prod_id).into());
+        self.report_body_verifiers.push(ext_prod_id.clone().into());
         self
     }
 
     /// Verify the report body family ID matches the given value.
     pub fn family_id(&mut self, family_id: &FamilyId) -> &mut Self {
-        self.report_body_verifiers.push((*family_id).into());
+        self.report_body_verifiers.push(family_id.clone().into());
         self
     }
 
     /// Verify the report body misc selection matches the given value.
-    pub fn misc_select(&mut self, misc_select: MiscSelect) -> &mut Self {
+    pub fn misc_select(&mut self, misc_select: MiscellaneousSelect) -> &mut Self {
         self.report_body_verifiers
             .push(MiscSelectVerifier::from(misc_select).into());
         self
     }
 
     /// Verify the report body product ID matches the given value.
-    pub fn product_id(&mut self, product_id: ProductId) -> &mut Self {
+    pub fn product_id(&mut self, product_id: IsvProductId) -> &mut Self {
         self.report_body_verifiers
             .push(ProductIdVerifier::from(product_id).into());
         self
     }
 
     /// Verify the report body (enclave) version is at least the given value.
-    pub fn version(&mut self, version: SecurityVersion) -> &mut Self {
+    pub fn version(&mut self, version: IsvSvn) -> &mut Self {
         self.report_body_verifiers
             .push(VersionVerifier::from(version).into());
         self
     }
 
-    /// Verify the given MrEnclave-based status verifier succeeds
+    /// Add a MrEnclave-based status verifier to the potential status verifiers
+    ///
+    /// For MRENCLAVE and MRSIGNER verifiers, only one of them needs to succeed.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn mr_enclave(&mut self, verifier: MrEnclaveVerifier) -> &mut Self {
         self.status_verifiers.push(verifier.into());
         self
     }
 
-    /// Verify the given MrSigner-based status verifier succeeds
+    /// Add a MrSigner-based status verifier to the potential status verifiers
+    ///
+    /// For MRENCLAVE and MRSIGNER verifiers, only one of them needs to succeed.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
     pub fn mr_signer(&mut self, verifier: MrSignerVerifier) -> &mut Self {
         self.status_verifiers.push(verifier.into());
+        self
+    }
+
+    /// Add identities as a potential status verifier
+    ///
+    /// For MRENCLAVE and MRSIGNER identities, only one of them needs to
+    /// match.
+    /// This allows for one to support multiple versions of an enclave for
+    /// things like enclave update periods.
+    pub fn identities<'a>(
+        &mut self,
+        identities: impl IntoIterator<Item = &'a TrustedIdentity>,
+    ) -> &mut Self {
+        for identity in identities {
+            self.status_verifiers.push(StatusVerifier::from(identity));
+        }
         self
     }
 
@@ -399,11 +435,10 @@ mod test {
     use super::*;
     use alloc::vec;
     use mc_attest_core::{MrEnclave, MrSigner, VerificationSignature};
+    use mc_attestation_verifier::{Advisories, AdvisoryStatus};
     use mc_util_encodings::FromHex;
 
-    const TEST_ANCHORS: &[&str] = &[include_str!(
-        "../data/Dev_AttestationReportSigningCACert.pem"
-    )];
+    const TEST_ANCHORS: &[&str] = &[include_str!("../data/AttestationReportSigningCACert.pem")];
 
     /// This function provides a recorded response using SW_HARDENING_NEEDED for
     /// the INTEL-SA-00334 (LVI) advisory
@@ -441,13 +476,19 @@ mod test {
             69, 251, 36, 34, 76, 54, 51, 236, 141, 181, 29, 9, 11, 241, 29, 228, 222, 118, 194,
             134, 108, 6, 1, 2, 49, 80, 32, 217, 151, 134, 184, 44,
         ]));
-        mr_enclave1.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_enclave1.set_advisories(Advisories::new(
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         let mut mr_enclave2 = MrEnclaveVerifier::new(MrEnclave::from([
             209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198, 84,
             121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
         ]));
-        mr_enclave2.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_enclave2.set_advisories(Advisories::new(
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         Verifier::new(TEST_ANCHORS)
             .expect("Could not initialize new verifier")
@@ -466,19 +507,25 @@ mod test {
                 209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198,
                 84, 121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
             ]),
-            10,
-            10,
+            10.into(),
+            10.into(),
         );
-        mr_signer1.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_signer1.set_advisories(Advisories::new(
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
         let mut mr_signer2 = MrSignerVerifier::new(
             MrSigner::from([
                 209, 31, 70, 153, 191, 224, 183, 181, 71, 206, 99, 225, 136, 46, 1, 238, 208, 198,
                 84, 121, 40, 171, 120, 154, 49, 90, 135, 137, 143, 44, 83, 77,
             ]),
-            1,
-            1,
+            1.into(),
+            1.into(),
         );
-        mr_signer2.allow_hardening_advisories(&["INTEL-SA-00334", "INTEL-SA-00615"]);
+        mr_signer2.set_advisories(Advisories::new(
+            ["INTEL-SA-00334", "INTEL-SA-00615"],
+            AdvisoryStatus::SWHardeningNeeded,
+        ));
 
         Verifier::new(TEST_ANCHORS)
             .expect("Could not initialize new verifier")

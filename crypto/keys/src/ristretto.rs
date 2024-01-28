@@ -341,7 +341,7 @@ impl RistrettoPublic {
 
 impl PartialOrd for RistrettoPublic {
     fn partial_cmp(&self, other: &RistrettoPublic) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
+        Some(self.cmp(other))
     }
 }
 

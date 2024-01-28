@@ -1,12 +1,12 @@
 [package]
 name = "mc-sgx-slog-edl"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 links = "sgx_slog_edl"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
-rust-version = "1.68.0"
+rust-version = "1.74.0"
 
 [build-dependencies]
 cargo-emit = "0.2"

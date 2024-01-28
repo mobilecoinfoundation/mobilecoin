@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-cli"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -13,7 +13,6 @@ path = "src/main.rs"
 [dependencies]
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-core = { path = "../../../attest/core" }
-mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-fog-api = { path = "../../api" }
@@ -27,6 +26,6 @@ mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-uri = { path = "../../../util/uri" }
 
 base64 = "0.21"
-clap = { version = "4.1", features = ["derive", "env"] }
-grpcio = "0.12.1"
+clap = { version = "4.4", features = ["derive", "env"] }
+grpcio = "0.13"
 hex = "0.4"

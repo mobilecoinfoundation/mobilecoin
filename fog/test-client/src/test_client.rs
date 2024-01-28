@@ -36,7 +36,7 @@ use std::{
         Arc, Mutex,
     },
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 /// Telemetry: block index currently being worked on
@@ -78,6 +78,11 @@ struct TransferData {
     block_count: u64,
     /// The fee associated with the transaction.
     fee: Amount,
+
+    tx_build_start: SystemTime,
+    tx_build_end: SystemTime,
+    tx_send_start: SystemTime,
+    tx_send_end: SystemTime,
 }
 
 /// Data associated with a test client swap.
@@ -291,7 +296,7 @@ impl TestClient {
     fn transfer(
         &self,
         source_client: &mut Client,
-        target_client: &mut Client,
+        target_client: &Client,
         token_id: TokenId,
     ) -> Result<TransferData, TestClientError> {
         self.tx_info.clear();
@@ -311,12 +316,13 @@ impl TestClient {
                 .map_err(TestClientError::CheckBalance)
         })?;
 
-        let mut rng = McRng::default();
+        let mut rng = McRng;
         assert!(target_address.fog_report_url().is_some());
 
         let fee = self.get_minimum_fee(token_id, source_client)?;
 
         // Scope for build operation
+        let tx_build_start = SystemTime::now();
         let transaction = {
             let start = Instant::now();
             let transaction = source_client
@@ -330,9 +336,11 @@ impl TestClient {
             counters::TX_BUILD_TIME.observe(start.elapsed().as_secs_f64());
             transaction
         };
+        let tx_build_end = SystemTime::now();
         self.tx_info.set_tx(&transaction);
 
         // Scope for send operation
+        let tx_send_start = SystemTime::now();
         let block_count = {
             let start = Instant::now();
             let block_count = source_client
@@ -341,11 +349,16 @@ impl TestClient {
             counters::TX_SEND_TIME.observe(start.elapsed().as_secs_f64());
             block_count
         };
+        let tx_send_end = SystemTime::now();
         self.tx_info.set_tx_propose_block_count(block_count);
         Ok(TransferData {
             transaction,
             block_count,
             fee,
+            tx_build_start,
+            tx_build_end,
+            tx_send_start,
+            tx_send_end,
         })
     }
 
@@ -586,14 +599,26 @@ impl TestClient {
         )?;
 
         let transfer_start = std::time::SystemTime::now();
-        let transfer_data =
-            self.transfer(&mut source_client_lk, &mut target_client_lk, token_id)?;
+        let transfer_data = self.transfer(&mut source_client_lk, &target_client_lk, token_id)?;
 
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
             .start(&tracer);
         span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(transfer_data.block_count as i64));
+
         let _active = mark_span_as_active(span);
+
+        tracer
+            .span_builder("tx_build")
+            .with_start_time(transfer_data.tx_build_start)
+            .start(&tracer)
+            .end_with_timestamp(transfer_data.tx_build_end);
+
+        tracer
+            .span_builder("tx_send")
+            .with_start_time(transfer_data.tx_send_start)
+            .start(&tracer)
+            .end_with_timestamp(transfer_data.tx_send_end);
 
         let start = Instant::now();
 
@@ -732,7 +757,7 @@ impl TestClient {
         self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
 
-        let mut rng = McRng::default();
+        let mut rng = McRng;
 
         // Note: McRng does not implement rand::Rng because rand historically
         // has not been no_std

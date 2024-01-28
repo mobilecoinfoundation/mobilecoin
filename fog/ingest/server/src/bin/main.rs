@@ -3,8 +3,8 @@
 
 //! Fog Ingest target
 
-use mc_attest_net::{Client, RaClient};
 use mc_common::logger::{log, o};
+use mc_fog_block_provider::{BlockProvider, LocalBlockProvider, MobilecoindBlockProvider};
 use mc_fog_ingest_enclave::ENCLAVE_FILE;
 use mc_fog_ingest_server::{
     config::IngestConfig,
@@ -41,9 +41,6 @@ fn main() {
 
     log::info!(logger, "State file is {:?}", state_file_path);
 
-    // Create IAS client.
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-
     // Get enclave path
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
@@ -62,16 +59,34 @@ fn main() {
         panic!("fog-ingest cannot connect to database '{database_url}': {err:?}")
     });
 
-    let ledger_db = LedgerDB::open(&config.ledger_db).expect("Could not read ledger DB");
+    let (block_provider, ledger_db) = match (
+        config.ledger_db.as_ref(),
+        config.watcher_db.as_ref(),
+        config.mobilecoind_uri.as_ref(),
+    ) {
+        (Some(ledger_db_path), Some(watcher_db_path), None) => {
+            let ledger_db = LedgerDB::open(ledger_db_path).expect("Could not read ledger DB");
+            let watcher = WatcherDB::open_ro(watcher_db_path, logger.clone())
+                .expect("Could not open watcher DB");
 
-    let watcher =
-        WatcherDB::open_ro(&config.watcher_db, logger.clone()).expect("Could not open watcher DB");
+            (
+                LocalBlockProvider::new(ledger_db.clone(), watcher) as Box<dyn BlockProvider>,
+                Some(ledger_db),
+            )
+        }
+
+        (None, None, Some(mobilecoind_uri)) => (
+            MobilecoindBlockProvider::new(mobilecoind_uri, &logger) as Box<dyn BlockProvider>,
+            None,
+        ),
+
+        _ => panic!("invalid configuration, need either ledger_db+watcher_db or mobilecoind_uri"),
+    };
 
     // Start ingest server.
     let server_config = IngestServerConfig {
         max_transactions: config.max_transactions,
         omap_capacity: config.user_capacity,
-        ias_spid: config.ias_spid,
         local_node_id: config.local_node_id.clone(),
         client_listen_uri: config.client_listen_uri.clone(),
         peer_listen_uri: config.peer_listen_uri.clone(),
@@ -82,16 +97,10 @@ fn main() {
         fog_report_id: config.fog_report_id.clone(),
         state_file: Some(StateFile::new(state_file_path)),
         enclave_path,
+        poll_interval: config.poll_interval,
     };
 
-    let mut server = IngestServer::new(
-        server_config,
-        ias_client,
-        recovery_db,
-        watcher,
-        ledger_db,
-        logger.clone(),
-    );
+    let mut server = IngestServer::new(server_config, recovery_db, block_provider, logger.clone());
 
     server.start().expect("Failed starting Ingest Service");
 
@@ -106,12 +115,21 @@ fn main() {
             config.local_node_id.to_string(),
             Some(get_config_json),
             vec![],
-            logger,
+            logger.clone(),
         )
         .expect("Failed starting fog-ingest admin server")
     });
 
     loop {
+        if let Some(ledger_db) = ledger_db.as_ref() {
+            // The ledger database is read by this service, but updated by another service.
+            // In order to keep this service's metrics up to date, we need to update them
+            // periodically.
+            if let Err(e) = ledger_db.update_metrics() {
+                log::error!(logger, "Error updating ledger metrics: {:?}", e);
+            }
+        }
+
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }

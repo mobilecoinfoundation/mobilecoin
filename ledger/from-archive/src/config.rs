@@ -18,7 +18,7 @@ pub struct LedgerFromArchiveConfig {
 
     /// URLs to use to pull blocks.
     ///
-    /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.master.mobilecoin.com/
+    /// For example: https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.alpha.development.mobilecoin.com/
     #[clap(
         long = "tx-source-url",
         required = true,

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-overseer-server"
-version = "5.0.8"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -13,13 +13,13 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # third-party
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.12.1"
+grpcio = "0.13"
 lazy_static = "1.4"
 prometheus = "0.13.3"
 retry = "2.0"
-rocket = { version = "0.5.0-rc.2", features = ["json"] }
+rocket = { version = "0.5.0", features = ["json"] }
 serde = "1"
 
 # mc
@@ -43,10 +43,9 @@ mc-fog-uri = { path = "../../uri" }
 rand_core = "0.6"
 rand_hc = "0.3"
 regex = "1"
-url = "2.3.1"
+url = "2.5.0"
 
 # mc
-mc-attest-net = { path = "../../../attest/net" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-watcher = { path = "../../../watcher" }
