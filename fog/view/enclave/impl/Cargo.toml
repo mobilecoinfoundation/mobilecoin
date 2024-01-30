@@ -31,5 +31,5 @@ mc-fog-types = { path = "../../../types" }
 mc-fog-view-enclave-api = { path = "../api" }
 
 [dev-dependencies]
-itertools = "0.12.0"
+itertools = "0.12.1"
 mc-common = { path = "../../../../common", features = ["loggers"] }
