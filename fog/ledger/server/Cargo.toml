@@ -92,4 +92,4 @@ sha2 = "0.10"
 
 # third-party
 tempfile = "3.9"
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.36", features = ["full"] }
