@@ -25,4 +25,4 @@ mc-blockchain-test-utils = { path = "../test-utils" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-tempfile = "3.9"
+tempfile = "3.10"

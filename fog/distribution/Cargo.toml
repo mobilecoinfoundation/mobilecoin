@@ -37,7 +37,7 @@ mc-attestation-verifier = "0.4.2"
 rand = "0.8"
 rayon = "1.8"
 retry = "2.0"
-tempfile = "3.9"
+tempfile = "3.10"
 
 curve25519-dalek = { version = "4.1.1", default-features = false }
 

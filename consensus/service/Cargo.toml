@@ -81,6 +81,6 @@ mockall = "0.12.1"
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
 serial_test = "3.0"
-tempfile = "3.9"
+tempfile = "3.10"
 
 curve25519-dalek = { version = "4.1.1", default-features = false }
