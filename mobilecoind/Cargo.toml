@@ -87,7 +87,7 @@ pem = "3.0"
 portpicker = "0.1.1"
 rand_chacha = "0.3"
 rand_core = "0.6"
-tempfile = "3.9"
+tempfile = "3.10"
 
 [build-dependencies]
 # Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25

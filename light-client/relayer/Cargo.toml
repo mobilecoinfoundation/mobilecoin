@@ -37,4 +37,4 @@ mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-extra = { path = "../../transaction/extra" }
 rand = "0.8"
-tempfile = "3.9"
+tempfile = "3.10"

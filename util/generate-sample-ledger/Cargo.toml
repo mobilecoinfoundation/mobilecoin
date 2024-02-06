@@ -27,4 +27,4 @@ rand = "0.8"
 rand_hc = "0.3"
 
 [dev-dependencies]
-tempfile = "3.9"
+tempfile = "3.10"
