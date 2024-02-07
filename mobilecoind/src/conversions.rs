@@ -15,9 +15,9 @@ use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut},
-    Amount, TokenId,
+    Amount, MemoPayload, TokenId,
 };
-use mc_transaction_extra::TxOutConfirmationNumber;
+use mc_transaction_extra::{MemoType, TxOutConfirmationNumber};
 use protobuf::RepeatedField;
 
 impl From<&UnspentTxOut> for api::UnspentTxOut {
@@ -31,6 +31,11 @@ impl From<&UnspentTxOut> for api::UnspentTxOut {
         dst.set_attempted_spend_height(src.attempted_spend_height);
         dst.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         dst.set_token_id(src.token_id);
+        dst.set_memo_payload(src.memo_payload.clone());
+
+        if let Ok(mp) = MemoPayload::try_from(&src.memo_payload[..]) {
+            dst.set_decoded_memo(try_decode_memo(&mp));
+        }
 
         dst
     }
@@ -47,6 +52,7 @@ impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
         let attempted_spend_height = src.attempted_spend_height;
         let attempted_spend_tombstone = src.attempted_spend_tombstone;
         let token_id = src.token_id;
+        let memo_payload = src.memo_payload.clone();
 
         Ok(Self {
             tx_out,
@@ -56,6 +62,7 @@ impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
             attempted_spend_height,
             attempted_spend_tombstone,
             token_id,
+            memo_payload,
         })
     }
 }
@@ -67,6 +74,40 @@ fn bytes_to_tx_private_key(bytes: &[u8]) -> Result<Option<RistrettoPrivate>, Con
 
     let bytes = <&[u8; 32] as TryFrom<&[u8]>>::try_from(bytes)?;
     Ok(Some(RistrettoPrivate::from_bytes_mod_order(bytes)))
+}
+
+// Helper which tries to parse a memo and then write it in the api::DecodedMemo
+// proto format
+fn try_decode_memo(memo_payload: &MemoPayload) -> api::DecodedMemo {
+    let mut result = api::DecodedMemo::new();
+
+    match MemoType::try_from(memo_payload) {
+        Ok(MemoType::Unused(_)) => {}
+        Ok(MemoType::AuthenticatedSender(memo)) => {
+            let mut asm = api::AuthenticatedSenderMemo::new();
+            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
+            result.set_authenticated_sender_memo(asm);
+        }
+        Ok(MemoType::AuthenticatedSenderWithPaymentRequestId(memo)) => {
+            let mut asm = api::AuthenticatedSenderMemo::new();
+            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
+            asm.set_payment_request_id(memo.payment_request_id());
+            result.set_authenticated_sender_memo(asm);
+        }
+        Ok(MemoType::AuthenticatedSenderWithPaymentIntentId(memo)) => {
+            let mut asm = api::AuthenticatedSenderMemo::new();
+            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
+            asm.set_payment_intent_id(memo.payment_intent_id());
+            result.set_authenticated_sender_memo(asm);
+        }
+        Ok(_) | Err(_) => {
+            let mut um = api::UnknownMemo::new();
+            um.set_type_bytes(memo_payload.get_memo_type().to_vec());
+            result.set_unknown_memo(um);
+        }
+    }
+
+    result
 }
 
 impl From<&Outlay> for api::Outlay {
@@ -297,6 +338,7 @@ mod test {
             attempted_spend_height,
             attempted_spend_tombstone,
             token_id: *Mob::ID,
+            memo_payload: vec![6u8, 66],
         };
 
         let proto = api::UnspentTxOut::from(&rust);
@@ -413,6 +455,7 @@ mod test {
                 attempted_spend_height,
                 attempted_spend_tombstone,
                 token_id: *Mob::ID,
+                memo_payload: vec![9u8, 66],
             }
         };
 

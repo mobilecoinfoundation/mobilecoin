@@ -31,6 +31,8 @@ service MobilecoindAPI {
     rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
     rpc GetAccountKeyFromMnemonic (GetAccountKeyFromMnemonicRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
+    rpc GetShortAddressHash (GetShortAddressHashRequest) returns (GetShortAddressHashResponse) {}
+    rpc ValidateAuthenticatedSenderMemo (ValidateAuthenticatedSenderMemoRequest) returns (ValidateAuthenticatedSenderMemoResponse) {}
 
     // b58 Codes
     rpc ParseRequestCode (ParseRequestCodeRequest) returns (ParseRequestCodeResponse) {}
@@ -158,9 +160,45 @@ message UnspentTxOut {
     // The token id of the TxOut
     uint64 token_id = 7;
 
+    // The (decrypted) MemoPayload of this TxOut
+    bytes memo_payload = 8;
+
     // The monitor id this UnspentTxOut belongs to.
     // Note that this field is not included in the Rust `utxo_store::UnspentTxOut` struct.
     bytes monitor_id = 10;
+
+    // The decoded memo info, if any
+    DecodedMemo decoded_memo = 11;
+}
+
+message DecodedMemo {
+    // Details of the decoded memo payload.
+    // Omitted if the empty memo was found.
+    oneof decoded_memo {
+      AuthenticatedSenderMemo authenticated_sender_memo = 1;
+      UnknownMemo unknown_memo = 2;
+    }
+}
+
+// Structure used to represent the decoded MCIP #4 Authenticated sender memo and its variants.
+// Note that the sender can write whatever they want in a memo, and to rely on the data.
+// You must validate the memo by checking the hmac, see the ValidateAuthenticatedSenderMemo rpc call.
+//
+// See docu https://protobuf.dev/programming-guides/proto3/#field-labels, https://github.com/protocolbuffers/protobuf/blob/main/docs/field_presence.md
+// for semantics around optional fields of primitive types. Since v3.15 (in 2020) the default is to not conflate "0" and "omitted".
+message AuthenticatedSenderMemo {
+    /// The standard short address hash (MCIP #4)
+    bytes sender_hash = 1;
+    // The payment_request_id if present
+    optional uint64 payment_request_id = 2;
+    // The payment_intent_id if present
+    optional uint64 payment_intent_id = 3;
+}
+
+// Details returned when this version of mobilecoind couldn't interpret a memo payload.
+message UnknownMemo {
+    // The type bytes of this memo, which couldn't be interpretted by mobilecoind.
+    bytes type_bytes = 1;
 }
 
 // Structure used to refer to an SCI that we want to add to a transaction.
@@ -417,6 +455,28 @@ message GetPublicAddressRequest {
 message GetPublicAddressResponse {
     external.PublicAddress public_address = 1;
     string b58_code = 2;
+}
+
+//
+// Memos
+//
+
+message GetShortAddressHashRequest {
+    external.PublicAddress public_address = 1;
+}
+
+message GetShortAddressHashResponse {
+    bytes hash = 1;
+}
+
+message ValidateAuthenticatedSenderMemoRequest {
+    bytes monitor_id = 1;
+    UnspentTxOut utxo = 2;
+    external.PublicAddress sender = 3;
+}
+
+message ValidateAuthenticatedSenderMemoResponse {
+    bool success = 1;
 }
 
 //

@@ -18,7 +18,8 @@ use api::ledger::{TxOutResult, TxOutResultCode};
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{
-    burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+    burn_address, AccountKey, PublicAddress, RootIdentity, ShortAddressHash,
+    DEFAULT_SUBADDRESS_INDEX,
 };
 use mc_api::blockchain::ArchiveBlock;
 use mc_blockchain_types::BlockIndex;
@@ -43,9 +44,9 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Amount, TokenId,
+    Amount, MemoPayload, TokenId,
 };
-use mc_transaction_extra::{BurnRedemptionMemo, TxOutConfirmationNumber};
+use mc_transaction_extra::{BurnRedemptionMemo, MemoType, TxOutConfirmationNumber};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -465,7 +466,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<api::GetPublicAddressResponse, RpcStatus> {
         // Get MonitorId from from the GRPC request.
         let monitor_id = MonitorId::try_from(&request.monitor_id)
-            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get monitor data.
         let data = self
@@ -501,6 +502,83 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .b58_encode()
                 .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
         );
+
+        Ok(response)
+    }
+
+    fn get_short_address_hash_impl(
+        &mut self,
+        request: api::GetShortAddressHashRequest,
+    ) -> Result<api::GetShortAddressHashResponse, RpcStatus> {
+        let address = PublicAddress::try_from(request.get_public_address())
+            .map_err(|err| rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger))?;
+
+        let hash = ShortAddressHash::from(&address);
+
+        let mut response = api::GetShortAddressHashResponse::new();
+        response.set_hash(hash.as_ref().to_vec());
+        Ok(response)
+    }
+
+    fn validate_authenticated_sender_memo_impl(
+        &mut self,
+        request: api::ValidateAuthenticatedSenderMemoRequest,
+    ) -> Result<api::ValidateAuthenticatedSenderMemoResponse, RpcStatus> {
+        // Read the utxo proto
+        let utxo = UnspentTxOut::try_from(request.get_utxo())
+            .map_err(|err| rpc_invalid_arg_error("unspent_tx_out.try_from", err, &self.logger))?;
+
+        let memo_payload = MemoPayload::try_from(&utxo.memo_payload[..])
+            .map_err(|err| rpc_invalid_arg_error("memo_payload.try_from", err, &self.logger))?;
+
+        // Read the sender proto
+        let sender = PublicAddress::try_from(request.get_sender())
+            .map_err(|err| rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger))?;
+
+        // Get MonitorId from from the GRPC request.
+        let monitor_id = MonitorId::try_from(&request.monitor_id)
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data.
+        let data = self
+            .mobilecoind_db
+            .get_monitor_data(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        let subaddress_vpk = data
+            .account_key
+            .subaddress_view_private(utxo.subaddress_index);
+        let tx_out_public_key = &utxo.tx_out.public_key;
+
+        let mut response = api::ValidateAuthenticatedSenderMemoResponse::new();
+
+        response.set_success(bool::from(match MemoType::try_from(&memo_payload) {
+            Ok(MemoType::AuthenticatedSender(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(MemoType::AuthenticatedSenderWithPaymentRequestId(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(MemoType::AuthenticatedSenderWithPaymentIntentId(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(other) => {
+                return Err(rpc_invalid_arg_error(
+                    "Not an authenticated sender memo",
+                    format!("{other:?}"),
+                    &self.logger,
+                ));
+            }
+            Err(err) => {
+                return Err(rpc_invalid_arg_error(
+                    "Not an authenticated sender memo",
+                    format!("{err:?}"),
+                    &self.logger,
+                ));
+            }
+        }));
 
         Ok(response)
     }
@@ -645,6 +723,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let key_image = KeyImage::from(&onetime_private_key);
 
+        let memo_payload = AsRef::<[u8]>::as_ref(&tx_out.decrypt_memo(&shared_secret)).to_vec();
+
         let utxo = UnspentTxOut {
             tx_out,
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
@@ -653,6 +733,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             token_id: *amount.token_id,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
+            memo_payload,
         };
 
         let mut response = api::ParseTransferCodeResponse::new();
@@ -2518,6 +2599,8 @@ build_api! {
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
     get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
+    get_short_address_hash GetShortAddressHashRequest GetShortAddressHashResponse get_short_address_hash_impl,
+    validate_authenticated_sender_memo ValidateAuthenticatedSenderMemoRequest ValidateAuthenticatedSenderMemoResponse validate_authenticated_sender_memo_impl,
 
     // b58 codes
     parse_request_code ParseRequestCodeRequest ParseRequestCodeResponse parse_request_code_impl,
@@ -2931,6 +3014,7 @@ mod test {
                     token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    memo_payload: AsRef::<[u8]>::as_ref(&MemoPayload::default()).to_vec(),
                 }
             })
             .collect();
@@ -3090,6 +3174,7 @@ mod test {
                     token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    memo_payload: AsRef::<[u8]>::as_ref(&MemoPayload::default()).to_vec(),
                 }
             })
             .collect();
@@ -3829,6 +3914,7 @@ mod test {
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                     token_id: *Mob::ID,
+                    memo_payload: vec![],
                 }
             })
             .collect();
