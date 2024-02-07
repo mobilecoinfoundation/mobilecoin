@@ -21,7 +21,7 @@ curve25519-dalek = { version = "4.1.1", default-features = false }
 
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
-ed25519-dalek = { version = "2.1.0", default-features = false }
+ed25519-dalek = { version = "2.1.1", default-features = false }
 hex_fmt = { version = "0.3", optional = true }
 
 # MobileCoin dependencies

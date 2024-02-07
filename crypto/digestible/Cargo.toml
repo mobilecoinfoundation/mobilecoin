@@ -12,7 +12,7 @@ cfg-if = "1.0"
 
 # Built-in support for dalek primitives
 curve25519-dalek = { version = "4.1.1", default-features = false, optional = true }
-ed25519-dalek = { version = "2.1.0", default-features = false, optional = true }
+ed25519-dalek = { version = "2.1.1", default-features = false, optional = true }
 generic-array = "0.14"
 
 # For derive support
