@@ -310,7 +310,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map(|outlay_v1| OutlayV2 {
                 receiver: outlay_v1.receiver.clone(),
                 amount: Amount::new(outlay_v1.value, token_id),
-                tx_private_key: outlay_v1.tx_private_key.clone(),
+                tx_private_key: outlay_v1.tx_private_key,
             })
             .collect();
 
@@ -1288,7 +1288,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .add_output_with_tx_private_key(
                     outlay.amount,
                     &outlay.receiver,
-                    outlay.tx_private_key.clone(),
+                    outlay.tx_private_key,
                     rng,
                 )
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {err}")))?;
