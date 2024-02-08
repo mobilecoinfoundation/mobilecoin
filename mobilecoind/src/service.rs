@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! The mobilecoind Service
 //! * provides a GRPC server
@@ -1276,6 +1276,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlays = vec![Outlay {
             value: request.get_burn_amount(),
             receiver: burn_address(),
+            tx_private_key: None,
         }];
 
         // Create memo builder.
@@ -1337,6 +1338,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlay = Outlay {
             receiver: account_key.default_subaddress(),
             value: request.value,
+            tx_private_key: None,
         };
 
         // Generate transaction.
@@ -4548,10 +4550,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -4799,6 +4803,7 @@ mod test {
             request.set_outlay_list(RepeatedField::from_vec(vec![api::Outlay::from(&Outlay {
                 receiver: receiver1.default_subaddress(),
                 value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT * num_blocks,
+                tx_private_key: None,
             })]));
             assert!(client.generate_tx(&request).is_err());
         }
@@ -5710,10 +5715,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -5962,10 +5969,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -6147,10 +6156,12 @@ mod test {
             Outlay {
                 value: 10,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 20,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -6291,10 +6302,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -6415,10 +6428,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 

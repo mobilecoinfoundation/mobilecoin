@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 #![allow(non_snake_case)]
 
@@ -140,6 +140,14 @@ impl RistrettoPrivate {
         let csprng = Hc128Rng::from_seed(nonce);
         let transcript = attach_rng(t, csprng);
         RistrettoSignature::from(keypair.sign(transcript))
+    }
+
+    /// Curve25519-dalek exposes Scalar::from_bytes_mod_order, which is helpful
+    /// for converting a hash into a valid scalar, and can be useful at API
+    /// boundaries. Callers need not import curve25519-dalek in order to
+    /// convert a hash to a valid scalar.
+    pub fn from_bytes_mod_order(src: &[u8; 32]) -> Self {
+        Self(Scalar::from_bytes_mod_order(*src))
     }
 }
 
