@@ -946,7 +946,7 @@ pub(crate) fn create_output_with_fog_hint(
         memo_fn,
     )?;
 
-    let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
+    let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
     Ok((tx_out, shared_secret))
 }
 
@@ -1235,6 +1235,7 @@ pub mod transaction_builder_tests {
                     Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
                     &fog_hint_address,
+                    None,
                     |_| Ok(Default::default()),
                     &mut rng,
                 )
