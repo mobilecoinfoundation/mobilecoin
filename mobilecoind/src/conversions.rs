@@ -438,7 +438,7 @@ mod test {
 
         // This is an unassigned memo type
         let memo6 = MemoPayload::new([7u8, 8u8], [0u8; 64]);
-        let decoded = decode_memo(&MemoPayload::from(memo6));
+        let decoded = decode_memo(&memo6);
         assert!(!decoded.has_authenticated_sender_memo());
         assert!(decoded.has_unknown_memo());
     }
