@@ -2676,9 +2676,12 @@ mod test {
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
     use mc_rand::RngCore;
-    use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
+    use mc_transaction_builder::{
+        EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder, TransactionBuilder, TxOutContext,
+    };
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
+        encrypted_fog_hint::EncryptedFogHint,
         fog_hint::FogHint,
         get_tx_out_shared_secret,
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
@@ -2686,7 +2689,7 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Token,
     };
-    use mc_transaction_extra::{MemoType, SignedContingentInput};
+    use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -3351,6 +3354,128 @@ mod test {
         request.set_monitor_id(id.to_vec());
         request.set_subaddress_index(1000);
         assert!(client.get_public_address(&request).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_get_short_address_hash_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([57u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        let account_key = AccountKey::random(&mut rng);
+        let public_address = account_key.default_subaddress();
+
+        // Try to compute the short address hash
+        let mut request = api::GetShortAddressHashRequest::new();
+        // Check that an invalid request returns an error
+        assert!(client.get_short_address_hash(&request).is_err());
+
+        request.set_public_address((&public_address).into());
+        let response = client.get_short_address_hash(&request).unwrap();
+
+        // Test that the short address hash is correct
+        let hash = ShortAddressHash::from(&public_address);
+        assert_eq!(&response.hash[..], hash.as_ref());
+    }
+
+    #[test_with_logger]
+    fn test_validate_authenticated_sender_memo_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([57u8; 32]);
+        // In this test, Bob is a mobilecoind user,
+        // who gets a TxOut from alice with an authenticated sender memo.
+        let bob_account_key = AccountKey::random(&mut rng);
+        let bob_addr = bob_account_key.subaddress(10);
+        let data = MonitorData::new(
+            bob_account_key.clone(),
+            10, // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // This is alice
+        let alice_account_key = AccountKey::random(&mut rng);
+        let alice_addr = alice_account_key.default_subaddress();
+        let alice_cred = SenderMemoCredential::from(&alice_account_key);
+        let alice_hash = ShortAddressHash::from(&alice_addr);
+
+        // Alice makes a TxOut for Bob, with an authenticated sender memo for her
+        // default subaddress
+        let amount = Amount::new(5000000, 0.into());
+
+        let e_fog_hint = EncryptedFogHint::fake_onetime_hint(&mut rng);
+
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(alice_cred);
+
+        let memo_tx_out = TxOut::new_with_memo(
+            BLOCK_VERSION,
+            amount,
+            &bob_addr,
+            &FromRandom::from_random(&mut rng),
+            e_fog_hint,
+            |memo_ctxt| memo_builder.make_memo_for_output(amount, &bob_addr, memo_ctxt),
+        )
+        .unwrap();
+
+        // Alice adds the TxOut to the ledger
+        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[memo_tx_out], &mut rng).unwrap();
+
+        // Allow the monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Bob should find the UTXO
+        let mut request = api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_subaddress_index(10);
+        let response = client.get_unspent_tx_out_list(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), 1);
+        let utxo = &response.output_list[0];
+
+        // The utxo details should be as expected
+        assert_eq!(utxo.value, 5000000);
+        assert_eq!(utxo.token_id, 0);
+        assert_eq!(utxo.subaddress_index, 10);
+        // The utxo should have a memo payload
+        assert_eq!(utxo.memo_payload.len(), 66);
+
+        // The utxo should have been decoded successfully
+        let decoded = utxo.get_decoded_memo();
+        assert!(!decoded.has_unknown_memo());
+        assert!(decoded.has_authenticated_sender_memo());
+        // The details should match to alice's hash and have no payment request / intent
+        // id's
+        let asm = decoded.get_authenticated_sender_memo();
+        assert_eq!(asm.get_sender_hash(), alice_hash.as_ref());
+        assert!(!asm.has_payment_request_id());
+        assert!(!asm.has_payment_intent_id());
+
+        // If we go fetch Alice's address via her hash, we should be able to validate
+        // the memo.
+        let mut request = api::ValidateAuthenticatedSenderMemoRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_utxo(utxo.clone());
+        request.set_sender((&alice_addr).into());
+
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(response.success);
+
+        // If we don't use the right address during validation, then validation should
+        // fail
+        request.set_sender((&bob_addr).into());
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(!response.success);
     }
 
     #[test_with_logger]

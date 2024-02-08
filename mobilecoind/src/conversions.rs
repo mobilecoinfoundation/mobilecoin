@@ -34,7 +34,7 @@ impl From<&UnspentTxOut> for api::UnspentTxOut {
         dst.set_memo_payload(src.memo_payload.clone());
 
         if let Ok(mp) = MemoPayload::try_from(&src.memo_payload[..]) {
-            dst.set_decoded_memo(try_decode_memo(&mp));
+            dst.set_decoded_memo(decode_memo(&mp));
         }
 
         dst
@@ -76,9 +76,12 @@ fn bytes_to_tx_private_key(bytes: &[u8]) -> Result<Option<RistrettoPrivate>, Con
     Ok(Some(RistrettoPrivate::from_bytes_mod_order(bytes)))
 }
 
-// Helper which tries to parse a memo and then write it in the api::DecodedMemo
-// proto format
-fn try_decode_memo(memo_payload: &MemoPayload) -> api::DecodedMemo {
+// Convert an arbitrary MemoPayload to the api::DecodedMemo format.
+// When this fails, it sets the UnknownMemo variant in the result.
+//
+// Note: This could be From<&MemoPayload> for api::DecodedMemo, but there are
+// orphan rules issues.
+fn decode_memo(memo_payload: &MemoPayload) -> api::DecodedMemo {
     let mut result = api::DecodedMemo::new();
 
     match MemoType::try_from(memo_payload) {
@@ -296,13 +299,18 @@ impl TryFrom<&api::SciForTx> for SciForTx {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_account_keys::AccountKey;
-    use mc_crypto_keys::RistrettoPrivate;
+    use mc_account_keys::{AccountKey, ShortAddressHash};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
     use mc_ledger_db::{
         test_utils::{create_ledger, create_transaction, initialize_ledger},
         Ledger,
     };
     use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
+    use mc_transaction_extra::{
+        AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
+        AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, SenderMemoCredential,
+        UnusedMemo,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -355,6 +363,84 @@ mod test {
 
         // Proto -> Rust
         assert_eq!(rust, UnspentTxOut::try_from(&proto).unwrap());
+    }
+
+    // Test the From<&MemoPayload> for api::DecodedMemo implementation
+    #[test]
+    fn test_memo_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let alice = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let alice_cred = SenderMemoCredential::from(&alice);
+        let alice_hash = alice_cred.address_hash.clone();
+
+        let bob = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let bob_addr = bob.default_subaddress();
+
+        let tx_public_key = CompressedRistrettoPublic::from_random(&mut rng);
+
+        let memo1 = UnusedMemo {};
+        let decoded = decode_memo(&MemoPayload::from(memo1));
+        assert!(!decoded.has_authenticated_sender_memo());
+        assert!(!decoded.has_unknown_memo());
+
+        let memo2 =
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+        let decoded = decode_memo(&MemoPayload::from(memo2));
+        assert!(decoded.has_authenticated_sender_memo());
+        assert!(!decoded.has_unknown_memo());
+        let sender_memo = decoded.get_authenticated_sender_memo();
+        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
+        assert!(!sender_memo.has_payment_request_id());
+        assert!(!sender_memo.has_payment_intent_id());
+
+        let memo3 = AuthenticatedSenderWithPaymentRequestIdMemo::new(
+            &alice_cred,
+            bob_addr.view_public_key(),
+            &tx_public_key,
+            7u64,
+        );
+        let decoded = decode_memo(&MemoPayload::from(memo3));
+        assert!(decoded.has_authenticated_sender_memo());
+        assert!(!decoded.has_unknown_memo());
+        let sender_memo = decoded.get_authenticated_sender_memo();
+        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
+        assert!(sender_memo.has_payment_request_id());
+        assert_eq!(sender_memo.get_payment_request_id(), 7);
+        assert!(!sender_memo.has_payment_intent_id());
+
+        let memo4 = AuthenticatedSenderWithPaymentIntentIdMemo::new(
+            &alice_cred,
+            bob_addr.view_public_key(),
+            &tx_public_key,
+            9u64,
+        );
+        let decoded = decode_memo(&MemoPayload::from(memo4));
+        assert!(decoded.has_authenticated_sender_memo());
+        assert!(!decoded.has_unknown_memo());
+        let sender_memo = decoded.get_authenticated_sender_memo();
+        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
+        assert!(!sender_memo.has_payment_request_id());
+        assert!(sender_memo.has_payment_intent_id());
+        assert_eq!(sender_memo.get_payment_intent_id(), 9);
+
+        // Destination memos are not implemented yet
+        let memo5 = DestinationMemo::new(ShortAddressHash::from(&bob_addr), 17, 18).unwrap();
+        let decoded = decode_memo(&MemoPayload::from(memo5));
+        assert!(!decoded.has_authenticated_sender_memo());
+        assert!(decoded.has_unknown_memo());
+
+        // This is an unassigned memo type
+        let memo6 = MemoPayload::new([7u8, 8u8], [0u8; 64]);
+        let decoded = decode_memo(&MemoPayload::from(memo6));
+        assert!(!decoded.has_authenticated_sender_memo());
+        assert!(decoded.has_unknown_memo());
     }
 
     #[test]
