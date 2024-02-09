@@ -17,4 +17,4 @@ mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }

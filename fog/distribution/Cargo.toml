@@ -29,7 +29,7 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 grpcio = "0.13"
 lazy_static = "1.4"
