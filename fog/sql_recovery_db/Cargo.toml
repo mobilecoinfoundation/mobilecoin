@@ -34,7 +34,7 @@ mc-fog-report-types = { path = "../report/types" }
 mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 diesel = { version = "2.1.4", features = ["chrono", "postgres", "r2d2"] }
 diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 diesel_migrations = { version = "2.1.0", features = ["postgres"] }

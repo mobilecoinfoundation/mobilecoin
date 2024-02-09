@@ -15,5 +15,5 @@ mc-common = { path = "../../common", features = ["std"] }
 mc-util-grpc = { path = "../grpc" }
 mc-util-uri = { path = "../uri" }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 grpcio = "0.13"
