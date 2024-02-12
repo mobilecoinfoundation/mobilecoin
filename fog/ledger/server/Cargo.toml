@@ -89,6 +89,7 @@ mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 portpicker = "0.1.1"
 sha2 = "0.10"
+stdext = "0.3"
 
 # third-party
 tempfile = "3.9"

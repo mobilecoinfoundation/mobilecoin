@@ -4,7 +4,6 @@ use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_blockchain_types::BlockVersion;
 use mc_common::{
-    logger,
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
@@ -15,7 +14,6 @@ use mc_fog_ledger_server::{
     sharding_strategy::EpochShardingStrategy, KeyImageStoreServer, LedgerRouterConfig,
     LedgerRouterServer, LedgerStoreConfig, ShardingStrategy,
 };
-use mc_fog_ledger_test_infra::ShardProxyServer;
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::common::BlockRange;
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
@@ -30,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
     sync::Arc,
     time::Duration,
@@ -38,6 +36,7 @@ use std::{
 use tempfile::TempDir;
 use url::Url;
 
+const POLL_INTERVAL: Duration = Duration::from_millis(10);
 const TEST_URL: &str = "http://www.my_url1.com";
 const CHAIN_ID: &str = "local";
 
@@ -68,18 +67,18 @@ fn create_store_config(
         client_auth_token_max_lifetime: Default::default(),
         omap_capacity,
         sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::new(block_range)),
-        poll_interval: Duration::from_millis(250),
+        poll_interval: POLL_INTERVAL,
     }
 }
 
 fn add_block_to_ledger(
-    ledger_db: &mut LedgerDB,
+    block_provider: &mut LocalBlockProvider<LedgerDB>,
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
-    watcher: &WatcherDB,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);
+    let ledger_db = &mut block_provider.ledger;
     let block_data = mc_ledger_db::test_utils::add_block_to_ledger(
         ledger_db,
         BlockVersion::MAX,
@@ -92,6 +91,7 @@ fn add_block_to_ledger(
     let block_index = block_data.block().index;
 
     let signature = block_data.signature().expect("missing signature");
+    let watcher = block_provider.watcher.as_ref().expect("missing watcher");
     for src_url in watcher.get_config_urls().unwrap().iter() {
         watcher
             .add_block_signature(
@@ -106,28 +106,36 @@ fn add_block_to_ledger(
     block_index + 1
 }
 
-fn populate_ledger(blocks_config: &BlockConfig, ledger: &mut LedgerDB, watcher: &WatcherDB) {
+fn seed_block_provider(block_provider: &mut LocalBlockProvider<LedgerDB>) {
     let mut rng = thread_rng();
 
     let alice = AccountKey::random_with_fog(&mut rng);
     let recipients = vec![alice.default_subaddress()];
     // Origin block cannot have key images
-    add_block_to_ledger(ledger, &recipients, &[], &mut rng, watcher);
+    add_block_to_ledger(block_provider, &recipients, &[], &mut rng);
+}
+
+fn populate_block_provider(
+    block_provider: &mut LocalBlockProvider<LedgerDB>,
+    blocks_config: &BlockConfig,
+) {
+    let mut rng = thread_rng();
 
     for block in blocks_config {
         let recipients: Vec<_> = block.keys().cloned().collect();
         let key_images: Vec<_> = block.values().flat_map(|x| x.clone()).collect();
 
-        add_block_to_ledger(ledger, &recipients, &key_images, &mut rng, watcher);
+        add_block_to_ledger(block_provider, &recipients, &key_images, &mut rng);
     }
+
+    // The stores are running on separate threads. We wait twice as long as
+    // their POLL_INTERVAL to ensure they've had time to process the new blocks
+    std::thread::sleep(POLL_INTERVAL * 2);
 }
 
 fn create_store(
     test_config: &StoreConfig,
-    blocks_config: &BlockConfig,
-    block_range: BlockRange,
-    watcher_db_path: &Path,
-    ledger_db_path: &Path,
+    block_provider: Box<LocalBlockProvider<LedgerDB>>,
     logger: Logger,
 ) -> KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy> {
     let uri = KeyImageStoreUri::from_str(&format!(
@@ -135,11 +143,7 @@ fn create_store(
         test_config.address
     ))
     .unwrap();
-    let block_range = test_config
-        .block_range
-        .as_ref()
-        .unwrap_or(&block_range)
-        .clone();
+    let block_range = test_config.block_range.clone();
     let config = create_store_config(&uri, block_range.clone(), test_config.omap_capacity);
     let enclave = LedgerSgxEnclave::new(
         get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
@@ -148,15 +152,10 @@ fn create_store(
         logger.clone(),
     );
 
-    let mut ledger = recreate_ledger_db(ledger_db_path);
-    let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
-
-    populate_ledger(blocks_config, &mut ledger, &watcher);
-
     let mut store = KeyImageStoreServer::new_from_config(
         config,
         enclave,
-        LocalBlockProvider::new(ledger, watcher),
+        block_provider,
         EpochShardingStrategy::new(block_range),
         SystemTimeProvider,
         logger,
@@ -166,22 +165,9 @@ fn create_store(
     store
 }
 
-fn create_shard(config: &ShardConfig, _logger: Logger) -> ShardProxyServer {
-    ShardProxyServer::new(
-        &config.address,
-        config
-            .stores
-            .iter()
-            .map(|x| x.address.to_string())
-            .collect(),
-    )
-}
-
 fn create_router(
     test_config: &TestEnvironmentConfig,
-    blocks_config: &BlockConfig,
-    watcher_db_path: &Path,
-    ledger_db_path: &Path,
+    block_provider: Box<LocalBlockProvider<LedgerDB>>,
     logger: Logger,
 ) -> LedgerRouterServer<LedgerSgxEnclave> {
     let uri = FogLedgerUri::from_str(&format!(
@@ -195,18 +181,13 @@ fn create_router(
     ))
     .unwrap();
 
-    let mut ledger = recreate_ledger_db(ledger_db_path);
-    let watcher = setup_watcher_db(watcher_db_path.to_path_buf(), logger.clone());
-
-    populate_ledger(blocks_config, &mut ledger, &watcher);
-
     let config = LedgerRouterConfig {
         chain_id: "local".to_string(),
-        ledger_db: Some(ledger_db_path.to_path_buf()),
-        watcher_db: Some(watcher_db_path.to_path_buf()),
+        ledger_db: None,
+        watcher_db: None,
         mobilecoind_uri: None,
         shard_uris: test_config
-            .shards
+            .stores
             .iter()
             .map(|x| {
                 KeyImageStoreUri::from_str(&format!("insecure-key-image-store://{}", x.address))
@@ -230,12 +211,7 @@ fn create_router(
         logger.clone(),
     );
 
-    let mut router = LedgerRouterServer::new(
-        config,
-        enclave,
-        LocalBlockProvider::new(ledger, watcher),
-        logger,
-    );
+    let mut router = LedgerRouterServer::new(config, enclave, block_provider, logger);
     router.start();
     router
 }
@@ -254,74 +230,44 @@ fn create_router_client(
 
 fn create_env(
     config: TestEnvironmentConfig,
-    blocks_config: BlockConfig,
     grpc_env: Arc<grpcio::Environment>,
     logger: Logger,
 ) -> TestEnvironment {
-    let mut shards = vec![];
-    let mut stores = vec![];
-    let mut tempdirs = vec![];
-    for shard in config.shards.iter() {
-        for store in shard.stores.iter() {
-            let watcher_db_dir =
-                TempDir::new().expect("Couldn't create temporary path for watcher DB");
-            let ledger_db_dir =
-                TempDir::new().expect("Couldn't create temporary path for ledger DB");
-            stores.push(create_store(
-                store,
-                &blocks_config,
-                shard.block_range.clone(),
-                watcher_db_dir.path(),
-                ledger_db_dir.path(),
-                logger.clone(),
-            ));
-            tempdirs.push(watcher_db_dir);
-            tempdirs.push(ledger_db_dir);
-        }
-
-        shards.push(create_shard(shard, logger.clone()));
-    }
-
     let watcher_db_dir = TempDir::new().expect("Couldn't create temporary path for watcher DB");
     let ledger_db_dir = TempDir::new().expect("Couldn't create temporary path for ledger DB");
-    let router = create_router(
-        &config,
-        &blocks_config,
-        watcher_db_dir.path(),
-        ledger_db_dir.path(),
-        logger.clone(),
-    );
-    tempdirs.push(watcher_db_dir);
-    tempdirs.push(ledger_db_dir);
+    let ledger = recreate_ledger_db(ledger_db_dir.path());
+    let watcher = setup_watcher_db(watcher_db_dir.path().to_path_buf(), logger.clone());
+    let mut block_provider = LocalBlockProvider::new(ledger, watcher);
+    seed_block_provider(&mut block_provider);
+
+    let mut stores = vec![];
+    for store in config.stores.iter() {
+        stores.push(create_store(store, block_provider.clone(), logger.clone()));
+    }
+
+    let router = create_router(&config, block_provider.clone(), logger.clone());
 
     let router_client = create_router_client(&config, grpc_env, logger);
 
     TestEnvironment {
         stores,
-        shards,
         _router: router,
         router_client,
-        _tempdirs: tempdirs,
+        block_provider,
+        _tempdirs: vec![watcher_db_dir, ledger_db_dir],
     }
 }
 
 struct TestEnvironment {
     router_client: LedgerGrpcClient,
     _router: LedgerRouterServer<LedgerSgxEnclave>,
-    shards: Vec<ShardProxyServer>,
     stores: Vec<KeyImageStoreServer<LedgerSgxEnclave, EpochShardingStrategy>>,
+    block_provider: Box<LocalBlockProvider<LedgerDB>>,
     _tempdirs: Vec<TempDir>,
 }
 
 impl Drop for TestEnvironment {
     fn drop(&mut self) {
-        for shard in &mut self.shards {
-            tokio::task::block_in_place(move || {
-                tokio::runtime::Handle::current().block_on(async move {
-                    shard.stop().await;
-                })
-            });
-        }
         for store in &mut self.stores {
             store.stop();
         }
@@ -332,20 +278,13 @@ impl Drop for TestEnvironment {
 struct TestEnvironmentConfig {
     router_address: SocketAddr,
     router_admin_address: SocketAddr,
-    shards: Vec<ShardConfig>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct ShardConfig {
-    address: SocketAddr,
-    block_range: BlockRange,
     stores: Vec<StoreConfig>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct StoreConfig {
     address: SocketAddr,
-    block_range: Option<BlockRange>,
+    block_range: BlockRange,
     omap_capacity: u64,
 }
 
@@ -358,45 +297,35 @@ fn free_sockaddr() -> SocketAddr {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn smoke_test() {
-    let logger = logger::create_test_logger("smoke_test".to_string());
+    let logger = mc_common::logger::create_test_logger(stdext::function_name!().to_string());
     log::info!(logger, "test");
-    // Three shards, three stores each, correct config, each stores three blocks,
+    // Three stores, correct config, each stores three blocks,
     // each has three users with three keys each
-    let num_shards = 3;
-    let stores_per_shard = 3;
-    let blocks_per_shard = 3;
+    let num_stores = 3;
+    let blocks_per_store = 3;
     let mut rng = RngType::from_seed([0u8; 32]);
-    let mut shards_config = vec![];
-    for i in 0..num_shards {
-        let mut stores_config = vec![];
-        for _ in 0..stores_per_shard {
-            let store = StoreConfig {
-                address: free_sockaddr(),
-                block_range: None,
-                omap_capacity: 1000,
-            };
-            stores_config.push(store);
-        }
-        let shard = ShardConfig {
+    let mut stores_config = vec![];
+    for i in 0..num_stores {
+        let store = StoreConfig {
             address: free_sockaddr(),
             // the 1-block offset is because block 0 cannot contain key images
-            block_range: BlockRange::new_from_length((i * blocks_per_shard) + 1, blocks_per_shard),
-            stores: stores_config,
+            block_range: BlockRange::new_from_length((i * blocks_per_store) + 1, blocks_per_store),
+            omap_capacity: 1000,
         };
-        shards_config.push(shard);
+        stores_config.push(store);
     }
     let config = TestEnvironmentConfig {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
-        shards: shards_config,
+        stores: stores_config,
     };
 
     let mut blocks_config = vec![];
     let mut key_index = 0;
-    let num_blocks = blocks_per_shard * num_shards;
+    let blocks_to_add = blocks_per_store * num_stores;
     let users_per_block = 3;
     let keys_per_user = 3;
-    for _ in 0..num_blocks {
+    for _ in 0..blocks_to_add {
         let mut block = HashMap::new();
         for _ in 0..users_per_block {
             let account = AccountKey::random_with_fog(&mut rng);
@@ -412,9 +341,11 @@ async fn smoke_test() {
 
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-    let mut test_environment = create_env(config, blocks_config, grpc_env, logger.clone());
+    let mut test_environment = create_env(config, grpc_env, logger.clone());
+    populate_block_provider(&mut test_environment.block_provider, &blocks_config);
 
-    // Check that we can get all the key images from each shard
+    let new_transactions = users_per_block * blocks_to_add;
+    // Check that we can get all the key images from each store
     let keys_per_block = users_per_block * keys_per_user;
     for i in 0..key_index {
         let key = KeyImage::from(i);
@@ -433,6 +364,13 @@ async fn smoke_test() {
             response.results[0].timestamp_result_code,
             TimestampResultCode::TimestampFound as u32
         );
+        // The genesis block will add 1 to the total number of blocks, it has
+        // one transaction which will also add 1 to the total number of
+        // transactions
+        assert_eq!(response.num_blocks, blocks_to_add + 1);
+        assert_eq!(response.global_txo_count, new_transactions + 1);
+        assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+        assert_eq!(response.max_block_version, *BlockVersion::MAX);
     }
 
     // Grab them all at once
@@ -455,6 +393,10 @@ async fn smoke_test() {
             TimestampResultCode::TimestampFound as u32
         );
     }
+    assert_eq!(response.num_blocks, blocks_to_add + 1);
+    assert_eq!(response.global_txo_count, new_transactions + 1);
+    assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+    assert_eq!(response.max_block_version, *BlockVersion::MAX);
 
     // Check that an unspent key image is unspent
     let key = KeyImage::from(126u64);
@@ -470,49 +412,43 @@ async fn smoke_test() {
         response.results[0].timestamp_result_code,
         TimestampResultCode::TimestampFound as u32
     );
+    assert_eq!(response.num_blocks, blocks_to_add + 1);
+    assert_eq!(response.global_txo_count, new_transactions + 1);
+    assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+    assert_eq!(response.max_block_version, *BlockVersion::MAX);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn overlapping_stores() {
-    let logger = logger::create_test_logger("overlapping_stores".to_string());
+    let logger = mc_common::logger::create_test_logger(stdext::function_name!().to_string());
     log::info!(logger, "test");
-    // Three shards, three stores each, correct config, each stores three blocks,
+    // Three stores, correct config, each stores three blocks,
     // each has three users with three keys each - but the blocks overlap (so
     // total of 5 blocks)
-    let num_shards = 3;
-    let stores_per_shard = 3;
-    let blocks_per_shard = 3;
+    let num_stores = 3;
+    let blocks_per_store = 3;
     let mut rng = RngType::from_seed([0u8; 32]);
-    let mut shards_config = vec![];
-    for i in 0..num_shards {
-        let mut stores_config = vec![];
-        for _ in 0..stores_per_shard {
-            let store = StoreConfig {
-                address: free_sockaddr(),
-                block_range: None,
-                omap_capacity: 1000,
-            };
-            stores_config.push(store);
-        }
-        let shard = ShardConfig {
+    let mut stores_config = vec![];
+    for i in 0..num_stores {
+        let store = StoreConfig {
             address: free_sockaddr(),
-            block_range: BlockRange::new_from_length(i + 1, blocks_per_shard),
-            stores: stores_config,
+            block_range: BlockRange::new_from_length(i + 1, blocks_per_store),
+            omap_capacity: 1000,
         };
-        shards_config.push(shard);
+        stores_config.push(store);
     }
     let config = TestEnvironmentConfig {
         router_address: free_sockaddr(),
         router_admin_address: free_sockaddr(),
-        shards: shards_config,
+        stores: stores_config,
     };
 
     let mut blocks_config = vec![];
     let mut key_index = 0;
-    let num_blocks = 5;
+    let blocks_to_add = 5;
     let users_per_block = 3;
     let keys_per_user = 3;
-    for _ in 0..num_blocks {
+    for _ in 0..blocks_to_add {
         let mut block = HashMap::new();
         for _ in 0..users_per_block {
             let account = AccountKey::random_with_fog(&mut rng);
@@ -528,9 +464,12 @@ async fn overlapping_stores() {
 
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-    let mut test_environment = create_env(config, blocks_config, grpc_env, logger.clone());
+    let mut test_environment = create_env(config, grpc_env, logger.clone());
+    populate_block_provider(&mut test_environment.block_provider, &blocks_config);
 
-    // Check that we can get all the key images from each shard
+    let new_transactions = users_per_block * blocks_to_add;
+
+    // Check that we can get all the key images from each store
     let keys_per_block = users_per_block * keys_per_user;
     for i in 0..key_index {
         let key = KeyImage::from(i);
@@ -549,6 +488,10 @@ async fn overlapping_stores() {
             response.results[0].timestamp_result_code,
             TimestampResultCode::TimestampFound as u32
         );
+        assert_eq!(response.num_blocks, blocks_to_add + 1);
+        assert_eq!(response.global_txo_count, new_transactions + 1);
+        assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+        assert_eq!(response.max_block_version, *BlockVersion::MAX);
     }
 
     // Grab them all at once
@@ -571,6 +514,10 @@ async fn overlapping_stores() {
             TimestampResultCode::TimestampFound as u32
         );
     }
+    assert_eq!(response.num_blocks, blocks_to_add + 1);
+    assert_eq!(response.global_txo_count, new_transactions + 1);
+    assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+    assert_eq!(response.max_block_version, *BlockVersion::MAX);
 
     // Check that an unspent key image is unspent
     let key = KeyImage::from(126u64);
@@ -586,4 +533,8 @@ async fn overlapping_stores() {
         response.results[0].timestamp_result_code,
         TimestampResultCode::TimestampFound as u32
     );
+    assert_eq!(response.num_blocks, blocks_to_add + 1);
+    assert_eq!(response.global_txo_count, new_transactions + 1);
+    assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+    assert_eq!(response.max_block_version, *BlockVersion::MAX);
 }
