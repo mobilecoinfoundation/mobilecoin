@@ -9,7 +9,7 @@ use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
-use mc_fog_block_provider::{BlockDataResponse, BlockProvider, Error as BlockProviderError};
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_util_grpc::ReadinessIndicator;
@@ -218,14 +218,17 @@ impl<
     }
 
     /// Attempt to load the next block that we are aware of and tracking.
+    ///
+    /// The `next_block_index` will be incremented if the block is successfully
+    /// loaded.
+    ///
     /// Returns the number of blocks in the block provider.
     fn load_block_data(&mut self, next_block_index: &mut u64) -> u64 {
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
-        match self.block_provider.get_block_data(*next_block_index) {
-            Err(BlockProviderError::NotFound) => *next_block_index,
+        let blocks = match self.block_provider.get_blocks_data(&[*next_block_index]) {
             Err(e) => {
                 log::error!(
                     self.logger,
@@ -234,59 +237,60 @@ impl<
                     e
                 );
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                *next_block_index
+                // We errored so we don't know how many blocks are in the ledger
+                return 0;
             }
-            Ok(BlockDataResponse {
-                result,
-                latest_block,
-            }) => {
-                // Tracing
-                let tracer = tracer!();
+            Ok(blocks) => blocks,
+        };
 
-                let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
-                    .with_start_time(start_time)
-                    .start(&tracer);
+        let latest_block = blocks.latest_block;
 
-                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
+        if let Some(next_block) = blocks.results.get(0).and_then(|r| r.as_ref()) {
+            let tracer = tracer!();
 
-                let _active = mark_span_as_active(span);
+            let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
+                .with_start_time(start_time)
+                .start(&tracer);
 
-                // Get the timestamp for the block.
-                let timestamp =
-                    if result.block_timestamp_result_code == TimestampResultCode::TimestampFound {
-                        result.block_timestamp
-                    } else {
-                        tracer.in_span("poll_block_timestamp", |_cx| {
-                            self.block_provider
-                                .poll_block_timestamp(*next_block_index, watcher_timeout)
-                        })
-                    };
+            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
 
-                // Add block to enclave.
-                let records = result
-                    .block_data
-                    .contents()
-                    .key_images
-                    .iter()
-                    .map(|key_image| KeyImageData {
-                        key_image: *key_image,
-                        block_index: *next_block_index,
-                        timestamp,
+            let _active = mark_span_as_active(span);
+
+            // Get the timestamp for the block.
+            let timestamp =
+                if next_block.block_timestamp_result_code == TimestampResultCode::TimestampFound {
+                    next_block.block_timestamp
+                } else {
+                    tracer.in_span("poll_block_timestamp", |_cx| {
+                        self.block_provider
+                            .poll_block_timestamp(*next_block_index, watcher_timeout)
                     })
-                    .collect();
+                };
 
-                tracer.in_span("add_records_to_enclave", |_cx| {
-                    self.add_records_to_enclave(*next_block_index, records);
-                });
+            // Add block to enclave.
+            let records = next_block
+                .block_data
+                .contents()
+                .key_images
+                .iter()
+                .map(|key_image| KeyImageData {
+                    key_image: *key_image,
+                    block_index: *next_block_index,
+                    timestamp,
+                })
+                .collect();
 
-                *next_block_index += 1;
+            tracer.in_span("add_records_to_enclave", |_cx| {
+                self.add_records_to_enclave(*next_block_index, records);
+            });
 
-                self.update_db_poll_shared_state(&latest_block, *next_block_index);
-
-                // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
-                latest_block.index + 1
-            }
+            *next_block_index += 1;
         }
+
+        self.update_db_poll_shared_state(&latest_block, *next_block_index);
+
+        // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
+        latest_block.index + 1
     }
 
     fn update_db_poll_shared_state(
