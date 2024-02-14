@@ -17,7 +17,7 @@ balanced-tree-index = "2.3"
 mc-oblivious-traits = "2.3"
 
 # third-party
-aes = "0.8.3"
+aes = "0.8.4"
 ctr = "0.9.2"
 displaydoc = { version = "0.2", default-features = false }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
