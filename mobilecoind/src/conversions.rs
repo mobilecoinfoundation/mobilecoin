@@ -387,8 +387,7 @@ mod test {
 
         let memo1 = UnusedMemo {};
         let decoded = decode_memo(&MemoPayload::from(memo1));
-        assert!(!decoded.has_authenticated_sender_memo());
-        assert!(!decoded.has_unknown_memo());
+        assert_eq!(decoded.decoded_memo, None);
 
         let memo2 =
             AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
