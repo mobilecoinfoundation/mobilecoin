@@ -183,9 +183,6 @@ message DecodedMemo {
 // Structure used to represent the decoded MCIP #4 Authenticated sender memo and its variants.
 // Note that the sender can write whatever they want in a memo, and to rely on the data.
 // You must validate the memo by checking the hmac, see the ValidateAuthenticatedSenderMemo rpc call.
-//
-// See docu https://protobuf.dev/programming-guides/proto3/#field-labels, https://github.com/protocolbuffers/protobuf/blob/main/docs/field_presence.md
-// for semantics around optional fields of primitive types. Since v3.15 (in 2020) the default is to not conflate "0" and "omitted".
 message AuthenticatedSenderMemo {
     /// The standard short address hash (MCIP #4)
     bytes sender_hash = 1;
