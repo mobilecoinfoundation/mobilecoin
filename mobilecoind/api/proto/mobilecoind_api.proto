@@ -175,8 +175,8 @@ message DecodedMemo {
     // Details of the decoded memo payload.
     // Omitted if the empty memo was found.
     oneof decoded_memo {
-      AuthenticatedSenderMemo authenticated_sender_memo = 1;
-      UnknownMemo unknown_memo = 2;
+      UnknownMemo unknown_memo = 1;
+      AuthenticatedSenderMemo authenticated_sender_memo = 2;
     }
 }
 
