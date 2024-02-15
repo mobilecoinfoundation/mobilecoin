@@ -533,7 +533,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Read the sender proto
         let sender = PublicAddress::try_from(request.get_sender())
-            .map_err(|err| rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger))?;
+            .map_err(|err| rpc_invalid_arg_error("sender.try_from", err, &self.logger))?;
 
         // Get MonitorId from from the GRPC request.
         let monitor_id = MonitorId::try_from(&request.monitor_id)
