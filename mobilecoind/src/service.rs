@@ -3177,7 +3177,7 @@ mod test {
                     token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
-                    memo_payload: AsRef::<[u8]>::as_ref(&MemoPayload::default()).to_vec(),
+                    memo_payload: MemoPayload::default().into(),
                 }
             })
             .collect();
