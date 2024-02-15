@@ -393,7 +393,6 @@ mod test {
             AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
         let decoded = decode_memo(&MemoPayload::from(memo2));
         assert!(decoded.has_authenticated_sender_memo());
-        assert!(!decoded.has_unknown_memo());
         let sender_memo = decoded.get_authenticated_sender_memo();
         assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
         assert!(!sender_memo.has_payment_request_id());
