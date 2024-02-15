@@ -186,9 +186,9 @@ message DecodedMemo {
 message AuthenticatedSenderMemo {
     /// The standard short address hash (MCIP #4)
     bytes sender_hash = 1;
-    // The payment_request_id if present
+    // Payment request ID if present
     optional uint64 payment_request_id = 2;
-    // The payment_intent_id if present
+    // Payment intent ID if present
     optional uint64 payment_intent_id = 3;
 }
 
