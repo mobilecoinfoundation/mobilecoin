@@ -723,7 +723,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let key_image = KeyImage::from(&onetime_private_key);
 
-        let memo_payload = AsRef::<[u8]>::as_ref(&tx_out.decrypt_memo(&shared_secret)).to_vec();
+        let memo_payload = tx_out.decrypt_memo(&shared_secret).into();
 
         let utxo = UnspentTxOut {
             tx_out,
