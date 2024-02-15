@@ -536,7 +536,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map_err(|err| rpc_invalid_arg_error("sender.try_from", err, &self.logger))?;
 
         // Get MonitorId from the GRPC request.
-        let monitor_id = MonitorId::try_from(&request.monitor_id)
+        let monitor_id = MonitorId::try_from(request.get_monitor_id())
             .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get monitor data.
