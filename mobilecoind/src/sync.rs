@@ -464,7 +464,7 @@ fn match_tx_outs_into_utxos(
             // Generate the key image from the onetime private key.
             let key_image = KeyImage::from(&onetime_private_key);
 
-            let memo_payload = AsRef::<[u8]>::as_ref(&tx_out.decrypt_memo(&shared_secret)).to_vec();
+            let memo_payload = tx_out.decrypt_memo(&shared_secret).into();
 
             // Construct a new unspent transaction output.
             Some(Ok(UnspentTxOut {
