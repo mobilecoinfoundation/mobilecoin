@@ -194,7 +194,7 @@ message AuthenticatedSenderMemo {
 
 // Details returned when this version of mobilecoind couldn't interpret a memo payload.
 message UnknownMemo {
-    // The type bytes of this memo, which couldn't be interpretted by mobilecoind.
+    // The type bytes of this memo, which couldn't be interpreted by mobilecoind.
     bytes type_bytes = 1;
 }
 
