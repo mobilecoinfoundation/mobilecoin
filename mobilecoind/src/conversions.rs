@@ -365,7 +365,7 @@ mod test {
         assert_eq!(rust, UnspentTxOut::try_from(&proto).unwrap());
     }
 
-    // Test the From<&MemoPayload> for api::DecodedMemo implementation
+    // Test the decode_memo implementation
     #[test]
     fn test_memo_conversion() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -433,12 +433,16 @@ mod test {
         let decoded = decode_memo(&MemoPayload::from(memo5));
         assert!(!decoded.has_authenticated_sender_memo());
         assert!(decoded.has_unknown_memo());
+        let type_bytes = decoded.get_unknown_memo().get_type_bytes();
+        assert_eq!(&type_bytes, &[2u8, 0u8]);
 
         // This is an unassigned memo type
         let memo6 = MemoPayload::new([7u8, 8u8], [0u8; 64]);
         let decoded = decode_memo(&memo6);
         assert!(!decoded.has_authenticated_sender_memo());
         assert!(decoded.has_unknown_memo());
+        let type_bytes = decoded.get_unknown_memo().get_type_bytes();
+        assert_eq!(&type_bytes, &[7u8, 8u8]);
     }
 
     #[test]
