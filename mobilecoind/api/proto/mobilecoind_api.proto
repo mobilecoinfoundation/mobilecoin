@@ -118,6 +118,9 @@ enum TxStatus {
 message Outlay {
     uint64 value = 1;
     external.PublicAddress receiver = 2;
+    // Optional tx private key to use for this tx out. This can be chosen explicitly as a mechanism for idempotence.
+    // Must be 32 pseudorandom bytes or none. Will be reduced to curve25519 scalar mod order.
+    bytes tx_private_key = 3;
 }
 
 // Structure used in specifying the list of outputs in a transaction.
@@ -126,6 +129,9 @@ message OutlayV2 {
     uint64 value = 1;
     external.PublicAddress receiver = 2;
     uint64 token_id = 3;
+    // Optional tx private key to use for this tx out. This can be chosen explicitly as a mechanism for idempotence.
+    // Must be 32 pseudorandom bytes or none. Will be reduced to curve25519 scalar mod order.
+    bytes tx_private_key = 4;
 }
 
 // Structure used to refer to a TxOut in the ledger that is presumed to be spendable.
