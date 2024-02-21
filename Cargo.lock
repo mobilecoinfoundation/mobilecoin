@@ -4166,6 +4166,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.8",
+ "stdext",
  "tempfile",
  "tokio",
  "url",
@@ -4175,8 +4176,6 @@ dependencies = [
 name = "mc-fog-ledger-test-infra"
 version = "6.0.0"
 dependencies = [
- "http",
- "hyper",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-untrusted",
@@ -4189,8 +4188,6 @@ dependencies = [
  "mc-ledger-db",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
- "rand",
- "tokio",
 ]
 
 [[package]]
@@ -8555,6 +8552,12 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stdext"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6012f6ef4d674ce7021a8b0f5093f7e339f54d4ba04fc1f9c901659459b4f35b"
 
 [[package]]
 name = "strsim"
