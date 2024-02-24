@@ -9,9 +9,10 @@ use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
-use mc_fog_block_provider::{BlockDataResponse, BlockProvider, Error as BlockProviderError};
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
+use mc_fog_types::common::BlockRange;
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
@@ -170,42 +171,29 @@ impl<
         let block_range = self.sharding_strategy.get_block_range();
         let mut next_block_index = block_range.start_block;
         loop {
-            if block_range.contains(next_block_index) {
-                loop {
-                    let num_blocks = self.load_block_data(&mut next_block_index);
+            loop {
+                let num_blocks = self.load_block_data(&mut next_block_index);
 
-                    let end = min(num_blocks, block_range.end_block);
+                let end = min(num_blocks, block_range.end_block);
 
-                    if next_block_index < end.saturating_sub(BLOCKS_BEHIND) {
-                        self.readiness_indicator.set_unready();
-                    } else {
-                        self.readiness_indicator.set_ready();
-                    }
-
-                    if end <= next_block_index {
-                        break;
-                    }
-
-                    if self.stop_requested.load(Ordering::SeqCst) {
-                        break;
-                    }
+                if next_block_index < end.saturating_sub(BLOCKS_BEHIND) {
+                    self.readiness_indicator.set_unready();
+                } else {
+                    self.readiness_indicator.set_ready();
                 }
-            } else {
-                // Due to the way collation works in the enclave, we need to
-                // keep updating the db poll shared state even if we have all of the
-                // blocks we need.
-                match self.block_provider.get_latest_block() {
-                    Ok(latest_block) => {
-                        self.update_db_poll_shared_state(&latest_block, latest_block.index + 1);
-                    }
-                    Err(err) => {
-                        log::error!(
-                            self.logger,
-                            "Could not get the latest block from db: {}",
-                            err
-                        );
-                    }
-                };
+
+                if end <= next_block_index {
+                    break;
+                }
+
+                if self.stop_requested.load(Ordering::SeqCst) {
+                    break;
+                }
+            }
+
+            if !block_range.contains(next_block_index) {
+                log::info!(self.logger, "Db fetcher thread reached end of block range.");
+                break;
             }
 
             if self.stop_requested.load(Ordering::SeqCst) {
@@ -218,14 +206,17 @@ impl<
     }
 
     /// Attempt to load the next block that we are aware of and tracking.
+    ///
+    /// The `next_block_index` will be incremented if the block is successfully
+    /// loaded.
+    ///
     /// Returns the number of blocks in the block provider.
     fn load_block_data(&mut self, next_block_index: &mut u64) -> u64 {
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
-        match self.block_provider.get_block_data(*next_block_index) {
-            Err(BlockProviderError::NotFound) => *next_block_index,
+        let blocks = match self.block_provider.get_blocks_data(&[*next_block_index]) {
             Err(e) => {
                 log::error!(
                     self.logger,
@@ -234,69 +225,70 @@ impl<
                     e
                 );
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                *next_block_index
+                // We errored so we don't know how many blocks are in the ledger
+                return 0;
             }
-            Ok(BlockDataResponse {
-                result,
-                latest_block,
-            }) => {
-                // Tracing
-                let tracer = tracer!();
+            Ok(blocks) => blocks,
+        };
 
-                let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
-                    .with_start_time(start_time)
-                    .start(&tracer);
+        let latest_block = blocks.latest_block;
 
-                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
+        if let Some(next_block) = blocks.results.get(0).and_then(|r| r.as_ref()) {
+            let tracer = tracer!();
 
-                let _active = mark_span_as_active(span);
+            let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
+                .with_start_time(start_time)
+                .start(&tracer);
 
-                // Get the timestamp for the block.
-                let timestamp =
-                    if result.block_timestamp_result_code == TimestampResultCode::TimestampFound {
-                        result.block_timestamp
-                    } else {
-                        tracer.in_span("poll_block_timestamp", |_cx| {
-                            self.block_provider
-                                .poll_block_timestamp(*next_block_index, watcher_timeout)
-                        })
-                    };
+            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
 
-                // Add block to enclave.
-                let records = result
-                    .block_data
-                    .contents()
-                    .key_images
-                    .iter()
-                    .map(|key_image| KeyImageData {
-                        key_image: *key_image,
-                        block_index: *next_block_index,
-                        timestamp,
+            let _active = mark_span_as_active(span);
+
+            // Get the timestamp for the block.
+            let timestamp =
+                if next_block.block_timestamp_result_code == TimestampResultCode::TimestampFound {
+                    next_block.block_timestamp
+                } else {
+                    tracer.in_span("poll_block_timestamp", |_cx| {
+                        self.block_provider
+                            .poll_block_timestamp(*next_block_index, watcher_timeout)
                     })
-                    .collect();
+                };
 
-                tracer.in_span("add_records_to_enclave", |_cx| {
-                    self.add_records_to_enclave(*next_block_index, records);
-                });
+            // Add block to enclave.
+            let records = next_block
+                .block_data
+                .contents()
+                .key_images
+                .iter()
+                .map(|key_image| KeyImageData {
+                    key_image: *key_image,
+                    block_index: *next_block_index,
+                    timestamp,
+                })
+                .collect();
 
-                *next_block_index += 1;
+            tracer.in_span("add_records_to_enclave", |_cx| {
+                self.add_records_to_enclave(*next_block_index, records);
+            });
 
-                self.update_db_poll_shared_state(&latest_block, *next_block_index);
-
-                // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
-                latest_block.index + 1
-            }
+            *next_block_index += 1;
+            let mut processed_block_range = self.sharding_strategy.get_block_range();
+            processed_block_range.end_block = *next_block_index;
+            self.update_db_poll_shared_state(&latest_block, processed_block_range);
         }
+        // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
+        latest_block.index + 1
     }
 
     fn update_db_poll_shared_state(
         &mut self,
         latest_block: &Block,
-        highest_processed_block_count: u64,
+        processed_block_range: BlockRange,
     ) {
         tracer!().in_span("update_shared_state", |_cx| {
             let mut shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
-            shared_state.highest_processed_block_count = highest_processed_block_count;
+            shared_state.processed_block_range = processed_block_range;
             shared_state.last_known_block_cumulative_txo_count = latest_block.cumulative_txo_count;
             shared_state.latest_block_version = latest_block.version;
         });

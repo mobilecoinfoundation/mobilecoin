@@ -22,6 +22,7 @@ use mc_attest_enclave_api::{
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
+use mc_fog_types::common::BlockRange;
 pub use mc_fog_types::ledger::{
     CheckKeyImagesResponse, GetOutputsResponse, KeyImageResult, KeyImageResultCode, OutputResult,
 };
@@ -51,7 +52,7 @@ pub struct OutputContext {
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct UntrustedKeyImageQueryResponse {
     /// The number of blocks at the time that the request was evaluated.
-    pub highest_processed_block_count: u64,
+    pub processed_block_range: BlockRange,
 
     /// The cumulative txo count of the last known block.
     pub last_known_block_cumulative_txo_count: u64,
