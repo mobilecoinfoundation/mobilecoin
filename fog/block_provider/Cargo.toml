@@ -21,7 +21,7 @@ mc-watcher = { path = "../../watcher" }
 mc-watcher-api = { path = "../../watcher/api" }
 
 displaydoc = "0.2"
-dyn-clone = "1.0.16"
+dyn-clone = "1.0.17"
 grpcio = "0.13"
 
 [dev-dependencies]
