@@ -35,7 +35,7 @@ grpcio = "0.13"
 lazy_static = "1.4"
 mc-attestation-verifier = "0.4.2"
 rand = "0.8"
-rayon = "1.8"
+rayon = "1.9"
 retry = "2.0"
 tempfile = "3.10"
 
