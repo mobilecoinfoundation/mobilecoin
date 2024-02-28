@@ -17,6 +17,6 @@ path = "src/lib.rs"
 cfg-if = "1.0"
 displaydoc = "0.2"
 hostname = "0.3.1"
-opentelemetry = "0.21.0"
+opentelemetry = "0.22.0"
 opentelemetry-jaeger = { version = "0.20.0", features = ["reqwest_rustls_collector_client"], optional = true }
 opentelemetry_sdk = "0.21.2"
