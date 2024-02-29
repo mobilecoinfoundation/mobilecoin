@@ -29,6 +29,8 @@ jobs:
     container: mobilecoin/builder-install:v0.0.33
     permissions:
       pull-requests: write
+    env:
+      SGX_MODE: SW
     steps:
     - name: Check that full-service still builds
       uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
