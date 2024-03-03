@@ -14,7 +14,7 @@ env:
 jobs:
   android-bindings:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
     permissions:
       pull-requests: write
     steps:
@@ -26,9 +26,11 @@ jobs:
 
   full-service:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
     permissions:
       pull-requests: write
+    env:
+      SGX_MODE: SW
     steps:
     - name: Check that full-service still builds
       uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
