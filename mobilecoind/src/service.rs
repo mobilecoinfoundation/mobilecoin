@@ -18,7 +18,8 @@ use api::ledger::{TxOutResult, TxOutResultCode};
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{
-    burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+    burn_address, AccountKey, PublicAddress, RootIdentity, ShortAddressHash,
+    DEFAULT_SUBADDRESS_INDEX,
 };
 use mc_api::blockchain::ArchiveBlock;
 use mc_blockchain_types::BlockIndex;
@@ -43,9 +44,9 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Amount, TokenId,
+    Amount, MemoPayload, TokenId,
 };
-use mc_transaction_extra::{BurnRedemptionMemo, TxOutConfirmationNumber};
+use mc_transaction_extra::{BurnRedemptionMemo, MemoType, TxOutConfirmationNumber};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -465,7 +466,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<api::GetPublicAddressResponse, RpcStatus> {
         // Get MonitorId from from the GRPC request.
         let monitor_id = MonitorId::try_from(&request.monitor_id)
-            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get monitor data.
         let data = self
@@ -501,6 +502,83 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .b58_encode()
                 .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
         );
+
+        Ok(response)
+    }
+
+    fn get_short_address_hash_impl(
+        &mut self,
+        request: api::GetShortAddressHashRequest,
+    ) -> Result<api::GetShortAddressHashResponse, RpcStatus> {
+        let address = PublicAddress::try_from(request.get_public_address())
+            .map_err(|err| rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger))?;
+
+        let hash = ShortAddressHash::from(&address);
+
+        let mut response = api::GetShortAddressHashResponse::new();
+        response.set_hash(hash.as_ref().to_vec());
+        Ok(response)
+    }
+
+    fn validate_authenticated_sender_memo_impl(
+        &mut self,
+        request: api::ValidateAuthenticatedSenderMemoRequest,
+    ) -> Result<api::ValidateAuthenticatedSenderMemoResponse, RpcStatus> {
+        // Read the utxo proto
+        let utxo = UnspentTxOut::try_from(request.get_utxo())
+            .map_err(|err| rpc_invalid_arg_error("unspent_tx_out.try_from", err, &self.logger))?;
+
+        let memo_payload = MemoPayload::try_from(&utxo.memo_payload[..])
+            .map_err(|err| rpc_invalid_arg_error("memo_payload.try_from", err, &self.logger))?;
+
+        // Read the sender proto
+        let sender = PublicAddress::try_from(request.get_sender())
+            .map_err(|err| rpc_invalid_arg_error("sender.try_from", err, &self.logger))?;
+
+        // Get MonitorId from the GRPC request.
+        let monitor_id = MonitorId::try_from(request.get_monitor_id())
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data.
+        let data = self
+            .mobilecoind_db
+            .get_monitor_data(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        let subaddress_vpk = data
+            .account_key
+            .subaddress_view_private(utxo.subaddress_index);
+        let tx_out_public_key = &utxo.tx_out.public_key;
+
+        let mut response = api::ValidateAuthenticatedSenderMemoResponse::new();
+
+        response.set_success(bool::from(match MemoType::try_from(&memo_payload) {
+            Ok(MemoType::AuthenticatedSender(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(MemoType::AuthenticatedSenderWithPaymentRequestId(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(MemoType::AuthenticatedSenderWithPaymentIntentId(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(other) => {
+                return Err(rpc_invalid_arg_error(
+                    "Not an authenticated sender memo",
+                    format!("{other:?}"),
+                    &self.logger,
+                ));
+            }
+            Err(err) => {
+                return Err(rpc_invalid_arg_error(
+                    "Not an authenticated sender memo",
+                    format!("{err:?}"),
+                    &self.logger,
+                ));
+            }
+        }));
 
         Ok(response)
     }
@@ -645,6 +723,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let key_image = KeyImage::from(&onetime_private_key);
 
+        let memo_payload = tx_out.decrypt_memo(&shared_secret).into();
+
         let utxo = UnspentTxOut {
             tx_out,
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
@@ -653,6 +733,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             token_id: *amount.token_id,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
+            memo_payload,
         };
 
         let mut response = api::ParseTransferCodeResponse::new();
@@ -2518,6 +2599,8 @@ build_api! {
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
     get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
+    get_short_address_hash GetShortAddressHashRequest GetShortAddressHashResponse get_short_address_hash_impl,
+    validate_authenticated_sender_memo ValidateAuthenticatedSenderMemoRequest ValidateAuthenticatedSenderMemoResponse validate_authenticated_sender_memo_impl,
 
     // b58 codes
     parse_request_code ParseRequestCodeRequest ParseRequestCodeResponse parse_request_code_impl,
@@ -2593,17 +2676,20 @@ mod test {
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
     use mc_rand::RngCore;
-    use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
+    use mc_transaction_builder::{
+        EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder, TransactionBuilder, TxOutContext,
+    };
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
+        encrypted_fog_hint::EncryptedFogHint,
         fog_hint::FogHint,
         get_tx_out_shared_secret,
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tokens::Mob,
         tx::{Tx, TxOut},
-        Amount, Token,
+        Amount, CompressedCommitment, EncryptedMemo, MaskedAmount, MaskedAmountV2, Token,
     };
-    use mc_transaction_extra::{MemoType, SignedContingentInput};
+    use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -2931,6 +3017,7 @@ mod test {
                     token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    memo_payload: MemoPayload::default().into(),
                 }
             })
             .collect();
@@ -3090,6 +3177,7 @@ mod test {
                     token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    memo_payload: MemoPayload::default().into(),
                 }
             })
             .collect();
@@ -3266,6 +3354,231 @@ mod test {
         request.set_monitor_id(id.to_vec());
         request.set_subaddress_index(1000);
         assert!(client.get_public_address(&request).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_get_short_address_hash_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([57u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        let account_key = AccountKey::random(&mut rng);
+        let public_address = account_key.default_subaddress();
+
+        // Try to compute the short address hash
+        let mut request = api::GetShortAddressHashRequest::new();
+        // Check that an invalid request returns an error
+        assert!(client.get_short_address_hash(&request).is_err());
+
+        request.set_public_address((&public_address).into());
+        let response = client.get_short_address_hash(&request).unwrap();
+
+        // Test that the short address hash is correct
+        let hash = ShortAddressHash::from(&public_address);
+        assert_eq!(&response.hash[..], hash.as_ref());
+    }
+
+    #[test_with_logger]
+    fn test_validate_authenticated_sender_memo_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([57u8; 32]);
+        // In this test, Bob is a mobilecoind user,
+        // who gets a TxOut from alice with a sender memo with payment request id
+        let bob_account_key = AccountKey::random(&mut rng);
+        let bob_addr = bob_account_key.subaddress(10);
+        let data = MonitorData::new(
+            bob_account_key.clone(),
+            10, // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // This is alice
+        let alice_account_key = AccountKey::random(&mut rng);
+        let alice_addr = alice_account_key.default_subaddress();
+        let alice_cred = SenderMemoCredential::from(&alice_account_key);
+        let alice_hash = ShortAddressHash::from(&alice_addr);
+
+        // Alice makes a TxOut for Bob, with an authenticated sender memo for her
+        // default subaddress
+        let amount = Amount::new(5000000, 0.into());
+
+        let e_fog_hint = EncryptedFogHint::fake_onetime_hint(&mut rng);
+
+        // Use RTH memo builder to write a sender memo with payment request id
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(alice_cred);
+        memo_builder.set_payment_request_id(99);
+
+        let memo_tx_out = TxOut::new_with_memo(
+            BLOCK_VERSION,
+            amount,
+            &bob_addr,
+            &FromRandom::from_random(&mut rng),
+            e_fog_hint,
+            |memo_ctxt| memo_builder.make_memo_for_output(amount, &bob_addr, memo_ctxt),
+        )
+        .unwrap();
+
+        // Alice adds the TxOut to the ledger
+        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[memo_tx_out], &mut rng).unwrap();
+
+        // Allow the monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Bob should find the UTXO
+        let mut request = api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_subaddress_index(10);
+        let response = client.get_unspent_tx_out_list(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), 1);
+        let utxo = &response.output_list[0];
+
+        // The utxo details should be as expected
+        assert_eq!(utxo.value, 5000000);
+        assert_eq!(utxo.token_id, 0);
+        assert_eq!(utxo.subaddress_index, 10);
+        // The utxo should have a memo payload
+        assert_eq!(utxo.memo_payload.len(), 66);
+
+        // The utxo should have been decoded successfully
+        let decoded = utxo.get_decoded_memo();
+        assert!(!decoded.has_unknown_memo());
+        assert!(decoded.has_authenticated_sender_memo());
+        // The details should match to alice's hash and have a payment request id
+        let asm = decoded.get_authenticated_sender_memo();
+        assert_eq!(asm.get_sender_hash(), alice_hash.as_ref());
+        assert!(asm.has_payment_request_id());
+        assert_eq!(asm.get_payment_request_id(), 99);
+        assert!(!asm.has_payment_intent_id());
+
+        // If we go fetch Alice's address via her hash, we should be able to validate
+        // the memo.
+        let mut request = api::ValidateAuthenticatedSenderMemoRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_utxo(utxo.clone());
+        request.set_sender((&alice_addr).into());
+
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(response.success);
+
+        // If we don't use the right address during validation, then validation should
+        // fail
+        request.set_sender((&bob_addr).into());
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(!response.success);
+    }
+
+    #[test_with_logger]
+    fn test_vectors_validate_authenticated_sender_memo_impl(logger: Logger) {
+        // In this test, we take an actual TxOut generated by signal, at block version
+        // 3, sent to a full-service account, and confirm that mobilecoind can
+        // also find the TxOut and validate the memo.
+
+        // no known recipient, 3 random recipients and no monitors.
+        let mut rng: StdRng = SeedableRng::from_seed([93u8; 32]);
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BlockVersion::THREE, 3, &[], &[], logger.clone(), &mut rng);
+
+        let mut request = api::GetAccountKeyFromMnemonicRequest::new();
+        request.set_mnemonic("veteran leaf business lounge rocket prepare endorse town text reject nothing fuel earn solid want drum clog flip entire icon swallow birth loyal return".to_owned());
+        let response = client.get_account_key_from_mnemonic(&request).unwrap();
+
+        let account_key = AccountKey::try_from(response.get_account_key()).unwrap();
+
+        let data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            2,  // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Construct the test TxOut
+        let tx_out = TxOut {
+            public_key: CompressedRistrettoPublic::try_from(&hex::decode("026279e22d00e163a9edd28506dbe778752ed53a5cc5625d5d712b3f371d8f1f").unwrap()[..]).unwrap(),
+            target_key: CompressedRistrettoPublic::try_from(&hex::decode("5cf12e056b9131692405f410cc03049b49d6e2d12b05c3be8f9504fbe2ba9d48").unwrap()[..]).unwrap(),
+            e_fog_hint: EncryptedFogHint::try_from(&hex::decode("725539d655e35bf2ffbbb21aa056da02da8a2f36a9014cb9c474fb2573ed4c972e0964dc03fdff12b46dd1c0bbe4d341c8d4a42f6b09782fb3b5d93e1116b1bb9f65d205af9328fb0a5b8f3347626f7ebc4e0100").unwrap()[..]).unwrap(),
+            e_memo: Some(EncryptedMemo::try_from(&hex::decode("c4277d6a49b752fd39666d1317216e41d8f0bc6ed2d74fc06f36c9f07b6d9954c26d2ce7c3ff4aa95dc1c2e26f50e025d57534258a327f6c5ddd3916acdfa174e2f3").unwrap()[..]).unwrap()),
+            masked_amount: Some(MaskedAmount::V2(MaskedAmountV2 {
+                commitment: CompressedCommitment::try_from(&hex::decode("42ff4c72f8b4c02e0ccba20b0197fa19e33522b131c243a7df9660639f1e4949").unwrap()[..]).unwrap(),
+                masked_value: 9333989940299914976,
+                masked_token_id: hex::decode("be23706fb90b5bfb").unwrap()
+            }))
+        };
+
+        // Add the TxOut to the ledger
+        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out], &mut rng).unwrap();
+
+        // Allow the monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Bob should find the UTXO
+        let mut request = api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_subaddress_index(0);
+        let response = client.get_unspent_tx_out_list(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), 1);
+        let utxo = &response.output_list[0];
+
+        // The utxo details should be as expected
+        assert_eq!(utxo.value, 1000000000);
+        assert_eq!(utxo.token_id, 0);
+        assert_eq!(utxo.subaddress_index, 0);
+        // The utxo should have a memo payload
+        assert_eq!(utxo.memo_payload.len(), 66);
+
+        // The utxo should have been decoded successfully
+        let decoded = utxo.get_decoded_memo();
+        assert!(!decoded.has_unknown_memo());
+        assert!(decoded.has_authenticated_sender_memo());
+
+        // The details should have no payment request / intent id's
+        let asm = decoded.get_authenticated_sender_memo();
+        assert!(!asm.has_payment_request_id());
+        assert!(!asm.has_payment_intent_id());
+
+        // The short hash should match the expected value
+        // Get public address and hash from the b58 address
+        let sender_b58 = "WZKU1isCc7HUrNgpugWZaUhfLnsxsL3w3s3KaTu8AkwtCjqt9AEpWh3TNhG9dXjAKkL8qRput4paEeCAMS4PJ2E6r44ysPgMiStkjq2ons6GLaQqtVpYZQzxsbsLAtPkpXhKnxyjfHZxtD3CExzxxGUpnmZNjvdVJh1nByZaJ7pjhdPK81haNPqL7Kv7tk9m9A9segvmyZjzjkvFuHYrnWjgMwsfGpkkhtHz8yp3ftrUs";
+
+        let mut request = api::ParseAddressCodeRequest::new();
+        request.set_b58_code(sender_b58.to_owned());
+        let response = client.parse_address_code(&request).unwrap();
+        let public_address = response.get_receiver();
+
+        let mut request = api::GetShortAddressHashRequest::new();
+        request.set_public_address(public_address.clone());
+        let response = client.get_short_address_hash(&request).unwrap();
+        let expected_hash = response.get_hash();
+
+        assert_eq!(asm.get_sender_hash(), expected_hash);
+
+        // If we go fetch Alice's address via her hash, we should be able to validate
+        // the memo.
+        let mut request = api::ValidateAuthenticatedSenderMemoRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_utxo(utxo.clone());
+        request.set_sender(public_address.clone());
+
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(response.success);
     }
 
     #[test_with_logger]
@@ -3829,6 +4142,7 @@ mod test {
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                     token_id: *Mob::ID,
+                    memo_payload: vec![],
                 }
             })
             .collect();
