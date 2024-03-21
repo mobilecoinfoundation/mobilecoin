@@ -17,6 +17,7 @@ mod monitor_store;
 mod processed_block_store;
 mod subaddress_store;
 mod sync;
+mod transaction_memo;
 mod utxo_store;
 pub use utxo_store::UnspentTxOut;
 
