@@ -338,6 +338,39 @@ message ProcessedTxOut {
     uint64 token_id = 8;
 }
 
+
+// Recoverable Transaction History memo with an optional u64 specifying the
+// subaddress index to generate the sender memo credential from.
+// Defaults to the first subaddress of the monitor.
+// Allows optinally speciying a payment intent id or payment request id.
+message TransactionMemo_RTH {
+    optional uint64 subaddress_index = 1;
+    oneof payment_id {
+        uint64 payment_intent_id = 2;
+        uint64 payment_request_id = 3;
+    }
+}
+
+// Empty transaction memo.
+message TransactionMemo_Empty {
+}
+
+// Burn redemption memo
+message TransactionMemo_BurnRedemption {
+    // The burn redemption memo data (64 bytes).
+    bytes memo_data = 1;
+}
+
+// Memo type to use when building a transaction.
+// We will default to RTH from the first subaddress index if nothing else is explicitly specified.
+message TransactionMemo {
+    oneof transaction_memo {
+        TransactionMemo_RTH rth = 1;
+        TransactionMemo_Empty empty = 2;
+        TransactionMemo_BurnRedemption burn_redemption = 3;
+    }
+}
+
 //*********************************
 //*
 //*  Requests and Responses for API
