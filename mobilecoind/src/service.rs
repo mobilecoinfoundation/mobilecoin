@@ -4960,7 +4960,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (amount, _blinding) = tx
+                let ((amount, _blinding), tx_out, shared_secret) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -4976,11 +4976,29 @@ mod test {
                             .unwrap()
                             .get_value(&shared_secret)
                             .ok()
+                            .map(|amount| (amount, tx_out, shared_secret))
                     })
                     .expect("There should be an output belonging to the account key.");
 
                 assert_eq!(amount.token_id, Mob::ID);
                 assert_eq!(amount.value, *expected_value);
+
+                // Receivers get an AuthenticatedSender memo, sender gets a DestinationMemo
+                let memo = tx_out.e_memo.as_ref().unwrap().decrypt(&shared_secret);
+                if account_key == &&sender {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::Destination(dst_memo)
+                        if dst_memo.get_num_recipients() == 2 &&
+                            dst_memo.get_total_outlay() == outlays.iter().map(|outlay| outlay.value).sum::<u64>() + dst_memo.get_fee()
+                    );
+                } else {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::AuthenticatedSender(authenticated_sender_memo)
+                        if authenticated_sender_memo.validate(&sender.default_subaddress(), &account_key.default_subaddress_view_private(), &tx_out.public_key).unwrap_u8() == 1
+                    );
+                }
             }
 
             // Santity test fee
@@ -5056,7 +5074,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (amount, _blinding) = tx
+                let ((amount, _blinding), tx_out, shared_secret) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -5072,11 +5090,29 @@ mod test {
                             .unwrap()
                             .get_value(&shared_secret)
                             .ok()
+                            .map(|amount| (amount, tx_out, shared_secret))
                     })
                     .expect("There should be an output belonging to the account key.");
 
                 assert_eq!(amount.token_id, TokenId::from(2));
                 assert_eq!(amount.value, *expected_value);
+
+                // Receivers get an AuthenticatedSender memo, sender gets a DestinationMemo
+                let memo = tx_out.e_memo.as_ref().unwrap().decrypt(&shared_secret);
+                if account_key == &&sender {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::Destination(dst_memo)
+                        if dst_memo.get_num_recipients() == 2 &&
+                            dst_memo.get_total_outlay() == outlays.iter().map(|outlay| outlay.value).sum::<u64>() + dst_memo.get_fee()
+                    );
+                } else {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::AuthenticatedSender(authenticated_sender_memo)
+                        if authenticated_sender_memo.validate(&sender.default_subaddress(), &account_key.default_subaddress_view_private(), &tx_out.public_key).unwrap_u8() == 1
+                    );
+                }
             }
 
             // Santity test fee
