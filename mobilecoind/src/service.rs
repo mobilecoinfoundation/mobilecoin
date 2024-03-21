@@ -5193,6 +5193,151 @@ mod test {
     }
 
     #[test_with_logger]
+    fn test_generate_tx_explicit_memo(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BlockVersion::MAX,
+            &[
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount::new(1_000_000_000_000, TokenId::from(2)),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Generate random recipient.
+        let receiver1 = AccountKey::random(&mut rng);
+
+        let outlays = vec![Outlay {
+            value: 123,
+            receiver: receiver1.default_subaddress(),
+            tx_private_key: None,
+        }];
+
+        // Call generate tx.
+        let mut request = api::GenerateTxRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input_list(RepeatedField::from_vec(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == *Mob::ID)
+                .map(api::UnspentTxOut::from)
+                .collect(),
+        ));
+        request.set_outlay_list(RepeatedField::from_vec(
+            outlays.iter().map(api::Outlay::from).collect(),
+        ));
+        let mut rth = mc_mobilecoind_api::TransactionMemo_RTH::default();
+        rth.set_payment_request_id(55551);
+
+        request.set_memo(mc_mobilecoind_api::TransactionMemo {
+            transaction_memo: Some(
+                mc_mobilecoind_api::TransactionMemo_oneof_transaction_memo::rth(rth),
+            ),
+            ..Default::default()
+        });
+
+        let response = client.generate_tx(&request).unwrap();
+        let tx_proposal = response.get_tx_proposal();
+        let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+        // The transaction should contain two outputs (outlay + change)
+        assert_eq!(tx.prefix.outputs.len(), 2);
+
+        let change_value = test_utils::DEFAULT_PER_RECIPIENT_AMOUNT
+            - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
+            - Mob::MINIMUM_FEE;
+
+        for (account_key, expected_value) in
+            &[(&receiver1, outlays[0].value), (&sender, change_value)]
+        {
+            // Find the first output belonging to the account, and get its value.
+            // This assumes that each output is sent to a different account key.
+            let ((amount, _blinding), tx_out, shared_secret) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    let output_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                    let shared_secret = get_tx_out_shared_secret(
+                        account_key.view_private_key(),
+                        &output_public_key,
+                    );
+                    tx_out
+                        .get_masked_amount()
+                        .unwrap()
+                        .get_value(&shared_secret)
+                        .ok()
+                        .map(|amount| (amount, tx_out, shared_secret))
+                })
+                .expect("There should be an output belonging to the account key.");
+
+            assert_eq!(amount.token_id, Mob::ID);
+            assert_eq!(amount.value, *expected_value);
+
+            // Receivers get an AuthenticatedSender memo, sender gets a DestinationMemo
+            let memo = tx_out.e_memo.as_ref().unwrap().decrypt(&shared_secret);
+            if account_key == &&sender {
+                assert_matches!(
+                    MemoType::try_from(&memo).unwrap(),
+                    MemoType::DestinationWithPaymentRequestId(dst_memo)
+                    if dst_memo.get_num_recipients() == 1 &&
+                        dst_memo.get_total_outlay() == outlays.iter().map(|outlay| outlay.value).sum::<u64>() + dst_memo.get_fee() &&
+                        dst_memo.get_payment_request_id() == 55551
+                );
+            } else {
+                assert_matches!(
+                    MemoType::try_from(&memo).unwrap(),
+                    MemoType::AuthenticatedSenderWithPaymentRequestId(authenticated_sender_memo)
+                    if authenticated_sender_memo.validate(&sender.default_subaddress(), &account_key.default_subaddress_view_private(), &tx_out.public_key).unwrap_u8() == 1 &&
+                        authenticated_sender_memo.payment_request_id() == 55551
+                );
+            }
+        }
+    }
+
+    #[test_with_logger]
     fn test_generate_mixed_tx(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
