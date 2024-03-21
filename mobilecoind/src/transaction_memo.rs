@@ -5,7 +5,9 @@ use mc_api::ConversionError;
 use mc_mobilecoind_api::{
     mobilecoind_api, TransactionMemo_RTH_oneof_payment_id, TransactionMemo_oneof_transaction_memo,
 };
-use mc_transaction_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
+use mc_transaction_builder::{
+    BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder,
+};
 use mc_transaction_extra::{BurnRedemptionMemo, SenderMemoCredential};
 
 #[derive(Clone, Debug, PartialEq, Eq)]

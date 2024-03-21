@@ -1077,7 +1077,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                Some(memo_builder),
+                memo_builder,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1392,7 +1392,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                Some(Box::new(memo_builder)),
+                Box::new(memo_builder),
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -2360,7 +2360,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                Some(memo_builder),
+                memo_builder,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
