@@ -71,21 +71,11 @@ jobs:
             txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/
           - client: node3.test.mobilecoin.com:443
             txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.test.mobilecoin.com/
-          - client: node4.test.mobilecoin.com:443
-            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node4.test.mobilecoin.com/
-          - client: node5.test.mobilecoin.com:443
-            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node5.test.mobilecoin.com/
-          - client: node6.test.mobilecoin.com:443
-            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node6.test.mobilecoin.com/
-          - client: node7.test.mobilecoin.com:443
-            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node7.test.mobilecoin.com/
-          - client: node8.test.mobilecoin.com:443
-            txSourceUrl: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node8.test.mobilecoin.com/
           - client: node1.consensus.mob.staging.namda.net:443
             txSourceUrl: https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node1.consensus.mob.staging.namda.net/
           - client: node2.consensus.mob.staging.namda.net:443
             txSourceUrl: https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node2.consensus.mob.staging.namda.net/
-          threshold: "7"
+          threshold: "3"
         sentry:
           consensus-sentry-dsn: ''
           fog-ingest-sentry-dsn: ''
