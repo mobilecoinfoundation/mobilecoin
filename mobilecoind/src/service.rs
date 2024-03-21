@@ -12,6 +12,7 @@ use crate::{
     monitor_store::{MonitorData, MonitorId},
     payments::{Outlay, OutlayV2, SciForTx, TransactionsManager, TxProposal},
     sync::SyncThread,
+    transaction_memo::TransactionMemo,
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use api::ledger::{TxOutResult, TxOutResultCode};
@@ -1059,6 +1060,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })
             .collect::<Result<Vec<Outlay>, RpcStatus>>()?;
 
+        // Get transaction memo builder.
+        let transaction_memo = TransactionMemo::try_from(request.get_memo())
+            .map_err(|err| rpc_invalid_arg_error("transaction_memo.try_from", err, &self.logger))?;
+        let memo_builder = transaction_memo.memo_builder(&sender_monitor_data.account_key);
+
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
@@ -1071,7 +1077,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                None, // opt_memo_builder
+                Some(memo_builder),
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -2296,6 +2302,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
             .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
         // Get all utxos for this monitor id.
         let mut utxos = self
             .mobilecoind_db
@@ -2329,6 +2343,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             request.sender_subaddress
         };
 
+        // Get transaction memo builder.
+        let transaction_memo = TransactionMemo::try_from(request.get_memo())
+            .map_err(|err| rpc_invalid_arg_error("transaction_memo.try_from", err, &self.logger))?;
+        let memo_builder = transaction_memo.memo_builder(&sender_monitor_data.account_key);
+
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
@@ -2341,7 +2360,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                None,
+                Some(memo_builder),
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
