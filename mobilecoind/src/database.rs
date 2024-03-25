@@ -71,7 +71,7 @@ impl Database {
     pub fn new<P: AsRef<Path>>(path: P, logger: Logger) -> Result<Self, Error> {
         let env = Arc::new(
             Environment::new()
-                .set_max_dbs(10)
+                .set_max_dbs(12)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 .open(path.as_ref())?,
         );
