@@ -1,0 +1,21 @@
+[package]
+name = "mc-t3-api"
+version = "6.0.0"
+edition = "2021"
+authors = ["MobileCoin"]
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+
+[dependencies]
+futures = "0.3"
+grpcio = "0.13"
+protobuf = "2.27.1"
+
+mc-util-uri = { path = "../../util/uri" }
+
+[build-dependencies]
+cargo-emit = "0.2.1"
+mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }

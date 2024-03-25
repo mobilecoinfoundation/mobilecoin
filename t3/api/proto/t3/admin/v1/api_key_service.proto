@@ -1,0 +1,73 @@
+syntax = "proto3";
+package t3.admin.v1;
+option java_multiple_files = true;
+
+service ApiKeyService {
+  rpc AddApiKey(AddApiKeyRequest) returns (AddApiKeyResponse);
+  rpc ListApiKeysForPartner(ListApiKeysForPartnerRequest) returns (ListApiKeysForPartnerResponse);
+  rpc DisableApiKey(DisableApiKeyRequest) returns (DisableApiKeyResponse);
+  rpc ModifyApiKey(ModifyApiKeyRequest) returns (ModifyApiKeyResponse);
+}
+
+message ApiKey {
+  string id = 1;
+  string partner_short_name = 2;
+
+  // Permissions
+  bool has_read_access = 3;
+  bool has_write_access = 4;
+  bool is_admin = 5;
+
+  int64 created_at_epoch = 6;
+  int64 updated_at_epoch = 7; // 0 if never updated
+  int64 deleted_at_epoch = 8; // 0 if key is active
+}
+
+message AddApiKeyRequest {
+  ApiKey api_key = 1;
+}
+message AddApiKeyResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  ApiKey api_key = 2;
+  string api_key_value = 3;
+}
+
+message ListApiKeysForPartnerRequest {
+  string partner_short_name = 1;
+}
+message ListApiKeysForPartnerResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  repeated ApiKey api_keys = 2;
+}
+
+message DisableApiKeyRequest {
+  string api_key_id = 1;
+}
+message DisableApiKeyResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  ApiKey api_key = 2;
+}
+
+message ModifyApiKeyRequest {
+  ApiKey api_key = 1;
+}
+message ModifyApiKeyResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  ApiKey api_key = 2;
+}

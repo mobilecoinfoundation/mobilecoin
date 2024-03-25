@@ -5170,6 +5170,8 @@ dependencies = [
  "mc-mobilecoind-api",
  "mc-rand",
  "mc-sgx-css",
+ "mc-t3-api",
+ "mc-t3-connection",
  "mc-transaction-builder",
  "mc-transaction-core",
  "mc-transaction-extra",
@@ -5700,6 +5702,34 @@ name = "mc-sgx-util"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3c237bec3e33530c4b1a171c8c078ad5d525d5fae177ac9d62e8e454b3fffb7"
+
+[[package]]
+name = "mc-t3-api"
+version = "6.0.0"
+dependencies = [
+ "cargo-emit",
+ "futures",
+ "grpcio",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-uri",
+ "protobuf",
+]
+
+[[package]]
+name = "mc-t3-connection"
+version = "6.0.0"
+dependencies = [
+ "displaydoc",
+ "futures",
+ "grpcio",
+ "mc-common",
+ "mc-connection",
+ "mc-t3-api",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "protobuf",
+]
 
 [[package]]
 name = "mc-test-vectors-account-keys"
