@@ -29,12 +29,14 @@ jobs:
       matrix:
         network:
         - chain_id: test
+          min_signatures: "5"
           block_info_url: https://node1.test.mobilecoin.com:443/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
           peers: mc://node1.test.mobilecoin.com:443/,mc://node2.test.mobilecoin.com:443/,mc://node3.test.mobilecoin.com/,mc://node1.consensus.mob.staging.namda.net:443/,mc://node2.consensus.mob.staging.namda.net:443/
           quorum_set: |-
             { "threshold": 3, "members": [{"args":"node1.test.mobilecoin.com:443","type":"Node"},{"args":"node2.test.mobilecoin.com:443","type":"Node"},{"args":"node3.test.mobilecoin.com:443","type":"Node"},{"args":"node1.consensus.mob.staging.namda.net:443","type":"Node"},{"args":"node2.consensus.mob.staging.namda.net:443","type":"Node"}] }
           tx_source_urls: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/,https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.test.mobilecoin.com/,https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node1.consensus.mob.staging.namda.net/,https://s3-eu-central-1.amazonaws.com/staging-namda-payments-ledger/node2.consensus.mob.staging.namda.net/
         - chain_id: main
+          min_signatures: "10"
           block_info_url: https://node1.prod.mobilecoinww.com:443/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
           peers: mc://node1.prod.mobilecoinww.com:443/,mc://node2.prod.mobilecoinww.com:443/,mc://node3.prod.mobilecoinww.com/,mc://node1.consensus.mob.production.namda.net:443/,mc://node2.consensus.mob.production.namda.net:443/,mc://blockdaemon.mobilecoin.bdnodes.net:443/,mc://binance.mobilecoin.bdnodes.net:443/,mc://ideasbeyondborders.mobilecoin.bdnodes.net:443/,mc://thelongnowfoundation.mobilecoin.bdnodes.net:443/,mc://ams1-mc-node1.dreamhost.com:3223/
           quorum_set: |
@@ -102,6 +104,7 @@ jobs:
         MC_IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
         MC_MOBILECOIND_URI: insecure-mobilecoind://127.0.0.1:3229/
         BLOCK_INFO_URL: ${{ matrix.network.block_info_url }}
+        MIN_SIGNATURES: ${{ matrix.network.min_signatures }}
         RUST_LOG: error
       run: |
         set -e
