@@ -32,6 +32,9 @@ do
     sleep 10
 done
 
+# allow override of NUMBER_OF_VALIDATORS
+: "${NUMBER_OF_VALIDATORS:=10}"
+
 # wait for Ledger DB
 echo "Get mobilecoind block height"
 mcd_json=$(get_mcd_ledger)
@@ -60,7 +63,7 @@ done
 
 echo "Waiting for watcher db to sync - this may take a while"
 signatures=0
-while [[ ${signatures} -lt 10 ]]
+while [[ ${signatures} -lt ${NUMBER_OF_VALIDATORS} ]]
 do
     sleep 10
 
