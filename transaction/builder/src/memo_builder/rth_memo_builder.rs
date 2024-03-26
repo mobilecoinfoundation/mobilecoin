@@ -1,21 +1,22 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Defines the RTHMemoBuilder.
 //! (RTH is an abbrevation of Recoverable Transaction History.)
 //! This MemoBuilder policy implements Recoverable Transaction History using
 //! the encrypted memos, as envisioned in MCIP #4.
-
 use super::MemoBuilder;
 use crate::ReservedSubaddresses;
+use alloc::{fmt::Debug, format, string::String};
+use displaydoc::Display;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
-    AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, DestinationMemoError,
-    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo, SenderMemoCredential,
-    UnusedMemo,
+    compute_authenticated_sender_memo, compute_destination_memo, AuthenticatedSenderMemo,
+    AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo,
+    DestinationMemo, DestinationMemoError, DestinationWithPaymentIntentIdMemo,
+    DestinationWithPaymentRequestIdMemo, SenderMemoCredential, UnusedMemo,
 };
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
@@ -56,10 +57,8 @@ use mc_transaction_extra::{
 pub struct RTHMemoBuilder {
     // The credential used to form 0x0100 and 0x0101 memos, if present.
     sender_cred: Option<SenderMemoCredential>,
-    // The payment request id, if any
-    payment_request_id: Option<u64>,
-    // The payment intent id, if any
-    payment_intent_id: Option<u64>,
+    // Different options for the custom memo data
+    custom_memo_type: Option<CustomMemoType>,
     // Whether destination memos are enabled.
     destination_memo_enabled: bool,
     // Tracks if we already wrote a destination memo, for error reporting
@@ -76,12 +75,57 @@ pub struct RTHMemoBuilder {
     fee: Amount,
 }
 
+#[derive(Clone, Debug)]
+pub enum CustomMemoType {
+    PaymentRequestId(u64),
+    PaymentIntentId(u64),
+    FlexibleMemos(FlexibleMemoPayloads),
+}
+
+/// This contains both the output memo payload and the change memo payload which
+/// will be used when generating custom output memos and change memos
+#[derive(Clone, Debug, Default)]
+pub struct FlexibleMemoPayloads {
+    /// This is used when generating output memos.
+    /// It is used to generate a memo type with the first byte being 0x01
+    pub output_memo_payload: FlexibleMemoPayload,
+    /// This is used when generating change memos.
+    /// It is used to generate a memo type with the first byte being 0x02
+    pub change_memo_payload: FlexibleMemoPayload,
+}
+
+const OUTPUT_MEMO_TYPE: u8 = 0x01;
+const CHANGE_MEMO_TYPE: u8 = 0x02;
+
+/// This is the payload data used for creating custom MemoPayloads with types
+/// which are defined in MCIPs.
+#[derive(Clone, Debug)]
+pub struct FlexibleMemoPayload {
+    /// Corresponds to the returned memo sub type. This should be
+    /// listed in an MCIP.
+    pub memo_type_byte: u8,
+    /// Corresponds to some 32 byte encoding of data used for
+    /// the returned memo type, and does not include fields used for the
+    /// authenticated sender or destination super types like the
+    /// SenderMemoCredential
+    pub memo_data: [u8; 32],
+}
+
+/// This defaults to a Authenticated Sender and Destination memo respectively
+impl Default for FlexibleMemoPayload {
+    fn default() -> Self {
+        Self {
+            memo_type_byte: 0,
+            memo_data: [0; 32],
+        }
+    }
+}
+
 impl Default for RTHMemoBuilder {
     fn default() -> Self {
         Self {
             sender_cred: Default::default(),
-            payment_request_id: None,
-            payment_intent_id: None,
+            custom_memo_type: None,
             destination_memo_enabled: false,
             wrote_destination_memo: false,
             last_recipient: Default::default(),
@@ -91,6 +135,20 @@ impl Default for RTHMemoBuilder {
             fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         }
     }
+}
+
+/// An error that occurs when setting up a memo builder
+///
+/// These errors are usually created setting invalid field combinations on the
+/// memo builder. We have included error codes for some known useful error
+/// conditions. For a custom MemoBuilder, you can try to reuse those, or use the
+/// other error code.
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
+pub enum MemoBuilderError {
+    /// Unable to set custom memo typeK
+    CustomMemoType(String),
+    /// Other
+    Other(String),
 }
 
 impl RTHMemoBuilder {
@@ -118,23 +176,47 @@ impl RTHMemoBuilder {
     }
 
     /// Set the payment request id.
-    pub fn set_payment_request_id(&mut self, id: u64) {
-        self.payment_request_id = Some(id);
+    pub fn set_payment_request_id(&mut self, id: u64) -> Result<(), MemoBuilderError> {
+        if self.custom_memo_type.is_some() {
+            return Err(MemoBuilderError::CustomMemoType(format!(
+                "Custom Memo Type already set to {:?}",
+                self.custom_memo_type
+            )));
+        }
+        self.custom_memo_type = Some(CustomMemoType::PaymentRequestId(id));
+        Ok(())
     }
 
-    /// Clear the payment request id.
-    pub fn clear_payment_request_id(&mut self) {
-        self.payment_request_id = None;
+    /// Clear the custom memo type.
+    pub fn clear_custom_memo_type(&mut self) {
+        self.custom_memo_type = None;
     }
 
     /// Set the payment intent id.
-    pub fn set_payment_intent_id(&mut self, id: u64) {
-        self.payment_intent_id = Some(id);
+    pub fn set_payment_intent_id(&mut self, id: u64) -> Result<(), MemoBuilderError> {
+        if self.custom_memo_type.is_some() {
+            return Err(MemoBuilderError::CustomMemoType(format!(
+                "Custom Memo Type already set to {:?}",
+                self.custom_memo_type
+            )));
+        }
+        self.custom_memo_type = Some(CustomMemoType::PaymentIntentId(id));
+        Ok(())
     }
 
-    /// Clear the payment intent id.
-    pub fn clear_payment_intent_id(&mut self) {
-        self.payment_intent_id = None;
+    /// Set the flexible memos.
+    pub fn set_flexible_memos(
+        &mut self,
+        memos: FlexibleMemoPayloads,
+    ) -> Result<(), MemoBuilderError> {
+        if self.custom_memo_type.is_some() {
+            return Err(MemoBuilderError::CustomMemoType(format!(
+                "Custom Memo Type already set to {:?}",
+                self.custom_memo_type
+            )));
+        }
+        self.custom_memo_type = Some(CustomMemoType::FlexibleMemos(memos));
+        Ok(())
     }
 
     /// Enable destination memos
@@ -186,26 +268,44 @@ impl MemoBuilder for RTHMemoBuilder {
             .checked_add(1)
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = ShortAddressHash::from(recipient);
+
         let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
-            if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
-                return Err(NewMemoError::RequestAndIntentIdSet);
-            }
-            if let Some(payment_request_id) = self.payment_request_id {
-                AuthenticatedSenderWithPaymentRequestIdMemo::new(
-                    cred,
-                    recipient.view_public_key(),
-                    &memo_context.tx_public_key.into(),
-                    payment_request_id,
-                )
-                .into()
-            } else if let Some(payment_intent_id) = self.payment_intent_id {
-                AuthenticatedSenderWithPaymentIntentIdMemo::new(
-                    cred,
-                    recipient.view_public_key(),
-                    &memo_context.tx_public_key.into(),
-                    payment_intent_id,
-                )
-                .into()
+            if let Some(custom_memo_type) = &self.custom_memo_type {
+                match custom_memo_type {
+                    CustomMemoType::FlexibleMemos(flexible_memos) => {
+                        let tx_public_key = memo_context.tx_public_key;
+                        let flexible_memo_payload = &flexible_memos.output_memo_payload;
+                        let memo_type_bytes =
+                            [OUTPUT_MEMO_TYPE, flexible_memo_payload.memo_type_byte];
+                        let memo_data = compute_authenticated_sender_memo(
+                            memo_type_bytes,
+                            cred,
+                            recipient.view_public_key(),
+                            &tx_public_key.into(),
+                            &flexible_memo_payload.memo_data,
+                        );
+
+                        MemoPayload::new(memo_type_bytes, memo_data)
+                    }
+                    CustomMemoType::PaymentRequestId(payment_request_id) => {
+                        AuthenticatedSenderWithPaymentRequestIdMemo::new(
+                            cred,
+                            recipient.view_public_key(),
+                            &memo_context.tx_public_key.into(),
+                            *payment_request_id,
+                        )
+                        .into()
+                    }
+                    CustomMemoType::PaymentIntentId(payment_intent_id) => {
+                        AuthenticatedSenderWithPaymentIntentIdMemo::new(
+                            cred,
+                            recipient.view_public_key(),
+                            &memo_context.tx_public_key.into(),
+                            *payment_intent_id,
+                        )
+                        .into()
+                    }
+                }
             } else {
                 AuthenticatedSenderMemo::new(
                     cred,
@@ -250,46 +350,68 @@ impl MemoBuilder for RTHMemoBuilder {
             return Err(NewMemoError::MixedTokenIds);
         }
 
+        if self.fee.value.to_be_bytes()[0] != 0u8 {
+            return Err(NewMemoError::LimitsExceeded("fee"));
+        }
+
         self.total_outlay = self
             .total_outlay
             .checked_add(self.fee.value)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
-
-        if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
-            return Err(NewMemoError::RequestAndIntentIdSet);
-        }
-
-        if let Some(payment_request_id) = self.payment_request_id {
-            match DestinationWithPaymentRequestIdMemo::new(
-                self.last_recipient.clone(),
-                self.total_outlay,
-                self.fee.value,
-                payment_request_id,
-            ) {
-                Ok(mut d_memo) => {
+        if let Some(custom_memo_type) = &self.custom_memo_type {
+            match custom_memo_type {
+                CustomMemoType::FlexibleMemos(flexible_memos) => {
+                    let flexible_memo_payload = &flexible_memos.change_memo_payload;
+                    let memo_type_bytes = [CHANGE_MEMO_TYPE, flexible_memo_payload.memo_type_byte];
+                    let memo_data = compute_destination_memo(
+                        self.last_recipient.clone(),
+                        self.fee.value,
+                        self.num_recipients,
+                        self.total_outlay,
+                        flexible_memo_payload.memo_data,
+                    );
+                    let payload: MemoPayload = MemoPayload::new(memo_type_bytes, memo_data);
                     self.wrote_destination_memo = true;
-                    d_memo.set_num_recipients(self.num_recipients);
-                    Ok(d_memo.into())
+                    Ok(payload)
                 }
-                Err(err) => match err {
-                    DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
-                },
-            }
-        } else if let Some(payment_intent_id) = self.payment_intent_id {
-            match DestinationWithPaymentIntentIdMemo::new(
-                self.last_recipient.clone(),
-                self.total_outlay,
-                self.fee.value,
-                payment_intent_id,
-            ) {
-                Ok(mut d_memo) => {
-                    self.wrote_destination_memo = true;
-                    d_memo.set_num_recipients(self.num_recipients);
-                    Ok(d_memo.into())
+                CustomMemoType::PaymentRequestId(payment_request_id) => {
+                    match DestinationWithPaymentRequestIdMemo::new(
+                        self.last_recipient.clone(),
+                        self.total_outlay,
+                        self.fee.value,
+                        *payment_request_id,
+                    ) {
+                        Ok(mut destination_memo) => {
+                            self.wrote_destination_memo = true;
+                            destination_memo.set_num_recipients(self.num_recipients);
+                            Ok(destination_memo.into())
+                        }
+                        Err(err) => match err {
+                            DestinationMemoError::FeeTooLarge => {
+                                Err(NewMemoError::LimitsExceeded("fee"))
+                            }
+                        },
+                    }
                 }
-                Err(err) => match err {
-                    DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
-                },
+                CustomMemoType::PaymentIntentId(payment_intent_id) => {
+                    match DestinationWithPaymentIntentIdMemo::new(
+                        self.last_recipient.clone(),
+                        self.total_outlay,
+                        self.fee.value,
+                        *payment_intent_id,
+                    ) {
+                        Ok(mut d_memo) => {
+                            self.wrote_destination_memo = true;
+                            d_memo.set_num_recipients(self.num_recipients);
+                            Ok(d_memo.into())
+                        }
+                        Err(err) => match err {
+                            DestinationMemoError::FeeTooLarge => {
+                                Err(NewMemoError::LimitsExceeded("fee"))
+                            }
+                        },
+                    }
+                }
             }
         } else {
             match DestinationMemo::new(
@@ -307,5 +429,278 @@ impl MemoBuilder for RTHMemoBuilder {
                 },
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_account_keys::AccountKey;
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+    use mc_transaction_extra::{
+        get_data_from_authenticated_sender_memo, get_data_from_destination_memo,
+        validate_authenticated_sender, RegisteredMemoType,
+    };
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    const AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE: u8 = 0x08;
+    const DESTINATION_CUSTOM_MEMO_TYPE_BYTE: u8 = 0x08;
+    const AUTHENTICATED_SENDER_MEMO_TYPE_BYTE: u8 = AuthenticatedSenderMemo::MEMO_TYPE_BYTES[1];
+    const DESTINATION_MEMO_TYPE_BYTE: u8 = DestinationMemo::MEMO_TYPE_BYTES[1];
+
+    pub struct RTHMemoTestContext {
+        sender: AccountKey,
+        receiver: AccountKey,
+        funding_public_key: RistrettoPublic,
+        output_memo: Result<MemoPayload, NewMemoError>,
+        change_memo: Result<MemoPayload, NewMemoError>,
+    }
+
+    fn get_valid_flexible_memos() -> FlexibleMemoPayloads {
+        let memo_type_byte = AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE;
+        let memo_data = [0x01; 32];
+        let output_memo_payload = FlexibleMemoPayload {
+            memo_type_byte,
+            memo_data,
+        };
+        let memo_type_byte = DESTINATION_CUSTOM_MEMO_TYPE_BYTE;
+        let memo_data = [0x01; 32];
+        let change_memo_payload = FlexibleMemoPayload {
+            memo_type_byte,
+            memo_data,
+        };
+        FlexibleMemoPayloads {
+            output_memo_payload,
+            change_memo_payload,
+        }
+    }
+
+    fn build_rth_memos(
+        sender: AccountKey,
+        mut builder: RTHMemoBuilder,
+        funding_amount: Amount,
+        change_amount: Amount,
+        fee: Amount,
+    ) -> RTHMemoTestContext {
+        // Create simulated context
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let sender_address_book = ReservedSubaddresses::from(&sender);
+
+        let receiver = AccountKey::random_with_fog(&mut rng);
+        let receiver_primary_address = receiver.default_subaddress();
+
+        let funding_public_key = RistrettoPublic::from_random(&mut rng);
+        let funding_context = MemoContext {
+            tx_public_key: &funding_public_key,
+        };
+        let change_tx_pubkey = RistrettoPublic::from_random(&mut rng);
+        let change_context = MemoContext {
+            tx_public_key: &change_tx_pubkey,
+        };
+
+        builder.set_fee(fee).unwrap();
+        // Build blank output memo for TxOut at gift code address & funding memo to
+        // change output
+        let output_memo = builder.make_memo_for_output(
+            funding_amount,
+            &receiver_primary_address,
+            funding_context,
+        );
+        let change_memo = builder.make_memo_for_change_output(
+            change_amount,
+            &sender_address_book,
+            change_context,
+        );
+        RTHMemoTestContext {
+            sender,
+            receiver,
+            funding_public_key,
+            output_memo,
+            change_memo,
+        }
+    }
+
+    fn build_test_memo_builder(rng: &mut StdRng) -> (AccountKey, RTHMemoBuilder) {
+        let sender = AccountKey::random(rng);
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
+        memo_builder.enable_destination_memo();
+        (sender, memo_builder)
+    }
+
+    #[test]
+    fn test_funding_memo_built_successfully() {
+        // Create Memo Builder with data
+        let fee = Amount::new(1, 0.into());
+        let change_amount = Amount::new(1, 0.into());
+        let funding_amount = Amount::new(10, 0.into());
+
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let (sender, builder) = build_test_memo_builder(&mut rng);
+        // Build the memo payload
+        let memo_test_context =
+            build_rth_memos(sender, builder, funding_amount, change_amount, fee);
+
+        let output_memo = memo_test_context
+            .output_memo
+            .expect("Expected valid output memo");
+        let change_memo = memo_test_context
+            .change_memo
+            .expect("Expected valid change memo");
+
+        // Verify memo type
+        assert_eq!(OUTPUT_MEMO_TYPE, output_memo.get_memo_type()[0]);
+        assert_eq!(CHANGE_MEMO_TYPE, change_memo.get_memo_type()[0]);
+        // Verify memo sub type
+        assert_eq!(
+            AUTHENTICATED_SENDER_MEMO_TYPE_BYTE,
+            output_memo.get_memo_type()[1]
+        );
+        assert_eq!(DESTINATION_MEMO_TYPE_BYTE, change_memo.get_memo_type()[1]);
+
+        // Verify memo data
+        let authenticated_memo = AuthenticatedSenderMemo::from(output_memo.get_memo_data());
+        let destination_memo = DestinationMemo::from(change_memo.get_memo_data());
+
+        authenticated_memo.validate(
+            &memo_test_context.sender.default_subaddress(),
+            memo_test_context.receiver.view_private_key(),
+            &CompressedRistrettoPublic::from(memo_test_context.funding_public_key),
+        );
+
+        let derived_fee = destination_memo.get_fee();
+        assert_eq!(fee.value, derived_fee);
+    }
+
+    #[test]
+    fn test_funding_memo_rejects_fees_which_are_too_large() {
+        // Create Memo Builder with data
+        let fee = Amount::new(u64::MAX, 0.into());
+        let change_amount = Amount::new(1, 0.into());
+        let funding_amount = Amount::new(10, 0.into());
+
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let (sender, builder) = build_test_memo_builder(&mut rng);
+        // Build the memo payload
+        let memo_test_context =
+            build_rth_memos(sender, builder, funding_amount, change_amount, fee);
+        assert_eq!(
+            memo_test_context
+                .change_memo
+                .expect_err("Should have an invalid destination memo type"),
+            NewMemoError::LimitsExceeded("fee")
+        );
+    }
+
+    #[test]
+    fn test_flexible_funding_output_memo_built_successfully() {
+        // Create Memo Builder with data
+        let fee = Amount::new(1, 0.into());
+        let change_amount = Amount::new(1, 0.into());
+        let funding_amount = Amount::new(10, 0.into());
+
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let (sender, mut builder) = build_test_memo_builder(&mut rng);
+        // Add a flexible memo
+        builder
+            .set_flexible_memos(get_valid_flexible_memos())
+            .expect("No other custom memo type should be set");
+        // Build the memo payload
+        let memo_test_context =
+            build_rth_memos(sender, builder, funding_amount, change_amount, fee);
+
+        let output_memo = memo_test_context
+            .output_memo
+            .expect("Expected valid output memo");
+        let change_memo = memo_test_context
+            .change_memo
+            .expect("Expected valid change memo");
+
+        // Verify memo type
+        assert_eq!(OUTPUT_MEMO_TYPE, output_memo.get_memo_type()[0]);
+        assert_eq!(CHANGE_MEMO_TYPE, change_memo.get_memo_type()[0]);
+
+        // Verify memo sub type
+        assert_eq!(
+            AUTHENTICATED_CUSTOM_MEMO_TYPE_BYTE,
+            output_memo.get_memo_type()[1]
+        );
+        assert_eq!(
+            DESTINATION_CUSTOM_MEMO_TYPE_BYTE,
+            change_memo.get_memo_type()[1]
+        );
+
+        // Verify memo data
+        let destination_memo = DestinationMemo::from(change_memo.get_memo_data());
+
+        validate_authenticated_sender(
+            &memo_test_context.sender.default_subaddress(),
+            memo_test_context.receiver.view_private_key(),
+            &CompressedRistrettoPublic::from(memo_test_context.funding_public_key),
+            *output_memo.get_memo_type(),
+            output_memo.get_memo_data(),
+        );
+
+        let derived_fee = destination_memo.get_fee();
+        assert_eq!(fee.value, derived_fee);
+
+        assert_eq!(
+            get_data_from_authenticated_sender_memo(output_memo.get_memo_data()),
+            [1u8; 32]
+        );
+        assert_eq!(
+            get_data_from_destination_memo(change_memo.get_memo_data()),
+            [1u8; 32]
+        );
+    }
+    #[test]
+    fn test_flexible_funding_output_memo_built_successfully_using_defaults() {
+        // Create Memo Builder with data
+        let fee = Amount::new(1, 0.into());
+        let change_amount = Amount::new(1, 0.into());
+        let funding_amount = Amount::new(10, 0.into());
+
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let (sender, mut builder) = build_test_memo_builder(&mut rng);
+        // Add a flexible memo
+        builder
+            .set_flexible_memos(FlexibleMemoPayloads::default())
+            .expect("No other custom memo type should be set");
+        // Build the memo payload
+        let memo_test_context =
+            build_rth_memos(sender, builder, funding_amount, change_amount, fee);
+
+        let output_memo = memo_test_context
+            .output_memo
+            .expect("Expected valid output memo");
+        let change_memo = memo_test_context
+            .change_memo
+            .expect("Expected valid change memo");
+
+        // Verify memo type
+        assert_eq!(OUTPUT_MEMO_TYPE, output_memo.get_memo_type()[0]);
+        assert_eq!(CHANGE_MEMO_TYPE, change_memo.get_memo_type()[0]);
+
+        // Verify memo sub type
+        assert_eq!(
+            AUTHENTICATED_SENDER_MEMO_TYPE_BYTE,
+            output_memo.get_memo_type()[1]
+        );
+        assert_eq!(DESTINATION_MEMO_TYPE_BYTE, change_memo.get_memo_type()[1]);
+
+        // Verify memo data
+        let destination_memo = DestinationMemo::from(change_memo.get_memo_data());
+
+        validate_authenticated_sender(
+            &memo_test_context.sender.default_subaddress(),
+            memo_test_context.receiver.view_private_key(),
+            &CompressedRistrettoPublic::from(memo_test_context.funding_public_key),
+            *output_memo.get_memo_type(),
+            output_memo.get_memo_data(),
+        );
+
+        let derived_fee = destination_memo.get_fee();
+        assert_eq!(fee.value, derived_fee);
     }
 }

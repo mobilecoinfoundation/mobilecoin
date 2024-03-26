@@ -48,14 +48,20 @@
 //! | 0x0204          | Destination With Payment Intent Id Memo           |
 
 pub use self::{
-    authenticated_common::{compute_authenticated_sender_memo, compute_category1_hmac},
+    authenticated_common::{
+        compute_authenticated_sender_memo, compute_category1_hmac,
+        get_data_from_authenticated_sender_memo, validate_authenticated_sender,
+    },
     authenticated_sender::AuthenticatedSenderMemo,
     authenticated_sender_with_payment_intent_id::AuthenticatedSenderWithPaymentIntentIdMemo,
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
     burn_redemption::BurnRedemptionMemo,
     credential::SenderMemoCredential,
     defragmentation::{DefragmentationMemo, DefragmentationMemoError},
-    destination::{compute_destination_memo, DestinationMemo, DestinationMemoError},
+    destination::{
+        compute_destination_memo, get_data_from_destination_memo, DestinationMemo,
+        DestinationMemoError,
+    },
     destination_with_payment_intent_id::DestinationWithPaymentIntentIdMemo,
     destination_with_payment_request_id::DestinationWithPaymentRequestIdMemo,
     gift_code_cancellation::GiftCodeCancellationMemo,

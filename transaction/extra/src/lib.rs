@@ -19,7 +19,9 @@ mod tx_out_gift_code;
 mod unsigned_tx;
 
 pub use memo::{
-    compute_authenticated_sender_memo, compute_destination_memo, AuthenticatedSenderMemo,
+    compute_authenticated_sender_memo, compute_destination_memo,
+    get_data_from_authenticated_sender_memo, get_data_from_destination_memo,
+    validate_authenticated_sender, AuthenticatedSenderMemo,
     AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo,
     BurnRedemptionMemo, DefragmentationMemo, DefragmentationMemoError, DestinationMemo,
     DestinationMemoError, DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
