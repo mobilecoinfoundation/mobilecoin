@@ -32,8 +32,8 @@ do
     sleep 10
 done
 
-# allow override of NUMBER_OF_VALIDATORS
-: "${NUMBER_OF_VALIDATORS:=10}"
+# allow override of MIN_SIGNATURES
+: "${MIN_SIGNATURES:=10}"
 
 # wait for Ledger DB
 echo "Get mobilecoind block height"
@@ -63,7 +63,7 @@ done
 
 echo "Waiting for watcher db to sync - this may take a while"
 signatures=0
-while [[ ${signatures} -lt ${NUMBER_OF_VALIDATORS} ]]
+while [[ ${signatures} -lt ${MIN_SIGNATURES} ]]
 do
     sleep 10
 
