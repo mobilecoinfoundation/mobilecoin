@@ -8,6 +8,7 @@ pub mod config;
 pub mod database;
 pub mod payments;
 pub mod service;
+pub mod t3_sync;
 
 mod conversions;
 mod database_key;

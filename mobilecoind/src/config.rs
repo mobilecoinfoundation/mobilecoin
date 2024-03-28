@@ -101,7 +101,7 @@ pub struct Config {
     pub ip_info_token: String,
 
     /// Optional T3 URI. When provided, reporting to T3 will be enabled
-    #[clap(long, env = "T3_URI", requires = "t3_api_key")]
+    #[clap(long, env = "T3_URI", requires = "t3_api_key", requires = "mobilecoind_db", conflicts_with = "offline")]
     pub t3_uri: Option<T3Uri>,
 
     /// T3 API Key

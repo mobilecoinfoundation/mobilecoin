@@ -20,8 +20,7 @@ use std::sync::Arc;
 // LMDB Database Names
 pub const QUEUES_DB_NAME: &str = "mobilecoind_db:t3_store:queues";
 pub const COUNTERS_DB_NAME: &str = "mobilecoind_db:t3_store:counters";
-pub const INDEX_TO_TRANSPARENT_TX_DB_NAME: &str =
-    "mobilecoind_db:t3_store:txo_index_to_transparent_tx";
+pub const INDEX_TO_TRANSPARENT_TX_DB_NAME: &str = "mobilecoind_db:t3_store:index_to_transparent_tx";
 
 // Key we use for storing a queue of transparent transactions we still need to
 // submit to T3.
@@ -45,7 +44,7 @@ pub struct T3Store {
 
     /// Right now this contains a single key: `TRANSPARENT_TXS_QUEUE_KEY` which
     /// contains a list of txo global indices we still need to submit to T3.
-    /// The actual data is stored inside the txo_index_to_transparent_tx
+    /// The actual data is stored inside the index_to_transparent_tx
     /// database.
     queues: Database,
 
@@ -56,7 +55,7 @@ pub struct T3Store {
     /// Database that maps an index to a `TransparentTransaction`
     /// This is used to store the txo data for the txos we still need to submit
     /// to T3.
-    txo_index_to_transparent_tx: Database,
+    index_to_transparent_tx: Database,
 
     /// Logger.
     logger: Logger,
@@ -73,7 +72,7 @@ impl T3Store {
 
         let counters = env.create_db(Some(COUNTERS_DB_NAME), DatabaseFlags::empty())?;
 
-        let txo_index_to_transparent_tx = env.create_db(
+        let index_to_transparent_tx = env.create_db(
             Some(INDEX_TO_TRANSPARENT_TX_DB_NAME),
             DatabaseFlags::empty(), // here we can store larger values
         )?;
@@ -82,7 +81,7 @@ impl T3Store {
             _env: env,
             queues,
             counters,
-            txo_index_to_transparent_tx,
+            index_to_transparent_tx,
             logger,
         })
     }
@@ -184,7 +183,7 @@ impl T3Store {
         let tx_bytes = tx.write_to_bytes()?;
 
         db_txn.put(
-            self.txo_index_to_transparent_tx,
+            self.index_to_transparent_tx,
             &index_bytes,
             &tx_bytes,
             WriteFlags::NO_OVERWRITE,
@@ -216,22 +215,20 @@ impl T3Store {
     ) -> Result<Option<(u64, TransparentTransaction)>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.queues)?;
 
-        let Some(first_txo_index_result) = cursor.iter_dup_of(&TRANSPARENT_TXS_QUEUE_KEY).next()
-        else {
+        let Some(first_index_result) = cursor.iter_dup_of(&TRANSPARENT_TXS_QUEUE_KEY).next() else {
             return Ok(None);
         };
-        let (_key, first_txo_index_bytes) = first_txo_index_result?;
-        let first_txo_index = u64::from_be_bytes(
-            first_txo_index_bytes
+        let (_key, first_index_bytes) = first_index_result?;
+        let first_index = u64::from_be_bytes(
+            first_index_bytes
                 .try_into()
                 .map_err(|_| Error::ValueDeserialization)?,
         );
 
-        let transparent_tx_bytes =
-            db_txn.get(self.txo_index_to_transparent_tx, &first_txo_index_bytes)?;
+        let transparent_tx_bytes = db_txn.get(self.index_to_transparent_tx, &first_index_bytes)?;
 
         Ok(Some((
-            first_txo_index,
+            first_index,
             TransparentTransaction::parse_from_bytes(&transparent_tx_bytes)?,
         )))
     }
@@ -240,19 +237,15 @@ impl T3Store {
     pub fn remove_transparent_tx(
         &self,
         db_txn: &mut RwTransaction<'_>,
-        txo_index: u64,
+        index: u64,
     ) -> Result<(), Error> {
-        let txo_index_bytes = txo_index.to_be_bytes();
+        let index_bytes = index.to_be_bytes();
 
-        // Remove the txo_index -> TransparentTx mapping.
-        db_txn.del(self.txo_index_to_transparent_tx, &txo_index_bytes, None)?;
+        // Remove the index -> TransparentTx mapping.
+        db_txn.del(self.index_to_transparent_tx, &index_bytes, None)?;
 
-        // Remove the txo_index from the queue.
-        db_txn.del(
-            self.queues,
-            &TRANSPARENT_TXS_QUEUE_KEY,
-            Some(&txo_index_bytes),
-        )?;
+        // Remove the index from the queue.
+        db_txn.del(self.queues, &TRANSPARENT_TXS_QUEUE_KEY, Some(&index_bytes))?;
 
         Ok(())
     }

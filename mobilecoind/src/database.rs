@@ -18,6 +18,7 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
+use mc_t3_api::TransparentTransaction;
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use std::{path::Path, sync::Arc};
@@ -357,6 +358,21 @@ impl Database {
 
         self.processed_block_store
             .get_processed_block(&db_txn, monitor_id, block_num)
+    }
+
+    /// Get the next transparent transaction that needs to be synced to t3.
+    /// Additionally return its index so it can then be removed.
+    pub fn dequeue_transparent_tx(&self) -> Result<Option<(u64, TransparentTransaction)>, Error> {
+        let mut db_txn = self.env.begin_ro_txn()?;
+        self.t3_store.dequeue_transparent_tx(&mut db_txn)
+    }
+
+    /// Remove a transparent transaction from the queue.
+    pub fn remove_transparent_tx(&self, index: u64) -> Result<(), Error> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+        self.t3_store.remove_transparent_tx(&mut db_txn, index)?;
+        db_txn.commit()?;
+        Ok(())
     }
 }
 
