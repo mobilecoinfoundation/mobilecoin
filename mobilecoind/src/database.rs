@@ -363,8 +363,8 @@ impl Database {
     /// Get the next transparent transaction that needs to be synced to t3.
     /// Additionally return its index so it can then be removed.
     pub fn dequeue_transparent_tx(&self) -> Result<Option<(u64, TransparentTransaction)>, Error> {
-        let mut db_txn = self.env.begin_ro_txn()?;
-        self.t3_store.dequeue_transparent_tx(&mut db_txn)
+        let db_txn = self.env.begin_ro_txn()?;
+        self.t3_store.dequeue_transparent_tx(&db_txn)
     }
 
     /// Remove a transparent transaction from the queue.

@@ -11,6 +11,7 @@ use mc_transaction_builder::{
 use mc_transaction_extra::{BurnRedemptionMemo, SenderMemoCredential};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum TransactionMemo {
     /// Recoverable Transaction History memo with an optional u64 specifying the
     /// subaddress index to generate the sender memo credential from

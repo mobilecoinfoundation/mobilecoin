@@ -261,7 +261,7 @@ impl MemoBuilder for RTHMemoBuilder {
 
         if let Some(payment_request_id) = self.payment_request_id {
             match DestinationWithPaymentRequestIdMemo::new(
-                self.last_recipient.clone(),
+                self.last_recipient,
                 self.total_outlay,
                 self.fee.value,
                 payment_request_id,
@@ -277,7 +277,7 @@ impl MemoBuilder for RTHMemoBuilder {
             }
         } else if let Some(payment_intent_id) = self.payment_intent_id {
             match DestinationWithPaymentIntentIdMemo::new(
-                self.last_recipient.clone(),
+                self.last_recipient,
                 self.total_outlay,
                 self.fee.value,
                 payment_intent_id,
@@ -293,7 +293,7 @@ impl MemoBuilder for RTHMemoBuilder {
             }
         } else {
             match DestinationMemo::new(
-                self.last_recipient.clone(),
+                self.last_recipient,
                 self.total_outlay,
                 self.fee.value,
             ) {

@@ -215,7 +215,7 @@ impl T3Store {
     ) -> Result<Option<(u64, TransparentTransaction)>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.queues)?;
 
-        let Some(first_index_result) = cursor.iter_dup_of(&TRANSPARENT_TXS_QUEUE_KEY).next() else {
+        let Some(first_index_result) = cursor.iter_dup_of(TRANSPARENT_TXS_QUEUE_KEY).next() else {
             return Ok(None);
         };
         let (_key, first_index_bytes) = first_index_result?;
@@ -229,7 +229,7 @@ impl T3Store {
 
         Ok(Some((
             first_index,
-            TransparentTransaction::parse_from_bytes(&transparent_tx_bytes)?,
+            TransparentTransaction::parse_from_bytes(transparent_tx_bytes)?,
         )))
     }
 
