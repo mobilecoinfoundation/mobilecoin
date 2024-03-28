@@ -21,16 +21,12 @@ https://kibana.logit.io/app/kibana#/discover?_g=()&_a=(columns:!(_source),filter
 node1.${NAMESPACE}.development.mobilecoin.com
 node2.${NAMESPACE}.development.mobilecoin.com
 node3.${NAMESPACE}.development.mobilecoin.com
-node4.${NAMESPACE}.development.mobilecoin.com
-node5.${NAMESPACE}.development.mobilecoin.com
 
 --- Consensus S3 Buckets ---
 
 https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${NAMESPACE}.development.mobilecoin.com/
 https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${NAMESPACE}.development.mobilecoin.com/
 https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${NAMESPACE}.development.mobilecoin.com/
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node4.${NAMESPACE}.development.mobilecoin.com/
-https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node5.${NAMESPACE}.development.mobilecoin.com/
 
 --- Fog Endpoint ---
 
@@ -56,12 +52,8 @@ Then Connect to localhost:<port>
 --tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${NAMESPACE}.development.mobilecoin.com/ \
 --peer mc://node3.${NAMESPACE}.development.mobilecoin.com:443/ \
 --tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${NAMESPACE}.development.mobilecoin.com/ \
---peer mc://node4.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node4.${NAMESPACE}.development.mobilecoin.com/ \
---peer mc://node5.${NAMESPACE}.development.mobilecoin.com:443/ \
---tx-source-url https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node5.${NAMESPACE}.development.mobilecoin.com/ \
 --poll-interval 1 \
---quorum-set '{ "threshold": 3, "members": [{"args":"node1.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node2.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node3.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node4.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node5.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"}] }'
+--quorum-set '{ "threshold": 2, "members": [{"args":"node1.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node2.${NAMESPACE}.development.mobilecoin.com:443","type":"Node"},{"args":"node3.${NAMESPACE}.development.mobilecoin.com:443"] }'
 
 --- Get key seeds ---
 

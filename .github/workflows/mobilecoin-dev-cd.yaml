@@ -167,10 +167,10 @@ jobs:
     strategy:
       matrix:
         enclave:
-        - libconsensus-enclave.css
-        - libledger-enclave.css
-        - libview-enclave.css
-        - libingest-enclave.css
+        - libconsensus-enclave.signed.so
+        - libledger-enclave.signed.so
+        - libview-enclave.signed.so
+        - libingest-enclave.signed.so
     runs-on: mcf-dev-small-x64
     needs:
     - build-rust-hardware-projects
