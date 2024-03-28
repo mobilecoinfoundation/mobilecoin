@@ -11,9 +11,8 @@ use hex_fmt::HexFmt;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::ShortAddressHash;
 use mc_common::logger::{log, Logger};
-use mc_crypto_keys::RistrettoPublic;
 use mc_t3_api::TransparentTransaction;
-use mc_transaction_core::{get_tx_out_shared_secret, MemoPayload};
+use mc_transaction_core::MemoPayload;
 use mc_transaction_extra::MemoType;
 use protobuf::Message;
 use std::sync::Arc;
@@ -95,77 +94,82 @@ impl T3Store {
         monitor_store: &MonitorStore,
         utxo: &UnspentTxOut,
     ) -> Result<(), Error> {
-        // let Some(e_memo) = utxo.tx_out.e_memo.as_ref() else {
-        //     return Ok(());
-        // };
+        if utxo.memo_payload.is_empty() {
+            return Ok(());
+        };
 
-        // let monitor_data = monitor_store.get_data(db_txn, monitor_id)?;
-        // let Ok(memo_payload) = MemoPayload::try_from(&utxo.memo_payload[..]) else {
-        //     return Ok(());
-        // };
-        // let Ok(memo_type) = MemoType::try_from(&memo_payload) else {
-        //     return Ok(());
-        // };
+        let monitor_data = monitor_store.get_data(db_txn, monitor_id)?;
+        let Ok(memo_payload) = MemoPayload::try_from(&utxo.memo_payload[..]) else {
+            return Ok(());
+        };
+        let Ok(memo_type) = MemoType::try_from(&memo_payload) else {
+            return Ok(());
+        };
 
-        // let our_short_address_hash =
-        //     &ShortAddressHash::from(&monitor_data.account_key.subaddress(utxo.
-        // subaddress_index));
+        let our_short_address_hash =
+            ShortAddressHash::from(&monitor_data.account_key.subaddress(utxo.subaddress_index));
 
-        // let (sender_address_hash, recipient_address_hash) = match memo_type {
-        //     MemoType::AuthenticatedSender(contents) => {
-        //         (&contents.sender_address_hash(), our_short_address_hash)
-        //     }
+        let (sender_address_hash, recipient_address_hash) = match memo_type {
+            MemoType::AuthenticatedSender(contents) => {
+                (contents.sender_address_hash(), our_short_address_hash)
+            }
 
-        //     MemoType::AuthenticatedSenderWithPaymentRequestId(contents) => {
-        //         (&contents.sender_address_hash(), our_short_address_hash)
-        //     }
+            MemoType::AuthenticatedSenderWithPaymentRequestId(contents) => {
+                (contents.sender_address_hash(), our_short_address_hash)
+            }
 
-        //     MemoType::AuthenticatedSenderWithPaymentIntentId(contents) => {
-        //         (&contents.sender_address_hash(), our_short_address_hash)
-        //     }
+            MemoType::AuthenticatedSenderWithPaymentIntentId(contents) => {
+                (contents.sender_address_hash(), our_short_address_hash)
+            }
 
-        //     MemoType::Destination(contents) => {
-        //         (our_short_address_hash, contents.get_address_hash())
-        //     }
+            MemoType::Destination(contents) => {
+                (our_short_address_hash, *contents.get_address_hash())
+            }
 
-        //     MemoType::DestinationWithPaymentRequestId(contents) => {
-        //         (our_short_address_hash, contents.get_address_hash())
-        //     }
+            MemoType::DestinationWithPaymentRequestId(contents) => {
+                (our_short_address_hash, *contents.get_address_hash())
+            }
 
-        //     MemoType::DestinationWithPaymentIntentId(contents) => {
-        //         (our_short_address_hash, contents.get_address_hash())
-        //     }
+            MemoType::DestinationWithPaymentIntentId(contents) => {
+                (our_short_address_hash, *contents.get_address_hash())
+            }
 
-        //     _ => {
-        //         return Ok(());
-        //     }
-        // };
+            _ => {
+                return Ok(());
+            }
+        };
 
-        // let public_key = mc_t3_api::external::CompressedRistretto {
-        //     data: utxo.tx_out.public_key.as_bytes().to_vec(),
-        //     ..Default::default()
-        // };
+        let public_key = mc_t3_api::external::CompressedRistretto {
+            data: utxo.tx_out.public_key.as_bytes().to_vec(),
+            ..Default::default()
+        };
 
-        // let reported_direction = if sender_address_hash == our_short_address_hash {
-        //     mc_t3_api::ReportedDirection::REPORTED_DIRECTION_SEND
-        // } else {
-        //     mc_t3_api::ReportedDirection::REPORTED_DIRECTION_RECEIVE
-        // };
+        let reported_direction = if sender_address_hash == our_short_address_hash {
+            mc_t3_api::ReportedDirection::REPORTED_DIRECTION_SEND
+        } else {
+            mc_t3_api::ReportedDirection::REPORTED_DIRECTION_RECEIVE
+        };
 
-        // let ttx = TransparentTransaction {
-        //     sender_address_hash: sender_address_hash.as_ref().to_vec(),
-        //     recipient_address_hash: recipient_address_hash.as_ref().to_vec(),
-        //     token_id: utxo.token_id,
-        //     amount: utxo.value,
-        //     public_key: Some(public_key).into(),
-        //     public_key_hex: format!("{}", HexFmt(utxo.tx_out.public_key.as_bytes())),
-        //     reported_direction,
-        //     ..Default::default()
-        // };
+        let ttx = TransparentTransaction {
+            sender_address_hash: sender_address_hash.as_ref().to_vec(),
+            recipient_address_hash: recipient_address_hash.as_ref().to_vec(),
+            token_id: utxo.token_id,
+            amount: utxo.value,
+            public_key: Some(public_key).into(),
+            public_key_hex: format!("{}", HexFmt(utxo.tx_out.public_key.as_bytes())),
+            reported_direction,
+            ..Default::default()
+        };
 
-        // // self.append_transparent_tx(db_txn, utxo., &ttx)
-        // Ok(())
-        todo!()
+        self.append_transparent_tx(db_txn, &ttx)?;
+
+        log::debug!(
+            self.logger,
+            "Added transparent transaction to t3 queue: {:?}",
+            ttx
+        );
+
+        Ok(())
     }
 
     /// Append a transparent transaction to the queue of transactions we want to
@@ -206,7 +210,7 @@ impl T3Store {
     /// Get the next transaction to submit to T3 (or None if the queue is
     /// empty). Returns both the transparent transaction and its index (so
     /// it can later be removed by the index).
-    pub fn get_next_transparent_tx(
+    pub fn dequeue_transparent_tx(
         &self,
         db_txn: &impl Transaction,
     ) -> Result<Option<(u64, TransparentTransaction)>, Error> {
@@ -333,11 +337,11 @@ mod test {
 
         let db_txn = env.begin_ro_txn().unwrap();
         assert_eq!(
-            t3_store.get_next_transparent_tx(&db_txn).unwrap(),
+            t3_store.dequeue_transparent_tx(&db_txn).unwrap(),
             Some((0, txs[0].clone()))
         );
         assert_eq!(
-            t3_store.get_next_transparent_tx(&db_txn).unwrap(),
+            t3_store.dequeue_transparent_tx(&db_txn).unwrap(),
             Some((0, txs[0].clone()))
         );
         drop(db_txn);
@@ -345,7 +349,7 @@ mod test {
         let mut db_txn = env.begin_rw_txn().unwrap();
         for i in 0..10 {
             assert_eq!(
-                t3_store.get_next_transparent_tx(&db_txn).unwrap(),
+                t3_store.dequeue_transparent_tx(&db_txn).unwrap(),
                 Some((i, txs[0].clone()))
             );
 
@@ -354,7 +358,7 @@ mod test {
 
             if !txs.is_empty() {
                 assert_eq!(
-                    t3_store.get_next_transparent_tx(&db_txn).unwrap(),
+                    t3_store.dequeue_transparent_tx(&db_txn).unwrap(),
                     Some((i + 1, txs[0].clone()))
                 );
             }
@@ -366,7 +370,7 @@ mod test {
         let (env, t3_store) = setup_test_t3_store(&logger);
 
         let db_txn = env.begin_ro_txn().unwrap();
-        assert_eq!(t3_store.get_next_transparent_tx(&db_txn).unwrap(), None);
+        assert_eq!(t3_store.dequeue_transparent_tx(&db_txn).unwrap(), None);
     }
 
     #[test_with_logger]

@@ -8,6 +8,7 @@ use crate::{
     monitor_store::{MonitorData, MonitorId, MonitorStore},
     processed_block_store::{ProcessedBlockStore, ProcessedTxOut},
     subaddress_store::{SubaddressId, SubaddressSPKId, SubaddressStore},
+    t3_store::T3Store,
     utxo_store::{UtxoId, UtxoStore},
 };
 
@@ -63,6 +64,9 @@ pub struct Database {
     /// Processed block store.
     processed_block_store: ProcessedBlockStore,
 
+    /// T3 store.
+    t3_store: T3Store,
+
     /// Logger.
     logger: Logger,
 }
@@ -71,7 +75,7 @@ impl Database {
     pub fn new<P: AsRef<Path>>(path: P, logger: Logger) -> Result<Self, Error> {
         let env = Arc::new(
             Environment::new()
-                .set_max_dbs(12)
+                .set_max_dbs(13)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 .open(path.as_ref())?,
         );
@@ -97,6 +101,7 @@ impl Database {
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
         let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
+        let t3_store = T3Store::new(env.clone(), logger.clone())?;
 
         Ok(Self {
             env,
@@ -105,6 +110,7 @@ impl Database {
             subaddress_store,
             utxo_store,
             processed_block_store,
+            t3_store,
             logger,
         })
     }
@@ -275,6 +281,8 @@ impl Database {
         for utxo in discovered_utxos {
             self.utxo_store
                 .append_utxo(&mut db_txn, monitor_id, utxo.subaddress_index, utxo)?;
+            self.t3_store
+                .process_utxo(&mut db_txn, monitor_id, &self.monitor_store, utxo)?;
         }
 
         // Remove spent utxos
