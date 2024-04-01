@@ -14,13 +14,13 @@ use mc_transaction_extra::{BurnRedemptionMemo, SenderMemoCredential};
 pub enum TransactionMemo {
     /// Recoverable Transaction History memo with an optional u64 specifying the
     /// subaddress index to generate the sender memo credential from
-    RTH {
+    Rth {
         /// Optional subaddress index to generate the sender memo credential
         /// from.
         subaddress_index: Option<u64>,
     },
 
-    RTHWithPaymentIntentId {
+    RthWithPaymentIntentId {
         /// Optional subaddress index to generate the sender memo credential
         /// from.
         subaddress_index: Option<u64>,
@@ -29,7 +29,7 @@ pub enum TransactionMemo {
         payment_intent_id: u64,
     },
 
-    RTHWithPaymentRequestId {
+    RthWithPaymentRequestId {
         /// Optional subaddress index to generate the sender memo credential
         /// from.
         subaddress_index: Option<u64>,
@@ -49,11 +49,11 @@ impl TransactionMemo {
     pub fn memo_builder(&self, account_key: &AccountKey) -> Box<dyn MemoBuilder + Send + Sync> {
         match self {
             Self::Empty => Box::<EmptyMemoBuilder>::default(),
-            Self::RTH { subaddress_index } => {
+            Self::Rth { subaddress_index } => {
                 let memo_builder = generate_rth_memo_builder(subaddress_index, account_key);
                 Box::new(memo_builder)
             }
-            Self::RTHWithPaymentIntentId {
+            Self::RthWithPaymentIntentId {
                 subaddress_index,
                 payment_intent_id,
             } => {
@@ -61,7 +61,7 @@ impl TransactionMemo {
                 memo_builder.set_payment_intent_id(*payment_intent_id);
                 Box::new(memo_builder)
             }
-            Self::RTHWithPaymentRequestId {
+            Self::RthWithPaymentRequestId {
                 subaddress_index,
                 payment_request_id,
             } => {
@@ -102,7 +102,7 @@ impl TryFrom<&mobilecoind_api::TransactionMemo> for TransactionMemo {
     fn try_from(src: &mobilecoind_api::TransactionMemo) -> Result<Self, Self::Error> {
         match src.transaction_memo.as_ref() {
             // Default to RTH memo if nothing is explicitly specified
-            None => Ok(TransactionMemo::RTH {
+            None => Ok(TransactionMemo::Rth {
                 subaddress_index: None,
             }),
 
@@ -113,18 +113,18 @@ impl TryFrom<&mobilecoind_api::TransactionMemo> for TransactionMemo {
                     None
                 };
                 match rth.payment_id.as_ref() {
-                    None => Ok(TransactionMemo::RTH { subaddress_index }),
+                    None => Ok(TransactionMemo::Rth { subaddress_index }),
 
                     Some(TransactionMemo_RTH_oneof_payment_id::payment_intent_id(
                         payment_intent_id,
-                    )) => Ok(TransactionMemo::RTHWithPaymentIntentId {
+                    )) => Ok(TransactionMemo::RthWithPaymentIntentId {
                         subaddress_index,
                         payment_intent_id: *payment_intent_id,
                     }),
 
                     Some(TransactionMemo_RTH_oneof_payment_id::payment_request_id(
                         payment_request_id,
-                    )) => Ok(TransactionMemo::RTHWithPaymentRequestId {
+                    )) => Ok(TransactionMemo::RthWithPaymentRequestId {
                         subaddress_index,
                         payment_request_id: *payment_request_id,
                     }),
@@ -155,7 +155,7 @@ mod tests {
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
             result,
-            super::TransactionMemo::RTH {
+            super::TransactionMemo::Rth {
                 subaddress_index: None
             }
         );
@@ -172,7 +172,7 @@ mod tests {
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
             result,
-            super::TransactionMemo::RTH {
+            super::TransactionMemo::Rth {
                 subaddress_index: None
             }
         );
@@ -191,7 +191,7 @@ mod tests {
             let result = super::TransactionMemo::try_from(&src).unwrap();
             assert_eq!(
                 result,
-                super::TransactionMemo::RTH {
+                super::TransactionMemo::Rth {
                     subaddress_index: Some(subaddress_index),
                 }
             );
@@ -210,7 +210,7 @@ mod tests {
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
             result,
-            super::TransactionMemo::RTHWithPaymentRequestId {
+            super::TransactionMemo::RthWithPaymentRequestId {
                 subaddress_index: None,
                 payment_request_id: 123,
             }
@@ -225,7 +225,7 @@ mod tests {
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
             result,
-            super::TransactionMemo::RTHWithPaymentRequestId {
+            super::TransactionMemo::RthWithPaymentRequestId {
                 subaddress_index: Some(456),
                 payment_request_id: 123,
             }
@@ -244,7 +244,7 @@ mod tests {
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
             result,
-            super::TransactionMemo::RTHWithPaymentIntentId {
+            super::TransactionMemo::RthWithPaymentIntentId {
                 subaddress_index: None,
                 payment_intent_id: 123,
             }
@@ -259,7 +259,7 @@ mod tests {
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
             result,
-            super::TransactionMemo::RTHWithPaymentIntentId {
+            super::TransactionMemo::RthWithPaymentIntentId {
                 subaddress_index: Some(456),
                 payment_intent_id: 123,
             }
