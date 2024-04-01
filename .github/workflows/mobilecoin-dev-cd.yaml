@@ -10,8 +10,10 @@ env:
   RELEASE_5X_TAG: v5.1.1-dev
   GH_SHORT_SHA: placeholder
   RUST_CACHE_PATH: .tmp/rust-bin-cache
-  RUST_BIN_ARTIFACTS_PATH: .tmp/rust-bin-cache/mobilecoin
-  CSS_ARTIFACTS_PATH: .tmp/rust-bin-cache/css
+  RUST_ARTIFACTS_PATH: .tmp/rust-bin-cache/bin/mobilecoin
+  MEASUREMENTS_ARTIFACTS_PATH: .tmp/rust-bin-cache/measurements/mobilecoin
+  GO_CACHE_PATH: .tmp/go-bin-cache
+  GO_ARTIFACTS_PATH: .tmp/go-bin-cache/bin/mobilecoin
 
 on:
   pull_request:
@@ -71,97 +73,97 @@ jobs:
 
 #########################################
 # Build binaries
-#########################################
-  # build-rust-hardware-projects:
-  #   needs:
-  #   - generate-metadata
-  #   runs-on: mcf-dev-large-x64
-  #   container:
-  #     image: mobilecoin/rust-sgx-base:v0.0.33
+########################################
+  build-rust-hardware-projects:
+    needs:
+    - generate-metadata
+    runs-on: mcf-dev-large-x64
+    container:
+      image: mobilecoin/rust-sgx-base:v0.0.33
 
-  #   env:
-  #     # build cannot use relative paths for singing and minting trust root.
-  #     ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
-  #     MINTING_TRUST_ROOT_PUBLIC_KEY_PEM: ${{ github.workspace }}/.tmp/minting_trust_root.public.pem
+    env:
+      # build cannot use relative paths for singing and minting trust root.
+      ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
+      MINTING_TRUST_ROOT_PUBLIC_KEY_PEM: ${{ github.workspace }}/.tmp/minting_trust_root.public.pem
 
-  #   steps:
-  #   - name: Checkout
-  #     uses: mobilecoinofficial/gh-actions/checkout@v0
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-  #   - name: Write environment values
-  #     env:
-  #       ENCLAVE_SIGNING_KEY: ${{ secrets.DEV_ENCLAVE_SIGNING_KEY }}
-  #       MINTING_TRUST_ROOT_PUBLIC: ${{ secrets.DEV_MINTING_TRUST_ROOT_PUBLIC }}
-  #     run: |
-  #       mkdir -p .tmp
-  #       echo "${ENCLAVE_SIGNING_KEY}" > "${ENCLAVE_SIGNING_KEY_PATH}"
-  #       echo "${MINTING_TRUST_ROOT_PUBLIC}" > "${MINTING_TRUST_ROOT_PUBLIC_KEY_PEM}"
+    - name: Write environment values
+      env:
+        ENCLAVE_SIGNING_KEY: ${{ secrets.DEV_ENCLAVE_SIGNING_KEY }}
+        MINTING_TRUST_ROOT_PUBLIC: ${{ secrets.DEV_MINTING_TRUST_ROOT_PUBLIC }}
+      run: |
+        mkdir -p .tmp
+        echo "${ENCLAVE_SIGNING_KEY}" > "${ENCLAVE_SIGNING_KEY_PATH}"
+        echo "${MINTING_TRUST_ROOT_PUBLIC}" > "${MINTING_TRUST_ROOT_PUBLIC_KEY_PEM}"
 
-  #   - name: Cache rust build binaries
-  #     id: rust_artifact_cache
-  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-  #     with:
-  #       cache_buster: ${{ vars.CACHE_BUSTER }}
-  #       path: ${{ env.RUST_CACHE_PATH }}
+    - name: Cache rust build binaries
+      id: rust_artifact_cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        path: ${{ env.RUST_CACHE_PATH }}
 
-  #   - name: Build rust hardware projects
-  #     if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
-  #     env:
-  #       SGX_MODE: HW
-  #       RUST_BACKTRACE: full
-  #       MOB_RELEASE: 1
-  #       CONSENSUS_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
-  #       LEDGER_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
-  #       VIEW_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
-  #       INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
-  #     run: |
-  #       cargo build --release --locked
+    - name: Build rust hardware projects
+      if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+      env:
+        SGX_MODE: HW
+        RUST_BACKTRACE: full
+        MOB_RELEASE: 1
+        CONSENSUS_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        LEDGER_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        VIEW_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+        INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
+      run: |
+        cargo build --release --locked
 
-  #   - name: Copy artifacts to cache
-  #     if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
-  #     shell: bash
-  #     run: |
-  #       mkdir -p "${RUST_BIN_ARTIFACTS_PATH}"
-  #       find target/release -maxdepth 1 -executable -type f -exec cp "{}" "${RUST_BIN_ARTIFACTS_PATH}" \;
-  #       find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" "${RUST_BIN_ARTIFACTS_PATH}" \;
+    - name: Copy artifacts to cache
+      if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p "${RUST_ARTIFACTS_PATH}"
+        find target/release -maxdepth 1 -executable -type f -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
+        find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
 
-  #       # clean up target directory so the cache hash compute doesn't fail.
-  #       # unable to access:
-  #       # target/release/build/mc-crypto-x509-test-vectors-***/out/openssl/ok_intermediate1/private
-  #       rm -rf target/release
+        # clean up target directory so the cache hash compute doesn't fail.
+        # unable to access:
+        # target/release/build/mc-crypto-x509-test-vectors-***/out/openssl/ok_intermediate1/private
+        rm -rf target/release
 
-  #   - name: Create css measurements
-  #     if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
-  #     shell: bash
-  #     run: |
-  #       mkdir -p "${CSS_ARTIFACTS_PATH}"
+    - name: Create css measurements
+      if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p "${MEASUREMENTS_ARTIFACTS_PATH}"
 
-  #       orig_dir=$(pwd)
+        orig_dir=$(pwd)
 
-  #       cd "${RUST_BIN_ARTIFACTS_PATH}"
-  #       for i in *.signed.so
-  #       do
-  #         css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
-  #         sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile "${css}.css"
-  #         cp "${css}.css" "${orig_dir}/${CSS_ARTIFACTS_PATH}"
-  #       done
+        cd "${RUST_ARTIFACTS_PATH}"
+        for i in *.signed.so
+        do
+          css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
+          sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile "${css}.css"
+          cp "${css}.css" "${orig_dir}/${MEASUREMENTS_ARTIFACTS_PATH}"
+        done
 
-  #   - name: Check artifacts
-  #     shell: bash
-  #     run: |
-  #       ls -alR "${RUST_CACHE_PATH}"
+    - name: Check artifacts
+      shell: bash
+      run: |
+        ls -alR "${RUST_CACHE_PATH}"
 
-  #   - name: Upload artifacts - rust
-  #     uses: mobilecoinofficial/gh-actions/upload-artifact@v0
-  #     with:
-  #       name: rust-binaries
-  #       path: ${{ env.RUST_BIN_ARTIFACTS_PATH }}
+    - name: Upload artifacts - rust
+      uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+      with:
+        name: rust-binaries
+        path: ${{ env.RUST_ARTIFACTS_PATH }}
 
-  #   - name: Upload artifacts - measurements
-  #     uses: mobilecoinofficial/gh-actions/upload-artifact@v0
-  #     with:
-  #       name: measurements
-  #       path: ${{ env.CSS_ARTIFACTS_PATH }}
+    - name: Upload artifacts - measurements
+      uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+      with:
+        name: measurements
+        path: ${{ env.MEASUREMENTS_ARTIFACTS_PATH }}
 
   mrenclave-values:
     strategy:
@@ -191,48 +193,50 @@ jobs:
       id: enclave
       uses: mobilecoinofficial/gh-actions/enclave-measurements@ad6f1f0f1594c7afd159ab4c92b2f5aa7a738a08
       with:
-        enclave_so_path: ${{ env.RUST_BIN_ARTIFACTS_PATH }}/${{ matrix.enclave }}
+        enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/${{ matrix.enclave }}
 
+  build-go-projects:
+    runs-on: mcf-dev-small-x64
+    needs:
+    - generate-metadata
+    container:
+      image: golang:1.18.5
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-  # build-go-projects:
-  #   runs-on: mcf-dev-small-x64
-  #   needs:
-  #   - generate-metadata
-  #   container:
-  #     image: golang:1.18.5
-  #   steps:
-  #   - name: Checkout
-  #     uses: mobilecoinofficial/gh-actions/checkout@v0
+    - name: Add protobuf-compiler
+      run: |
+        apt update
+        apt install -y protobuf-compiler zstd
 
-  #   - name: Add protobuf-compiler
-  #     run: |
-  #       apt update
-  #       apt install -y protobuf-compiler zstd
+    - name: Cache go build binaries
+      id: go_cache
+      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+      with:
+        cache_buster: ${{ secrets.CACHE_BUSTER }}
+        path: ${{ env.GO_CACHE_PATH }}
 
-  #   - name: Cache go build binaries
-  #     id: go_artifact_cache
-  #     uses: ./.github/actions/mobilecoin-cache-go-binaries
-  #     with:
-  #       cache_buster: ${{ secrets.CACHE_BUSTER }}
+    - name: Build go-grpc-gateway
+      if: steps.go_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p ${GO_ARTIFACTS_PATH}
+        pushd go-grpc-gateway
+        ./install_tools.sh
+        ./build.sh
+        popd
+        cp go-grpc-gateway/go-grpc-gateway ${GO_ARTIFACTS_PATH}
 
-  #   - name: Build go-grpc-gateway
-  #     if: steps.go_artifact_cache.outputs.cache-hit != 'true'
-  #     run: |
-  #       cd go-grpc-gateway
-  #       ./install_tools.sh
-  #       ./build.sh
-  #       mkdir -p ../go_build_artifacts
-  #       cp go-grpc-gateway ../go_build_artifacts/
+    - name: check artifacts
+      run: |
+        ls -alR ${GO_ARTIFACTS_PATH}
 
-  #   - name: check artifacts
-  #     run: |
-  #       ls -alR go_build_artifacts
-
-  #   - name: Upload Artifacts
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: go-binaries
-  #       path: go_build_artifacts/
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-binaries
+        path: ${{ env.GO_ARTIFACTS_PATH }}
 
 # ########################################
 # # Create/Refresh base runtime image
