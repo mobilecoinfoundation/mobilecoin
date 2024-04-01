@@ -14,7 +14,7 @@ ${VERSION}
 
 --- Dev Environment Logs ---
 
-https://kibana.logit.io/app/kibana#/discover?_g=()&_a=(columns:!(_source),filters:!(('\$state':(store:appState),meta:(alias:!n,disabled:!f,index:'8ac115c0-aac1-11e8-88ea-0383c11b333c',key:azure.subscription,negate:!f,params:(query:development,type:phrase),type:phrase,value:development),query:(match:(azure.subscription:(query:development,type:phrase)))),('\$state':(store:appState),meta:(alias:!n,disabled:!f,index:'8ac115c0-aac1-11e8-88ea-0383c11b333c',key:kubernetes.namespace_name,negate:!f,params:(query:${NAMESPACE},type:phrase),type:phrase,value:${NAMESPACE}),query:(match:(kubernetes.namespace_name:(query:${NAMESPACE},type:phrase))))),index:'8ac115c0-aac1-11e8-88ea-0383c11b333c',interval:auto,query:(language:kuery,query:''),sort:!('@timestamp',desc))
+https://kibana.logit.io/s/c915db13-afe2-4ccb-85fd-723e18574a68/app/discover#/?_g=()&_a=(columns:!(_source),filters:!(('\$state':(store:appState),meta:(alias:!n,disabled:!f,index:'8ac115c0-aac1-11e8-88ea-0383c11b333c',key:kubernetes.namespace_name,negate:!f,params:(query:${NAMESPACE}),type:phrase),query:(match_phrase:(kubernetes.namespace_name:${NAMESPACE})))),index:'8ac115c0-aac1-11e8-88ea-0383c11b333c',interval:auto,query:(language:kuery,query:''),sort:!())
 
 --- Consensus Endpoints ---
 
@@ -72,16 +72,16 @@ export MNEMONIC_FOG_KEYS_SEED=\$(kubectl -n ${NAMESPACE} get secrets sample-keys
 kubectl -n ${NAMESPACE} get secrets sample-keys-seeds -ojsonpath='{.data.FOG_REPORT_SIGNING_CA_CERT}' | base64 -d > /tmp/fog_report_signing_ca_cert.pem
 
 # Regenerate keys to /tmp/sample_keys:
-docker run -it --rm \
-  --env FOG_REPORT_URL="fog://fog.${NAMESPACE}.development.mobilecoin.com" \
-  --env FOG_REPORT_SIGNING_CA_CERT="\$(cat fog_report_signing_ca_cert.pem)" \
-  --env FOG_KEYS_SEED \
-  --env INITIAL_KEYS_SEED \
-  --env MNEMONIC_KEYS_SEED \
-  --env MNEMONIC_FOG_KEYS_SEED \
-  --env FOG_REPORT_SIGNING_CA_CERT_PATH=/tmp/fog_report_signing_ca_cert.pem \
-  -v /tmp/fog_report_signing_ca_cert.pem:/tmp/fog_report_signing_ca_cert.pem \
-  -v /tmp/sample_data:/tmp/sample_data \
+docker run -it --rm \\
+  --env FOG_REPORT_URL="fog://fog.${NAMESPACE}.development.mobilecoin.com" \\
+  --env FOG_REPORT_SIGNING_CA_CERT="\$(cat fog_report_signing_ca_cert.pem)" \\
+  --env FOG_KEYS_SEED \\
+  --env INITIAL_KEYS_SEED \\
+  --env MNEMONIC_KEYS_SEED \\
+  --env MNEMONIC_FOG_KEYS_SEED \\
+  --env FOG_REPORT_SIGNING_CA_CERT_PATH=/tmp/fog_report_signing_ca_cert.pem \\
+  -v /tmp/fog_report_signing_ca_cert.pem:/tmp/fog_report_signing_ca_cert.pem \\
+  -v /tmp/sample_data:/tmp/sample_data \\
   ${DOCKER_ORG}/bootstrap-tools:${VERSION} /util/generate_origin_data.sh
 
 --- Charts ---
