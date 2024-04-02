@@ -411,17 +411,17 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-1-network-config/network.json"
         {
           "broadcast_peers": [
-            "peer2.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc=",
-            "peer3.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEAZfWfaQQg1oQQvwAR5s5AZOZmZZgCryNRlPPZlbeh4MY="
+            "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc=",
+            "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAZfWfaQQg1oQQvwAR5s5AZOZmZZgCryNRlPPZlbeh4MY="
           ],
           "quorum_set": {
             "members": [
               {
-                "args": "peer2.${{ inputs.namespace }}.development.mobilecoinww.com:443",
+                "args": "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443",
                 "type": "Node"
               },
               {
-                "args": "peer3.${{ inputs.namespace }}.development.mobilecoinww.com:443",
+                "args": "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443",
                 "type": "Node"
               }
             ],
@@ -451,17 +451,17 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-2-network-config/network.json"
         {
           "broadcast_peers": [
-            "peer1.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
-            "peer3.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEAZfWfaQQg1oQQvwAR5s5AZOZmZZgCryNRlPPZlbeh4MY="
+            "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
+            "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAZfWfaQQg1oQQvwAR5s5AZOZmZZgCryNRlPPZlbeh4MY="
           ],
           "quorum_set": {
             "members": [
               {
-                "args": "peer1.${{ inputs.namespace }}.development.mobilecoinww.com:443",
+                "args": "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443",
                 "type": "Node"
               },
               {
-                "args": "peer3.${{ inputs.namespace }}.development.mobilecoinww.com:443",
+                "args": "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443",
                 "type": "Node"
               }
             ],
@@ -491,17 +491,17 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-3-network-config/network.json"
         {
           "broadcast_peers": [
-            "peer1.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
-            "peer2.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc="
+            "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
+            "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc="
           ],
           "quorum_set": {
             "members": [
               {
-                "args": "peer1.${{ inputs.namespace }}.development.mobilecoinww.com:443",
+                "args": "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443",
                 "type": "Node"
               },
               {
-                "args": "peer2.${{ inputs.namespace }}.development.mobilecoinww.com:443",
+                "args": "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443",
                 "type": "Node"
               }
             ],

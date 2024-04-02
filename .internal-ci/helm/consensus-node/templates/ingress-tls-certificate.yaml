@@ -15,5 +15,5 @@ spec:
   - {{ .Values.node.config.clientHostname }}
   - {{ .Values.node.config.peerHostname }}
   issuerRef:
-    name: {{ .Values.ingress.common.tls.clusterIssuer }}
+    name: {{ .Values.node.ingress.common.tls.clusterIssuer }}
     kind: ClusterIssuer
