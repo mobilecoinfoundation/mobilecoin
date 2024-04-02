@@ -208,7 +208,7 @@ spec:
           - configMap:
               name: {{ include "consensusNode.fullname" . }}-network-config
           - configMap:
-              name: token-config
+              name: tokens-config
       - name: node-cert
         secret:
           secretName: {{ include "consensusNode.fullname" . }}-internal-tls
