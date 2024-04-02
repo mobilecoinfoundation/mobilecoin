@@ -375,7 +375,7 @@ jobs:
     - name: Create node1 msg-signer-key secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: secret-create-from-file
+        action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -386,7 +386,7 @@ jobs:
     - name: Create node2 msg-signer-key secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: secret-create-from-file
+        action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -397,7 +397,7 @@ jobs:
     - name: Create node3 msg-signer-key secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: secret-create-from-file
+        action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
