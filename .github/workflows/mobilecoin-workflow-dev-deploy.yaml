@@ -183,6 +183,7 @@ jobs:
           externalSecrets:
             signingCert:
               name: fog-report-signing-cert-a
+        EOF
 
     - name: Deploy fog-report-a
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -228,6 +229,7 @@ jobs:
           externalSecrets:
             signingCert:
               name: fog-report-signing-cert-b
+        EOF
 
     - name: Deploy fog-report-b
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -273,6 +275,7 @@ jobs:
                   enabled: false
                 tls:
                   clusterIssuer: google-public-ca
+        EOF
 
     - name: Deploy fog-view
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -319,6 +322,7 @@ jobs:
                   enabled: false
                 tls:
                   clusterIssuer: google-public-ca
+        EOF
 
 
     - name: Deploy fog-ledger
@@ -351,6 +355,7 @@ jobs:
         mobilecoin:
           network: ${{ inputs.namespace }}
           partner: dev
+        EOF
 
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13

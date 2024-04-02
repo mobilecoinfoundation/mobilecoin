@@ -221,16 +221,17 @@ jobs:
       if: steps.go_cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        mkdir -p ${GO_ARTIFACTS_PATH}
+        mkdir -p "${GO_ARTIFACTS_PATH}"
         pushd go-grpc-gateway
         ./install_tools.sh
         ./build.sh
         popd
-        cp go-grpc-gateway/go-grpc-gateway ${GO_ARTIFACTS_PATH}
+        cp go-grpc-gateway/go-grpc-gateway "${GO_ARTIFACTS_PATH}"
 
     - name: check artifacts
+      shell: bash
       run: |
-        ls -alR ${GO_ARTIFACTS_PATH}
+        ls -alR "${GO_ARTIFACTS_PATH}"
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4

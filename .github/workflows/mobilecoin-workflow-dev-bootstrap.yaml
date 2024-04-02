@@ -63,16 +63,16 @@ jobs:
         for i in 1 2 3
         do
             aws s3 cp --only-show-errors --recursive --acl public-read \
-              "s3://${BUCKET}/prebuilt/${VERSION}/chain/node${i}" \
-              "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
+                "s3://${BUCKET}/prebuilt/${VERSION}/chain/node${i}" \
+                "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
             # capture pids
-            pids[${i}]=$!
+            pids[i]=$!
         done
 
         # wait for all pids to finish
-        for pid in ${pids[*]}
+        for pid in "${pids[@]}"
         do
-            wait ${pid}
+            wait "${pid}"
         done
 
   setup-environment:

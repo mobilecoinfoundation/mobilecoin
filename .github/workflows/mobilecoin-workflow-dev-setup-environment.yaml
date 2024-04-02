@@ -349,7 +349,7 @@ jobs:
         # Create base path
         mkdir -p "${BASE_PATH}"
 
-        echo '${vars.DEV_TOKENS_CONFIG_JSON_V2}' > "${TOKENS_PATH}"
+        echo '${{ vars.DEV_TOKENS_CONFIG_JSON_V2 }}' > "${TOKENS_PATH}"
 
     - name: Create tokens-config configMap
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -408,7 +408,7 @@ jobs:
     - name: Write node 1 network config
       run: |
         mkdir -p "${VALUES_BASE_PATH}/consensus-node-1-network-config"
-        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-1-network-config/network.json
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-1-network-config/network.json"
         {
           "broadcast_peers": [
             "peer2.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc=",
@@ -448,7 +448,7 @@ jobs:
     - name: Write node 2 network config
       run: |
         mkdir -p "${VALUES_BASE_PATH}/consensus-node-2-network-config"
-        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-2-network-config/network.json
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-2-network-config/network.json"
         {
           "broadcast_peers": [
             "peer1.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
@@ -488,7 +488,7 @@ jobs:
     - name: Write node 3 network config
       run: |
         mkdir -p "${VALUES_BASE_PATH}/consensus-node-3-network-config"
-        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-3-network-config/network.json
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-3-network-config/network.json"
         {
           "broadcast_peers": [
             "peer1.${{ inputs.namespace }}.development.mobilecoinww.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
