@@ -191,7 +191,7 @@ jobs:
 
     - name: Get enclave MRSIGNER/MRENCLAVE values
       id: enclave
-      uses: mobilecoinofficial/gh-actions/enclave-measurements@ad6f1f0f1594c7afd159ab4c92b2f5aa7a738a08
+      uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
       with:
         enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/${{ matrix.enclave }}
 

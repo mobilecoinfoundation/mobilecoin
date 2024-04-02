@@ -525,3 +525,62 @@ jobs:
         object_name: consensus-node-3-network-config
         src: ${{ env.VALUES_BASE_PATH }}/consensus-node-3-network-config/network.json
 
+    - name: Generate consensus-node-1-ledger-distribution
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution"
+        mkdir -p "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution"
+        mkdir -p "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution"
+
+        echo '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_ACCESS_KEY_ID"
+        echo '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+        echo 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_REGION"
+        echo 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+        echo 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_DEST"
+        echo 'https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_TX_SOURCE_URL"
+
+        echo '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_ACCESS_KEY_ID"
+        echo '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+        echo 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_REGION"
+        echo 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+        echo 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_DEST"
+        echo 'https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_TX_SOURCE_URL"
+
+        echo '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_ACCESS_KEY_ID"
+        echo '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+        echo 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_REGION"
+        echo 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+        echo 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_DEST"
+        echo 'https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_TX_SOURCE_URL"
+
+    - name: Create consensus-node-1-ledger-distribution secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-1-ledger-distribution
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-1-ledger-distribution
+
+    - name: Create consensus-node-2-ledger-distribution secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-2-ledger-distribution
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-2-ledger-distribution
+
+    - name: Create consensus-node-3-ledger-distribution secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-3-ledger-distribution
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-3-ledger-distribution

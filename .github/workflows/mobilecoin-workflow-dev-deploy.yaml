@@ -80,8 +80,8 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-values.yaml"
 
         mobilecoin:
-          network: main
-          partner: mc
+          network: ${{ inputs.namespace }}
+          partner: dev
 
         node:
           config:
