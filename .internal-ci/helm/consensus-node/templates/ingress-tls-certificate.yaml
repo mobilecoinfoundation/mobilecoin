@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2024 The MobileCoin Foundation
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -12,8 +12,8 @@ spec:
     algorithm: RSA
     encoding: PKCS1
   dnsNames:
-  - {{ include "consensusNode.clientHostname" . }}
-  - {{ include "consensusNode.peerHostname" . }}
+  - {{ .Values.node.config.clientHostname }}
+  - {{ .Values.node.config.peerHostname }}
   issuerRef:
-    name: {{ .Values.global.certManagerClusterIssuer }}
+    name: {{ .Values.ingress.common.tls.clusterIssuer }}
     kind: ClusterIssuer

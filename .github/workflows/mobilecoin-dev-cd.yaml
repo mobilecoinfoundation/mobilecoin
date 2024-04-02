@@ -73,7 +73,7 @@ jobs:
 
 #########################################
 # Build binaries
-########################################
+#########################################
   build-rust-hardware-projects:
     needs:
     - generate-metadata
@@ -327,11 +327,8 @@ jobs:
       matrix:
         chart:
         - consensus-node
-        - consensus-node-config
         - fog-ingest
         - fog-test-client
-        - mc-core-common-config
-        - mc-core-dev-env-setup
         - mobilecoind
         - watcher
         - fog-report

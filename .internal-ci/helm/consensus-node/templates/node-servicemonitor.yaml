@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2024 The MobileCoin Foundation
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -16,8 +16,8 @@ spec:
   - port: mgmt-http
     relabelings:
     - targetLabel: instance
-      replacement: {{ include "consensusNode.clientHostname" . }}
+      replacement: {{ .Values.node.config.clientHostname }}
     - targetLabel: network
-      replacement: {{ include "consensusNode.mobileCoinNetwork.network" . }}
+      replacement: {{ .Values.mobilecoin.network }}
     - targetLabel: partner
-      replacement: {{ include "consensusNode.mobileCoinNetwork.partner" . }}
+      replacement: {{ .Values.mobilecoin.partner }}
