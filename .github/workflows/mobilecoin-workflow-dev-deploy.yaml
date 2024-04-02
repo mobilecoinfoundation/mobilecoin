@@ -85,8 +85,8 @@ jobs:
 
         node:
           config:
-            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoinww.com
-            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoinww.com
+            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
+            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
             blockVersion: ${{ inputs.block_version }}
 
           persistence:
