@@ -113,11 +113,13 @@ spec:
             configMapKeyRef:
               name: sentry
               key: consensus-sentry-dsn
+              optional: true
         - name: LEDGER_DISTRIBUTION_SENTRY_DSN
           valueFrom:
             configMapKeyRef:
               name: sentry
               key: ledger-distribution-sentry-dsn
+              optional: true
         - name: MC_BRANCH
           valueFrom:
             configMapKeyRef:
