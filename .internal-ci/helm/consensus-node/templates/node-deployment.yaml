@@ -121,15 +121,9 @@ spec:
               key: ledger-distribution-sentry-dsn
               optional: true
         - name: MC_BRANCH
-          valueFrom:
-            configMapKeyRef:
-              name: mobilecoin-network
-              key: network
+          value: {{ .Values.mobilecoin.network }}
         - name: MC_CHAIN_ID
-          valueFrom:
-            configMapKeyRef:
-              name: mobilecoin-network
-              key: network
+          value: {{ .Values.mobilecoin.network }}
         volumeMounts:
         - name: sealed-signing-key
           mountPath: /sealed
