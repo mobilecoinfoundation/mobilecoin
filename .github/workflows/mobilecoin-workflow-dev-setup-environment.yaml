@@ -472,8 +472,8 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-2-network-config/network.json"
         {
           "broadcast_peers": [
-            "${P1}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE1}",
-            "${P3}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE3}"
+            "mcp://${P1}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE1}",
+            "mcp://${P3}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE3}"
           ],
           "quorum_set": {
             "members": [
@@ -512,8 +512,8 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-3-network-config/network.json"
         {
           "broadcast_peers": [
-            "${P1}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE1}",
-            "${P2}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE2}"
+            "mcp://${P1}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE1}",
+            "mcp://${P2}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE2}"
           ],
           "quorum_set": {
             "members": [
