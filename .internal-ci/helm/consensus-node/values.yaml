@@ -9,7 +9,7 @@ image:
   tag: ''
 
 # disable client ports on the service
-acceptClientConnection: true
+acceptClientConnections: true
 
 # Mobilecoin network instance
 mobilecoin:
