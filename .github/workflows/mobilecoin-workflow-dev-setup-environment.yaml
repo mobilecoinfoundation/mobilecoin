@@ -368,9 +368,9 @@ jobs:
         mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node2"
         mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node3"
 
-        echo '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE1 }}' > "${VALUES_BASE_PATH}/message-signer-key-node1/MC_MSG_SIGNER_KEY"
-        echo '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE2 }}' > "${VALUES_BASE_PATH}/message-signer-key-node2/MC_MSG_SIGNER_KEY"
-        echo '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE3 }}' > "${VALUES_BASE_PATH}/message-signer-key-node3/MC_MSG_SIGNER_KEY"
+        echo -n '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE1 }}' > "${VALUES_BASE_PATH}/message-signer-key-node1/MC_MSG_SIGNER_KEY"
+        echo -n '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE2 }}' > "${VALUES_BASE_PATH}/message-signer-key-node2/MC_MSG_SIGNER_KEY"
+        echo -n '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE3 }}' > "${VALUES_BASE_PATH}/message-signer-key-node3/MC_MSG_SIGNER_KEY"
 
     - name: Create node1 msg-signer-key secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -428,8 +428,8 @@ jobs:
             "threshold": 1
           },
           "tx_source_urls": [
-            "https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/",
-            "https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${{ inputs.namespace }}.development.mobilecoin.com/"
+            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/",
+            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${{ inputs.namespace }}.development.mobilecoin.com/"
           ]
         }
         EOF
@@ -468,8 +468,8 @@ jobs:
             "threshold": 1
           },
           "tx_source_urls": [
-            "https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/",
-            "https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${{ inputs.namespace }}.development.mobilecoin.com/"
+            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/",
+            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${{ inputs.namespace }}.development.mobilecoin.com/"
           ]
         }
         EOF
@@ -508,8 +508,8 @@ jobs:
             "threshold": 1
           },
           "tx_source_urls": [
-            "https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/",
-            "https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/"
+            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/",
+            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/"
           ]
         }
         EOF
@@ -531,26 +531,26 @@ jobs:
         mkdir -p "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution"
         mkdir -p "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution"
 
-        echo '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_ACCESS_KEY_ID"
-        echo '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_SECRET_ACCESS_KEY"
-        echo 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_REGION"
-        echo 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
-        echo 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_DEST"
-        echo 'https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_TX_SOURCE_URL"
+        echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_ACCESS_KEY_ID"
+        echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+        echo -n 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_REGION"
+        echo -n 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+        echo -n 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_DEST"
+        echo -n 'https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_TX_SOURCE_URL"
 
-        echo '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_ACCESS_KEY_ID"
-        echo '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_SECRET_ACCESS_KEY"
-        echo 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_REGION"
-        echo 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
-        echo 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_DEST"
-        echo 'https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_TX_SOURCE_URL"
+        echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_ACCESS_KEY_ID"
+        echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+        echo -n 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_REGION"
+        echo -n 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+        echo -n 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_DEST"
+        echo -n 'https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_TX_SOURCE_URL"
 
-        echo '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_ACCESS_KEY_ID"
-        echo '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_SECRET_ACCESS_KEY"
-        echo 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_REGION"
-        echo 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
-        echo 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_DEST"
-        echo 'https://s3-eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_TX_SOURCE_URL"
+        echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_ACCESS_KEY_ID"
+        echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+        echo -n 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_REGION"
+        echo -n 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+        echo -n 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_DEST"
+        echo -n 'https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_TX_SOURCE_URL"
 
     - name: Create consensus-node-1-ledger-distribution secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
