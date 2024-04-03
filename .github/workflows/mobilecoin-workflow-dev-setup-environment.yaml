@@ -103,6 +103,15 @@ env:
   PG_PATH: .tmp/pg
   CERTS_BASE_PATH: .tmp/certs
   MOBILECOIND_BASE_PATH: ./tmp/mobilecoind
+  N1: "node1.${{ inputs.namespace }}.development.mobilecoin.com"
+  N2: "node2.${{ inputs.namespace }}.development.mobilecoin.com"
+  N3: "node3.${{ inputs.namespace }}.development.mobilecoin.com"
+  P1: "peer1.${{ inputs.namespace }}.development.mobilecoin.com"
+  P2: "peer2.${{ inputs.namespace }}.development.mobilecoin.com"
+  P3: "peer3.${{ inputs.namespace }}.development.mobilecoin.com"
+  TX_BASE: "s3-eu-central-1.amazonaws.com"
+  TX_BUCKET: "mobilecoin.eu.development.chain"
+  TX_BUCKET_REGION: "eu-central-1"
 
 jobs:
   setup-environment:
@@ -123,6 +132,7 @@ jobs:
     ### Wallet keys and seeds and report values
 
     - name: Write seeds and fog-report values
+      shell: bash
       run: |
         # Create seeds dir.
         mkdir -p "${SEEDS_BASE_PATH}"
@@ -153,6 +163,7 @@ jobs:
     ### Minting and tokens config
 
     - name: Write minting keys
+      shell: bash
       run: |
         # Create minting secrets dir
         mkdir -p "${MINTING_BASE_PATH}"
@@ -187,6 +198,7 @@ jobs:
     ### Fog report signing certificates
 
     - name: Write fog-report signing certificate
+      shell: bash
       run: |
         # Create secrets dir
         mkdir -p "${CERTS_BASE_PATH}/fog-report-a"
@@ -223,6 +235,7 @@ jobs:
     ### Fog PostgreSQL setup
 
     - name: Generate postgres cm and secret
+      shell: bash
       run: |
         mkdir -p "${PG_PATH}/cm"
         mkdir -p "${PG_PATH}/cm-reader"
@@ -311,22 +324,17 @@ jobs:
     ### Mobilecoind setup
 
     - name: Generate mobilecoind ConfigMap file
+      shell: bash
       run: |
         mkdir -p "${MOBILECOIND_BASE_PATH}"
-        p1="node1.${{ inputs.namespace }}.development.mobilecoin.com"
-        p2="node2.${{ inputs.namespace }}.development.mobilecoin.com"
-        p3="node3.${{ inputs.namespace }}.development.mobilecoin.com"
 
+        tx1="https://${TX_BASE}/${TX_BUCKET}/${N1}/"
+        tx2="https://${TX_BASE}/${TX_BUCKET}/${N2}/"
+        tx3="https://${TX_BASE}/${TX_BUCKET}/${N3}/"
 
-        tx_base="s3-eu-central-1.amazonaws.com"
-        tx_bucket="mobilecoin.eu.development.chain"
-        tx1="https://${tx_base}/${tx_bucket}/${p1}/"
-        tx2="https://${tx_base}/${tx_bucket}/${p2}/"
-        tx3="https://${tx_base}/${tx_bucket}/${p3}/"
+        q="{\"threshold\": 2, \"members\": [{\"args\":\"${N1}:443\",\"type\":\"Node\"},{\"args\":\"${N2}:443\",\"type\":\"Node\"},{\"args\":\"${N3}:443\",\"type\":\"Node\"}]}"
 
-        q="{\"threshold\": 2, \"members\": [{\"args\":\"${p1}:443\",\"type\":\"Node\"},{\"args\":\"${p2}:443\",\"type\":\"Node\"},{\"args\":\"${p3}:443\",\"type\":\"Node\"}]}"
-
-        echo -n "mc://${p1}:443,mc://${p2}:443,mc://${p3}:443" > "${MOBILECOIND_BASE_PATH}/MC_PEER"
+        echo -n "mc://${N1}:443,mc://${N2}:443,mc://${N3}:443" > "${MOBILECOIND_BASE_PATH}/MC_PEER"
         echo -n "${tx1},${tx2},${tx3}" > "${MOBILECOIND_BASE_PATH}/MC_TX_SOURCE_URL"
         echo -n "${q}" > "${MOBILECOIND_BASE_PATH}/MC_QUORUM_SET"
 
@@ -362,15 +370,28 @@ jobs:
         object_name: tokens-config
         src: ${{ env.TOKENS_PATH }}
 
-    - name: Write Msg Signer Keys
+    - name: Generate Msg Signer Keys
+      id: generate-msg-signer-keys
+      shell: bash
       run: |
-        mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node1"
-        mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node2"
-        mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node3"
+        for i in 1 2 3
+        do
+          # generate ed25519 key pair
+          key=$(.internal-ci/util/generate_ed25519_keys.sh)
+          key_pub=$(echo -n "${key}" | grep public | awk -F': ' '{print $2}')
+          key_pri=$(echo -n "${key}" | grep private | awk -F': ' '{print $2}')
 
-        echo -n '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE1 }}' > "${VALUES_BASE_PATH}/message-signer-key-node1/MC_MSG_SIGNER_KEY"
-        echo -n '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE2 }}' > "${VALUES_BASE_PATH}/message-signer-key-node2/MC_MSG_SIGNER_KEY"
-        echo -n '${{ secrets.DEV_MSG_SIGNER_KEY_PRIVATE_NODE3 }}' > "${VALUES_BASE_PATH}/message-signer-key-node3/MC_MSG_SIGNER_KEY"
+          # hide private key for gha output
+          echo "::add-mask::${key_pri}"
+
+          # write private key to file
+          mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node${i}"
+          echo -n "${key_pri}" > "${VALUES_BASE_PATH}/message-signer-key-node${i}/MC_MSG_SIGNER_KEY"
+
+          # write gha outputs
+          echo "MSG_SIGNER_KEY_PRIVATE_NODE${i}=${key_pri}" >> "${GITHUB_ENV}"
+          echo "MSG_SIGNER_KEY_PUBLIC_NODE${i}=${key_pub}" >> "${GITHUB_ENV}"
+        done
 
     - name: Create node1 msg-signer-key secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -411,25 +432,25 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-1-network-config/network.json"
         {
           "broadcast_peers": [
-            "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc=",
-            "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAZfWfaQQg1oQQvwAR5s5AZOZmZZgCryNRlPPZlbeh4MY="
+            "mcp://${P2}:443?consensus-msg-key=${{ steps.generate-msg-signer-keys.outputs.MSG_SIGNER_KEY_PUBLIC_NODE2 }}",
+            "mcp://${P3}:443?consensus-msg-key=${{ steps.generate-msg-signer-keys.outputs.MSG_SIGNER_KEY_PUBLIC_NODE3 }}"
           ],
           "quorum_set": {
             "members": [
               {
-                "args": "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443",
+                "args": "${P2}:443",
                 "type": "Node"
               },
               {
-                "args": "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443",
+                "args": "${P3}:443",
                 "type": "Node"
               }
             ],
             "threshold": 1
           },
           "tx_source_urls": [
-            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/",
-            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${{ inputs.namespace }}.development.mobilecoin.com/"
+            "https://${TX_BASE}/${TX_BUCKET}/${N2}/",
+            "https://${TX_BASE}/${TX_BUCKET}/${N3}/"
           ]
         }
         EOF
@@ -451,25 +472,25 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-2-network-config/network.json"
         {
           "broadcast_peers": [
-            "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
-            "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAZfWfaQQg1oQQvwAR5s5AZOZmZZgCryNRlPPZlbeh4MY="
+            "${P1}:443?consensus-msg-key=${{ steps.generate-msg-signer-keys.outputs.MSG_SIGNER_KEY_PUBLIC_NODE1 }}",
+            "${P3}:443?consensus-msg-key=${{ steps.generate-msg-signer-keys.outputs.MSG_SIGNER_KEY_PUBLIC_NODE3 }}"
           ],
           "quorum_set": {
             "members": [
               {
-                "args": "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443",
+                "args": "${P1}:443",
                 "type": "Node"
               },
               {
-                "args": "peer3.${{ inputs.namespace }}.development.mobilecoin.com:443",
+                "args": "${P3}:443",
                 "type": "Node"
               }
             ],
             "threshold": 1
           },
           "tx_source_urls": [
-            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/",
-            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node3.${{ inputs.namespace }}.development.mobilecoin.com/"
+            "https://${TX_BASE}/${TX_BUCKET}/${N1}/",
+            "https://${TX_BASE}/${TX_BUCKET}/${N3}/"
           ]
         }
         EOF
@@ -491,25 +512,25 @@ jobs:
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-3-network-config/network.json"
         {
           "broadcast_peers": [
-            "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEA57OWSawAGCwt8PDgL1gZXMtWOysKR6UCyleJp-7KDZk=",
-            "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443?consensus-msg-key=MCowBQYDK2VwAyEAjh6DAJEkAPFWHvuw1xIhvB8CEq_XLyZMESjK9eVVCFc="
+            "${P1}:443?consensus-msg-key=${{ steps.generate-msg-signer-keys.outputs.MSG_SIGNER_KEY_PUBLIC_NODE1 }}",
+            "${P2}:443?consensus-msg-key=${{ steps.generate-msg-signer-keys.outputs.MSG_SIGNER_KEY_PUBLIC_NODE2 }}"
           ],
           "quorum_set": {
             "members": [
               {
-                "args": "peer1.${{ inputs.namespace }}.development.mobilecoin.com:443",
+                "args": "${P1}:443",
                 "type": "Node"
               },
               {
-                "args": "peer2.${{ inputs.namespace }}.development.mobilecoin.com:443",
+                "args": "${P2}:443",
                 "type": "Node"
               }
             ],
             "threshold": 1
           },
           "tx_source_urls": [
-            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/",
-            "https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/"
+            "https://${TX_BASE}/${TX_BUCKET}/${N1}/",
+            "https://${TX_BASE}/${TX_BUCKET}/${N2}/"
           ]
         }
         EOF
@@ -526,31 +547,21 @@ jobs:
         src: ${{ env.VALUES_BASE_PATH }}/consensus-node-3-network-config/network.json
 
     - name: Generate consensus-node-1-ledger-distribution
+      shell: bash
       run: |
-        mkdir -p "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution"
-        mkdir -p "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution"
-        mkdir -p "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution"
+        for i in 1 2 3
+        do
+          node="N${i}"
 
-        echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_ACCESS_KEY_ID"
-        echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_SECRET_ACCESS_KEY"
-        echo -n 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/AWS_REGION"
-        echo -n 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
-        echo -n 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_DEST"
-        echo -n 'https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-1-ledger-distribution/MC_TX_SOURCE_URL"
+          mkdir -p "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution"
 
-        echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_ACCESS_KEY_ID"
-        echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_SECRET_ACCESS_KEY"
-        echo -n 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/AWS_REGION"
-        echo -n 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
-        echo -n 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_DEST"
-        echo -n 'https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-2-ledger-distribution/MC_TX_SOURCE_URL"
-
-        echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_ACCESS_KEY_ID"
-        echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_SECRET_ACCESS_KEY"
-        echo -n 'eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/AWS_REGION"
-        echo -n 'mobilecoin.eu.development.chain' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
-        echo -n 's3://mobilecoin.eu.development.chain/node1.${{ inputs.namespace }}?=eu-west-2' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_DEST"
-        echo -n 'https://s3.eu-central-1.amazonaws.com/mobilecoin.eu.development.chain/node2.${{ inputs.namespace }}.development.mobilecoin.com/' > "${VALUES_BASE_PATH}/consensus-node-3-ledger-distribution/MC_TX_SOURCE_URL"
+          echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/AWS_ACCESS_KEY_ID"
+          echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+          echo -n "${TX_BUCKET_REGION}" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/AWS_REGION"
+          echo -n "${TX_BUCKET}" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+          echo -n "s3://${TX_BUCKET}/${!node}?=${TX_BUCKET_REGION}" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/MC_DEST"
+          echo -n "https://${TX_BASE}/${TX_BUCKET}/${!node}/" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/MC_TX_SOURCE_URL"
+        done
 
     - name: Create consensus-node-1-ledger-distribution secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
