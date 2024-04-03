@@ -380,7 +380,7 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-        object_name: consensus-node-1-msg-singer-key
+        object_name: consensus-node-1-msg-signer-key
         src: ${{ env.VALUES_BASE_PATH }}/message-signer-key-node1
 
     - name: Create node2 msg-signer-key secret
@@ -391,7 +391,7 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-        object_name: consensus-node-2-msg-singer-key
+        object_name: consensus-node-2-msg-signer-key
         src: ${{ env.VALUES_BASE_PATH }}/message-signer-key-node2
 
     - name: Create node3 msg-signer-key secret
@@ -402,7 +402,7 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-        object_name: consensus-node-3-msg-singer-key
+        object_name: consensus-node-3-msg-signer-key
         src: ${{ env.VALUES_BASE_PATH }}/message-signer-key-node3
 
     - name: Write node 1 network config
