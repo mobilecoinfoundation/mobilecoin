@@ -8,7 +8,7 @@ env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
   RELEASE_5X_TAG: v5.1.1-dev
-  BOOTSTRAP_VERSION: v5.1.1-dev.alpha.5946
+  BOOTSTRAP_VERSION: v5.1.1-dev.alpha.5947
   GH_SHORT_SHA: placeholder
 
 on:
