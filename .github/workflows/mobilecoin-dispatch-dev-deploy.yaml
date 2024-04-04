@@ -31,7 +31,7 @@ on:
         - none
         - v5.0.3-dev
         - v5.1.1-dev
-        - v5.1.1-dev.alpha.6317
+        - v5.1.1-dev.alpha.5946
       minimum_block:
         description: "Minimum block to wait for"
         type: choice
@@ -40,7 +40,6 @@ on:
         options:
         - '500'
         - '5946'
-        - '6317'
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
