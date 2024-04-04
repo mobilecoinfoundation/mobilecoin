@@ -39,7 +39,7 @@ on:
         default: '500'
         options:
         - '500'
-        - '5947'
+        - '5946'
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
