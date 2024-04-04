@@ -149,7 +149,7 @@ env:
 
 jobs:
   setup-environment:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Checkout
       uses: actions/checkout@v3

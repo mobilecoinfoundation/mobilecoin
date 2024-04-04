@@ -34,7 +34,7 @@ on:
         type: string
         required: true
       minimum_block:
-        description: "The minimum block height before the enviroment is ready"
+        description: "The minimum block height before the environment is ready"
         type: string
         required: false
         default: "500"
@@ -66,7 +66,7 @@ jobs:
   consensus-deploy:
     needs:
     - setup-environment
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     strategy:
       matrix:
         release_name:
@@ -115,7 +115,7 @@ jobs:
   mobilecoind-deploy:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate mobilecoind values file
       run: |
@@ -154,7 +154,7 @@ jobs:
   fog-report-deploy-a:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-report values file
       run: |
@@ -198,7 +198,7 @@ jobs:
   fog-report-deploy-b:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-report-b values file
       run: |
@@ -243,7 +243,7 @@ jobs:
   fog-view-deploy:
     needs:
     - consensus-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-view values file
       run: |
@@ -289,7 +289,7 @@ jobs:
     needs:
     - consensus-deploy
     - mobilecoind-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-ledger values file
       run: |
@@ -336,7 +336,7 @@ jobs:
     needs:
     - consensus-deploy
     - mobilecoind-deploy
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Generate fog-ingest values file
       run: |
@@ -404,7 +404,7 @@ jobs:
     - fog-ledger-deploy
     - fog-report-deploy-a
     - fog-report-deploy-b
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Check end points up.
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
