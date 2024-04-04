@@ -75,8 +75,8 @@ jobs:
         then
           ls -l ./ledger-data.mdb
           md5sum ./ledger-data.mdb
-          mkdir -p ${MC_LEDGER_DB}
-          mv ./ledger-data.mdb ${MC_LEDGER_DB}/data.mdb
+          mkdir -p "${MC_LEDGER_DB}"
+          mv ./ledger-data.mdb "${MC_LEDGER_DB}/data.mdb"
         fi
 
         # Download the current watcher db
@@ -85,8 +85,8 @@ jobs:
         then
           ls -l ./watcher-data.mdb
           md5sum ./watcher-data.mdb
-          mkdir -p ${MC_WATCHER_DB}
-          mv ./watcher-data.mdb ${MC_WATCHER_DB}/data.mdb
+          mkdir -p "${MC_WATCHER_DB}"
+          mv ./watcher-data.mdb "${MC_WATCHER_DB}/data.mdb"
         fi
 
     - name: Run mobilecoind mobilecoind-json - wait for ledger sync
