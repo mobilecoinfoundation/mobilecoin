@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   build-dev:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -41,7 +41,7 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   build-prod:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -62,7 +62,7 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   build-and-test-wasm:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -77,7 +77,7 @@ jobs:
         run: wasm-pack test --node wasm-test
 
   lint-rust:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -94,7 +94,7 @@ jobs:
 
 
   build-and-test-go:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -128,7 +128,7 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   docs:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -147,7 +147,7 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   mc-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     strategy:
@@ -190,7 +190,7 @@ jobs:
 
 
   consensus-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     strategy:
@@ -223,7 +223,7 @@ jobs:
 
 
   fog-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     strategy:
@@ -274,7 +274,7 @@ jobs:
 
 
   fog-ingest-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -297,7 +297,7 @@ jobs:
 
 
   fog-conformance-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -337,7 +337,7 @@ jobs:
 
 
   fog-local-network-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -524,7 +524,7 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   minting-and-burning-tests:
-    runs-on: [self-hosted, Linux, large]
+    runs-on: mcf-dev-large-x64
     container: mobilecoin/builder-install:v0.0.25
 
     steps:
@@ -661,7 +661,7 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   publish-test-results:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     if: success() || failure()
     needs:
       - mc-tests

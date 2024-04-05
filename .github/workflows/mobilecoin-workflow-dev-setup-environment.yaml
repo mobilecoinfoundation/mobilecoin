@@ -103,9 +103,6 @@ on:
       DEV_RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
-      DEV_TOKENS_CONFIG_V1_JSON:
-        description: "dev signed tokens config json"
-        required: true
       DEV_TOKENS_CONFIG_V2_JSON:
         description: "dev signed tokens config json"
         required: true
@@ -118,23 +115,11 @@ on:
       MAIN_IAS_SPID:
         description: "MainNet IAS"
         required: true
-      MAIN_TOKENS_CONFIG_V1_JSON:
-        description: "MainNet signed tokens config json"
-        required: true
-      MAIN_TOKENS_CONFIG_V2_JSON:
-        description: "MainNet signed tokens config json"
-        required: true
       TEST_IAS_KEY:
         description: "TestNet IAS"
         required: true
       TEST_IAS_SPID:
         description: "TestNet IAS"
-        required: true
-      TEST_TOKENS_CONFIG_V1_JSON:
-        description: "TestNet signed tokens config json"
-        required: true
-      TEST_TOKENS_CONFIG_V2_JSON:
-        description: "TestNet signed tokens config json"
         required: true
 
 env:
@@ -149,7 +134,7 @@ env:
 
 jobs:
   setup-environment:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -225,12 +210,7 @@ jobs:
 
     - name: Write tokens.signed.json
       env:
-        DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
         DEV_TOKENS_CONFIG_V2_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}
-        MAIN_TOKENS_CONFIG_V1_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V1_JSON }}
-        MAIN_TOKENS_CONFIG_V2_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V2_JSON }}
-        TEST_TOKENS_CONFIG_V1_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V1_JSON }}
-        TEST_TOKENS_CONFIG_V2_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V2_JSON }}
       run: |
         # Create base path
         mkdir -p "${BASE_PATH}"
@@ -400,21 +380,6 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-mobilecoind
         src: ${{ env.MOBILECOIND_BASE_PATH }}
-
-    - name: Write tokens.signed.json
-      env:
-        DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
-        DEV_TOKENS_CONFIG_V2_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}
-        MAIN_TOKENS_CONFIG_V1_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V1_JSON }}
-        MAIN_TOKENS_CONFIG_V2_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V2_JSON }}
-        TEST_TOKENS_CONFIG_V1_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V1_JSON }}
-        TEST_TOKENS_CONFIG_V2_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V2_JSON }}
-      run: |
-        # Create base path
-        mkdir -p "${BASE_PATH}"
-
-        # Set dev/main/test tokens file based on semver tag.
-        .internal-ci/util/set_tokens_config_version.sh ${{ inputs.version }} > "${TOKENS_PATH}"
 
     - name: Deploy PostgreSQL instance
       uses: mobilecoinofficial/gha-k8s-toolbox@v1

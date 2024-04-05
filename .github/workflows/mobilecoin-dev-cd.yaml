@@ -8,6 +8,7 @@ env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
   RELEASE_5X_TAG: v5.1.1-dev
+  BOOTSTRAP_VERSION: v5.1.1-dev.alpha.5946
   GH_SHORT_SHA: placeholder
 
 on:
@@ -38,7 +39,7 @@ jobs:
   generate-metadata:
     if: ${{ ! startsWith(github.head_ref, 'dependabot/') }}
     name: 👾 Environment Info 👾
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     outputs:
       namespace: ${{ steps.meta.outputs.namespace }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -46,6 +47,7 @@ jobs:
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
       release_5x_tag: ${{ env.RELEASE_5X_TAG }}
+      bootstrap_version: ${{ env.BOOTSTRAP_VERSION }}
 
     steps:
     - name: Checkout
@@ -72,7 +74,7 @@ jobs:
   build-rust-hardware-projects:
     needs:
     - generate-metadata
-    runs-on: [self-hosted, Linux, large-cd]
+    runs-on: mcf-dev-large-x64
     container:
       image: mobilecoin/rust-sgx-base:v0.0.25
 
@@ -187,7 +189,7 @@ jobs:
         path: rust_build_artifacts/
 
   build-go-projects:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - generate-metadata
     container:
@@ -237,7 +239,7 @@ jobs:
 # Create/Refresh base runtime image
 ########################################
   docker-base:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - generate-metadata
     steps:
@@ -279,7 +281,7 @@ jobs:
 # Build/Publish public artifacts
 #########################################
   docker:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - build-go-projects
     - build-rust-hardware-projects
@@ -351,7 +353,7 @@ jobs:
         tags: ${{ steps.docker_meta.outputs.tags }}
 
   charts:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - docker
     - generate-metadata
@@ -398,6 +400,7 @@ jobs:
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.release_5x_tag }}
+      bootstrap_version: ${{ needs.generate-metadata.outputs.bootstrap_version }}
     secrets: inherit
 
 ###############################################
@@ -428,7 +431,7 @@ jobs:
       fog_distribution: false
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      testing_block_v0: false
+      testing_block_v0: true
       testing_block_v2: false
       testing_block_v3: true
       generate_and_submit_mint_config_tx_uses_json: true
@@ -466,7 +469,7 @@ jobs:
 
   mobilecoin-cd-complete:
     # Dummy step for a standard GHA Check that won't change when we update the tests.
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - test-current-bv3-release
     steps:

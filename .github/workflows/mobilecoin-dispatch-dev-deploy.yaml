@@ -31,6 +31,15 @@ on:
         - none
         - v5.0.3-dev
         - v5.1.1-dev
+        - v5.1.1-dev.alpha.5946
+      minimum_block:
+        description: "Minimum block to wait for"
+        type: choice
+        required: false
+        default: '500'
+        options:
+        - '500'
+        - '5946'
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
@@ -53,7 +62,7 @@ on:
 jobs:
   list-values:
     name: 👾 Environment Info - ${{ inputs.namespace }} - ${{ inputs.version }} 👾
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -75,7 +84,8 @@ jobs:
       block_version: '3'
       chart_repo: ${{ inputs.chart_repo }}
       namespace: ${{ inputs.namespace }}
-      version: ${{ inputs.bootstrap_version }}
+      version: ${{ inputs.version }}
+      bootstrap_version: ${{ inputs.bootstrap_version }}
     secrets: inherit
 
   deploy:
@@ -90,5 +100,5 @@ jobs:
       ingest_color: ${{ inputs.ingest_color }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
-      minimum_block: ${{ inputs.bootstrap_version == 'v5.1.1-dev' && '5946' || '500' }}
+      minimum_block: ${{ inputs.minimum_block }}
     secrets: inherit

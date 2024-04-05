@@ -24,6 +24,10 @@ on:
         description: "Chart Version"
         type: string
         required: true
+      bootstrap_version:
+        description: "Bootstrap Blockchain from selected version"
+        type: string
+        required: true
     secrets:
       DEV_LEDGER_AWS_ACCESS_KEY_ID:
         description: "Ledger AWS S3 access"
@@ -44,7 +48,7 @@ jobs:
     secrets: inherit
 
   restore-s3-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - reset
     container:
@@ -57,7 +61,7 @@ jobs:
         AWS_DEFAULT_REGION: eu-central-1
         BUCKET: mobilecoin.eu.development.chain
         NAMESPACE: ${{ inputs.namespace }}
-        VERSION: ${{ inputs.version }}
+        VERSION: ${{ inputs.bootstrap_version }}
       shell: bash
       run: |
         for i in 1 2 3
@@ -89,7 +93,7 @@ jobs:
   #  We now have a db with setup-environment
   #  Note this only works if we are in the same cluster as the dev env.
   restore-db-from-archive:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mcf-dev-small-x64
     needs:
     - setup-environment
     container:
@@ -105,7 +109,7 @@ jobs:
         PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
         PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
         PGUSER: postgres
-        VERSION: ${{ inputs.version }}
+        VERSION: ${{ inputs.bootstrap_version }}
       run: |
         # Copy sql from S3
         aws s3 cp --only-show-errors \

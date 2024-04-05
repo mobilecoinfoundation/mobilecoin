@@ -4,3 +4,5 @@ self-hosted-runner:
   - small
   - large
   - large-cd
+  - mcf-dev-small-x64
+  - mcf-dev-large-x64
