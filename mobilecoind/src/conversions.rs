@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
 //! types.
@@ -10,13 +10,14 @@ use crate::{
 use mc_account_keys::PublicAddress;
 use mc_api::ConversionError;
 use mc_common::HashMap;
+use mc_crypto_keys::RistrettoPrivate;
 use mc_mobilecoind_api as api;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut},
-    Amount, TokenId,
+    Amount, MemoPayload, TokenId,
 };
-use mc_transaction_extra::TxOutConfirmationNumber;
+use mc_transaction_extra::{MemoType, TxOutConfirmationNumber};
 use protobuf::RepeatedField;
 
 impl From<&UnspentTxOut> for api::UnspentTxOut {
@@ -30,6 +31,11 @@ impl From<&UnspentTxOut> for api::UnspentTxOut {
         dst.set_attempted_spend_height(src.attempted_spend_height);
         dst.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         dst.set_token_id(src.token_id);
+        dst.set_memo_payload(src.memo_payload.clone());
+
+        if let Ok(mp) = MemoPayload::try_from(&src.memo_payload[..]) {
+            dst.set_decoded_memo(decode_memo(&mp));
+        }
 
         dst
     }
@@ -46,6 +52,7 @@ impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
         let attempted_spend_height = src.attempted_spend_height;
         let attempted_spend_tombstone = src.attempted_spend_tombstone;
         let token_id = src.token_id;
+        let memo_payload = src.memo_payload.clone();
 
         Ok(Self {
             tx_out,
@@ -55,8 +62,55 @@ impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
             attempted_spend_height,
             attempted_spend_tombstone,
             token_id,
+            memo_payload,
         })
     }
+}
+
+fn bytes_to_tx_private_key(bytes: &[u8]) -> Result<Option<RistrettoPrivate>, ConversionError> {
+    if bytes.is_empty() {
+        return Ok(None);
+    }
+
+    let bytes = <&[u8; 32] as TryFrom<&[u8]>>::try_from(bytes)?;
+    Ok(Some(RistrettoPrivate::from_bytes_mod_order(bytes)))
+}
+
+// Convert an arbitrary MemoPayload to the api::DecodedMemo format.
+// When this fails, it sets the UnknownMemo variant in the result.
+//
+// Note: This could be From<&MemoPayload> for api::DecodedMemo, but there are
+// orphan rules issues.
+fn decode_memo(memo_payload: &MemoPayload) -> api::DecodedMemo {
+    let mut result = api::DecodedMemo::new();
+
+    match MemoType::try_from(memo_payload) {
+        Ok(MemoType::Unused(_)) => {}
+        Ok(MemoType::AuthenticatedSender(memo)) => {
+            let mut asm = api::AuthenticatedSenderMemo::new();
+            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
+            result.set_authenticated_sender_memo(asm);
+        }
+        Ok(MemoType::AuthenticatedSenderWithPaymentRequestId(memo)) => {
+            let mut asm = api::AuthenticatedSenderMemo::new();
+            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
+            asm.set_payment_request_id(memo.payment_request_id());
+            result.set_authenticated_sender_memo(asm);
+        }
+        Ok(MemoType::AuthenticatedSenderWithPaymentIntentId(memo)) => {
+            let mut asm = api::AuthenticatedSenderMemo::new();
+            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
+            asm.set_payment_intent_id(memo.payment_intent_id());
+            result.set_authenticated_sender_memo(asm);
+        }
+        Ok(_) | Err(_) => {
+            let mut um = api::UnknownMemo::new();
+            um.set_type_bytes(memo_payload.get_memo_type().to_vec());
+            result.set_unknown_memo(um);
+        }
+    }
+
+    result
 }
 
 impl From<&Outlay> for api::Outlay {
@@ -65,6 +119,9 @@ impl From<&Outlay> for api::Outlay {
 
         dst.set_value(src.value);
         dst.set_receiver((&src.receiver).into());
+        if let Some(key) = src.tx_private_key {
+            dst.set_tx_private_key(key.to_bytes().to_vec());
+        }
 
         dst
     }
@@ -76,8 +133,13 @@ impl TryFrom<&api::Outlay> for Outlay {
     fn try_from(src: &api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
         let receiver = PublicAddress::try_from(src.get_receiver())?;
+        let tx_private_key = bytes_to_tx_private_key(src.get_tx_private_key())?;
 
-        Ok(Self { value, receiver })
+        Ok(Self {
+            value,
+            receiver,
+            tx_private_key,
+        })
     }
 }
 
@@ -88,6 +150,9 @@ impl From<&OutlayV2> for api::OutlayV2 {
         dst.set_value(src.amount.value);
         dst.set_token_id(*src.amount.token_id);
         dst.set_receiver((&src.receiver).into());
+        if let Some(key) = src.tx_private_key {
+            dst.set_tx_private_key(key.to_bytes().to_vec());
+        }
 
         dst
     }
@@ -99,8 +164,13 @@ impl TryFrom<&api::OutlayV2> for OutlayV2 {
     fn try_from(src: &api::OutlayV2) -> Result<Self, Self::Error> {
         let amount = Amount::new(src.value, TokenId::from(src.token_id));
         let receiver = PublicAddress::try_from(src.get_receiver())?;
+        let tx_private_key = bytes_to_tx_private_key(src.get_tx_private_key())?;
 
-        Ok(Self { amount, receiver })
+        Ok(Self {
+            amount,
+            receiver,
+            tx_private_key,
+        })
     }
 }
 
@@ -229,13 +299,18 @@ impl TryFrom<&api::SciForTx> for SciForTx {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_account_keys::AccountKey;
-    use mc_crypto_keys::RistrettoPrivate;
+    use mc_account_keys::{AccountKey, ShortAddressHash};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
     use mc_ledger_db::{
         test_utils::{create_ledger, create_transaction, initialize_ledger},
         Ledger,
     };
     use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
+    use mc_transaction_extra::{
+        AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
+        AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, SenderMemoCredential,
+        UnusedMemo,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -271,6 +346,7 @@ mod test {
             attempted_spend_height,
             attempted_spend_tombstone,
             token_id: *Mob::ID,
+            memo_payload: vec![6u8, 66],
         };
 
         let proto = api::UnspentTxOut::from(&rust);
@@ -289,6 +365,86 @@ mod test {
         assert_eq!(rust, UnspentTxOut::try_from(&proto).unwrap());
     }
 
+    // Test the decode_memo implementation
+    #[test]
+    fn test_memo_conversion() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let alice = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let alice_cred = SenderMemoCredential::from(&alice);
+        let alice_hash = alice_cred.address_hash.clone();
+
+        let bob = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let bob_addr = bob.default_subaddress();
+
+        let tx_public_key = CompressedRistrettoPublic::from_random(&mut rng);
+
+        let memo1 = UnusedMemo {};
+        let decoded = decode_memo(&MemoPayload::from(memo1));
+        assert_eq!(decoded.decoded_memo, None);
+
+        let memo2 =
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+        let decoded = decode_memo(&MemoPayload::from(memo2));
+        assert!(decoded.has_authenticated_sender_memo());
+        let sender_memo = decoded.get_authenticated_sender_memo();
+        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
+        assert!(!sender_memo.has_payment_request_id());
+        assert!(!sender_memo.has_payment_intent_id());
+
+        let memo3 = AuthenticatedSenderWithPaymentRequestIdMemo::new(
+            &alice_cred,
+            bob_addr.view_public_key(),
+            &tx_public_key,
+            7u64,
+        );
+        let decoded = decode_memo(&MemoPayload::from(memo3));
+        assert!(decoded.has_authenticated_sender_memo());
+        assert!(!decoded.has_unknown_memo());
+        let sender_memo = decoded.get_authenticated_sender_memo();
+        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
+        assert!(sender_memo.has_payment_request_id());
+        assert_eq!(sender_memo.get_payment_request_id(), 7);
+        assert!(!sender_memo.has_payment_intent_id());
+
+        let memo4 = AuthenticatedSenderWithPaymentIntentIdMemo::new(
+            &alice_cred,
+            bob_addr.view_public_key(),
+            &tx_public_key,
+            9u64,
+        );
+        let decoded = decode_memo(&MemoPayload::from(memo4));
+        assert!(decoded.has_authenticated_sender_memo());
+        assert!(!decoded.has_unknown_memo());
+        let sender_memo = decoded.get_authenticated_sender_memo();
+        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
+        assert!(!sender_memo.has_payment_request_id());
+        assert!(sender_memo.has_payment_intent_id());
+        assert_eq!(sender_memo.get_payment_intent_id(), 9);
+
+        // Destination memos are not implemented yet
+        let memo5 = DestinationMemo::new(ShortAddressHash::from(&bob_addr), 17, 18).unwrap();
+        let decoded = decode_memo(&MemoPayload::from(memo5));
+        assert!(!decoded.has_authenticated_sender_memo());
+        assert!(decoded.has_unknown_memo());
+        let type_bytes = decoded.get_unknown_memo().get_type_bytes();
+        assert_eq!(&type_bytes, &[2u8, 0u8]);
+
+        // This is an unassigned memo type
+        let memo6 = MemoPayload::new([7u8, 8u8], [0u8; 64]);
+        let decoded = decode_memo(&memo6);
+        assert!(!decoded.has_authenticated_sender_memo());
+        assert!(decoded.has_unknown_memo());
+        let type_bytes = decoded.get_unknown_memo().get_type_bytes();
+        assert_eq!(&type_bytes, &[7u8, 8u8]);
+    }
+
     #[test]
     fn test_outlay_conversion() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -298,6 +454,30 @@ mod test {
         let rust = Outlay {
             receiver: public_addr.clone(),
             value: 1234,
+            tx_private_key: None,
+        };
+        let proto = api::Outlay::from(&rust);
+
+        assert_eq!(proto.value, rust.value);
+        assert_eq!(
+            PublicAddress::try_from(proto.get_receiver()).unwrap(),
+            public_addr
+        );
+
+        // Proto -> Rust
+        assert_eq!(rust, Outlay::try_from(&proto).unwrap());
+    }
+
+    #[test]
+    fn test_outlay_conversion_with_tx_private_key() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let public_addr = AccountKey::random(&mut rng).default_subaddress();
+
+        // Rust -> Proto, with tx private key
+        let rust = Outlay {
+            receiver: public_addr.clone(),
+            value: 1234,
+            tx_private_key: Some(RistrettoPrivate::from_random(&mut rng)),
         };
         let proto = api::Outlay::from(&rust);
 
@@ -363,6 +543,7 @@ mod test {
                 attempted_spend_height,
                 attempted_spend_tombstone,
                 token_id: *Mob::ID,
+                memo_payload: vec![9u8, 66],
             }
         };
 
@@ -371,6 +552,7 @@ mod test {
             OutlayV2 {
                 receiver: public_addr,
                 amount: Amount::new(1234, TokenId::from(0)),
+                tx_private_key: Some(RistrettoPrivate::from_random(&mut rng)),
             }
         };
 

@@ -7,21 +7,8 @@ name: mobilecoin-workflow-dev-setup-environment
 on:
   workflow_call:
     inputs:
-      block_version:
-        description: "block_version"
-        type: string
-        required: true
-      chart_repo:
-        description: "Chart Repo URL"
-        type: string
-        required: false
-        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
       namespace:
         description: "Target Namespace"
-        type: string
-        required: true
-      version:
-        description: "Chart Version"
         type: string
         required: true
     secrets:
@@ -97,27 +84,6 @@ on:
       DEV_RANCHER_TOKEN:
         description: "Rancher access token"
         required: true
-      DEV_TOKENS_CONFIG_V1_JSON:
-        description: "dev signed tokens config json"
-        required: true
-      DEV_TOKENS_CONFIG_V2_JSON:
-        description: "dev signed tokens config json"
-        required: true
-      IP_INFO_TOKEN:
-        description: "ipinfo.io token for authenticated access"
-        required: true
-      MAIN_TOKENS_CONFIG_V1_JSON:
-        description: "MainNet signed tokens config json"
-        required: true
-      MAIN_TOKENS_CONFIG_V2_JSON:
-        description: "MainNet signed tokens config json"
-        required: true
-      TEST_TOKENS_CONFIG_V1_JSON:
-        description: "TestNet signed tokens config json"
-        required: true
-      TEST_TOKENS_CONFIG_V2_JSON:
-        description: "TestNet signed tokens config json"
-        required: true
 
 env:
   BASE_PATH: .tmp
@@ -128,13 +94,22 @@ env:
   PG_PATH: .tmp/pg
   CERTS_BASE_PATH: .tmp/certs
   MOBILECOIND_BASE_PATH: ./tmp/mobilecoind
+  N1: "node1.${{ inputs.namespace }}.development.mobilecoin.com"
+  N2: "node2.${{ inputs.namespace }}.development.mobilecoin.com"
+  N3: "node3.${{ inputs.namespace }}.development.mobilecoin.com"
+  P1: "peer1.${{ inputs.namespace }}.development.mobilecoin.com"
+  P2: "peer2.${{ inputs.namespace }}.development.mobilecoin.com"
+  P3: "peer3.${{ inputs.namespace }}.development.mobilecoin.com"
+  TX_BASE: "s3-eu-central-1.amazonaws.com"
+  TX_BUCKET: "mobilecoin.eu.development.chain"
+  TX_BUCKET_REGION: "eu-central-1"
 
 jobs:
   setup-environment:
     runs-on: mcf-dev-small-x64
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
     - name: Create namespace
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -145,7 +120,10 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
+    ### Wallet keys and seeds and report values
+
     - name: Write seeds and fog-report values
+      shell: bash
       run: |
         # Create seeds dir.
         mkdir -p "${SEEDS_BASE_PATH}"
@@ -173,7 +151,10 @@ jobs:
         object_name: sample-keys-seeds
         src: ${{ env.SEEDS_BASE_PATH }}
 
+    ### Minting and tokens config
+
     - name: Write minting keys
+      shell: bash
       run: |
         # Create minting secrets dir
         mkdir -p "${MINTING_BASE_PATH}"
@@ -205,50 +186,10 @@ jobs:
         object_name: consensus-minting-secrets
         src: ${{ env.MINTING_BASE_PATH }}
 
-    - name: Write tokens.signed.json
-      env:
-        DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
-        DEV_TOKENS_CONFIG_V2_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}
-        MAIN_TOKENS_CONFIG_V1_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V1_JSON }}
-        MAIN_TOKENS_CONFIG_V2_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V2_JSON }}
-        TEST_TOKENS_CONFIG_V1_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V1_JSON }}
-        TEST_TOKENS_CONFIG_V2_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V2_JSON }}
-      run: |
-        # Create base path
-        mkdir -p "${BASE_PATH}"
-
-        # Set dev/main/test tokens file based on semver tag.
-        .internal-ci/util/set_tokens_config_version.sh ${{ inputs.version }} > "${TOKENS_PATH}"
-
-    - name: Generate environment values file
-      env:
-        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
-        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
-        IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
-      run: |
-        # Create values base path
-        mkdir -p "${VALUES_BASE_PATH}"
-
-        # Generate values for standard dev cluster deployment.
-        .internal-ci/util/generate_dev_values-v5.1.sh ${{ inputs.version }} > "${VALUES_BASE_PATH}/mc-core-dev-env-values.yaml"
-
-    - name: Deploy environment setup
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: helm-deploy
-        chart_repo: ${{ inputs.chart_repo }}
-        chart_name: mc-core-dev-env-setup
-        chart_version: ${{ inputs.version }}
-        chart_values: ${{ env.VALUES_BASE_PATH }}/mc-core-dev-env-values.yaml
-        chart_set: |
-          --set=global.node.nodeConfig.blockVersion=${{ inputs.block_version }}
-        release_name: mc-core-dev-env-setup
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+    ### Fog report signing certificates
 
     - name: Write fog-report signing certificate
+      shell: bash
       run: |
         # Create secrets dir
         mkdir -p "${CERTS_BASE_PATH}/fog-report-a"
@@ -282,7 +223,10 @@ jobs:
         object_name: fog-report-signing-cert-b
         src: ${{ env.CERTS_BASE_PATH }}/fog-report-b
 
+    ### Fog PostgreSQL setup
+
     - name: Generate postgres cm and secret
+      shell: bash
       run: |
         mkdir -p "${PG_PATH}/cm"
         mkdir -p "${PG_PATH}/cm-reader"
@@ -350,23 +294,38 @@ jobs:
         object_name: fog-recovery-reader-0-postgresql
         src: ${{ env.PG_PATH }}/sec
 
+    - name: Deploy PostgreSQL instance
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: https://charts.bitnami.com/bitnami
+        chart_name: postgresql
+        chart_version: 15.2.2
+        chart_set: |
+          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
+          --set=global.postgresql.auth.database=fog_recovery
+          --set=architecture=replication
+        chart_wait_timeout: 5m
+        release_name: fog-recovery-postgresql
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
+    ### Mobilecoind setup
+
     - name: Generate mobilecoind ConfigMap file
+      shell: bash
       run: |
         mkdir -p "${MOBILECOIND_BASE_PATH}"
-        p1="node1.${{ inputs.namespace }}.development.mobilecoin.com"
-        p2="node2.${{ inputs.namespace }}.development.mobilecoin.com"
-        p3="node3.${{ inputs.namespace }}.development.mobilecoin.com"
 
+        tx1="https://${TX_BASE}/${TX_BUCKET}/${N1}/"
+        tx2="https://${TX_BASE}/${TX_BUCKET}/${N2}/"
+        tx3="https://${TX_BASE}/${TX_BUCKET}/${N3}/"
 
-        tx_base="s3-eu-central-1.amazonaws.com"
-        tx_bucket="mobilecoin.eu.development.chain"
-        tx1="https://${tx_base}/${tx_bucket}/${p1}/"
-        tx2="https://${tx_base}/${tx_bucket}/${p2}/"
-        tx3="https://${tx_base}/${tx_bucket}/${p3}/"
+        q="{\"threshold\": 2, \"members\": [{\"args\":\"${N1}:443\",\"type\":\"Node\"},{\"args\":\"${N2}:443\",\"type\":\"Node\"},{\"args\":\"${N3}:443\",\"type\":\"Node\"}]}"
 
-        q="{\"threshold\": 2, \"members\": [{\"args\":\"${p1}:443\",\"type\":\"Node\"},{\"args\":\"${p2}:443\",\"type\":\"Node\"},{\"args\":\"${p3}:443\",\"type\":\"Node\"}]}"
-
-        echo -n "mc://${p1}:443,mc://${p2}:443,mc://${p3}:443" > "${MOBILECOIND_BASE_PATH}/MC_PEER"
+        echo -n "mc://${N1}:443,mc://${N2}:443,mc://${N3}:443" > "${MOBILECOIND_BASE_PATH}/MC_PEER"
         echo -n "${tx1},${tx2},${tx3}" > "${MOBILECOIND_BASE_PATH}/MC_TX_SOURCE_URL"
         echo -n "${q}" > "${MOBILECOIND_BASE_PATH}/MC_QUORUM_SET"
 
@@ -381,35 +340,249 @@ jobs:
         object_name: fog-mobilecoind
         src: ${{ env.MOBILECOIND_BASE_PATH }}
 
+    ### Consensus setup
+
     - name: Write tokens.signed.json
-      env:
-        DEV_TOKENS_CONFIG_V1_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V1_JSON }}
-        DEV_TOKENS_CONFIG_V2_JSON: ${{ secrets.DEV_TOKENS_CONFIG_V2_JSON }}
-        MAIN_TOKENS_CONFIG_V1_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V1_JSON }}
-        MAIN_TOKENS_CONFIG_V2_JSON: ${{ secrets.MAIN_TOKENS_CONFIG_V2_JSON }}
-        TEST_TOKENS_CONFIG_V1_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V1_JSON }}
-        TEST_TOKENS_CONFIG_V2_JSON: ${{ secrets.TEST_TOKENS_CONFIG_V2_JSON }}
+      shell: bash
       run: |
         # Create base path
         mkdir -p "${BASE_PATH}"
 
-        # Set dev/main/test tokens file based on semver tag.
-        .internal-ci/util/set_tokens_config_version.sh ${{ inputs.version }} > "${TOKENS_PATH}"
+        echo '${{ vars.DEV_TOKENS_CONFIG_JSON_V2 }}' > "${TOKENS_PATH}"
 
-    - name: Deploy PostgreSQL instance
+    - name: Create tokens-config configMap
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
-        chart_repo: https://charts.bitnami.com/bitnami
-        chart_name: postgresql
-        chart_version: 11.9.13
-        chart_set: |
-          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
-          --set=global.postgresql.auth.database=fog_recovery
-          --set=architecture=replication
-        chart_wait_timeout: 5m
-        release_name: fog-recovery-postgresql
+        action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: tokens-config
+        src: ${{ env.TOKENS_PATH }}
+
+    - name: Generate Msg Signer Keys
+      id: generate-msg-signer-keys
+      shell: bash
+      run: |
+        for i in 1 2 3
+        do
+          # generate ed25519 key pair
+          key=$(.internal-ci/util/generate_ed25519_keys.sh)
+          key_pub=$(echo -n "${key}" | grep public | awk -F': ' '{print $2}')
+          key_pri=$(echo -n "${key}" | grep private | awk -F': ' '{print $2}')
+
+          # hide private key for gha output
+          echo "::add-mask::${key_pri}"
+
+          # write private key to file
+          mkdir -p "${VALUES_BASE_PATH}/message-signer-key-node${i}"
+          echo -n "${key_pri}" > "${VALUES_BASE_PATH}/message-signer-key-node${i}/MC_MSG_SIGNER_KEY"
+
+          # write gha outputs
+          echo "MSG_SIGNER_KEY_PRIVATE_NODE${i}=${key_pri}" >> "${GITHUB_ENV}"
+          echo "MSG_SIGNER_KEY_PUBLIC_NODE${i}=${key_pub}" >> "${GITHUB_ENV}"
+        done
+
+    - name: Create node1 msg-signer-key secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-1-msg-signer-key
+        src: ${{ env.VALUES_BASE_PATH }}/message-signer-key-node1
+
+    - name: Create node2 msg-signer-key secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-2-msg-signer-key
+        src: ${{ env.VALUES_BASE_PATH }}/message-signer-key-node2
+
+    - name: Create node3 msg-signer-key secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-3-msg-signer-key
+        src: ${{ env.VALUES_BASE_PATH }}/message-signer-key-node3
+
+    - name: Write node 1 network config
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}/consensus-node-1-network-config"
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-1-network-config/network.json"
+        {
+          "broadcast_peers": [
+            "mcp://${P2}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE2}",
+            "mcp://${P3}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE3}"
+          ],
+          "quorum_set": {
+            "members": [
+              {
+                "args": "${P2}:443",
+                "type": "Node"
+              },
+              {
+                "args": "${P3}:443",
+                "type": "Node"
+              }
+            ],
+            "threshold": 1
+          },
+          "tx_source_urls": [
+            "https://${TX_BASE}/${TX_BUCKET}/${N2}/",
+            "https://${TX_BASE}/${TX_BUCKET}/${N3}/"
+          ]
+        }
+        EOF
+
+    - name: Create consensus-node-1-network-config configMap
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-1-network-config
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-1-network-config/network.json
+
+    - name: Write node 2 network config
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}/consensus-node-2-network-config"
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-2-network-config/network.json"
+        {
+          "broadcast_peers": [
+            "mcp://${P1}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE1}",
+            "mcp://${P3}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE3}"
+          ],
+          "quorum_set": {
+            "members": [
+              {
+                "args": "${P1}:443",
+                "type": "Node"
+              },
+              {
+                "args": "${P3}:443",
+                "type": "Node"
+              }
+            ],
+            "threshold": 1
+          },
+          "tx_source_urls": [
+            "https://${TX_BASE}/${TX_BUCKET}/${N1}/",
+            "https://${TX_BASE}/${TX_BUCKET}/${N3}/"
+          ]
+        }
+        EOF
+
+    - name: Create consensus-node-2-network-config configMap
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-2-network-config
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-2-network-config/network.json
+
+    - name: Write node 3 network config
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}/consensus-node-3-network-config"
+        cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-3-network-config/network.json"
+        {
+          "broadcast_peers": [
+            "mcp://${P1}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE1}",
+            "mcp://${P2}:443?consensus-msg-key=${MSG_SIGNER_KEY_PUBLIC_NODE2}"
+          ],
+          "quorum_set": {
+            "members": [
+              {
+                "args": "${P1}:443",
+                "type": "Node"
+              },
+              {
+                "args": "${P2}:443",
+                "type": "Node"
+              }
+            ],
+            "threshold": 1
+          },
+          "tx_source_urls": [
+            "https://${TX_BASE}/${TX_BUCKET}/${N1}/",
+            "https://${TX_BASE}/${TX_BUCKET}/${N2}/"
+          ]
+        }
+        EOF
+
+    - name: Create consensus-node-3-network-config configMap
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-3-network-config
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-3-network-config/network.json
+
+    - name: Generate consensus-node-1-ledger-distribution
+      shell: bash
+      run: |
+        for i in 1 2 3
+        do
+          node="N${i}"
+
+          mkdir -p "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution"
+
+          echo -n '${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}' > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/AWS_ACCESS_KEY_ID"
+          echo -n '${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}' > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/AWS_SECRET_ACCESS_KEY"
+          echo -n "${TX_BUCKET_REGION}" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/AWS_REGION"
+          echo -n "${TX_BUCKET}" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/LEDGER_DISTRIBUTION_S3_BUCKET"
+          echo -n "s3://${TX_BUCKET}/${!node}?=${TX_BUCKET_REGION}" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/MC_DEST"
+          echo -n "https://${TX_BASE}/${TX_BUCKET}/${!node}/" > "${VALUES_BASE_PATH}/consensus-node-${i}-ledger-distribution/MC_TX_SOURCE_URL"
+        done
+
+    - name: Create consensus-node-1-ledger-distribution secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-1-ledger-distribution
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-1-ledger-distribution
+
+    - name: Create consensus-node-2-ledger-distribution secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-2-ledger-distribution
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-2-ledger-distribution
+
+    - name: Create consensus-node-3-ledger-distribution secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        object_name: consensus-node-3-ledger-distribution
+        src: ${{ env.VALUES_BASE_PATH }}/consensus-node-3-ledger-distribution

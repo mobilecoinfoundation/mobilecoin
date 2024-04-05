@@ -196,7 +196,7 @@ spec:
                     apiVersion: v1
                     fieldPath: status.hostIP
               args:
-              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.grpc.host-port=dns:///jaeger-collector:14250
               - --reporter.type=grpc
               - --agent.tags=cluster=undefined,container.name=fog-view-router,deployment.name={{ include "fog-view.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
             {{- end }}
@@ -416,7 +416,7 @@ spec:
                     apiVersion: v1
                     fieldPath: status.hostIP
             args:
-              - --reporter.grpc.host-port={{ $.Values.jaegerTracing.collector }}
+              - --reporter.grpc.host-port=dns:///jaeger-collector:14250
               - --reporter.type=grpc
               - --agent.tags=cluster=undefined,container.name=fog-view,deployment.name={{ include "fog-view.fullname" $ }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ $.Release.Namespace }}
           {{- end }}

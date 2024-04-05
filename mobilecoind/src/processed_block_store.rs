@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Database storage for data obtained by processing blocks.
 //! * Stores a map of (monitor id, block number) -> list of transactions that
@@ -321,6 +321,7 @@ mod test {
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                     token_id: *Mob::ID,
+                    memo_payload: vec![],
                 }
             })
             .collect();

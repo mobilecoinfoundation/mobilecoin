@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Build and Publish Bindings
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}

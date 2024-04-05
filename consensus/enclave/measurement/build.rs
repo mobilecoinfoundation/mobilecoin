@@ -13,7 +13,7 @@ use std::{env::var, path::PathBuf};
 const SGX_VERSION: &str = "2.22.100.3";
 
 const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
-const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 8;
+const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 9;
 const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
 const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
 const CONSENSUS_ENCLAVE_BUILD_DIR: &str = "enclave";
