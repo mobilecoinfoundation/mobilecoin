@@ -14,7 +14,7 @@ env:
 jobs:
   android-bindings:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.33
+    container: mobilecoin/builder-install:v0.0.35
     permissions:
       pull-requests: write
     steps:
@@ -26,7 +26,7 @@ jobs:
 
   full-service:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.33
+    container: mobilecoin/builder-install:v0.0.35
     permissions:
       pull-requests: write
     env:
