@@ -431,7 +431,7 @@ jobs:
       fog_distribution: false
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      testing_block_v0: false
+      testing_block_v0: true
       testing_block_v2: false
       testing_block_v3: true
       generate_and_submit_mint_config_tx_uses_json: true
