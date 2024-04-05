@@ -21,6 +21,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add GHA job to save ledger/watcher DB files to azure blob storage ([#3349])
 - Add a download step to the ledger refresh ([#3372])
 - Add rust version to workspace for enclaves ([#3700])
+- Make minimum number of signatures for ledger bootstrap variable ([#3946])
 
 ### Fixed
 
@@ -31,6 +32,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
   directory ([#3807])
 - Fix optimization tx's when using nonzero token ids ([#3817])
 - Fix fog-view load test to report more useful metrics and actually work ([#3357])
+- Missing punctuation in README ([#3815])
+- Update refresh-ledger-bootstrap and dispatch-dev-testnet-fog workflows for 
+  smaller testnet ([#3944])
 
 #### CI/CD
 
@@ -85,11 +89,16 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump docker/metadata-action from 4 to 5 ([#3547])
 - Bump docker/setup-buildx-action from 2 to 3 ([#3553])
 
+#### Go Dependencies
+
+- Bump go grpc gateway ([#3955])
+
 #### Python Dependencies
 
 - Bump flask from 1.1.2 to 2.3.2 ([#3343], [#3344])
 - Bump jinja2 from 2.11.3 to 3.1.3 ([#3851])
-- Bump grpcio from 1.32.0 to 1.53.0 ([#3403], [#3404], [#3405], [#3406])
+- Bump grpcio from 1.32.0 to 1.53.2 ([#3403], [#3404], [#3405], [#3406],
+  [#3905], [#3906], [#3904])
 - Bump requests from 2.27.1 to 2.31.0 ([#3359])
 - Bump urllib3 from 1.26.8 to 1.26.18 ([#3624], [#3598])
 - Bump werkzeug from 2.2.3 to 3.0.1 ([#3654])
@@ -98,26 +107,30 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - Update rust toolchain to `nightly-2023-10-01` ([#3621], [#3623], [#3635],
   [#3622], [#3619], [#3626], [#3628])
-- Bump x25519-dalek, curve25519-dalek and ed25519-dalek ([#3544])
+- Bump x25519-dalek, curve25519-dalek and ed25519-dalek ([#3544], [#3898], [#3894])
 - Bump aead from 0.5.1 to 0.5.2 ([#3416])
-- Bump aes from 0.8.2 to 0.8.3 ([#3426])
+- Bump aes from 0.8.2 to 0.8.4 ([#3426], [#3909])
 - Bump aes-gcm from 0.10.1 to 0.10.2 ([#3415], [#3576])
-- Bump anyhow from 1.0.69 to 1.0.79 ([#3498], [#3507], [#3539], [#3828])
-- Bump assert_cmd from 2.0.10 to 2.0.12 ([#3356], [#3499])
-- Bump async-channel from 1.7.1 to 2.1.1 ([#3804])
+- Bump anyhow from 1.0.69 to 1.0.80 ([#3498], [#3507], [#3539], [#3828], [#3920])
+- Bump assert_cmd from 2.0.10 to 2.0.14 ([#3356], [#3499], [#3853], [#3924])
+- Bump async-channel from 1.7.1 to 2.2.0 ([#3804], [#3902])
 - Bump backtrace from 0.3.67 to 0.3.69 ([#3647])
-- Bump base64 from 0.21.0 to 0.21.6 ([#3483], [#3650], [#3845])
-- Bump bitflags from 2.3.3 to 2.4.1 ([#3644])
+- Bump base64 from 0.21.0 to 0.21.7 ([#3483], [#3650], [#3845], [#3852])
+- Bump bitflags from 2.3.3 to 2.4.2 ([#3644], [#3867])
 - Bump cargo_metadata from 0.15.3 to 0.18.1 ([#3528], [#3564], [#3652])
-- Bump cc from 1.0.79 to 1.0.84 ([#3515], [#3679], [#3716])
+- Bump cc from 1.0.79 to 1.0.88 ([#3515], [#3679], [#3716], [#3907], [#3921],
+  [#3928], [#3930])
 - Bump certifi from 2022.12.7 to 2023.7.22 in /mobilecoind/strategies ([#3453])
-- Bump chrono from 0.4.24 to 0.4.31 ([#3493], [#3546], [#3653])
-- Bump clap from 4.1.11 to 4.4.14 ([#3325], [#3462], [#3591], [#3762], [#3826],
-  [#3831], [#3847], [#3658], [#3709], [#3751])
+- Bump chrono from 0.4.24 to 0.4.34 ([#3493], [#3546], [#3653], [#3875],
+  [#3882], [#3908])
+- Bump clap from 4.1.11 to 4.5.1 ([#3325], [#3462], [#3591], [#3762], [#3826],
+  [#3831], [#3847], [#3658], [#3709], [#3751], [#3854], [#3864], [#3866],
+  [#3901], [#3914])
 - Bump clio from 0.3.4 to 0.3.5 ([#3800])
 - Bump cookie from 0.17.0 to 0.18.0 ([#3666])
 - Bump criterion from 0.4.0 to 0.5.1 ([#3479])
-- Bump crossbeam-channel from 0.5.7 to 0.5.11 ([#3466], [#3801], [#3824], [#3844])
+- Bump crossbeam-channel from 0.5.7 to 0.5.12 ([#3466], [#3801], [#3824],
+  [#3844], [#3939])
 - Bump ctrlc from 3.2.5 to 3.4.2 ([#3447], [#3693], [#3822])
 - Bump curve25519-dalek from 4.1.0 to 4.1.1 ([#3667])
 - Bump der from 0.7.7 to 0.7.8 ([#3578])
@@ -127,72 +140,82 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump digest from 0.10.6 to 0.10.7 ([#3456])
 - Bump dirs from 4.0.0 to 5.0.1 ([#3345])
 - Bump displaydoc from 0.2.3 to 0.2.4 ([#3490])
+- Bump dyn-clone from 1.0.16 to 1.0.17 ([#3929])
 - Bump ed25519 from 2.2.0 to 2.2.3 ([#3347], [#3590], [#3681])
 - Bump ed25519-dalek from 2.0.0 to 2.1.0 ([#3726])
 - Bump futures from 0.3.28 to 0.3.30 ([#3669], [#3821])
 - Bump generic-array from 0.14.6 to 0.14.7 ([#3448])
 - Bump getrandom from 0.2.8 to 0.2.12 ([#3324], [#3489], [#3699], [#3842])
 - Bump grpcio from 0.12.1 to 0.13.0 ([#3609])
-- Bump h2 from 0.3.16 to 0.3.18 ([#3330])
+- Bump h2 from 0.3.16 to 0.3.26 ([#3330], [#3919], [#3954])
 - Bump hashbrown from 0.13.2 to 0.14.3 ([#3460], [#3640], [#3746])
 - Bump heapless from 0.7.16 to 0.8.0 ([#3702])
 - Bump hex-literal from 0.3.4 to 0.4.1 ([#3413])
 - Bump hkdf from 0.12.3 to 0.12.4 ([#3802])
-- Bump itertools from 0.10.5 to 0.12.0 ([#3606], [#3722])
-- Bump libc from 0.2.140 to 0.2.152 ([#3433], [#3587], [#3682], [#3695],
-  [#3791], [#3841])
-- Bump libz-sys from 1.1.8 to 1.1.14 ([#3467], [#3848])
+- Bump itertools from 0.10.5 to 0.12.1 ([#3606], [#3722], [#3887])
+- Bump libc from 0.2.140 to 0.2.153 ([#3433], [#3587], [#3682], [#3695],
+  [#3791], [#3841], [#3890])
+- Bump libz-sys from 1.1.8 to 1.1.15 ([#3467], [#3848], [#3883])
 - Bump link-cplusplus from 1.0.8 to 1.0.9 ([#3581])
-- Bump log from 0.4.17 to 0.4.20 ([#3505])
+- Bump log from 0.4.17 to 0.4.21 ([#3505], [#3937])
 - Update `mbedtls`, `mbedtls-sys` forks to support apple m1 and android builds
   ([#3823], [#3656])
 - Bump mc-sgx-core-sys-types from 0.9.0 to 0.10.0 ([#3768])
 - Bump mikepenz/action-junit-report from 3 to 4 ([#3540])
 - Bump mockall from 0.11.3 to 0.12.1 ([#3425], [#3793], [#3819], [#3794])
+- Bump mio from 0.8.9 to 0.8.11 ([#3942])
 - Bump num_cpus from 1.15.0 to 1.16.0 ([#3420])
 - Bump once_cell from 1.17.1 to 1.19.0 ([#3450], [#3781])
 - Bump opentelemetry from 0.18.0 to 0.21.0 ([#3469], [#3697])
 - Bump opentelemetry_sdk from 0.21.0 to 0.21.2 ([#3714], [#3830])
 - Bump pem from 2.0.0 to 3.0.3 ([#3459], [#3670], [#3795])
 - Bump percent-encoding from 2.2.0 to 2.3.1 ([#3471], [#3741])
-- Bump pkg-config from 0.3.26 to 0.3.28 ([#3584], [#3812])
-- Bump predicates from 3.0.1 to 3.0.4 ([#3470], [#3651])
+- Bump pkg-config from 0.3.26 to 0.3.30 ([#3584], [#3812], [#3869], [#3912])
+- Bump predicates from 3.0.1 to 3.1.0 ([#3470], [#3651], [#3863])
 - Bump primitive-types from 0.12.1 to 0.12.2 ([#3645])
-- Bump proc-macro2 from 1.0.52 to 1.0.76 ([#3326], [#3661], [#3745], [#3836])
+- Bump proc-macro2 from 1.0.52 to 1.0.78 ([#3326], [#3661], [#3745], [#3836], [#3876])
 - Bump proptest from 1.1.0 to 1.4.0 ([#3452], [#3637], [#3710])
 - Bump prost from 0.11.8 to 0.12.1 ([#3474], [#3562])
 - Bump prost-build from 0.12.1 to 0.12.3 ([#3729], [#3739])
 - Bump pygments from 2.7.4 to 2.15.0 in /mobilecoind/strategies ([#3427])
 - Bump quote from 1.0.26 to 1.0.33 ([#3446], [#3464], [#3629])
 - Bump rand_hc from 0.3.1 to 0.3.2 ([#3465])
-- Bump rayon from 1.7.0 to 1.10.2 ([#3680], [#3487], [#3715], [#3724])
-- Bump reqwest from 0.11.15 to 0.11.23 ([#3451], [#3601], [#3809])
+- Bump rayon from 1.7.0 to 1.9.0 ([#3680], [#3868], [#3934])
+- Bump regex from 1.7.1 to 1.10.3 ([#3487], [#3715], [#3724], [#3878])
+- Bump reqwest from 0.11.15 to 0.11.24 ([#3451], [#3601], [#3809], [#3891])
 - Bump rocket from 0.5.0-rc.2 to 0.5.0 ([#3488], [#3690], [#3732])
 - Bump rustls-webpki from 0.100.1 to 0.100.2 ([#3519])
-- Bump semver from 1.0.17 to 1.0.21 ([#3431], [#3646], [#3832])
-- Bump sentry from 0.30.0 to 0.32.1 ([#3393], [#3597], [#3708], [#3750], [#3810])
-- Bump serde from 1.0.159 to 1.0.195 ([#3327], [#3424], [#3457], [#3476],
-  [#3522], [#3543], [#3632], [#3664], [#3698], [#3736], [#3834], [#3835])
-- Bump serde_json from 1.0.103 to 1.0.111 ([#3478], [#3527], [#3571], [#3678],
-  [#3827], [#3837])
-- Bump serde_with from 3.2.0 to 3.4.0 ([#3594], [#3671])
+- Bump semver from 1.0.17 to 1.0.22 ([#3431], [#3646], [#3832], [#3917])
+- Bump sentry from 0.30.0 to 0.32.2 ([#3393], [#3597], [#3708], [#3750],
+  [#3810], [#3888])
+- Bump serde from 1.0.159 to 1.0.197 ([#3327], [#3424], [#3457], [#3476],
+  [#3522], [#3543], [#3632], [#3664], [#3698], [#3736], [#3834], [#3835],
+  [#3884], [#3922])
+- Bump serde_json from 1.0.103 to 1.0.114 ([#3478], [#3527], [#3571], [#3678],
+  [#3827], [#3837], [#3885], [#3886], [#3926])
+- Bump serde_with from 3.2.0 to 3.4.0 ([#3594], [#3671], [#3877], [#3881],
+  [#3889], [#3900])
 - Bump serial_test from 1.0.0 to 3.0.0 ([#3419], [#3843])
 - Bump sha2 from 0.10.6 to 0.10.8 ([#3477], [#3638], [#3494])
+- Bump shlex from 1.0.0 to 1.3.0 ([#3874])
 - Bump signal-hook from 0.3.15 to 0.3.17 ([#3418])
 - Bump signature from 2.0.0 to 2.1.0 ([#3728])
 - Bump siphasher from 0.3.10 to 1.0.0 ([#3567])
 - Bump slog-async from 2.7.0 to 2.8.0 ([#3641])
-- Bump syn from 2.0.12 to 2.0.48 ([#3339], [#3473], [#3636], [#3660], [#3694],
-  [#3792], [#3796], [#3816], [#3825], [#3833])
-- Bump tempfile from 3.4.0 to 3.9.0 ([#3353], [#3458], [#3542], [#3672], [#3818])
-- Bump textwrap from 0.11.0 to 0.16.2 ([#3665], [#3685])
-- Bump tokio from 1.25.0 to 1.35.1 ([#3511], [#3513], [#3684], [#3704], [#3783],
-  [#3811])
+- Bump slog-term from 2.9.0 to 2.9.1 ([#3915])
+- Bump syn from 2.0.12 to 2.0.52 ([#3339], [#3473], [#3636], [#3660], [#3694],
+  [#3792], [#3796], [#3816], [#3825], [#3833], [#3913], [#3916], [#3932], [#3938])
+- Bump tempfile from 3.4.0 to 3.10.0 ([#3353], [#3458], [#3542], [#3672],
+  [#3818], [#3931], [#3893])
+- Bump textwrap from 0.11.0 to 0.16.1 ([#3665], [#3685], [#3925])
+- Bump tokio from 1.25.0 to 1.36.0 ([#3511], [#3513], [#3684], [#3704], [#3783],
+  [#3811], [#3892])
 - Bump toml from 0.7.3 to 0.8.2 ([#3414], [#3631])
 - Bump url from 2.3.1 to 2.5.0 ([#3484], [#3659], [#3744])
 - Bump walkdir from 2.3.3 to 2.4.0 ([#3639])
-- Bump wasm-bindgen from 0.2.88 to 0.2.89 ([#3743])
-- Bump wasm-bindgen-test from 0.3.34 to 0.3.39 ([#3461], [#3692], [#3747])
+- Bump wasm-bindgen from 0.2.88 to 0.2.90 ([#3743], [#3861])
+- Bump wasm-bindgen-test from 0.3.34 to 0.3.41 ([#3461], [#3692], [#3747],
+  [#3860], [#3896])
 - Bump webpki from 0.22.0 to 0.22.2 ([#3534], [#3596])
 - Bump x509-cert from 0.2.3 to 0.2.5 ([#3518], [#3820])
 - Bump xml-rs from 0.8.3 to 0.8.14 ([#3381])
@@ -527,6 +550,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3810]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3810
 [#3811]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3811
 [#3812]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3812
+[#3815]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3815
 [#3816]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3816
 [#3817]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3817
 [#3818]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3818
@@ -557,8 +581,76 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3848]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3848
 [#3849]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3849
 [#3851]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3851
+[#3852]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3852
+[#3853]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3853
+[#3854]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3854
 [#3855]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3855
 [#3856]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3856
+[#3860]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3860
+[#3861]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3861
+[#3863]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3863
+[#3864]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3864
+[#3866]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3866
+[#3867]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3867
+[#3868]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3868
+[#3869]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3869
+[#3874]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3874
+[#3875]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3875
+[#3876]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3876
+[#3877]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3877
+[#3878]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3878
+[#3881]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3881
+[#3882]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3882
+[#3883]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3883
+[#3884]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3884
+[#3885]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3885
+[#3886]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3886
+[#3887]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3887
+[#3888]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3888
+[#3889]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3889
+[#3890]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3890
+[#3891]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3891
+[#3892]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3892
+[#3893]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3893
+[#3894]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3894
+[#3896]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3896
+[#3898]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3898
+[#3900]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3900
+[#3901]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3901
+[#3902]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3902
+[#3904]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3904
+[#3905]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3905
+[#3906]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3906
+[#3907]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3907
+[#3908]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3908
+[#3909]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3909
+[#3912]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3912
+[#3913]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3913
+[#3914]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3914
+[#3915]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3915
+[#3916]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3916
+[#3917]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3917
+[#3919]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3919
+[#3920]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3920
+[#3921]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3921
+[#3922]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3922
+[#3924]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3924
+[#3925]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3925
+[#3926]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3926
+[#3928]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3928
+[#3929]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3929
+[#3930]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3930
+[#3931]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3931
+[#3932]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3932
+[#3934]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3934
+[#3937]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3937
+[#3938]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3938
+[#3939]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3939
+[#3942]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3942
+[#3944]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3944
+[#3946]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3946
+[#3954]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3954
+[#3955]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3955
 
 ## [5.2.3]
 
@@ -605,7 +697,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - A `GetAllUnspentTxOuts` API call to mobilecoind ([#3752])
 - Added the ability for Fog ledger and Fog ingest to get ledger data from a
-  mobilecoind instance ([#3701], [#3748]) 
+  mobilecoind instance ([#3701], [#3748])
 
 ### Changed
 
