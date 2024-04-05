@@ -34,7 +34,7 @@ on:
         type: string
         required: true
       minimum_block:
-        description: "The minimum block height before the enviroment is ready"
+        description: "The minimum block height before the environment is ready"
         type: string
         required: false
         default: "500"
@@ -57,10 +57,7 @@ jobs:
   setup-environment:
     uses: ./.github/workflows/mobilecoin-workflow-dev-setup-environment.yaml
     with:
-      block_version: ${{ inputs.block_version }}
-      chart_repo: ${{ inputs.chart_repo }}
       namespace: ${{ inputs.namespace }}
-      version: ${{ inputs.version }}
     secrets: inherit
 
   consensus-deploy:
@@ -69,24 +66,36 @@ jobs:
     runs-on: mcf-dev-small-x64
     strategy:
       matrix:
-        release_name:
-        - consensus-node-1
-        - consensus-node-2
-        - consensus-node-3
+        release:
+          - name: consensus-node-1
+            instance: 1
+          - name: consensus-node-2
+            instance: 2
+          - name: consensus-node-3
+            instance: 3
     steps:
-    # use values file because intel.com/sgx is hard to escape on the --set option.
     - name: Generate consensus-node values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/consensus-node-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
-        global:
-          certManagerClusterIssuer: google-public-ca
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
         node:
+          config:
+            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
+            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
+            blockVersion: ${{ inputs.block_version }}
+
           persistence:
             enabled: false
+
           ingress:
+            common:
+              tls:
+                clusterIssuer: google-public-ca
             clientAttest:
               rateLimits:
                 enabled: false
@@ -101,7 +110,7 @@ jobs:
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
         chart_wait_timeout: 10m
-        release_name: ${{ matrix.release_name }}
+        release_name: ${{ matrix.release.name }}
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -174,6 +183,7 @@ jobs:
           externalSecrets:
             signingCert:
               name: fog-report-signing-cert-a
+        EOF
 
     - name: Deploy fog-report-a
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -219,6 +229,7 @@ jobs:
           externalSecrets:
             signingCert:
               name: fog-report-signing-cert-b
+        EOF
 
     - name: Deploy fog-report-b
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -264,6 +275,7 @@ jobs:
                   enabled: false
                 tls:
                   clusterIssuer: google-public-ca
+        EOF
 
     - name: Deploy fog-view
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -310,6 +322,7 @@ jobs:
                   enabled: false
                 tls:
                   clusterIssuer: google-public-ca
+        EOF
 
 
     - name: Deploy fog-ledger
@@ -342,6 +355,7 @@ jobs:
         mobilecoin:
           network: ${{ inputs.namespace }}
           partner: dev
+        EOF
 
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13

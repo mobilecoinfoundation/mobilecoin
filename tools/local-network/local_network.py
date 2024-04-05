@@ -162,7 +162,7 @@ class Node:
         self.peers = peers
         self.quorum_set = quorum_set
         self.minimum_fee = 400_000_000
-        self.block_version = block_version or 3
+        self.block_version = block_version or 4
 
         self.consensus_process = None
         self.ledger_distribution_process = None

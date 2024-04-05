@@ -2,13 +2,10 @@ name: CI
 
 on:
   pull_request:
-    paths-ignore:
-    - '**.md'
   push:
     branches:
-      - master
       - main
-      - develop
+      - 'release/**'
     paths-ignore:
     - '**.md'
   workflow_dispatch:
@@ -24,11 +21,11 @@ permissions:
 jobs:
   build-dev:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Cargo build (SW)
@@ -41,11 +38,11 @@ jobs:
 
   build-prod:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Cargo build (HW)
@@ -60,11 +57,11 @@ jobs:
 
   build-and-test-wasm:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -77,11 +74,11 @@ jobs:
 
   lint-rust:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -94,11 +91,11 @@ jobs:
 
   build-and-test-go:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -127,11 +124,11 @@ jobs:
 
   docs:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Generate docs
@@ -146,7 +143,7 @@ jobs:
 
   mc-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     strategy:
       matrix:
@@ -160,7 +157,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: List packages to test
@@ -189,7 +186,7 @@ jobs:
 
   consensus-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     strategy:
       matrix:
@@ -203,7 +200,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: List packages to test
@@ -222,7 +219,7 @@ jobs:
 
   fog-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     strategy:
       matrix:
@@ -248,7 +245,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: List packages to test
@@ -281,7 +278,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     services:
       postgres:
@@ -297,7 +294,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Run tests
@@ -314,7 +311,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     services:
       postgres:
@@ -330,7 +327,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -365,7 +362,7 @@ jobs:
   # sample keys and sample ledger
   minting-and-burning-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.32
+    container: mobilecoin/builder-install:v0.0.33
 
     services:
       postgres:
@@ -381,7 +378,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: mobilecoinofficial/gh-actions/checkout@v0
       - name: Setup Python
         uses: actions/setup-python@v5
         with:

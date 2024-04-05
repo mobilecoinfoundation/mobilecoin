@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2024 The MobileCoin Foundation
 fullnameOverride: ''
 
 imagePullSecrets:
@@ -8,63 +8,14 @@ image:
   org: mobilecoin
   tag: ''
 
-### Shared values with child charts.
-global:
-  certManagerClusterIssuer: letsencrypt-production-http
+# disable client ports on the service
+acceptClientConnections: true
 
-  # Shared across all instances of consensusNodeConfig config.
-  node:
-    ledgerDistribution:
-      awsAccessKeyId: ''
-      awsSecretAccessKey: ''
-      awsRegion: ''
-      s3Bucket: ''
-      startFrom: last
+# Mobilecoin network instance
+mobilecoin:
+  network: ''
+  partner: ''
 
-    networkConfig:
-      threshold: ''
-      peers: {}
-
-    # tokensConfig:
-    #   tokensSignedJson: |-
-    #     { json }
-
-  blocklist:
-    enabled: "false"
-    pattern: patterns/blocked-countries
-
-### Enable to launch child chart to create node required configMaps and secrets.
-#   See helm/consensus-node-config/values.yaml for config details.
-consensusNodeConfig:
-  enabled: false
-  fullnameOverride: '{{ .Release.Name }}'
-  node:
-    client:
-      hostname: ''
-    peer:
-      hostname: ''
-    txSourceUrl: ''
-    msgSignerKey:
-      privateKey: ''
-
-### Enable to launch child chart to create core common configMaps and secrets.
-#   See helm/mc-core-common-config/values.yaml for config details.
-mcCoreCommonConfig:
-  enabled: false
-  # clientAuth:
-  #   token: ''
-  # mobileCoinNetwork:
-  #   network: ''
-  #   partner: ''
-  # sentry:
-  #   consensus-sentry-dsn: ''
-  #   ledger-distribution-sentry-dsn: ''
-  #   fog-report-sentry-dsn: ''
-  #   fog-view-sentry-dsn: ''
-  #   fog-ledger-sentry-dsn: ''
-  #   fog-ingest-sentry-dsn: ''
-
-# Consensus node settings
 node:
   image:
     org: ''
@@ -83,6 +34,8 @@ node:
     limits:
       sgx.intel.com/epc: 512Ki
     requests:
+      cpu: 1
+      memory: 10Gi
       sgx.intel.com/epc: 512Ki
 
   tolerations:
@@ -103,8 +56,19 @@ node:
         requests:
           storage: 512Gi
 
+  config:
+    clientHostname: ''
+    peerHostname: ''
+    blockVersion: '4'
+
   ingress:
+    enabled: true
     common:
+      tls:
+        clusterIssuer: letsencrypt-production-http
+      blocklist:
+        enabled: true
+        pattern: patterns/blocked-countries
       annotations:
         haproxy.org/server-ssl: 'false'             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
@@ -137,6 +101,43 @@ node:
           haproxy.org/rate-limit-requests: "60"
           # rate-limit-period is defined in _helpers.tpl based on the consensus node instance number
 
+  ### These configmaps and secrets must be deployed by external process to the namespace.
+  # override the name of the required configmaps
+  externalConfigMaps:
+    # Sentry is Optional
+    sentry:
+      name: sentry
+      ### required keys:
+      #   consensus-sentry-dsn:
+      #   ledger-distribution-sentry-dsn:
+    tokensConfig:
+      name: tokens-config
+      ### required keys:
+      #  tokens.signed.json:
+    networkConfig:
+      # The name will be be set unique to the instance
+      # "{{ include "consensusNode.fullname" . }}-network-config"
+      ### required keys:
+      #  network.json:
+
+
+  # override the name of the required secrets
+  externalSecrets:
+    ledgerDistribution:
+      # The name will be be set unique to the instance
+      # "{{ include "consensusNode.fullname" . }}-ledger-distribution"
+      ### required keys:
+      # AWS_ACCESS_KEY_ID:
+      # AWS_SECRET_ACCESS_KEY:
+      # AWS_REGION:
+      # LEDGER_DISTRIBUTION_S3_BUCKET:
+      # MC_DEST:
+    msgSignerKey:
+      # The name will be be set unique to the instance
+      # "{{ include "consensusNode.fullname" . }}-msg-signer-key"
+      ### required keys:
+      # MC_MSG_SIGNER_KEY:
+
 # GRPC Gateway settings
 grpcGateway:
   image:
@@ -144,9 +145,5 @@ grpcGateway:
     name: go-grpc-gateway
   nodeSelector: {}
 
-# Disable Client Connects
-acceptClientConnections: true
-
 jaegerTracing:
-  enabled: true
-  collector: 'dns:///jaeger-collector:14250'
+  enabled: false

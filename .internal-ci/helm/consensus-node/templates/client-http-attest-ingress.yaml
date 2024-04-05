@@ -1,34 +1,38 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2024 The MobileCoin Foundation
 # split out attest endpoint for client port so we can set rate limiting.
+{{- with .Values.node.ingress }}
+{{- if .enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "consensusNode.fullname" . }}-client-http-attest
+  name: {{ include "consensusNode.fullname" $ }}-client-http-attest
   annotations:
-    {{- if .Values.node.ingress.clientAttest.rateLimits.enabled }}
-    {{- toYaml .Values.node.ingress.clientAttest.rateLimits.annotations | nindent 4 }}
-    haproxy.org/rate-limit-period: {{ include "consensusNode.rateLimitPeriod" . | quote }}
+    {{- if .clientAttest.rateLimits.enabled }}
+    {{- toYaml .clientAttest.rateLimits.annotations | nindent 4 }}
+    haproxy.org/rate-limit-period: {{ include "consensusNode.rateLimitPeriod" $ | quote }}
     {{- end }}
-    {{- if eq (include "consensusNode.blocklist.enabled" .) "true" }}
-    haproxy.org/blacklist: {{ include "consensusNode.blocklist.pattern" . }}
+    {{- if .common.blocklist.enabled }}
+    haproxy.org/blacklist: {{ .common.blocklist.pattern | quote }}
     {{- end }}
-    {{- toYaml .Values.node.ingress.common.annotations | nindent 4 }}
-    {{- toYaml .Values.node.ingress.http.annotations | nindent 4 }}
+    {{- toYaml .common.annotations | nindent 4 }}
+    {{- toYaml .http.annotations | nindent 4 }}
   labels:
-    {{- include "consensusNode.labels" . | nindent 4 }}
+    {{- include "consensusNode.labels" $ | nindent 4 }}
 spec:
   tls:
   - hosts:
-    - {{ include "consensusNode.clientHostname" . }}
-    secretName: {{ include "consensusNode.fullname" . }}-ingress-tls
+    - {{ $.Values.node.config.clientHostname }}
+    secretName: {{ include "consensusNode.fullname" $ }}-ingress-tls
   rules:
-  - host: {{ include "consensusNode.clientHostname" . }}
+  - host: {{ $.Values.node.config.clientHostname }}
     http:
       paths:
       - path: /gw/attest.AttestedApi
         pathType: Prefix
         backend:
           service:
-            name: {{ include "consensusNode.fullname" . }}
+            name: {{ include "consensusNode.fullname" $ }}
             port:
               name: client-http
+{{- end }}
+{{- end }}

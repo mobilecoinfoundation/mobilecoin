@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-protocol"
-version = "5.2.3"
+version = "6.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"

@@ -21,7 +21,7 @@ on:
         description: "Consensus block_version"
         type: string
         required: true
-        default: '3'
+        default: '4'
       bootstrap_version:
         description: "Bootstrap Blockchain from selected version"
         type: choice
@@ -56,7 +56,7 @@ jobs:
     runs-on: mcf-dev-small-x64
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
     - name: 👾 Print Environment Details 👾
       env:
