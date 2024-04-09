@@ -12,7 +12,7 @@ const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.22.100.3";
+const SGX_VERSION: &str = "2.23.100.2";
 
 fn main() {
     let env = Environment::default();

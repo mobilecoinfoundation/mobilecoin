@@ -10,7 +10,7 @@ rust-version = { workspace = true }
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
 mc-attest-verifier-types = { path = "../../../attest/verifier/types", default-features = false }
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-fog-report-types = { path = "../../../fog/report/types", default-features = false }
 mc-util-encodings = { path = "../../../util/encodings" }
