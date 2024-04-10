@@ -200,7 +200,7 @@ jobs:
     needs:
     - generate-metadata
     container:
-      image: golang:1.22.2
+      image: golang:1.22.2-bullseye
     steps:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0

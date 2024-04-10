@@ -6,7 +6,7 @@
 
 ARG REPO_ORG=mobilecoin
 ARG BASE_TAG=latest
-FROM ${REPO_ORG}/dcap-runtime-base:${BASE_TAG}
+FROM ubuntu:jammy=20240227
 
 ARG GO_BIN_PATH=go-grpc-gateway
 COPY ${GO_BIN_PATH}/go-grpc-gateway /usr/bin/go-grpc-gateway
