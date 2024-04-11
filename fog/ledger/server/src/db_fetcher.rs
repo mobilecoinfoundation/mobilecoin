@@ -172,6 +172,10 @@ impl<
         let mut next_block_index = block_range.start_block;
         loop {
             loop {
+                if self.stop_requested.load(Ordering::SeqCst) {
+                    break;
+                }
+
                 let Some(num_blocks) = self.load_block_data(&mut next_block_index) else {
                     std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
                     continue;
@@ -186,10 +190,6 @@ impl<
                 }
 
                 if end <= next_block_index {
-                    break;
-                }
-
-                if self.stop_requested.load(Ordering::SeqCst) {
                     break;
                 }
             }
