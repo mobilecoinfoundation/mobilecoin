@@ -172,7 +172,10 @@ impl<
         let mut next_block_index = block_range.start_block;
         loop {
             loop {
-                let num_blocks = self.load_block_data(&mut next_block_index);
+                let Some(num_blocks) = self.load_block_data(&mut next_block_index) else {
+                    std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
+                    continue;
+                };
 
                 let end = min(num_blocks, block_range.end_block);
 
@@ -210,8 +213,9 @@ impl<
     /// The `next_block_index` will be incremented if the block is successfully
     /// loaded.
     ///
-    /// Returns the number of blocks in the block provider.
-    fn load_block_data(&mut self, next_block_index: &mut u64) -> u64 {
+    /// Returns the number of blocks in the block provider. None if unable to
+    /// communicate with block provider.
+    fn load_block_data(&mut self, next_block_index: &mut u64) -> Option<u64> {
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
@@ -224,9 +228,7 @@ impl<
                     next_block_index,
                     e
                 );
-                std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                // We errored so we don't know how many blocks are in the ledger
-                return 0;
+                return None;
             }
             Ok(blocks) => blocks,
         };
@@ -278,7 +280,7 @@ impl<
             self.update_db_poll_shared_state(&latest_block, processed_block_range);
         }
         // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
-        latest_block.index + 1
+        Some(latest_block.index + 1)
     }
 
     fn update_db_poll_shared_state(

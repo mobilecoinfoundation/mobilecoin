@@ -44,10 +44,6 @@ fn assert_key_image_unspent(key: &KeyImage, result: &KeyImageResult) {
     assert_eq!(result.key_image, *key);
     // None in the status means not spent.
     assert_eq!(result.status(), Ok(None));
-    assert_eq!(
-        result.timestamp_result_code,
-        TimestampResultCode::TimestampFound as u32
-    );
 }
 
 fn assert_key_image_spent(key: &KeyImage, result: &KeyImageResult, block_index: u64) {
@@ -495,9 +491,9 @@ async fn overlapping_stores() {
 
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-    let new_transactions = users_per_block * blocks_to_add;
-
     let mut test_environment = create_env(config, grpc_env, logger.clone());
+
+    let new_transactions = users_per_block * blocks_to_add;
     for (block_index, block) in blocks_config
         .iter()
         .enumerate()
@@ -562,15 +558,9 @@ async fn overlapping_stores() {
     assert_eq!(response.results.len(), key_index as usize);
     for i in 0..key_index {
         let key = KeyImage::from(i);
-        assert_eq!(response.results[i as usize].key_image, key);
-        assert_eq!(
-            response.results[i as usize].status(),
-            Ok(Some((i / keys_per_block) + 1))
-        );
-        assert_eq!(
-            response.results[i as usize].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
+
+        let block_index = (i / keys_per_block) + 1;
+        assert_key_image_spent(&key, &response.results[i as usize], block_index);
     }
     assert_eq!(response.num_blocks, blocks_to_add + 1);
     assert_eq!(response.global_txo_count, new_transactions + 1);

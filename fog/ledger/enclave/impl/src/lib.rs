@@ -172,6 +172,8 @@ where
         })?;
 
         let mut resp = CheckKeyImagesResponse {
+            // `num_blocks` is a count, `end_block` is an exclusive index.
+            // A block range of [0, 5) would have a count of 5 blocks.
             num_blocks: untrusted_key_image_query_response
                 .processed_block_range
                 .end_block,
@@ -274,6 +276,9 @@ where
 
         let untrusted_response =
             merge_untrusted_responses(shard_query_responses.iter().map(|r| &r.untrusted_response));
+
+        // `num_blocks` is a count, `end_block` is an exclusive index.
+        // A block range of [0, 5) would have a count of 5 blocks.
         let num_blocks = untrusted_response.processed_block_range.end_block;
         let global_txo_count = untrusted_response.last_known_block_cumulative_txo_count;
         let latest_block_version = untrusted_response.latest_block_version;
@@ -504,12 +509,17 @@ mod tests {
     type UntrustedResponseTuple = ((u64, u64), u64, u32, u32);
     #[parameterized(
         all_consecutive = { vec![((0, 5), 15, 0, 0), ((5, 8), 24, 1, 2)], ((0, 8), 24, 1, 2) },
+
+        // `merge_untrusted_responses()` will force a range from (0, 0] so this
+        // response with (1, 8] will be a gap and won't be merged resulting in
+        // a (0, 0] response
         gap_at_start_block = { vec![((1, 8), 24, 1, 2)], ((0, 0), 0, 0, 0) },
         gap_in_middle = { vec![((0, 5), 15, 0, 0), ((8, 10), 24, 1, 2)], ((0, 5), 15, 0, 0) },
         contained_overlap_before = { vec![((5, 8), 24, 1, 2), ((0, 10), 30, 3, 3)], ((0, 10), 30, 3, 3) },
         contained_overlap_after = { vec![((0, 10), 30, 3, 3), ((5, 8), 24, 1, 2)], ((0, 10), 30, 3, 3) },
         contained_overlap_intermediate = { vec![((0, 10), 30, 3, 3), ((5, 8), 24, 1, 2), ((7, 12), 36, 4, 4)], ((0, 12), 36, 4, 4) },
         unsorted = { vec![((5, 8), 24, 1, 2), ((8, 10), 30, 2, 3), ((0, 5), 15, 0, 0)], ((0, 10), 30, 2, 3) },
+        none = { vec![], ((0, 0), 0, 0, 0) },
     )]
     fn merge_the_untrusted_responses(
         untrusted_responses: Vec<UntrustedResponseTuple>,
