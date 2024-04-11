@@ -64,9 +64,9 @@ impl BlockRange {
 
     /// Merge the first contiguous ranges into a range
     ///
-    /// The ranges should be sorted to produce consistent results.
-    /// They are not sorted here in order to properly indicate the index of the
-    /// last range merged.
+    /// The "ranges" input must be pre-sorted by increasing start_block to produce correct results.
+    /// Sorting is left to the caller so as to return a meaningful "index" which indicates an
+    /// input range that contains an "end_block" at the top of the first contiguous range of blocks.
     ///
     /// ```
     /// use mc_fog_types::common::BlockRange;
@@ -98,7 +98,7 @@ impl BlockRange {
             if range.start_block <= merged_range.end_block
                 && merged_range.end_block <= range.end_block
             {
-                merged_range.end_block = merged_range.end_block.max(range.end_block);
+                merged_range.end_block = range.end_block;
                 index += 1;
             } else {
                 break;
