@@ -32,6 +32,7 @@ mc-oblivious-traits = "2.3"
 # fog
 mc-fog-ledger-enclave-api = { path = "../api", default-features = false }
 mc-fog-types = { path = "../../../types" }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 mc-common = { path = "../../../../common", features = ["loggers"] }

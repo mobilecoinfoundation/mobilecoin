@@ -4079,6 +4079,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-serial",
  "mc-watcher-api",
+ "serde",
  "yare 2.0.0",
 ]
 
