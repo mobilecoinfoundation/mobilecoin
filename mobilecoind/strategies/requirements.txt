@@ -8,7 +8,7 @@ decorator==4.4.0
 docutils==0.15.2
 grpcio==1.53.2
 grpcio-tools==1.44.0
-idna==3.3
+idna==3.7
 ipdb==0.12.2
 ipython==8.10.0
 ipython-genutils==0.2.0
