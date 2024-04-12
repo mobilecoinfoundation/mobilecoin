@@ -61,6 +61,53 @@ impl BlockRange {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Merge the first contiguous ranges into a range
+    ///
+    /// The "ranges" input must be pre-sorted by increasing start_block to
+    /// produce correct results. Sorting is left to the caller so as to
+    /// return a meaningful "index" which indicates an input range that
+    /// contains an "end_block" at the top of the first contiguous range of
+    /// blocks.
+    ///
+    /// ```
+    /// use mc_fog_types::common::BlockRange;
+    ///
+    /// let ranges = vec![BlockRange::new(0, 5), BlockRange::new(3, 8), BlockRange::new(8, 10), BlockRange::new(15, 16)];
+    /// let (index, merged_range) = BlockRange::merge_from_ranges(ranges.iter()).unwrap();
+    /// assert_eq!(index, 2);
+    /// assert_eq!(merged_range, BlockRange::new(0, 10));
+    ///
+    /// let ranges = vec![BlockRange::new(3, 8), BlockRange::new(0, 5), BlockRange::new(8, 10), BlockRange::new(15, 16)];
+    /// let (index, merged_range) = BlockRange::merge_from_ranges(ranges.iter()).unwrap();
+    /// assert_eq!(index, 0);
+    /// assert_eq!(merged_range, BlockRange::new(3, 8));
+    /// ```
+    ///
+    /// Returns the index in `ranges` of the last block range merged, and the
+    /// merged range
+    pub fn merge_from_ranges<'a>(
+        ranges: impl IntoIterator<Item = &'a BlockRange>,
+    ) -> Option<(usize, BlockRange)> {
+        let mut ranges = ranges.into_iter();
+        let first = ranges.next().cloned();
+        let Some(mut merged_range) = first else {
+            return None;
+        };
+        let mut index = 0;
+
+        for range in ranges {
+            if range.start_block <= merged_range.end_block
+                && merged_range.end_block <= range.end_block
+            {
+                merged_range.end_block = range.end_block;
+                index += 1;
+            } else {
+                break;
+            }
+        }
+        Some((index, merged_range))
+    }
 }
 
 impl core::fmt::Display for BlockRange {
@@ -93,6 +140,8 @@ impl FromStr for BlockRange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
+    use yare::parameterized;
 
     #[test]
     fn test_contains() {
@@ -185,5 +234,28 @@ mod tests {
         let result = BlockRange::from_str(&block_range_str);
 
         assert!(result.is_err());
+    }
+
+    #[parameterized(
+        multiple_ranges = { vec![(0, 5), (3, 8), (8, 10), (15, 16)], 2, (0, 10) },
+        single_range = { vec![(0, 10)], 0, (0, 10) },
+        all_the_same = { vec![(0, 10), (0, 10), (0, 10)], 2, (0, 10) },
+        reverse_order = { vec![(15, 16), (8, 10), (3, 8), (0, 5)], 0, (15, 16) },
+        middle_breaks_up_series = { vec![(0, 5), (8, 10), (5, 8)], 0, (0, 5) },
+    )]
+    fn merge_ranges(ranges: Vec<(u64, u64)>, expected_index: usize, expected_range: (u64, u64)) {
+        let ranges = ranges
+            .iter()
+            .map(|(start, end)| BlockRange::new(*start, *end))
+            .collect::<Vec<_>>();
+        let expected_range = BlockRange::new(expected_range.0, expected_range.1);
+        let (merged_index, merged_range) = BlockRange::merge_from_ranges(ranges.iter()).unwrap();
+        assert_eq!(merged_index, expected_index);
+        assert_eq!(merged_range, expected_range);
+    }
+
+    #[test]
+    fn no_range_to_merge() {
+        assert_eq!(BlockRange::merge_from_ranges([].iter()), None);
     }
 }
