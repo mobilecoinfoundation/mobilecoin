@@ -5,6 +5,9 @@
 name: Refresh ledger bootstrap
 
 on:
+  push:
+    branches:
+    - jgreat/fix-ledger-refresh
   schedule:
   - cron: '0 0 * * *'
 
@@ -38,10 +41,10 @@ jobs:
         - chain_id: main
           min_signatures: "10"
           block_info_url: https://node1.prod.mobilecoinww.com:443/gw/consensus_common.BlockchainAPI/GetLastBlockInfo
-          peers: mc://node1.prod.mobilecoinww.com:443/,mc://node2.prod.mobilecoinww.com:443/,mc://node3.prod.mobilecoinww.com/,mc://node1.consensus.mob.production.namda.net:443/,mc://node2.consensus.mob.production.namda.net:443/,mc://blockdaemon.mobilecoin.bdnodes.net:443/,mc://binance.mobilecoin.bdnodes.net:443/,mc://ideasbeyondborders.mobilecoin.bdnodes.net:443/,mc://thelongnowfoundation.mobilecoin.bdnodes.net:443/,mc://ams1-mc-node1.dreamhost.com:3223/
+          peers: mc://node1.prod.mobilecoinww.com:443/,mc://node2.prod.mobilecoinww.com:443/,mc://node3.prod.mobilecoinww.com/,mc://node1.consensus.mob.production.namda.net:443/,mc://node2.consensus.mob.production.namda.net:443/,mc://blockdaemon.mobilecoin.bdnodes.net:443/,mc://binance.mobilecoin.bdnodes.net:443/,mc://ideasbeyondborders.mobilecoin.bdnodes.net:443/,mc://fightforthefuture.mobilecoin.bdnodes.net:443/,mc://ams1-mc-node1.dreamhost.com:3223/
           quorum_set: |
-            { "threshold": 7, "members": [{"args":"node1.prod.mobilecoinww.com:443","type":"Node"},{"args":"node2.prod.mobilecoinww.com:443","type":"Node"},{"args":"node3.prod.mobilecoinww.com:443","type":"Node"},{"args":"node1.consensus.mob.production.namda.net:443","type":"Node"},{"args":"node2.consensus.mob.production.namda.net:443","type":"Node"},{"args":"blockdaemon.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"binance.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"ideasbeyondborders.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"thelongnowfoundation.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"ams1-mc-node1.dreamhost.com:3223","type":"Node"}] }
-          tx_source_urls: https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com/,https://ledger.mobilecoinww.com/node2.prod.mobilecoinww.com/,https://ledger.mobilecoinww.com/node3.prod.mobilecoinww.com/,https://s3-eu-central-1.amazonaws.com/production-namda-payments-ledger/node1.consensus.mob.production.namda.net/,https://s3-eu-central-1.amazonaws.com/production-namda-payments-ledger/node2.consensus.mob.production.namda.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/blockdaemon.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/binance.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/ideasbeyondborders.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/thelongnowfoundation.mobilecoin.bdnodes.net/,https://s3-eu-west-1.amazonaws.com/dh-mobilecoin-eu/ams1-mc-node1.dreamhost.com/
+            { "threshold": 7, "members": [{"args":"node1.prod.mobilecoinww.com:443","type":"Node"},{"args":"node2.prod.mobilecoinww.com:443","type":"Node"},{"args":"node3.prod.mobilecoinww.com:443","type":"Node"},{"args":"node1.consensus.mob.production.namda.net:443","type":"Node"},{"args":"node2.consensus.mob.production.namda.net:443","type":"Node"},{"args":"blockdaemon.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"binance.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"ideasbeyondborders.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"fightforthefuture.mobilecoin.bdnodes.net:443","type":"Node"},{"args":"ams1-mc-node1.dreamhost.com:3223","type":"Node"}] }
+          tx_source_urls: https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com/,https://ledger.mobilecoinww.com/node2.prod.mobilecoinww.com/,https://ledger.mobilecoinww.com/node3.prod.mobilecoinww.com/,https://s3-eu-central-1.amazonaws.com/production-namda-payments-ledger/node1.consensus.mob.production.namda.net/,https://s3-eu-central-1.amazonaws.com/production-namda-payments-ledger/node2.consensus.mob.production.namda.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/blockdaemon.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/binance.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/ideasbeyondborders.mobilecoin.bdnodes.net/,https://bd-mobilecoin-ledger.s3.amazonaws.com/fightforthefuture.mobilecoin.bdnodes.net/,https://s3-eu-west-1.amazonaws.com/dh-mobilecoin-eu/ams1-mc-node1.dreamhost.com/
     env:
       DOWNLOAD_DIR: ${{ github.workspace }}/.tmp
       MC_LEDGER_DB: ${{ github.workspace }}/.tmp/ledger
