@@ -5060,7 +5060,7 @@ dependencies = [
 
 [[package]]
 name = "mc-light-client-cli"
-version = "4.1.0-pre0"
+version = "6.0.0"
 dependencies = [
  "clap 4.5.1",
  "clio",
@@ -5083,7 +5083,7 @@ dependencies = [
 
 [[package]]
 name = "mc-light-client-relayer"
-version = "4.1.0-pre0"
+version = "6.0.0"
 dependencies = [
  "clap 4.5.1",
  "displaydoc",
@@ -5113,7 +5113,7 @@ dependencies = [
 
 [[package]]
 name = "mc-light-client-verifier"
-version = "4.1.0-pre0"
+version = "6.0.0"
 dependencies = [
  "base64 0.21.7",
  "displaydoc",

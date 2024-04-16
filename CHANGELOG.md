@@ -14,6 +14,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add zeroize on drop to core account types ([#3402])
 - Add light client verifier ([#3390], [#3399], [#3397], [#3411], [#3412], [#3401])
 - Add light client relayer ([#3400])
+- Add RTH memos to mobilecoind ([#3945])
 
 #### CI/CD
 
@@ -22,6 +23,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add a download step to the ledger refresh ([#3372])
 - Add rust version to workspace for enclaves ([#3700])
 - Make minimum number of signatures for ledger bootstrap variable ([#3946])
+- Bump go version in CD to 1.22.2 [(#3958)]
 
 ### Fixed
 
@@ -33,8 +35,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Fix optimization tx's when using nonzero token ids ([#3817])
 - Fix fog-view load test to report more useful metrics and actually work ([#3357])
 - Missing punctuation in README ([#3815])
-- Update refresh-ledger-bootstrap and dispatch-dev-testnet-fog workflows for 
+- Update refresh-ledger-bootstrap and dispatch-dev-testnet-fog workflows for
   smaller testnet ([#3944])
+- Fix fog ledger shards needing to load all blocks ([#3923], [#3933])
 
 #### CI/CD
 
@@ -42,7 +45,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Security
 
-- Update Intel SGX SDK to 2.22.100.3 ([#3617], [#3618], [#3777])
+- Update Intel SGX SDK to 2.23.100.2 ([#3617], [#3618], [#3777], [#3957])
 
 ### Changed
 
@@ -634,6 +637,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3920]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3920
 [#3921]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3921
 [#3922]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3922
+[#3923]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3923
 [#3924]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3924
 [#3925]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3925
 [#3926]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3926
@@ -642,15 +646,19 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3930]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3930
 [#3931]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3931
 [#3932]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3932
+[#3933]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3933
 [#3934]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3934
 [#3937]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3937
 [#3938]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3938
 [#3939]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3939
 [#3942]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3942
 [#3944]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3944
+[#3945]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3945
 [#3946]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3946
 [#3954]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3954
 [#3955]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3955
+[#3957]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3957
+[#3958]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3958
 
 ## [5.2.3]
 
