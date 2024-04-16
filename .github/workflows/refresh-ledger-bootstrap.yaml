@@ -5,9 +5,6 @@
 name: Refresh ledger bootstrap
 
 on:
-  push:
-    branches:
-    - jgreat/fix-ledger-refresh
   schedule:
   - cron: '0 0 * * *'
 
