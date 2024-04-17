@@ -81,7 +81,7 @@ jobs:
     - generate-metadata
     runs-on: mcf-dev-large-x64
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.35
+      image: mobilecoin/rust-sgx-base:v0.0.36
 
     env:
       # build cannot use relative paths for singing and minting trust root.
@@ -179,7 +179,7 @@ jobs:
     needs:
     - build-rust-hardware-projects
     container:
-      image: mobilecoin/rust-sgx-base:v0.0.35
+      image: mobilecoin/rust-sgx-base:v0.0.36
     steps:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0
