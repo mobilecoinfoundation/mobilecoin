@@ -23,7 +23,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     steps:
       - name: Check out code
@@ -36,7 +36,7 @@ jobs:
 
   build-prod:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     steps:
       - name: Check out code
@@ -51,7 +51,7 @@ jobs:
 
   build-and-test-wasm:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     steps:
       - name: Check out code
@@ -68,7 +68,7 @@ jobs:
 
   lint-rust:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     steps:
       - name: Check out code
@@ -80,7 +80,7 @@ jobs:
 
   build-and-test-go:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     steps:
       - name: Check out code
@@ -110,7 +110,7 @@ jobs:
 
   docs:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     steps:
       - name: Check out code
@@ -119,7 +119,7 @@ jobs:
         shell: bash
         run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
       - name: Store docs
-        uses: actions/upload-artifact@v4
+        uses: mobilecoinofficial/gh-actions/upload-artifact@v0
         with:
           name: doc.tgz
           path: /tmp/doc.tgz
@@ -128,7 +128,7 @@ jobs:
 
   mc-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     strategy:
       matrix:
@@ -170,7 +170,7 @@ jobs:
 
   consensus-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     strategy:
       matrix:
@@ -202,7 +202,7 @@ jobs:
 
   fog-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     strategy:
       matrix:
@@ -260,7 +260,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     services:
       postgres:
@@ -291,7 +291,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     services:
       postgres:
@@ -329,6 +329,7 @@ jobs:
           PGUSER: postgres
         shell: bash
         run: |
+          . /opt/intel/sgxsdk/environment
           . ./env/bin/activate
           python3 fog_conformance_tests.py --release
       - name: Upload core dumps
@@ -342,7 +343,7 @@ jobs:
   # sample keys and sample ledger
   minting-and-burning-tests:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.35
+    container: mobilecoin/builder-install:v0.0.36
 
     services:
       postgres:
@@ -366,6 +367,7 @@ jobs:
       - name: Build and generate sample data
         shell: bash
         run: |
+          . /opt/intel/sgxsdk/environment
           # Generate enclave signing key
           openssl genrsa -out Enclave_private.pem -3 3072
           export CONSENSUS_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
