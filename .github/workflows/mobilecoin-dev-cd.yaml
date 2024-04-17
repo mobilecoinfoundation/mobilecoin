@@ -7,7 +7,8 @@ name: Mobilecoin CD
 env:
   CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
-  RELEASE_5X_TAG: v5.1.1-dev
+  RELEASE_5X_TAG: v5.2.3-dev.alpha.6224
+  MINIMUM_BLOCK: '6224'
   GH_SHORT_SHA: placeholder
   RUST_CACHE_PATH: .tmp/rust-bin-cache
   RUST_ARTIFACTS_PATH: .tmp/rust-bin-cache/bin/mobilecoin
@@ -51,6 +52,7 @@ jobs:
       docker_org: ${{ env.DOCKER_ORG }}
       chart_repo: ${{ env.CHART_REPO }}
       release_5x_tag: ${{ env.RELEASE_5X_TAG }}
+      minimum_block: ${{ env.MINIMUM_BLOCK }}
 
     steps:
     - name: Checkout
@@ -361,7 +363,7 @@ jobs:
       block_version: 3
       chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      version: ${{ needs.generate-metadata.outputs.release_5x_tag }}
+      bootstrap_version: ${{ needs.generate-metadata.outputs.release_5x_tag }}
     secrets: inherit
 
 ###############################################
@@ -380,7 +382,7 @@ jobs:
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
-      minimum_block: '5946'
+      minimum_block: ${{ needs.generate-metadata.outputs.minimum_block }}
     secrets: inherit
 
   test-current-bv4-release:

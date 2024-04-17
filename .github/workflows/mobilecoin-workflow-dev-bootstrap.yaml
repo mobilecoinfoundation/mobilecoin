@@ -20,8 +20,8 @@ on:
         description: "Target Namespace"
         type: string
         required: true
-      version:
-        description: "Chart Version"
+      bootstrap_version:
+        description: "Bootstrap Blockchain from selected version"
         type: string
         required: true
     secrets:
@@ -57,7 +57,7 @@ jobs:
         AWS_DEFAULT_REGION: eu-central-1
         BUCKET: mobilecoin.eu.development.chain
         NAMESPACE: ${{ inputs.namespace }}
-        VERSION: ${{ inputs.version }}
+        VERSION: ${{ inputs.bootstrap_version }}
       shell: bash
       run: |
         for i in 1 2 3
@@ -102,7 +102,7 @@ jobs:
         PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
         PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
         PGUSER: postgres
-        VERSION: ${{ inputs.version }}
+        VERSION: ${{ inputs.bootstrap_version }}
       run: |
         # Copy sql from S3
         aws s3 cp --only-show-errors \
