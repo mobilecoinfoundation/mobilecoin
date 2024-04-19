@@ -54,7 +54,7 @@ toolbox_cmd "${command}"
 
 echo "-- Running mobilecoind tests to force ingest retire --"
 command="/test/mobilecoind-integration-test.sh"
-# toolbox_cmd "${command}"
+toolbox_cmd "${command}"
 
 echo "-- Check for retired ingest --"
 for i in 0 1
@@ -73,9 +73,8 @@ done
 echo "-- Scaling down fog-ingest --"
 kubectl scale sts -n "${namespace}" "${instance}" --replicas=0
 
-
 echo "-- Scaling down fog-view and fog-ledger --"
-# patch the fogshardrangegenerators to reduce the replicas?
+# patch the fogshardrangegenerators to reduce the replicas
 
 for i in fog-view-0 fog-view-1 fog-ledger-0 fog-ledger-1
 do
@@ -87,10 +86,10 @@ done
 echo "-- Scaling down mobilecoind --"
 kubectl scale sts -n "${namespace}" mobilecoind --replicas=0
 
-
 echo "-- Scaling down consensus --"
 echo "wait for fogshardrangegenerators to scale down before scaling down consensus nodes"
 echo "the fog controller needs to query the blockchain to take actions on the shards"
+# CBB: this is a bit lazy, should watch objects instead
 sleep 120
 for i in 1 2 3
 do
