@@ -234,7 +234,7 @@ impl From<&ViewSubaddress> for PublicSubaddress {
 /// Represents a "standard" public address hash created using merlin,
 /// used in memos as a compact representation of a MobileCoin public address.
 /// This hash is collision resistant.
-#[derive(Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct ShortAddressHash([u8; 16]);
 
 impl From<[u8; 16]> for ShortAddressHash {

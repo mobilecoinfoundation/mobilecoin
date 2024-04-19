@@ -137,7 +137,7 @@ impl TxSummaryStreamingVerifierCtx {
                 Self::expected_tx_out_summary(self.block_version, amount, address, tx_private_key)?;
             if &expected == tx_out_summary {
                 report.balance_add(
-                    TransactionEntity::Address(address_hash.clone()),
+                    TransactionEntity::Address(*address_hash),
                     amount.token_id,
                     amount.value,
                 )?;
