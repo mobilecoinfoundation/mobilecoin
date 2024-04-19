@@ -292,11 +292,7 @@ impl MemoBuilder for RTHMemoBuilder {
                 },
             }
         } else {
-            match DestinationMemo::new(
-                self.last_recipient,
-                self.total_outlay,
-                self.fee.value,
-            ) {
+            match DestinationMemo::new(self.last_recipient, self.total_outlay, self.fee.value) {
                 Ok(mut d_memo) => {
                     self.wrote_destination_memo = true;
                     d_memo.set_num_recipients(self.num_recipients);
