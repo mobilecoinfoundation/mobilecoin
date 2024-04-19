@@ -268,14 +268,8 @@ mod test {
     use std::assert_matches::assert_matches;
 
     use super::*;
-    use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion};
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        HashSet,
-    };
-    use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_common::logger::{test_with_logger, Logger};
     use mc_rand::{CryptoRng, RngCore};
-    use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use tempfile::TempDir;
 
