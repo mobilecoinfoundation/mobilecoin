@@ -58,7 +58,7 @@ do
 done
 
 echo "-- Scaling up mobilecoind --"
-kubectl scale deployment -n "${namespace}" mobilecoind --replicas=1
+kubectl scale sts -n "${namespace}" mobilecoind --replicas=1
 
 echo "-- Scaling up fog-view and fog-ledger --"
 # patch the fogshardgenerators
@@ -71,5 +71,21 @@ do
 done
 
 echo "-- Activate fog-ingest --"
+echo "wait for fog-ingest to come up"
+
+result=not_running
+while [[ "${result}" != "Running" ]]
+do
+    result=$(kubectl get pods ${instance}-0 -n ${namespace} -o jsonpath='{.status.phase}')
+    echo "waiting for ${instance}-0 to come up: ${result}"
+done
+result=not_running
+while [[ "${result}" != "Running" ]]
+do
+    result=$(kubectl get pods ${instance}-1 -n ${namespace} -o jsonpath='{.status.phase}')
+    echo "waiting for ${instance}-1 to come up: ${result}"
+done
+
+
 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate | jq -r ."
 toolbox_cmd "${command}"
