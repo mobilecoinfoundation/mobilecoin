@@ -15,6 +15,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add light client verifier ([#3390], [#3399], [#3397], [#3411], [#3412], [#3401])
 - Add light client relayer ([#3400])
 - Add RTH memos to mobilecoind ([#3945])
+- Add scripts to scale down/up a dev environment ([#3966])
+- Mobilecoind T3 support ([#3960])
 
 #### CI/CD
 
@@ -42,6 +44,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 #### CI/CD
 
 - Fix intermittent Postgres failures by using postgres service in GH actions ([#3785])
+- Fix artifacts not uploading ([#3971])
+- Fix dependent android bindings build ([#3968])
 
 ### Security
 
@@ -79,6 +83,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Remove fog local network test ([#3799])
 - Update ledger bootstrap to 5.0.8 ([#3371], [#3373], [#3600])
 - Use gha-runner-scale-sets ([#3849])
+- Update CI jobs to remove deprecated actions ([#3965])
+- Annotation to keep autoscaler from evicting ingest ([#3964])
 
 #### Github Actions
 
@@ -95,13 +101,15 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 #### Go Dependencies
 
 - Bump go grpc gateway ([#3955])
+- Bump net from 0.21.0 to 0.24.0 ([#3970])
 
 #### Python Dependencies
 
 - Bump flask from 1.1.2 to 2.3.2 ([#3343], [#3344])
-- Bump jinja2 from 2.11.3 to 3.1.3 ([#3851])
 - Bump grpcio from 1.32.0 to 1.53.2 ([#3403], [#3404], [#3405], [#3406],
   [#3905], [#3906], [#3904])
+- Bump idna from 3.3 to 3.7 ([#3969])
+- Bump jinja2 from 2.11.3 to 3.1.3 ([#3851])
 - Bump requests from 2.27.1 to 2.31.0 ([#3359])
 - Bump urllib3 from 1.26.8 to 1.26.18 ([#3624], [#3598])
 - Bump werkzeug from 2.2.3 to 3.0.1 ([#3654])
@@ -187,6 +195,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump regex from 1.7.1 to 1.10.3 ([#3487], [#3715], [#3724], [#3878])
 - Bump reqwest from 0.11.15 to 0.11.24 ([#3451], [#3601], [#3809], [#3891])
 - Bump rocket from 0.5.0-rc.2 to 0.5.0 ([#3488], [#3690], [#3732])
+- Bump rustls from 0.21.7 to 0.21.11 ([#3967])
 - Bump rustls-webpki from 0.100.1 to 0.100.2 ([#3519])
 - Bump semver from 1.0.17 to 1.0.22 ([#3431], [#3646], [#3832], [#3917])
 - Bump sentry from 0.30.0 to 0.32.2 ([#3393], [#3597], [#3708], [#3750],
@@ -659,6 +668,15 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3955]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3955
 [#3957]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3957
 [#3958]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3958
+[#3960]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3960
+[#3964]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3964
+[#3965]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3965
+[#3966]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3966
+[#3967]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3967
+[#3968]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3968
+[#3969]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3969
+[#3970]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3970
+[#3971]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3971
 
 ## [5.2.3]
 
