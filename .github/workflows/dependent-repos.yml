@@ -17,6 +17,8 @@ jobs:
     container: mobilecoin/builder-install:v0.0.36
     permissions:
       pull-requests: write
+    env:
+      SGX_MODE: SW
     steps:
     - name: Check that android-bindings still builds
       uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
