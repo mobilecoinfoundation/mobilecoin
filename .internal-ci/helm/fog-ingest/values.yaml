@@ -32,6 +32,7 @@ fogIngest:
     fluentbit.io/exclude-jaeger-agent: 'true'
     # This is the container name that needs to use sgx resources
     sgx.intel.com/quote-provider: fog-ingest
+    cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
 
   ### Intel SGX extended resources are defined with: https://github.com/sebva/sgx-device-plugin
   resources:

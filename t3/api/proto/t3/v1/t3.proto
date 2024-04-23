@@ -1,0 +1,258 @@
+syntax = "proto3";
+
+package t3.v1;
+
+import "external/v1/external.proto";
+import "google/api/annotations.proto";
+
+option java_multiple_files = true;
+
+/**
+ * Transaction Service
+ *
+ * This service is responsible for providing clients a way to backup their
+ * trusted transparent transactions, and to query the results by the
+ * transaction identifier.
+ *
+ * Note: Requires authentication to use any of these rpcs.
+ */
+service TransactionService {
+  // Retrieve one or many T3 Transactions
+  rpc FindTransactions(FindTransactionsRequest) returns (FindTransactionsResponse) {
+    // FIXME: we coudl also have a get: endpoint, but then we have to pass query parameters, and
+    // it's less intuitive than passing json
+    option (google.api.http) = {
+      post: "/lookup"
+    };
+  }
+
+  // List transactions
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = {
+      get: "/list"
+      additional_bindings: {
+        post: "/list"
+      }
+    };
+  }
+
+  // Create a T3 transaction
+  rpc CreateTransaction(CreateTransactionRequest) returns (CreateTransactionResponse) {
+    option (google.api.http) = {
+      post: "/create"
+    };
+  }
+
+  rpc TestError(TestErrorRequest) returns (TestErrorResponse) {}
+}
+
+// T3 Transaction Data Type
+message TransparentTransaction {
+  // Address hash of the sender
+  bytes sender_address_hash = 1;
+
+  // Address hash of the recipient
+  bytes recipient_address_hash = 2;
+
+  // The token ID of this transaction
+  // Note: Kotlin maps uint64 to Long. There is no loss of precision, but conversion
+  //       needs to be performed to recover the original value.
+  uint64 token_id = 3;
+
+  // The amount of this transaction, in the base units of the aforementioned token_id.
+  uint64 amount = 4;
+
+  // The transaction identifier (tx_pubkey) corresponding to the TxOut in the blockchain represented by this transaction, as bytes.
+  // TODO: Remove in favor of public_key_hex
+  external.v1.CompressedRistretto public_key = 5;
+
+  // The transaction identifier (tx_pubkey) corresponding to the TxOut in the blockchain represented by this transaction, as a hex-encoded string.
+  string public_key_hex = 7;
+
+  // When this transaction was created, as seconds since Unix epoch.
+  uint64 created_at = 6;
+
+  repeated CrossChainSwap cross_chain_swaps = 8;
+
+  // Identity of who reported this transaction to T3 (see ReporterType enum for types of reporters)
+  // The reporter value holds a human readable name of the entity reporting the transaction but is empty for MOBY type.
+  string reporter_identity = 9;
+  ReporterType reporter_type = 10;
+
+  // If one or more parties of the transaction are known institutions include their identifier here
+  // If none, then the value is set to NONE
+  KnownInstitution sender_institution = 11;
+  KnownInstitution recipient_institution = 12;
+
+  // Collected directly from the blockchain, ignored during CreateTransaction
+  // When this transaction was written to the blockchain, as seconds since Unix epoch.
+  uint64 block_time = 13;
+  // Block number
+  uint64 block_index = 14;
+
+  // The direction of the transaction from the perspective of the reporter.
+  // Ex. if the direction is 'SEND' then the sender_address_hash belongs to the reporter of the transaction data.
+  ReportedDirection reported_direction = 15;
+}
+
+message CrossChainSwap {
+  AssetDetails src = 1;
+  AssetDetails dest = 2;
+  AssetDetails fee = 3;
+  // Chain specific ID, e.g. an ETH transaction hash.
+  string external_id = 4;
+}
+
+message AssetDetails {
+  Asset asset = 1;
+  string amount = 2;
+  string address = 3;
+  KnownInstitution institution = 4;
+}
+
+// TODO: Share/Dedupe definition with Twix
+enum Asset {
+  ASSET_UNSPECIFIED = 0;
+  ASSET_MOBILECOIN = 1;
+  ASSET_BTC = 2;
+  ASSET_ETH = 3;
+  ASSET_USDT_TRON = 4;
+  ASSET_USDT_ETHEREUM = 5;
+  ASSET_TRX = 6;
+  ASSET_USD = 7;
+  ASSET_USDC_ETHEREUM = 8;
+  ASSET_BUSD_BEP20 = 9;
+  ASSET_USDC_POLYGON = 10;
+  ASSET_MATIC = 11;
+  ASSET_EUR = 12;
+  ASSET_GBP = 13;
+  ASSET_CAD = 14;
+  ASSET_AUD = 15;
+  ASSET_BGN = 16;
+  ASSET_BRL = 17;
+  ASSET_CHF = 18;
+  ASSET_CNY = 19;
+  ASSET_COP = 20;
+  ASSET_CZK = 21;
+  ASSET_DKK = 22;
+  ASSET_DOP = 23;
+  ASSET_EGP = 24;
+  ASSET_HKD = 25;
+  ASSET_IDR = 26;
+  ASSET_ILS = 27;
+  ASSET_JOD = 28;
+  ASSET_JPY = 29;
+  ASSET_KES = 30;
+  ASSET_KRW = 31;
+  ASSET_KWD = 32;
+  ASSET_LKR = 33;
+  ASSET_MAD = 34;
+  ASSET_MXN = 35;
+  ASSET_MYR = 36;
+  ASSET_NGN = 37;
+  ASSET_NOK = 38;
+  ASSET_NZD = 39;
+  ASSET_OMR = 40;
+  ASSET_PEN = 41;
+  ASSET_PKR = 42;
+  ASSET_PLN = 43;
+  ASSET_RON = 44;
+  ASSET_SEK = 45;
+  ASSET_THB = 46;
+  ASSET_TRY = 47;
+  ASSET_TWD = 48;
+  ASSET_VND = 49;
+  ASSET_ZAR = 50;
+  ASSET_USDT_POLYGON = 51;
+}
+
+enum ReporterType {
+  REPORTER_TYPE_UNSPECIFIED = 0; // Should never occur
+  REPORTER_TYPE_MISSING = 1; // Default value during migration of pre-reporter dataset
+  REPORTER_TYPE_MOBY = 2;
+  REPORTER_TYPE_API = 3;
+}
+
+// Request institutional data.
+// Authenticated.
+message FindTransactionsRequest {
+  // Optional address hash(es) for which to retrieve data
+  repeated bytes address_hashes = 1;
+
+  // Optional transaction identifier(s) for which to retrieve data
+  repeated external.v1.CompressedRistretto public_keys = 2;
+
+  // Optional hex-encoded transaction identifier(s) for which to retrieve data
+  repeated string public_key_hex = 3;
+}
+
+message FindTransactionsResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+
+  Result result = 1;
+
+  // The institutional transaction data
+  repeated TransparentTransaction transactions = 2;
+}
+
+// Authenticated.
+message ListTransactionsRequest {
+  // List transactions created since this timestamp (as seconds since Unix epoch).
+  // Defaults to 24 hours ago.
+  uint64 created_since = 1;
+}
+
+message ListTransactionsResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+
+  Result result = 1;
+
+  // The institutional transaction data
+  repeated TransparentTransaction transactions = 2;
+}
+
+// Store a T3 transaction: Authenticated
+message CreateTransactionRequest {
+  // The full T3 transaction data for this transaction
+  // Ignores created_at, reporter_identity, and reporter_type
+  TransparentTransaction transaction = 1;
+}
+
+message CreateTransactionResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+
+    // The public_key already exists in the T3 database
+    RESULT_ALREADY_EXISTS = 2;
+  }
+
+  Result result = 1;
+  TransparentTransaction transaction = 2;
+}
+
+message TestErrorRequest {
+  int32 code = 1;
+}
+message TestErrorResponse {
+}
+
+enum KnownInstitution {
+  KNOWN_INSTITUTION_UNSPECIFIED = 0;
+  KNOWN_INSTITUTION_NONE = 1;
+  KNOWN_INSTITUTION_MIXIN = 2;
+  KNOWN_INSTITUTION_MOONPAY = 3;
+  KNOWN_INSTITUTION_PAYBIS = 4;
+}
+
+enum ReportedDirection {
+  REPORTED_DIRECTION_UNSPECIFIED = 0;
+  REPORTED_DIRECTION_SEND = 1;
+  REPORTED_DIRECTION_RECEIVE = 2;
+}

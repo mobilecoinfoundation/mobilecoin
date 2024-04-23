@@ -1,0 +1,20 @@
+[package]
+name = "mc-t3-connection"
+version = "6.0.0"
+authors = ["MobileCoin"]
+edition = "2021"
+license = "GPL-3.0"
+readme = "README.md"
+rust-version = { workspace = true }
+
+[dependencies]
+displaydoc = { version = "0.2", default-features = false }
+futures = "0.3"
+grpcio = "0.13"
+protobuf = "2.27.1"
+
+mc-common = { path = "../../common", features = ["log"] }
+mc-connection = { path = "../../connection" }
+mc-t3-api = { path = "../api" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-uri = { path = "../../util/uri" }

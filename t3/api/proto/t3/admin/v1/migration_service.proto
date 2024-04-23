@@ -1,0 +1,23 @@
+syntax = "proto3";
+package t3.admin.v1;
+option java_multiple_files = true;
+
+service MigrationService {
+  rpc MigrateBlockTimes(MigrateBlockTimesRequest) returns (MigrateBlockTimesResponse);
+}
+
+message MigrateBlockTimesRequest {
+  int32 limit = 1;
+  int64 offset = 2;
+}
+message MigrateBlockTimesResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  int32 found_transactions_count = 2;
+  int32 updated_count = 3;
+  map<string, int32> error_counts = 4;
+  int64 next_offset = 5;
+}

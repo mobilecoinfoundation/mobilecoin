@@ -375,7 +375,7 @@ mod test {
             &RistrettoPrivate::from_random(&mut rng),
         );
         let alice_cred = SenderMemoCredential::from(&alice);
-        let alice_hash = alice_cred.address_hash.clone();
+        let alice_hash = alice_cred.address_hash;
 
         let bob = AccountKey::new(
             &RistrettoPrivate::from_random(&mut rng),

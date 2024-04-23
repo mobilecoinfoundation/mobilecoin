@@ -1,0 +1,309 @@
+/**
+ * DO NOT MODIFY THIS PROTOBUF
+ *
+ * This has been copied directly from the link below. This should likely never
+ * be modified in this repo, and instead will eventually be replaced by an
+ * externally published and versioned protobuf module. The only change is in
+ * the definition of the package name, which must be suffixed with a version
+ * number.
+ *
+ * https://github.com/mobilecoinofficial/android-sdk/blob/336b2efe4889ef21cfbc4e7e451b83aa1c13142a/android-sdk/src/main/proto/external.proto
+ **/
+
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
+
+syntax = "proto3";
+
+package external.v1;
+
+option go_package = "mobilecoin/api";
+option java_outer_classname = "MobileCoinAPI";
+option java_package = "com.mobilecoin.api";
+
+///////////////////////////////////////////////////////////////////////////////
+// `keys` crate
+///////////////////////////////////////////////////////////////////////////////
+
+/// A Ristretto private key.
+message RistrettoPrivate {
+  bytes data = 1;
+}
+
+/// A 32-byte compressed Ristretto curve point (public key)
+message CompressedRistretto {
+  bytes data = 1;
+}
+
+/// An Ed25519 public key, for validating signatures.
+message Ed25519Public {
+  bytes data = 1;
+}
+
+/// An Ed25519 signature object
+message Ed25519Signature {
+  bytes data = 1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// `account-keys` crate
+///////////////////////////////////////////////////////////////////////////////
+
+/// Complete AccountKey, containing the pair of secret keys, which can be used
+/// for spending, and optionally some Fog related info that is used to form
+/// public addresses for accounts that sign up with Fog service.
+///
+/// This matches the Rust `transaction::AccountKey` struct.
+message AccountKey {
+  /// Private key 'a' used for view-key matching.
+  RistrettoPrivate view_private_key = 1;
+
+  /// Private key `b` used for spending.
+  RistrettoPrivate spend_private_key = 2;
+
+  /// Optional url of fog report server.
+  /// Empty string when not in use, i.e. for accounts that don't have fog service.
+  string fog_report_url = 3;
+
+  /// Optional fog report id.
+  /// The fog report server may serve multiple reports, this id disambiguates
+  /// which one to use when sending to this account.
+  string fog_report_id = 4;
+
+  /// Optional fog authority subjectPublicKeyInfo.
+  /// Empty when not in use.
+  bytes fog_authority_spki = 5;
+}
+
+/// A public address, used to identify recipients.
+message PublicAddress {
+  /// View public key
+  CompressedRistretto view_public_key = 1;
+
+  /// Spend public key
+  CompressedRistretto spend_public_key = 2;
+
+  /// Optional url of fog report server.
+  /// Empty string when not in use, i.e. for accounts that don't have fog service.
+  /// Indicates the place at which the fog report server should be contacted.
+  string fog_report_url = 3;
+
+  /// Optional fog report id.
+  /// The fog report server may serve multiple reports, this id disambiguates
+  /// which one to use when sending to this account.
+  string fog_report_id = 4;
+
+  /// View key signature over the fog authority subjectPublicKeyInfo.
+  ///
+  /// This must be parseable as a RistrettoSignature.
+  bytes fog_authority_sig = 5;
+}
+
+/// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
+/// The RootIdentity is a compact form of a user's account key, if it has been
+/// derived in this way. This may be useful for e.g. paper wallets.
+message RootIdentity {
+  /// The root entropy used to derive cryptonote private keys for this account
+  RootEntropy root_entropy = 1;
+  /// Optional url of fog report server, same as in AccountKey
+  string fog_report_url = 2;
+  /// Optional fog report id, same as in AccountKey
+  string fog_report_id = 3;
+  /// Optional fog authority subjectPublicKeyInfo.
+  /// Empty when not in use.
+  bytes fog_authority_spki = 5;
+}
+
+/// A 32 byte secret used as input key material to derive private keys
+message RootEntropy {
+  bytes data = 1;
+}
+
+/// A ViewKey is a reduced AccountKey -- it contains the private key necessary to
+/// view your transactions and see the amounts, but not to send new transactions.
+/// This concept is part of Cryptonote.
+/// In Mobilecoin, all public addresses correspond to subaddresses, and often
+/// the "default subaddress" is used.
+/// The ViewKey similarly corresponds to a particular subaddress.
+message ViewKey {
+  /// The view-private-key of the account. This enables to check if a transaction
+  /// corresponds to this subaddress, and to interact with fog.
+  RistrettoPrivate view_private_key = 1;
+  /// The spend public key of the account.
+  /// This value also appears in the public address.
+  CompressedRistretto spend_public_key = 2;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// `trasaction/core` crate
+///////////////////////////////////////////////////////////////////////////////
+
+/// A 32-byte scalar associated to the ristretto group.
+/// This is the same as RistrettoPrivate, but they are used in different places.
+/// TODO: MC-1605 Consider to factor out this type, or just this proto message.
+message CurveScalar {
+  bytes data = 1;
+}
+
+/// A 32-byte mobilecoin transaction key image.
+message KeyImage {
+  bytes data = 1;
+}
+
+message Range {
+  uint64 from = 1;
+  uint64 to = 2;
+}
+
+message TxOutMembershipHash {
+  bytes data = 1;
+}
+
+message TxOutMembershipElement {
+  Range range = 1;
+  TxOutMembershipHash hash = 2;
+}
+
+message TxOutMembershipProof {
+  uint64 index = 1;
+  uint64 highest_index = 2;
+  repeated TxOutMembershipElement elements = 3;
+}
+
+// A hash of the shared secret of a transaction output.
+//
+// Can be used by the recipient of a transaction output to verify that the
+// bearer of this number knew the shared secret of the transaction output,
+// thereby providing evidence that they are the sender.
+message TxOutConfirmationNumber {
+  bytes hash = 1;
+}
+
+// Amount.
+message Amount {
+  // A Pedersen commitment `v*G + s*H`
+  CompressedRistretto commitment = 1;
+
+  // `masked_value = value XOR_8 Blake2B("value_mask" || shared_secret)`
+  fixed64 masked_value = 2;
+}
+
+// The bytes of encrypted fog hint
+message EncryptedFogHint {
+  bytes data = 1;
+}
+
+// The bytes of encrypted memo
+message EncryptedMemo {
+  bytes data = 1;
+}
+
+// A Transaction Output.
+message TxOut {
+  // Amount.
+  Amount amount = 1;
+
+  // Public key.
+  CompressedRistretto target_key = 2;
+
+  // Public key.
+  CompressedRistretto public_key = 3;
+
+  // Encrypted fog hint payload.
+  // This is an mc-crypto-box cryptogram for the fog ingest server,
+  // or a random cryptogram indistinguishable from a real one.
+  EncryptedFogHint e_fog_hint = 4;
+
+  // Encrypted memo
+  EncryptedMemo e_memo = 5;
+}
+
+message TxIn {
+  // "Ring" of inputs, one of which is actually being spent.
+  repeated TxOut ring = 1;
+
+  // Proof that each TxOut in `ring` is in the ledger.
+  repeated TxOutMembershipProof proofs = 2;
+}
+
+// A transaction that a client submits to consensus
+message TxPrefix {
+  // Transaction inputs.
+  repeated TxIn inputs = 1;
+
+  // Transaction outputs.
+  repeated TxOut outputs = 2;
+
+  // Fee paid to the foundation for this transaction
+  uint64 fee = 3;
+
+  // The block index at which this transaction is no longer valid.
+  uint64 tombstone_block = 4;
+}
+
+message RingMLSAG {
+  CurveScalar c_zero = 1;
+  repeated CurveScalar responses = 2;
+  KeyImage key_image = 3;
+}
+
+message SignatureRctBulletproofs {
+  repeated RingMLSAG ring_signatures = 1;
+  repeated CompressedRistretto pseudo_output_commitments = 2;
+  bytes range_proofs = 3;
+}
+
+message Tx {
+  // The actual contents of the transaction.
+  TxPrefix prefix = 1;
+
+  // The RingCT signature on the prefix.
+  SignatureRctBulletproofs signature = 2;
+}
+
+message TxHash {
+  // Hash of a single transaction.
+  bytes hash = 1;
+}
+
+// Given to the recipient of a transaction output by the sender so that the
+// recipient may verify that the other party is indeed the sender.
+//
+// Often given to the recipient before the transaction is finalized so that
+// the recipient may know to anticipate the arrival of a transaction output,
+// as well as know who it's from, when to consider it as having surpassed
+// the tombstone block, and the expected amount of the output.
+message Receipt {
+  // Public key of the TxOut.
+  CompressedRistretto public_key = 1;
+
+  // Confirmation number of the TxOut.
+  TxOutConfirmationNumber confirmation = 2;
+
+  // Tombstone block of the Tx that produced the TxOut.
+  // Note: This value is self-reported by the sender and is unverifiable.
+  uint64 tombstone_block = 3;
+
+  // Amount of the TxOut.
+  // Note: This value is self-reported by the sender and is unverifiable.
+  Amount amount = 4;
+}
+
+/// The signature over an IAS JSON reponse, created by Intel
+message VerificationSignature {
+  bytes contents = 1;
+}
+
+/// The IAS verification report response encoded as a protocol buffer
+message VerificationReport {
+  /// The IAS-generated signature over the response string
+  VerificationSignature sig = 1;
+
+  /// A list of byte strings representing the DER-encoded certificate
+  /// chain provided by IAS.
+  repeated bytes chain = 2;
+
+  /// The raw report body JSON, as a byte sequence
+  string http_body = 3;
+}

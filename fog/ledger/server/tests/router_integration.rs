@@ -15,7 +15,7 @@ use mc_fog_ledger_server::{
     LedgerRouterServer, LedgerStoreConfig, ShardingStrategy,
 };
 use mc_fog_test_infra::get_enclave_path;
-use mc_fog_types::common::BlockRange;
+use mc_fog_types::{common::BlockRange, ledger::KeyImageResult};
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_rand::{CryptoRng, RngCore};
@@ -39,6 +39,21 @@ use url::Url;
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 const TEST_URL: &str = "http://www.my_url1.com";
 const CHAIN_ID: &str = "local";
+
+fn assert_key_image_unspent(key: &KeyImage, result: &KeyImageResult) {
+    assert_eq!(result.key_image, *key);
+    // None in the status means not spent.
+    assert_eq!(result.status(), Ok(None));
+}
+
+fn assert_key_image_spent(key: &KeyImage, result: &KeyImageResult, block_index: u64) {
+    assert_eq!(result.key_image, *key);
+    assert_eq!(result.status(), Ok(Some(block_index)));
+    assert_eq!(
+        result.timestamp_result_code,
+        TimestampResultCode::TimestampFound as u32
+    );
+}
 
 fn setup_watcher_db(path: PathBuf, logger: Logger) -> WatcherDB {
     let url = Url::parse(TEST_URL).unwrap();
@@ -115,22 +130,24 @@ fn seed_block_provider(block_provider: &mut LocalBlockProvider<LedgerDB>) {
     add_block_to_ledger(block_provider, &recipients, &[], &mut rng);
 }
 
-fn populate_block_provider(
+fn populate_block_provider<'a>(
     block_provider: &mut LocalBlockProvider<LedgerDB>,
-    blocks_config: &BlockConfig,
+    blocks_config: impl IntoIterator<Item = &'a HashMap<PublicAddress, Vec<KeyImage>>>,
 ) {
     let mut rng = thread_rng();
 
-    for block in blocks_config {
+    for block in blocks_config.into_iter() {
         let recipients: Vec<_> = block.keys().cloned().collect();
         let key_images: Vec<_> = block.values().flat_map(|x| x.clone()).collect();
 
         add_block_to_ledger(block_provider, &recipients, &key_images, &mut rng);
     }
 
-    // The stores are running on separate threads. We wait twice as long as
-    // their POLL_INTERVAL to ensure they've had time to process the new blocks
-    std::thread::sleep(POLL_INTERVAL * 2);
+    // The stores are running on separate threads. We wait 16 times the
+    // their POLL_INTERVAL to account for number of threads in CI.
+    // This helps to ensure all the stores have had time to process the new
+    // blocks
+    std::thread::sleep(POLL_INTERVAL * 16);
 }
 
 fn create_store(
@@ -288,8 +305,6 @@ struct StoreConfig {
     omap_capacity: u64,
 }
 
-type BlockConfig = Vec<HashMap<PublicAddress, Vec<KeyImage>>>;
-
 fn free_sockaddr() -> SocketAddr {
     let port = portpicker::pick_unused_port().unwrap();
     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port)
@@ -299,12 +314,18 @@ fn free_sockaddr() -> SocketAddr {
 async fn smoke_test() {
     let logger = mc_common::logger::create_test_logger(stdext::function_name!().to_string());
     log::info!(logger, "test");
+    let genesis_store = StoreConfig {
+        address: free_sockaddr(),
+        block_range: BlockRange::new_from_length(0, 1),
+        omap_capacity: 1000,
+    };
+    let mut stores_config = vec![genesis_store];
+
     // Three stores, correct config, each stores three blocks,
     // each has three users with three keys each
     let num_stores = 3;
     let blocks_per_store = 3;
     let mut rng = RngType::from_seed([0u8; 32]);
-    let mut stores_config = vec![];
     for i in 0..num_stores {
         let store = StoreConfig {
             address: free_sockaddr(),
@@ -342,38 +363,63 @@ async fn smoke_test() {
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
     let mut test_environment = create_env(config, grpc_env, logger.clone());
-    populate_block_provider(&mut test_environment.block_provider, &blocks_config);
 
     let new_transactions = users_per_block * blocks_to_add;
-    // Check that we can get all the key images from each store
-    let keys_per_block = users_per_block * keys_per_user;
-    for i in 0..key_index {
-        let key = KeyImage::from(i);
-        let response = test_environment
-            .router_client
-            .check_key_images(&[key])
-            .await
-            .expect("check_key_images failed");
-        assert_eq!(response.results.len(), 1);
-        assert_eq!(response.results[0].key_image, key);
-        assert_eq!(
-            response.results[0].status(),
-            Ok(Some((i / keys_per_block) + 1))
-        );
-        assert_eq!(
-            response.results[0].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-        // The genesis block will add 1 to the total number of blocks, it has
-        // one transaction which will also add 1 to the total number of
-        // transactions
-        assert_eq!(response.num_blocks, blocks_to_add + 1);
-        assert_eq!(response.global_txo_count, new_transactions + 1);
-        assert_eq!(response.latest_block_version, *BlockVersion::MAX);
-        assert_eq!(response.max_block_version, *BlockVersion::MAX);
+    for (block_index, block) in blocks_config
+        .iter()
+        .enumerate()
+        .map(|(i, e)| ((i + 1) as u64, e))
+    {
+        for keys in block.values() {
+            for key in keys {
+                let response = test_environment
+                    .router_client
+                    .check_key_images(&[*key])
+                    .await
+                    .expect("check_key_images failed");
+                // We should always get a result to prevent side channel
+                // attacks from determining whether a key image was spent.
+                assert_eq!(response.results.len(), 1);
+                assert_key_image_unspent(key, &response.results[0]);
+
+                assert_eq!(response.num_blocks, block_index);
+                assert_eq!(
+                    response.global_txo_count,
+                    ((block_index - 1) * users_per_block) + 1
+                );
+                let expected_block_version = if block_index == 1 {
+                    0
+                } else {
+                    *BlockVersion::MAX
+                };
+                assert_eq!(response.latest_block_version, expected_block_version);
+                assert_eq!(response.max_block_version, *BlockVersion::MAX);
+            }
+        }
+        populate_block_provider(&mut test_environment.block_provider, [block]);
+        for keys in block.values() {
+            for key in keys {
+                let response = test_environment
+                    .router_client
+                    .check_key_images(&[*key])
+                    .await
+                    .expect("check_key_images failed");
+                assert_eq!(response.results.len(), 1);
+                assert_key_image_spent(key, &response.results[0], block_index);
+
+                assert_eq!(response.num_blocks, block_index + 1);
+                assert_eq!(
+                    response.global_txo_count,
+                    (block_index * users_per_block) + 1
+                );
+                assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+                assert_eq!(response.max_block_version, *BlockVersion::MAX);
+            }
+        }
     }
 
     // Grab them all at once
+    let keys_per_block = users_per_block * keys_per_user;
     let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
     let response = test_environment
         .router_client
@@ -383,35 +429,10 @@ async fn smoke_test() {
     assert_eq!(response.results.len(), key_index as usize);
     for i in 0..key_index {
         let key = KeyImage::from(i);
-        assert_eq!(response.results[i as usize].key_image, key);
-        assert_eq!(
-            response.results[i as usize].status(),
-            Ok(Some((i / keys_per_block) + 1))
-        );
-        assert_eq!(
-            response.results[i as usize].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-    }
-    assert_eq!(response.num_blocks, blocks_to_add + 1);
-    assert_eq!(response.global_txo_count, new_transactions + 1);
-    assert_eq!(response.latest_block_version, *BlockVersion::MAX);
-    assert_eq!(response.max_block_version, *BlockVersion::MAX);
 
-    // Check that an unspent key image is unspent
-    let key = KeyImage::from(126u64);
-    let response = test_environment
-        .router_client
-        .check_key_images(&[key])
-        .await
-        .expect("check_key_images failed");
-    assert_eq!(response.results.len(), 1);
-    assert_eq!(response.results[0].key_image, key);
-    assert_eq!(response.results[0].status(), Ok(None)); // Not spent
-    assert_eq!(
-        response.results[0].timestamp_result_code,
-        TimestampResultCode::TimestampFound as u32
-    );
+        let block_index = (i / keys_per_block) + 1;
+        assert_key_image_spent(&key, &response.results[i as usize], block_index);
+    }
     assert_eq!(response.num_blocks, blocks_to_add + 1);
     assert_eq!(response.global_txo_count, new_transactions + 1);
     assert_eq!(response.latest_block_version, *BlockVersion::MAX);
@@ -422,13 +443,19 @@ async fn smoke_test() {
 async fn overlapping_stores() {
     let logger = mc_common::logger::create_test_logger(stdext::function_name!().to_string());
     log::info!(logger, "test");
+    let genesis_store = StoreConfig {
+        address: free_sockaddr(),
+        block_range: BlockRange::new_from_length(0, 1),
+        omap_capacity: 1000,
+    };
+    let mut stores_config = vec![genesis_store];
+
     // Three stores, correct config, each stores three blocks,
     // each has three users with three keys each - but the blocks overlap (so
     // total of 5 blocks)
     let num_stores = 3;
     let blocks_per_store = 3;
     let mut rng = RngType::from_seed([0u8; 32]);
-    let mut stores_config = vec![];
     for i in 0..num_stores {
         let store = StoreConfig {
             address: free_sockaddr(),
@@ -465,36 +492,63 @@ async fn overlapping_stores() {
     let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
     let mut test_environment = create_env(config, grpc_env, logger.clone());
-    populate_block_provider(&mut test_environment.block_provider, &blocks_config);
 
     let new_transactions = users_per_block * blocks_to_add;
+    for (block_index, block) in blocks_config
+        .iter()
+        .enumerate()
+        .map(|(i, e)| ((i + 1) as u64, e))
+    {
+        for keys in block.values() {
+            for key in keys {
+                let response = test_environment
+                    .router_client
+                    .check_key_images(&[*key])
+                    .await
+                    .expect("check_key_images failed");
+                // We should always get a result to prevent side channel
+                // attacks from determining whether a key image was spent.
+                assert_eq!(response.results.len(), 1);
+                assert_key_image_unspent(key, &response.results[0]);
 
-    // Check that we can get all the key images from each store
-    let keys_per_block = users_per_block * keys_per_user;
-    for i in 0..key_index {
-        let key = KeyImage::from(i);
-        let response = test_environment
-            .router_client
-            .check_key_images(&[key])
-            .await
-            .expect("check_key_images failed");
-        assert_eq!(response.results.len(), 1);
-        assert_eq!(response.results[0].key_image, key);
-        assert_eq!(
-            response.results[0].status(),
-            Ok(Some((i / keys_per_block) + 1))
-        );
-        assert_eq!(
-            response.results[0].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-        assert_eq!(response.num_blocks, blocks_to_add + 1);
-        assert_eq!(response.global_txo_count, new_transactions + 1);
-        assert_eq!(response.latest_block_version, *BlockVersion::MAX);
-        assert_eq!(response.max_block_version, *BlockVersion::MAX);
+                assert_eq!(response.num_blocks, block_index);
+                assert_eq!(
+                    response.global_txo_count,
+                    ((block_index - 1) * users_per_block) + 1
+                );
+                let expected_block_version = if block_index == 1 {
+                    0
+                } else {
+                    *BlockVersion::MAX
+                };
+                assert_eq!(response.latest_block_version, expected_block_version);
+                assert_eq!(response.max_block_version, *BlockVersion::MAX);
+            }
+        }
+        populate_block_provider(&mut test_environment.block_provider, [block]);
+        for keys in block.values() {
+            for key in keys {
+                let response = test_environment
+                    .router_client
+                    .check_key_images(&[*key])
+                    .await
+                    .expect("check_key_images failed");
+                assert_eq!(response.results.len(), 1);
+                assert_key_image_spent(key, &response.results[0], block_index);
+
+                assert_eq!(response.num_blocks, block_index + 1);
+                assert_eq!(
+                    response.global_txo_count,
+                    (block_index * users_per_block) + 1
+                );
+                assert_eq!(response.latest_block_version, *BlockVersion::MAX);
+                assert_eq!(response.max_block_version, *BlockVersion::MAX);
+            }
+        }
     }
 
     // Grab them all at once
+    let keys_per_block = users_per_block * keys_per_user;
     let keys: Vec<_> = (0..key_index).map(KeyImage::from).collect();
     let response = test_environment
         .router_client
@@ -504,35 +558,10 @@ async fn overlapping_stores() {
     assert_eq!(response.results.len(), key_index as usize);
     for i in 0..key_index {
         let key = KeyImage::from(i);
-        assert_eq!(response.results[i as usize].key_image, key);
-        assert_eq!(
-            response.results[i as usize].status(),
-            Ok(Some((i / keys_per_block) + 1))
-        );
-        assert_eq!(
-            response.results[i as usize].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-    }
-    assert_eq!(response.num_blocks, blocks_to_add + 1);
-    assert_eq!(response.global_txo_count, new_transactions + 1);
-    assert_eq!(response.latest_block_version, *BlockVersion::MAX);
-    assert_eq!(response.max_block_version, *BlockVersion::MAX);
 
-    // Check that an unspent key image is unspent
-    let key = KeyImage::from(126u64);
-    let response = test_environment
-        .router_client
-        .check_key_images(&[key])
-        .await
-        .expect("check_key_images failed");
-    assert_eq!(response.results.len(), 1);
-    assert_eq!(response.results[0].key_image, key);
-    assert_eq!(response.results[0].status(), Ok(None)); // Not spent
-    assert_eq!(
-        response.results[0].timestamp_result_code,
-        TimestampResultCode::TimestampFound as u32
-    );
+        let block_index = (i / keys_per_block) + 1;
+        assert_key_image_spent(&key, &response.results[i as usize], block_index);
+    }
     assert_eq!(response.num_blocks, blocks_to_add + 1);
     assert_eq!(response.global_txo_count, new_transactions + 1);
     assert_eq!(response.latest_block_version, *BlockVersion::MAX);

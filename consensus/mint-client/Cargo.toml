@@ -39,7 +39,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.13"
 hex = { version = "0.4", features = ["serde"] }
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 pem = "3.0"
 protobuf = "2.27.1"
 rand = "0.8"

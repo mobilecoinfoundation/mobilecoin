@@ -41,6 +41,8 @@ mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-rand = "1.0"
 mc-sgx-css = { path = "../sgx/css" }
+mc-t3-api = { path = "../t3/api" }
+mc-t3-connection = { path = "../t3/connection" }
 mc-transaction-builder = { path = "../transaction/builder" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-extra = { path = "../transaction/extra" }
@@ -62,7 +64,7 @@ displaydoc = "0.2"
 grpcio = "0.13"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 num_cpus = "1.16"
 prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 protobuf = "2.27.1"
