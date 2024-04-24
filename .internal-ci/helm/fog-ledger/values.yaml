@@ -18,7 +18,7 @@ fogLedger:
       # Assume default is a dev network. We can always define a "network" value if needed.
       default:
         shardSize: 20_000
-        exceedBlockHeightBy: 0
+        exceedBlockHeightBy: 5_000
         shardOverlap: 0
         count: 2
         blockHeightRetrieval:
@@ -28,7 +28,7 @@ fogLedger:
           requestBody: ''
       test:
         shardSize: 400_000
-        exceedBlockHeightBy: 0
+        exceedBlockHeightBy: 10_000
         shardOverlap: 0
         count: 2
         blockHeightRetrieval:
@@ -38,7 +38,7 @@ fogLedger:
           requestBody: ''
       main:
         shardSize: 400_000
-        exceedBlockHeightBy: 0
+        exceedBlockHeightBy: 10_000
         shardOverlap: 0
         count: 3
         blockHeightRetrieval:

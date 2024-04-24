@@ -274,8 +274,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `opt_fee` - Transaction fee value in smallest representable units. If
     ///   zero, use network-reported minimum fee.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
-    /// * `opt_memo_builder` - Optional memo builder to use instead of the
-    ///   default one (EmptyMemoBuilder).
+    /// * `memo_builder` - Memo builder to use.
     pub fn build_transaction(
         &self,
         sender_monitor_id: &MonitorId,
@@ -286,7 +285,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         last_block_infos: &[BlockInfo],
         opt_fee: u64,
         opt_tombstone: u64,
-        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+        memo_builder: Box<dyn MemoBuilder + 'static + Send + Sync>,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{outlays:?}")));
         log::trace!(logger, "Building pending transaction...");
@@ -324,7 +323,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             last_block_infos,
             opt_fee,
             opt_tombstone,
-            opt_memo_builder,
+            Some(memo_builder),
         )
     }
 

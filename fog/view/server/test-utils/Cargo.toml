@@ -29,5 +29,5 @@ mc-fog-view-server = { path = "../." }
 
 # Third-party
 grpcio = "0.13"
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 portpicker = "0.1.1"

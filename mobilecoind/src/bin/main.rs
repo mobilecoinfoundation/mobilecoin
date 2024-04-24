@@ -9,6 +9,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
+    t3_sync::T3SyncThread,
 };
 use mc_util_telemetry::setup_default_tracer;
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
@@ -124,6 +125,21 @@ fn main() {
                 config.get_fog_resolver_factory(logger.clone()),
                 logger.clone(),
             );
+
+            let _t3_sync_thread = match (&config.t3_uri, &config.t3_api_key) {
+                (Some(t3_uri), Some(t3_api_key)) => {
+                    let t3_sync_thread = T3SyncThread::start(
+                        mobilecoind_db.clone(),
+                        t3_uri.clone(),
+                        t3_api_key.clone(),
+                        config.poll_interval,
+                        logger.clone(),
+                    );
+
+                    Some(t3_sync_thread)
+                }
+                _ => None,
+            };
 
             let _api_server = Service::new(
                 ledger_db,

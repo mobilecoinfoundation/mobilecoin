@@ -14,9 +14,11 @@ env:
 jobs:
   android-bindings:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.33
+    container: mobilecoin/builder-install:v0.0.36
     permissions:
       pull-requests: write
+    env:
+      SGX_MODE: SW
     steps:
     - name: Check that android-bindings still builds
       uses: mobilecoinofficial/gh-actions/build-downstream-rust-repo@v0
@@ -26,7 +28,7 @@ jobs:
 
   full-service:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.33
+    container: mobilecoin/builder-install:v0.0.36
     permissions:
       pull-requests: write
     env:

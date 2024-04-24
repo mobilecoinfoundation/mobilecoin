@@ -5,6 +5,7 @@ pub use block_service::BlockService;
 pub use config::{LedgerRouterConfig, LedgerStoreConfig, ShardingStrategy};
 pub use key_image_service::KeyImageService;
 pub use key_image_store_server::KeyImageStoreServer;
+use mc_fog_types::common::BlockRange;
 pub use merkle_proof_service::MerkleProofService;
 pub use router_server::LedgerRouterServer;
 pub use untrusted_tx_out_service::UntrustedTxOutService;
@@ -35,9 +36,9 @@ lazy_static::lazy_static! {
 /// State that we want to expose from the db poll thread
 #[derive(Debug, Default)]
 pub struct DbPollSharedState {
-    /// The highest block count for which we can guarantee we have loaded all
-    /// available data.
-    pub highest_processed_block_count: u64,
+    /// The block range we have loaded blocks for.
+    /// When no blocks have been loaded this will be an empty range (0-0).
+    pub processed_block_range: BlockRange,
 
     /// The cumulative txo count of the last known block.
     pub last_known_block_cumulative_txo_count: u64,
