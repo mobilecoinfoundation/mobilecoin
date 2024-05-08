@@ -228,8 +228,6 @@ spec:
         projected:
           sources:
           - configMap:
-              name: {{ include "fog-ingest.fullname" . }}-supervisord-sgx
-          - configMap:
               name: {{ include "fog-ingest.fullname" . }}-supervisord-daemon
           - configMap:
               name: {{ include "fog-ingest.fullname" . }}-supervisord-fog-ingest

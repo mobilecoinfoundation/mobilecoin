@@ -229,8 +229,6 @@ spec:
               projected:
                 sources:
                 - configMap:
-                    name: {{ include "fog-ledger.fullname" $ }}-supervisord-sgx
-                - configMap:
                     name: {{ include "fog-ledger.fullname" $ }}-supervisord-daemon
                 - configMap:
                     name: {{ include "fog-ledger.fullname" $ }}-supervisord-fog-ledger-router
@@ -429,8 +427,6 @@ spec:
           - name: supervisor-conf
             projected:
               sources:
-              - configMap:
-                  name: {{ include "fog-ledger.fullname" $ }}-supervisord-sgx
               - configMap:
                   name: {{ include "fog-ledger.fullname" $ }}-supervisord-daemon
               - configMap:
