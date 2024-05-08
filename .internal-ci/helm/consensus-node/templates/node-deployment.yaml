@@ -88,7 +88,7 @@ spec:
             command:
             - '/usr/local/bin/grpc_health_probe'
             - '-addr=:8443'
-          failureThreshold: 120
+          failureThreshold: {{ .Values.startupProbe.failureThreshold }}
           periodSeconds: 30
           initialDelaySeconds: 30
         envFrom:
