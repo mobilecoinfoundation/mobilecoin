@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[derive(Debug, Parser)]
 #[clap(
     name = "ledger_from_archive",
-    about = "Create local ledger db from archive."
+    about = "Create, or update, local ledger db from archive."
 )]
 pub struct LedgerFromArchiveConfig {
     /// Path to ledger db (lmdb).

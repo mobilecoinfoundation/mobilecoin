@@ -5,10 +5,11 @@
 
 mod config;
 
+use std::path::Path;
 use clap::Parser;
 use config::LedgerFromArchiveConfig;
-use mc_common::logger::{create_app_logger, log, o};
-use mc_ledger_db::{create_ledger_in, Ledger};
+use mc_common::logger::{create_app_logger, log, Logger, o};
+use mc_ledger_db::{create_ledger_in, Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 
 fn main() {
@@ -21,24 +22,10 @@ fn main() {
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    log::info!(
-        logger,
-        "Creating local ledger at {}",
-        config.ledger_db.display()
-    );
-    let mut local_ledger = create_ledger_in(&config.ledger_db);
-
-    // Sync Origin Block
-    log::info!(logger, "Getting origin block");
-    let block_data = transactions_fetcher
-        .get_origin_block_and_transactions()
-        .expect("Could not retrieve origin block");
-    local_ledger
-        .append_block_data(&block_data)
-        .expect("Could not append origin block to ledger");
+    let mut local_ledger = ledger_db(&logger, config.ledger_db, &transactions_fetcher);
 
     // Sync all blocks
-    let mut block_index = 1;
+    let mut block_index = local_ledger.num_blocks().expect("Should have blocks in the ledger");
     loop {
         if let Some(block_limit) = config.num_blocks {
             if block_index >= block_limit {
@@ -72,4 +59,34 @@ fn main() {
         }
         block_index += 1;
     }
+}
+
+fn ledger_db(logger: &Logger, ledger_path: impl AsRef<Path>, transactions_fetcher: &ReqwestTransactionsFetcher) -> LedgerDB {
+    match ledger_path.as_ref().exists() {
+        true => {
+            log::info!(logger, "Opening existing ledger at {}", ledger_path.as_ref().display());
+            LedgerDB::open(ledger_path.as_ref()).expect("Could not open existing ledger")
+        }
+        false => create_ledger_db(logger, ledger_path, transactions_fetcher)
+    }
+}
+
+fn create_ledger_db(logger: &Logger, ledger_path: impl AsRef<Path>, transactions_fetcher: &ReqwestTransactionsFetcher) -> LedgerDB {
+    let ledger_path = ledger_path.as_ref();
+    log::info!(
+        logger,
+        "Creating local ledger at {}",
+        ledger_path.display()
+    );
+    let mut local_ledger = create_ledger_in(ledger_path);
+
+    // Sync Origin Block
+    log::info!(logger, "Getting origin block");
+    let block_data = transactions_fetcher
+        .get_origin_block_and_transactions()
+        .expect("Could not retrieve origin block");
+    local_ledger
+        .append_block_data(&block_data)
+        .expect("Could not append origin block to ledger");
+    local_ledger
 }
