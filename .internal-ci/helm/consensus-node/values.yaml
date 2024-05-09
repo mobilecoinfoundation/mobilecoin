@@ -46,6 +46,10 @@ node:
 
   initContainers: []
 
+  startupProbe:
+    # wait 2 hours on startup
+    failureThreshold: 240
+
   persistence:
     enabled: true
     spec:
