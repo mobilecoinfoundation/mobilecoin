@@ -68,14 +68,16 @@ fn ledger_db(
     ledger_path: impl AsRef<Path>,
     transactions_fetcher: &ReqwestTransactionsFetcher,
 ) -> LedgerDB {
-    match ledger_path.as_ref().exists() {
+    let ledger_path = ledger_path.as_ref();
+    let db_file = ledger_path.join("data.mdb");
+    match db_file.exists() {
         true => {
             log::info!(
                 logger,
                 "Opening existing ledger at {}",
-                ledger_path.as_ref().display()
+                ledger_path.display()
             );
-            LedgerDB::open(ledger_path.as_ref()).expect("Could not open existing ledger")
+            LedgerDB::open(ledger_path).expect("Could not open existing ledger")
         }
         false => create_ledger_db(logger, ledger_path, transactions_fetcher),
     }
