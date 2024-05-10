@@ -64,6 +64,9 @@ node:
     clientHostname: ''
     peerHostname: ''
     blockVersion: '4'
+    # When true we don't start the consensus or ledger-distribution services,
+    # just run ledger-from-archive and wait.
+    ledgerFromArchiveOnly: false
 
   ingress:
     enabled: true
