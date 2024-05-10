@@ -33,7 +33,7 @@ tokio = { version = "1", features = ["rt-multi-thread"] }
 url = "2.5"
 
 [dev-dependencies]
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
 tempfile = "3"
-mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 walkdir = "2"
