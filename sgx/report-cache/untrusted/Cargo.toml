@@ -20,4 +20,4 @@ mc-sgx-dcap-ql = "0.11.0"
 mc-sgx-dcap-quoteverify = "0.11.0"
 mc-sgx-dcap-types = "0.11.0"
 mc-sgx-report-cache-api = { path = "../api" }
-mc-util-metrics = { path = "../../../util/metrics" }
+mc-util-metrics = { path = "../../../util/metrics", default-features = false }
