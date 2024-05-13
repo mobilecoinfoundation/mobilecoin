@@ -7,7 +7,7 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::logger::{create_app_logger, log, o, Logger};
@@ -15,8 +15,8 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use protobuf::Message;
 use retry::{delay, retry, OperationResult};
-use rusoto_core::Region;
-use rusoto_s3::{PutObjectRequest, S3Client, S3};
+use rusoto_core::{Region, RusotoError};
+use rusoto_s3::{HeadObjectError, HeadObjectRequest, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 use tokio::runtime::Handle;
@@ -27,20 +27,8 @@ pub trait BlockHandler {
     fn write_single_block(&mut self, block_data: &BlockData);
     /// Write multiple blocks, possibly merged.
     fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]);
-}
-
-/// Block to start syncing from.
-#[derive(ValueEnum, Clone, Debug)]
-pub enum StartFrom {
-    /// Start from the origin block.
-    Zero,
-
-    /// Sync new blocks only, skipping all blocks initially in the ledger.
-    Next,
-
-    /// Start from the last block we successfully synced (stored inside a state
-    /// file).
-    Last,
+    /// Returns true if the `block_index` exists in the destination.
+    fn block_exists(&self, block_index: BlockIndex) -> bool;
 }
 
 /// Configuration for ledger distribution.
@@ -57,14 +45,6 @@ pub struct Config {
     /// Destination to upload to.
     #[clap(long = "dest", env = "MC_DEST")]
     pub destination: Uri,
-
-    /// Block to start from.
-    #[clap(value_enum, long, default_value = "zero", env = "MC_START_FROM")]
-    pub start_from: StartFrom,
-
-    /// State file, defaults to ~/.mc-ledger-distribution-state
-    #[clap(long, env = "MC_STATE_FILE")]
-    pub state_file: Option<PathBuf>,
 
     /// Merged blocks bucket sizes. Use 0 to disable.
     #[clap(
@@ -203,6 +183,45 @@ impl BlockHandler for S3BlockWriter {
                 .expect("failed to serialize ArchiveBlocks"),
         );
     }
+
+    fn block_exists(&self, block_index: BlockIndex) -> bool {
+        let runtime = Handle::current();
+        let result = retry(
+            delay::Exponential::from_millis_with_base_factor(10).map(delay::jitter),
+            || {
+                let dest = self.path.join(block_num_to_s3block_path(block_index));
+
+                let dir = dest
+                    .parent()
+                    .expect("failed getting parent")
+                    .to_string_lossy();
+                let filename = dest
+                    .file_name()
+                    .expect("Failed getting the file name")
+                    .to_string_lossy();
+                let req = HeadObjectRequest {
+                    bucket: dir.into(),
+                    key: filename.into(),
+                    ..Default::default()
+                };
+                log::info!(self.logger, "Checking for existence of block {block_index}");
+
+                let result = runtime.block_on(self.s3_client.head_object(req));
+                match result {
+                    Ok(_) => OperationResult::Ok(true),
+                    Err(RusotoError::Service(HeadObjectError::NoSuchKey(_))) => {
+                        OperationResult::Ok(false)
+                    }
+                    Err(e) => {
+                        log::warn!(self.logger, "Failed to talk to S3 {e:?}, retrying...");
+                        OperationResult::Retry(e)
+                    }
+                }
+            },
+        );
+
+        result.expect("Stopped retrying getting block existence from S3")
+    }
 }
 
 /// Local directory block writer.
@@ -288,6 +307,12 @@ impl BlockHandler for LocalBlockWriter {
             )
         });
     }
+
+    fn block_exists(&self, block_index: BlockIndex) -> bool {
+        log::info!(self.logger, "Checking for existence of block {block_index}");
+        let dest = self.path.join(block_num_to_s3block_path(block_index));
+        dest.exists()
+    }
 }
 
 // Implements the ledger db polling loop
@@ -307,45 +332,9 @@ fn main() {
         .expect("tokio runtime");
     let _enter_guard = runtime.enter();
 
-    // Get path to our state file.
-    let state_file_path = config.state_file.clone().unwrap_or_else(|| {
-        let mut home_dir = dirs::home_dir().unwrap_or_else(|| panic!("Unable to get home directory, please specify state file explicitly with --state-file"));
-        home_dir.push(".mc-ledger-distribution-state");
-        home_dir
-    });
-
-    log::info!(logger, "State file is {:?}", state_file_path);
-
     // Open ledger
     log::info!(logger, "Opening ledger db {:?}", config.ledger_path);
     let ledger_db = LedgerDB::open(&config.ledger_path).expect("Could not read ledger DB");
-
-    // Figure out the first block to sync from.
-    let first_desired_block = match config.start_from {
-        // Sync from the beginning of the ledger.
-        StartFrom::Zero => 0,
-
-        // Sync from the next block in the current ledger.
-        StartFrom::Next => ledger_db
-            .num_blocks()
-            .expect("Failed getting number of blocks in ledger"),
-
-        // Sync from the last attempted block, according to a previous state file.
-        StartFrom::Last => {
-            // See if the state file exists and read it if it does.
-            if state_file_path.as_path().exists() {
-                let file_data = fs::read_to_string(&state_file_path).unwrap_or_else(|e| {
-                    panic!("Failed reading state file {state_file_path:?}: {e:?}")
-                });
-                let state_data: StateData = serde_json::from_str(&file_data).unwrap_or_else(|e| {
-                    panic!("Failed parsing state file {state_file_path:?}: {e:?}")
-                });
-                state_data.next_block
-            } else {
-                0
-            }
-        }
-    };
 
     // Create block handler
     let mut block_handler: Box<dyn BlockHandler> = match config.destination.destination {
@@ -360,13 +349,13 @@ fn main() {
         }
     };
 
+    let mut next_block_num = first_block_to_handle(&ledger_db, block_handler.as_ref());
+
     // Poll ledger for new blocks and process them as they come.
     log::info!(
         logger,
-        "Polling for blocks, starting at {}...",
-        first_desired_block
+        "Polling for blocks, starting at {next_block_num}..."
     );
-    let mut next_block_num = first_desired_block;
     let tracer = tracer!();
 
     loop {
@@ -420,15 +409,83 @@ fn main() {
             }
 
             next_block_num += 1;
-
-            let state = StateData {
-                next_block: next_block_num,
-            };
-            let json_data = serde_json::to_string(&state).expect("failed serializing state data");
-            fs::write(&state_file_path, json_data).expect("failed writing state file");
         }
 
         // TODO: make this configurable
         std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
+fn first_block_to_handle(ledger_db: &LedgerDB, block_handler: &dyn BlockHandler) -> u64 {
+    let num_blocks = ledger_db
+        .num_blocks()
+        .expect("Failed to get the number of blocks from the ledger database");
+    let last_upload_block = (0..num_blocks)
+        .rev()
+        .find(|block_index| block_handler.block_exists(*block_index));
+    match last_upload_block {
+        Some(last_upload_block) => last_upload_block + 1,
+        None => 0,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use mc_blockchain_types::BlockVersion;
+    use mc_common::logger::test_with_logger;
+    use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
+    use mc_transaction_core::AccountKey;
+    use mc_util_test_helper::{RngType, SeedableRng};
+    use std::path::Path;
+    use tempfile::TempDir;
+    use walkdir::WalkDir;
+
+    fn number_of_files_in_directory(directory: impl AsRef<Path>) -> u64 {
+        WalkDir::new(directory)
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().is_file())
+            .count()
+            .try_into()
+            .unwrap()
+    }
+
+    #[test_with_logger]
+    fn finding_first_block_to_distribute(logger: Logger) {
+        let mut rng = RngType::from_seed([0u8; 32]);
+        let key = AccountKey::random(&mut rng);
+
+        // Note: Number of blocks is one more than the block index.
+        // block indices (0, 1, 2, 3, 4) => number of blocks = 5
+        let number_of_blocks = 5;
+        let mut ledger = create_ledger();
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger,
+            number_of_blocks,
+            &key,
+            &mut rng,
+        );
+
+        let temp_dir = TempDir::new().unwrap();
+        let distribution_path = temp_dir.path();
+        let mut block_handler = LocalBlockWriter::new(distribution_path.into(), logger);
+
+        for expected_block_count in [0, 1, 3, 5] {
+            // Note: the `0` case won't write any blocks.
+            // This will always re-write the blocks, but that's fine for this test.
+            for block_index in 0..expected_block_count {
+                block_handler.write_single_block(&ledger.get_block_data(block_index).unwrap());
+            }
+            assert_eq!(
+                first_block_to_handle(&ledger, &block_handler),
+                expected_block_count
+            );
+            assert_eq!(
+                number_of_files_in_directory(distribution_path),
+                expected_block_count
+            );
+        }
     }
 }

@@ -18,10 +18,10 @@
 # MC_CLIENT_RESPONDER_ID - fully qualified name:port that fronts the client port
 #   example client1.test.mobilecoin.com:443
 # MC_MSG_SIGNER_KEY - private key for signing messages
-
-# Optional Vars consensus-service
 # MC_TX_SOURCE_URL - http url to retrieve archive (s3) blocks for node
 #   example https://s3-eu-central-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
+
+# Optional Vars consensus-service
 # MC_PEER_LISTEN_URI
 #   default insecure-mcp://0.0.0.0:8443/
 #   tls example mcp://0.0.0.0:8443/?tls-chain=cert.pem&tls-key=key.pem
@@ -44,7 +44,6 @@
 # Required Vars ledger-distribution
 # MC_DEST - s3 path for publish ledger
 #   example s3://mobilecoin.chain/node1.test.mobilecoin.com?region=eu-central-1
-
 # AWS_ACCESS_KEY_ID - standard AWS vars
 # AWS_SECRET_ACCESS_KEY - standard AWS vars
 # AWS_REGION - standard AWS vars
@@ -66,7 +65,7 @@ set -e
 is_set()
 {
     var_name="${1}"
-    if [ -z "${!var_name}" ]
+    if [[ -z "${!var_name}" ]]
     then
         echo "${var_name} is not set."
         exit 1
@@ -107,6 +106,7 @@ then
     is_set AWS_ACCESS_KEY_ID
     is_set AWS_SECRET_ACCESS_KEY
     is_set AWS_REGION
+    is_set MC_TX_SOURCE_URL
 
     # Enable filebeat if provided with ElasticSearch target vars.
     if [[ -n "${ES_HOST}" ]]
@@ -127,51 +127,65 @@ then
     # Ledger
     echo "Bootstrapping ledger database"
 
-    # Optional Vars
+    # Required Var
     # MC_TX_SOURCE_URL - http source to retrieve block data.
 
     # Default vars
     export MC_LEDGER_PATH=${MC_LEDGER_PATH:-"/ledger"}
-    export MC_STATE_FILE=${MC_STATE_FILE:-"/ledger/.distribution-state"}
     export ORIGIN_LEDGER_PATH=${ORIGIN_LEDGER_PATH:-"/var/lib/mobilecoin/origin_data/data.mdb"}
 
+    # if the ledger exists lets make sure its up to date
     if [[ -f "${MC_LEDGER_PATH}/data.mdb" ]]
     then
         echo "Existing database found at ${MC_LEDGER_PATH}/data.mdb"
         echo "Migrating ledger to latest version"
         /usr/bin/mc-ledger-migration --ledger-db "${MC_LEDGER_PATH}"
-    else
-        # Try to find origin block from s3 archive - preserve existing data, testnet/mainnet
-        if archive_curl "${MC_TX_SOURCE_URL}"
-        then
-            echo "Remote archive ledger found - restore with ledger-from-archive"
-            echo "  Note: RUST_LOG=warn so we don't get 1m+ lines of logs"
-            echo "  Please be patient"
-
-            RUST_LOG=warn /usr/bin/ledger-from-archive --ledger-db "${MC_LEDGER_PATH}"
-
-        # Copy ledger from embedded origin block
-        elif [[ -f "${ORIGIN_LEDGER_PATH}" ]]
-        then
-            echo "Found origin ledger at ${ORIGIN_LEDGER_PATH}"
-            cp "${ORIGIN_LEDGER_PATH}" "${MC_LEDGER_PATH}"
-
-        # Look for wallet keys seed - development and CD deploys
-        elif [[ -n "${INITIAL_KEYS_SEED}" ]]
-        then
-            echo "INITIAL_KEYS_SEED found - populating origin data"
-            export INITIALIZE_LEDGER="true"
-
-            /usr/local/bin/generate_origin_data.sh
-
-            cp /tmp/sample_data/ledger/data.mdb "${MC_LEDGER_PATH}"
-
-        else
-            # We ain't found nothin, bail out!
-            echo "INITIAL_KEYS_SEED not set, no remote ledger and cannot find origin ledger file"
-            exit 1
-        fi
     fi
+
+    echo "Will attempt to restore or generate ledger from origin block or seed."
+    echo " - Check for origin block at ${MC_TX_SOURCE_URL:?}"
+    echo " - Check for origin ledger at ${ORIGIN_LEDGER_PATH}"
+    echo " - Check for seeds in INITIAL_KEYS_SEED variable"
+
+    # shellcheck disable=SC2310 # if archive_curl fails we want to do other logic not just exit
+    if archive_curl "${MC_TX_SOURCE_URL}"
+    then
+        echo "Remote archive ledger found - restore or update ledger with ledger-from-archive"
+        echo "  Note: RUST_LOG=warn so we don't get 1m+ lines of logs"
+        echo "  Please be patient"
+
+        RUST_LOG=warn /usr/bin/ledger-from-archive --ledger-db "${MC_LEDGER_PATH}"
+
+        # We just want to warm up the ledger storage.
+        # Wait here looping over ledger-from-archive until we are ready to start the node.
+        while [[ -n "${MC_LEDGER_FROM_ARCHIVE_ONLY}" ]]
+        do
+            echo "We are in ledger warm up mode - sleeping 5m before we run ledger-from-archive again."
+            echo "Stop the container and unset MC_LEDGER_FROM_ARCHIVE_ONLY to start the node."
+            sleep 300
+            RUST_LOG=info /usr/bin/ledger-from-archive --ledger-db "${MC_LEDGER_PATH}"
+        done
+
+    elif [[ -f "${ORIGIN_LEDGER_PATH}" ]]
+    then
+        echo "Found origin ledger at ${ORIGIN_LEDGER_PATH}"
+        cp "${ORIGIN_LEDGER_PATH}" "${MC_LEDGER_PATH}"
+
+    elif [[ -n "${INITIAL_KEYS_SEED}" ]]
+    then
+        echo "INITIAL_KEYS_SEED found - populating origin data"
+        export INITIALIZE_LEDGER="true"
+
+        /usr/local/bin/generate_origin_data.sh
+
+        cp /tmp/sample_data/ledger/data.mdb "${MC_LEDGER_PATH}"
+
+    else
+        # We ain't found nothin, bail out!
+        echo "no remote ledger, cannot find origin ledger file and INITIAL_KEYS_SEED not set"
+        exit 1
+    fi
+
 fi
 
 # Run with docker command - probably /usr/bin/supervisord
