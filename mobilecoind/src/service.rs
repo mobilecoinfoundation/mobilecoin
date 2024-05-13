@@ -2435,8 +2435,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let local_block_index = num_blocks - 1;
 
-        // Get LastBlockInfo from our peers
-        let block_infos = self.get_last_block_infos();
+        // Get LastBlockInfo from our peers - this is the same code as
+        // `self.get_last_block_infos` but avoids locking the same rwlock twice from the same thread (see potential deadlock scenario example in https://doc.rust-lang.org/std/sync/struct.RwLock.html).
+        let block_infos = network_state
+            .peer_to_block_info()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
         // choose the block info which is latest in terms of block index (we may be
         // isolated from some of the nodes)
         let last_block_info = block_infos
