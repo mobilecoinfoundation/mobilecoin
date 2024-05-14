@@ -66,5 +66,4 @@ EXPOSE 8443
 # Volumes
 VOLUME /config
 VOLUME /sealed
-VOLUME /var/run/aesmd
 VOLUME /ledger
