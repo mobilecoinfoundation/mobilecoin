@@ -17,6 +17,7 @@ impl From<&Block> for blockchain::Block {
         block.set_cumulative_txo_count(other.cumulative_txo_count);
         block.set_root_element((&other.root_element).into());
         block.set_contents_hash(blockchain::BlockContentsHash::from(&other.contents_hash));
+        block.set_timestamp(other.timestamp);
         block
     }
 }
@@ -39,6 +40,7 @@ impl TryFrom<&blockchain::Block> for Block {
             cumulative_txo_count: value.cumulative_txo_count,
             root_element,
             contents_hash,
+            timestamp: value.timestamp,
         };
         Ok(block)
     }
@@ -65,6 +67,7 @@ mod tests {
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
             contents_hash: BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+            timestamp: 357,
         };
 
         let block = blockchain::Block::from(&source_block);
@@ -77,6 +80,7 @@ mod tests {
         assert_eq!(block.get_root_element().get_range().get_to(), 20);
         assert_eq!(block.get_root_element().get_hash().get_data(), &[12u8; 32]);
         assert_eq!(block.get_contents_hash().get_data(), [66u8; 32]);
+        assert_eq!(block.get_timestamp(), 357);
     }
 
     #[test]
@@ -103,6 +107,7 @@ mod tests {
         source_block.set_index(2);
         source_block.set_root_element(root_element);
         source_block.set_contents_hash(contents_hash);
+        source_block.set_timestamp(411);
 
         let block = Block::try_from(&source_block).unwrap();
         assert_eq!(block.id.as_ref(), [10u8; 32]);
@@ -113,6 +118,7 @@ mod tests {
         assert_eq!(block.root_element.range.to, 20);
         assert_eq!(block.root_element.hash.as_ref(), &[13u8; 32]);
         assert_eq!(block.contents_hash.as_ref(), [66u8; 32]);
+        assert_eq!(block.timestamp, 411);
     }
 
     #[test]
@@ -131,6 +137,7 @@ mod tests {
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
             contents_hash: BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+            timestamp: 911,
         };
 
         // Encode using `protobuf`, decode using `prost`.
