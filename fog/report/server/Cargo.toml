@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-server"
-version = "6.0.0"
+version = "6.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -30,7 +30,7 @@ mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-uri = { path = "../../../util/uri" }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
 grpcio = "0.13"

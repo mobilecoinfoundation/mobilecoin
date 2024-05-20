@@ -8,6 +8,7 @@ use crate::{
     monitor_store::{MonitorData, MonitorId, MonitorStore},
     processed_block_store::{ProcessedBlockStore, ProcessedTxOut},
     subaddress_store::{SubaddressId, SubaddressSPKId, SubaddressStore},
+    t3_store::T3Store,
     utxo_store::{UtxoId, UtxoStore},
 };
 
@@ -17,6 +18,7 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
+use mc_t3_api::TransparentTransaction;
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use std::{path::Path, sync::Arc};
@@ -63,6 +65,9 @@ pub struct Database {
     /// Processed block store.
     processed_block_store: ProcessedBlockStore,
 
+    /// T3 store.
+    t3_store: T3Store,
+
     /// Logger.
     logger: Logger,
 }
@@ -71,7 +76,7 @@ impl Database {
     pub fn new<P: AsRef<Path>>(path: P, logger: Logger) -> Result<Self, Error> {
         let env = Arc::new(
             Environment::new()
-                .set_max_dbs(10)
+                .set_max_dbs(13)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 .open(path.as_ref())?,
         );
@@ -97,6 +102,7 @@ impl Database {
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
         let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
+        let t3_store = T3Store::new(env.clone(), logger.clone())?;
 
         Ok(Self {
             env,
@@ -105,6 +111,7 @@ impl Database {
             subaddress_store,
             utxo_store,
             processed_block_store,
+            t3_store,
             logger,
         })
     }
@@ -275,6 +282,8 @@ impl Database {
         for utxo in discovered_utxos {
             self.utxo_store
                 .append_utxo(&mut db_txn, monitor_id, utxo.subaddress_index, utxo)?;
+            self.t3_store
+                .process_utxo(&mut db_txn, monitor_id, &self.monitor_store, utxo)?;
         }
 
         // Remove spent utxos
@@ -349,6 +358,21 @@ impl Database {
 
         self.processed_block_store
             .get_processed_block(&db_txn, monitor_id, block_num)
+    }
+
+    /// Get the next transparent transaction that needs to be synced to t3.
+    /// Additionally return its index so it can then be removed.
+    pub fn dequeue_transparent_tx(&self) -> Result<Option<(u64, TransparentTransaction)>, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.t3_store.dequeue_transparent_tx(&db_txn)
+    }
+
+    /// Remove a transparent transaction from the queue.
+    pub fn remove_transparent_tx(&self, index: u64) -> Result<(), Error> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+        self.t3_store.remove_transparent_tx(&mut db_txn, index)?;
+        db_txn.commit()?;
+        Ok(())
     }
 }
 

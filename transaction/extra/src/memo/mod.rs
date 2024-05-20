@@ -48,7 +48,7 @@
 //! | 0x0204          | Destination With Payment Intent Id Memo           |
 
 pub use self::{
-    authenticated_common::{compute_authenticated_sender_memo, compute_category1_hmac},
+    authenticated_common::compute_authenticated_sender_memo,
     authenticated_sender::AuthenticatedSenderMemo,
     authenticated_sender_with_payment_intent_id::AuthenticatedSenderWithPaymentIntentIdMemo,
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,

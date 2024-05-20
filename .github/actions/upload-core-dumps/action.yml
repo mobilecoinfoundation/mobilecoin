@@ -5,8 +5,8 @@ runs:
   using: composite
   steps:
     - name: Upload core dumps
-      uses: actions/upload-artifact@v3
+      uses: mobilecoinofficial/gh-actions/upload-artifact@v0
       with:
-        name: core_dumps
+        name: ${{ github.job }}_core_dumps
         path: core*
         if-no-files-found: ignore

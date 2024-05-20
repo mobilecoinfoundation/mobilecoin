@@ -13,6 +13,7 @@ use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
+use mc_t3_api::T3Uri;
 use mc_util_parse::{load_css_file, parse_duration_in_seconds};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
@@ -98,6 +99,20 @@ pub struct Config {
     /// An authorization token for the ipinfo.io service, if available
     #[clap(long, env = "MC_IP_INFO_TOKEN", default_value = "")]
     pub ip_info_token: String,
+
+    /// Optional T3 URI. When provided, reporting to T3 will be enabled
+    #[clap(
+        long,
+        env = "T3_URI",
+        requires = "t3_api_key",
+        requires = "mobilecoind_db",
+        conflicts_with = "offline"
+    )]
+    pub t3_uri: Option<T3Uri>,
+
+    /// T3 API Key
+    #[clap(long, env = "T3_API_KEY", requires = "t3_uri")]
+    pub t3_api_key: Option<String>,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {

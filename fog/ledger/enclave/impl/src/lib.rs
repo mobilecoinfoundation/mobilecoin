@@ -32,14 +32,25 @@ use mc_fog_ledger_enclave_api::{
     Error, KeyImageData, KeyImageResult, LedgerEnclave, OutputContext, Result,
     UntrustedKeyImageQueryResponse,
 };
-use mc_fog_types::ledger::{
-    CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
+use mc_fog_types::{
+    common::BlockRange,
+    ledger::{
+        CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
+    },
 };
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
+use serde::{Deserialize, Serialize};
 
 mod oblivious_utils;
+
+#[derive(Debug, Serialize, Deserialize)]
+/// Response from a shard enclave to a router enclave for the key image query
+struct ShardKeyImageResponse {
+    untrusted_response: UntrustedKeyImageQueryResponse,
+    results: Vec<KeyImageResult>,
+}
 
 /// In-enclave state associated to the ledger enclaves
 pub struct SgxLedgerEnclave<OSC>
@@ -161,7 +172,11 @@ where
         })?;
 
         let mut resp = CheckKeyImagesResponse {
-            num_blocks: untrusted_key_image_query_response.highest_processed_block_count,
+            // `num_blocks` is a count, `end_block` is an exclusive index.
+            // A block range of [0, 5) would have a count of 5 blocks.
+            num_blocks: untrusted_key_image_query_response
+                .processed_block_range
+                .end_block,
             results: Default::default(),
             global_txo_count: untrusted_key_image_query_response
                 .last_known_block_cumulative_txo_count,
@@ -252,40 +267,32 @@ where
             .into_iter()
             .map(|(responder_id, query_response)| {
                 let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &query_response)?;
-                let query_response: CheckKeyImagesResponse =
-                    mc_util_serial::decode(&plaintext_bytes)?;
+                let query_response: ShardKeyImageResponse =
+                    mc_util_serial::deserialize(&plaintext_bytes)?;
 
                 Ok(query_response)
             })
-            .collect::<Result<Vec<CheckKeyImagesResponse>>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
-        let num_blocks = shard_query_responses
-            .iter()
-            .map(|query_response| query_response.num_blocks)
-            .min()
-            .expect("this is only None when the iterator is empty but we early-exit in that case");
-        let global_txo_count = shard_query_responses
-            .iter()
-            .map(|query_response| query_response.global_txo_count)
-            .min()
-            .expect("this is only None when the iterator is empty but we early-exit in that case");
-        let latest_block_version = shard_query_responses
-            .iter()
-            .map(|query_response| query_response.latest_block_version)
-            .max()
-            .expect("this is only None when the iterator is empty but we early-exit in that case");
+        let untrusted_response =
+            merge_untrusted_responses(shard_query_responses.iter().map(|r| &r.untrusted_response));
 
-        let plaintext_results: Vec<KeyImageResult> = shard_query_responses
+        // `num_blocks` is a count, `end_block` is an exclusive index.
+        // A block range of [0, 5) would have a count of 5 blocks.
+        let num_blocks = untrusted_response.processed_block_range.end_block;
+        let global_txo_count = untrusted_response.last_known_block_cumulative_txo_count;
+        let latest_block_version = untrusted_response.latest_block_version;
+        let max_block_version = max(latest_block_version, *MAX_BLOCK_VERSION);
+
+        let plaintext_results = shard_query_responses
             .into_iter()
             .flat_map(|query_response| query_response.results)
-            .collect();
+            .collect::<Vec<_>>();
 
         let oblivious_results = oblivious_utils::collate_shard_key_image_search_results(
             client_query_request.queries,
             &plaintext_results,
         );
-
-        let max_block_version = max(latest_block_version, *MAX_BLOCK_VERSION);
 
         let client_query_response = CheckKeyImagesResponse {
             num_blocks,
@@ -315,13 +322,9 @@ where
             Error::ProstDecode
         })?;
 
-        let mut resp = CheckKeyImagesResponse {
-            num_blocks: untrusted_key_image_query_response.highest_processed_block_count,
+        let mut resp = ShardKeyImageResponse {
+            untrusted_response: untrusted_key_image_query_response,
             results: Default::default(),
-            global_txo_count: untrusted_key_image_query_response
-                .last_known_block_cumulative_txo_count,
-            latest_block_version: untrusted_key_image_query_response.latest_block_version,
-            max_block_version: untrusted_key_image_query_response.max_block_version,
         };
 
         {
@@ -336,7 +339,7 @@ where
         }
 
         // Encrypt for return to router
-        let response_plaintext_bytes = mc_util_serial::encode(&resp);
+        let response_plaintext_bytes = mc_util_serial::serialize(&resp)?;
         let response = self
             .ake
             .frontend_encrypt(&channel_id, &[], &response_plaintext_bytes)?;
@@ -352,14 +355,59 @@ where
     }
 }
 
+fn merge_untrusted_responses<'a>(
+    untrusted_responses: impl IntoIterator<Item = &'a UntrustedKeyImageQueryResponse>,
+) -> UntrustedKeyImageQueryResponse {
+    let default_response = UntrustedKeyImageQueryResponse {
+        processed_block_range: BlockRange::new(0, 0),
+        last_known_block_cumulative_txo_count: 0,
+        latest_block_version: 0,
+        max_block_version: 0,
+    };
+
+    let mut untrusted_responses = [default_response]
+        .into_iter()
+        .chain(untrusted_responses.into_iter().cloned())
+        .collect::<Vec<_>>();
+
+    untrusted_responses.sort_by(|a, b| a.processed_block_range.cmp(&b.processed_block_range));
+
+    // This logic will remove fully contained overlaps. For example:
+    //   5-----------------20      Range 1
+    //       12--------15          Range 2
+    // The second range is fully contained in the first, so it is removed. This
+    // could happen in instances when the shards overlap but the newer shard is
+    // still catching up
+
+    // Note that
+    // [`dedup_by`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by)
+    // states:
+    // > The elements are passed in opposite order from their order in the slice
+    untrusted_responses
+        .dedup_by(|a, b| a.processed_block_range.end_block <= b.processed_block_range.end_block);
+
+    let (index, block_range) =
+        BlockRange::merge_from_ranges(untrusted_responses.iter().map(|r| &r.processed_block_range))
+            .expect(
+                "Failed to merge block ranges, shouldn't happen, we always pass 1 valid range in",
+            );
+
+    let mut untrusted_response = untrusted_responses[index].clone();
+    untrusted_response.processed_block_range = block_range;
+    untrusted_response
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use key_image_store::KeyImageStore;
     use mc_common::logger::create_root_logger;
     use mc_fog_ledger_enclave_api::KeyImageData;
     use mc_oblivious_traits::HeapORAMStorageCreator;
     use mc_transaction_core::ring_signature::KeyImage;
+    use yare::parameterized;
+
     // Test that we were able to add key image record to the oram
     #[test]
     fn test_add_record() {
@@ -456,5 +504,48 @@ mod tests {
             v_keyimagenotfound.key_image_result_code,
             mc_fog_types::ledger::KeyImageResultCode::NotSpent as u32
         );
+    }
+
+    type UntrustedResponseTuple = ((u64, u64), u64, u32, u32);
+    #[parameterized(
+        all_consecutive = { vec![((0, 5), 15, 0, 0), ((5, 8), 24, 1, 2)], ((0, 8), 24, 1, 2) },
+
+        // `merge_untrusted_responses()` will force a range from (0, 0] so this
+        // response with (1, 8] will be a gap and won't be merged resulting in
+        // a (0, 0] response
+        gap_at_start_block = { vec![((1, 8), 24, 1, 2)], ((0, 0), 0, 0, 0) },
+        gap_in_middle = { vec![((0, 5), 15, 0, 0), ((8, 10), 24, 1, 2)], ((0, 5), 15, 0, 0) },
+        contained_overlap_before = { vec![((5, 8), 24, 1, 2), ((0, 10), 30, 3, 3)], ((0, 10), 30, 3, 3) },
+        contained_overlap_after = { vec![((0, 10), 30, 3, 3), ((5, 8), 24, 1, 2)], ((0, 10), 30, 3, 3) },
+        contained_overlap_intermediate = { vec![((0, 10), 30, 3, 3), ((5, 8), 24, 1, 2), ((7, 12), 36, 4, 4)], ((0, 12), 36, 4, 4) },
+        unsorted = { vec![((5, 8), 24, 1, 2), ((8, 10), 30, 2, 3), ((0, 5), 15, 0, 0)], ((0, 10), 30, 2, 3) },
+        none = { vec![], ((0, 0), 0, 0, 0) },
+    )]
+    fn merge_the_untrusted_responses(
+        untrusted_responses: Vec<UntrustedResponseTuple>,
+        expected_response: UntrustedResponseTuple,
+    ) {
+        let untrusted_responses = untrusted_responses
+            .iter()
+            .map(
+                |(block_range, txo_count, latest_block_version, max_block_version)| {
+                    UntrustedKeyImageQueryResponse {
+                        processed_block_range: BlockRange::new(block_range.0, block_range.1),
+                        last_known_block_cumulative_txo_count: *txo_count,
+                        latest_block_version: *latest_block_version,
+                        max_block_version: *max_block_version,
+                    }
+                },
+            )
+            .collect::<Vec<_>>();
+
+        let expected = UntrustedKeyImageQueryResponse {
+            processed_block_range: BlockRange::new(expected_response.0 .0, expected_response.0 .1),
+            last_known_block_cumulative_txo_count: expected_response.1,
+            latest_block_version: expected_response.2,
+            max_block_version: expected_response.3,
+        };
+
+        assert_eq!(merge_untrusted_responses(&untrusted_responses), expected);
     }
 }

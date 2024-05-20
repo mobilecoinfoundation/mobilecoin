@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Database storage for discovered outputs.
 //! * Manages the mapping of (monitor id, subaddress index) -> [UnspentTxOut]s.
@@ -60,6 +60,12 @@ pub struct UnspentTxOut {
     /// The token id of this TxOut
     #[prost(uint64, tag = "7")]
     pub token_id: u64,
+
+    /// The (decrypted) MemoPayload of this TxOut
+    // Note: This is stored as raw bytes so that if we later extend the list of defined memos,
+    // mobilecoind can interpret the new memos without having to rescan and rebuild the db.
+    #[prost(bytes, tag = "8")]
+    pub memo_payload: Vec<u8>,
 }
 
 /// Type used as the key in the utxo_id_to_utxo  database.
@@ -511,6 +517,7 @@ mod test {
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                     token_id: *Mob::ID,
+                    memo_payload: vec![],
                 }
             })
             .collect();

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "6.0.0"
+version = "6.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -51,13 +51,13 @@ mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 # third-party
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.13"
 itertools = "0.12"
 lazy_static = "1.4"
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 prometheus = "0.13"
 rand = "0.8"
 retry = "2.0"
@@ -89,7 +89,8 @@ mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 portpicker = "0.1.1"
 sha2 = "0.10"
+stdext = "0.3"
 
 # third-party
-tempfile = "3.9"
-tokio = { version = "1.35", features = ["full"] }
+tempfile = "3.10"
+tokio = { version = "1.36", features = ["full"] }

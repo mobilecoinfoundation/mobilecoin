@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-css-dump"
-version = "6.0.0"
+version = "6.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,5 +11,5 @@ rust-version = "1.74.0"
 [dependencies]
 mc-sgx-css = { path = "../css" }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 hex_fmt = "0.3"

@@ -122,6 +122,7 @@ jobs:
           configMap:
             enabled: true
           database: recovery
+        EOF
 
     - name: Generate fog-ingest-config values
       run: |
@@ -138,6 +139,7 @@ jobs:
             enabled: true
           password: '${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}'
           database: recovery
+        EOF
 
     - name: Deploy core-common-config setup
       uses: mobilecoinofficial/gha-k8s-toolbox@v1

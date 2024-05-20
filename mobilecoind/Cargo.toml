@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind"
-version = "6.0.0"
+version = "6.0.1"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -41,6 +41,8 @@ mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-rand = "1.0"
 mc-sgx-css = { path = "../sgx/css" }
+mc-t3-api = { path = "../t3/api" }
+mc-t3-connection = { path = "../t3/connection" }
 mc-transaction-builder = { path = "../transaction/builder" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-extra = { path = "../transaction/extra" }
@@ -56,18 +58,18 @@ mc-watcher = { path = "../watcher" }
 mc-watcher-api = { path = "../watcher/api" }
 
 aes-gcm = "0.10.3"
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
 grpcio = "0.13"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 num_cpus = "1.16"
 prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
 protobuf = "2.27.1"
 rand = "0.8"
-rayon = "1.8"
+rayon = "1.9"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 retry = "2.0"
 serde_json = "1.0"
@@ -87,8 +89,8 @@ pem = "3.0"
 portpicker = "0.1.1"
 rand_chacha = "0.3"
 rand_core = "0.6"
-tempfile = "3.9"
+tempfile = "3.10"
 
 [build-dependencies]
 # Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25
-libz-sys = "1.1.14"
+libz-sys = "1.1.15"

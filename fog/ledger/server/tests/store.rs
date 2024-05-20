@@ -267,21 +267,17 @@ pub fn direct_key_image_store_check(logger: Logger) {
     println!("Nonce session on message is {:?}", query.channel_id);
 
     // Get an untrusted query
-    let (
-        highest_processed_block_count,
-        last_known_block_cumulative_txo_count,
-        latest_block_version,
-    ) = {
+    let (processed_block_range, last_known_block_cumulative_txo_count, latest_block_version) = {
         let shared_state = shared_state.lock().expect("mutex poisoned");
         (
-            shared_state.highest_processed_block_count,
+            shared_state.processed_block_range.clone(),
             shared_state.last_known_block_cumulative_txo_count,
             shared_state.latest_block_version,
         )
     };
 
     let untrusted_kiqr = UntrustedKeyImageQueryResponse {
-        highest_processed_block_count,
+        processed_block_range,
         last_known_block_cumulative_txo_count,
         latest_block_version,
         max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),

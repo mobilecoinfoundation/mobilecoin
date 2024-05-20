@@ -148,8 +148,7 @@ fn write_correct_encrypted_destination_memos() {
             let fee = 13u64;
 
             let encrypted_destination_memo =
-                DestinationMemo::new(recipient_short_address_hash.clone(), total_outlay, fee)
-                    .unwrap();
+                DestinationMemo::new(recipient_short_address_hash, total_outlay, fee).unwrap();
             let destination_memo_bytes: [u8; 64] = encrypted_destination_memo.clone().into();
 
             let encrypted_destination_memo_data = CorrectEncryptedDestinationMemoData {

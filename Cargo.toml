@@ -129,6 +129,8 @@ members = [
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
+    "t3/api",
+    "t3/connection",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
     "test-vectors/memos",

@@ -84,21 +84,17 @@ impl<E: LedgerEnclaveProxy> KeyImageService<E> {
     /// for use in [KeyImageService::check_key_images_auth()]
     /// and [KeyImageService::check_key_image_store_auth()]
     fn prepare_untrusted_query(&mut self) -> UntrustedKeyImageQueryResponse {
-        let (
-            highest_processed_block_count,
-            last_known_block_cumulative_txo_count,
-            latest_block_version,
-        ) = {
+        let (processed_block_range, last_known_block_cumulative_txo_count, latest_block_version) = {
             let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
             (
-                shared_state.highest_processed_block_count,
+                shared_state.processed_block_range.clone(),
                 shared_state.last_known_block_cumulative_txo_count,
                 shared_state.latest_block_version,
             )
         };
 
         UntrustedKeyImageQueryResponse {
-            highest_processed_block_count,
+            processed_block_range,
             last_known_block_cumulative_txo_count,
             latest_block_version,
             max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
