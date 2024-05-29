@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [6.0.2]
+
+### Fixed
+
+- Fix potentional deadlock in mobilecoind ([#3986])
+
+[#3986]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3986
+
+## [6.0.1]
+
+### Added
+
+- Allow ledger from archive to update a ledger database ([#3976])
+
+#### CI/CD
+
+- Make consensus node startupProbe configurable ([#3977])
+- Alter consesensus start up for new from-archive and distribution pattern ([#3981])
+
+### Fixed
+
+- Fix missing license call outs in crates ([#3982])
+
+#### CI/CD
+
+- Fix jaeger tracing sidecar config ([#3979])
+
+### Changed
+
+- Change ledger distribution start block logic ([#3980])
+
+#### CI/CD
+
+- Remove epid aesm services ([#3978])
+
+[#3976]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3976
+[#3977]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3977
+[#3978]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3978
+[#3979]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3979
+[#3980]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3980
+[#3981]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3981
+[#3982]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3982
+
 ## [6.0.0]
 
 ### Added
@@ -17,7 +60,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add RTH memos to mobilecoind ([#3945])
 - Add scripts to scale down/up a dev environment ([#3966])
 - Mobilecoind T3 support ([#3960])
-- Allow ledger from archive to update a ledger database ([#3976])
 
 #### CI/CD
 
@@ -27,8 +69,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Add rust version to workspace for enclaves ([#3700])
 - Make minimum number of signatures for ledger bootstrap variable ([#3946])
 - Bump go version in CD to 1.22.2 ([#3958])
-- Make consensus node startupProbe configurable ([#3977])
-- Alter consesensus start up for new from-archive and distribution pattern ([#3981])
 
 ### Fixed
 
@@ -43,14 +83,12 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Update refresh-ledger-bootstrap and dispatch-dev-testnet-fog workflows for
   smaller testnet ([#3944])
 - Fix fog ledger shards needing to load all blocks ([#3923], [#3933])
-- Fix missing license call outs in crates ([#3982])
 
 #### CI/CD
 
 - Fix intermittent Postgres failures by using postgres service in GH actions ([#3785])
 - Fix artifacts not uploading ([#3971])
 - Fix dependent android bindings build ([#3968])
-- Fix jaeger tracing sidecar config ([#3979])
 
 ### Security
 
@@ -80,7 +118,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Reduce the static startup memory of enclaves ([#3719])
 - Remove "-D warnings" for development builds ([#3500])
 - Remove newlines from enclave panic message ([#3770])
-- Change ledger distribution start block logic ([#3980])
 
 #### CI/CD
 
@@ -91,7 +128,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Use gha-runner-scale-sets ([#3849])
 - Update CI jobs to remove deprecated actions ([#3965])
 - Annotation to keep autoscaler from evicting ingest ([#3964])
-- Remove epid aesm services ([#3978])
 
 #### Github Actions
 
@@ -684,13 +720,6 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#3969]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3969
 [#3970]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3970
 [#3971]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3971
-[#3976]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3976
-[#3977]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3977
-[#3978]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3978
-[#3979]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3979
-[#3980]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3980
-[#3981]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3981
-[#3982]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3982
 
 ## [5.2.3]
 
