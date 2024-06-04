@@ -53,6 +53,7 @@ pub struct TxoSyncReq {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoUnsynced {
     /// Subaddress for unsynced TxOut
+    #[serde(with = "string")]
     pub subaddress: u64,
 
     /// tx_out_public_key for unsynced TxOut
@@ -206,6 +207,29 @@ impl From<[u8; 32]> for AccountId {
 impl From<&[u8; 32]> for AccountId {
     fn from(value: &[u8; 32]) -> Self {
         Self(*value)
+    }
+}
+
+/// u64 string encoding for serde
+pub(crate) mod string {
+    use std::fmt::Display;
+    use std::str::FromStr;
+
+    use serde::{de, Serializer, Deserialize, Deserializer};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+        where T: Display,
+              S: Serializer
+    {
+        serializer.collect_str(value)
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+        where T: FromStr,
+              T::Err: Display,
+              D: Deserializer<'de>
+    {
+        String::deserialize(deserializer)?.parse().map_err(de::Error::custom)
     }
 }
 
