@@ -182,6 +182,19 @@ impl AsRef<[u8; 32]> for AccountId {
     }
 }
 
+/// Create [AccountId] object from hex-encoded string
+impl TryFrom<String> for AccountId {
+    type Error = hex::FromHexError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let mut byte_array = [0u8; 32];
+        match hex::decode_to_slice(value, &mut byte_array) {
+            Ok(()) => Ok(Self(byte_array)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 /// Create [AccountId] object from raw hash
 impl From<[u8; 32]> for AccountId {
     fn from(value: [u8; 32]) -> Self {

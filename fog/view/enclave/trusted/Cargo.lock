@@ -14,9 +14,9 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac1f845298e95f983ff1944b728ae08b8cebab80d684f0a832ed0fc74dfa27e2"
+checksum = "b169f7a6d4742236a0a00c541b845991d0ac43e546831af1249753ab4c3aa3a0"
 dependencies = [
  "cfg-if 1.0.0",
  "cipher",
@@ -292,16 +292,16 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.31"
+version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f2c685bad3eb3d45a01354cedb7d5faa66194d1d58ba6e267a8de788f79db38"
+checksum = "5bc015644b92d5890fab7489e49d21f879d5c990186827d42ec511919404f38b"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "js-sys",
  "num-traits",
  "wasm-bindgen",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.0",
 ]
 
 [[package]]
@@ -548,9 +548,9 @@ dependencies = [
 
 [[package]]
 name = "ed25519-dalek"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f628eaec48bfd21b865dc2950cfa014450c01d2fa2b69a86c2fd5844ec523c0"
+checksum = "4a3daa8e81a3963a60642bcc1f90a670680bd4a77535faa384e9d1c79d620871"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
@@ -979,7 +979,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1003,14 +1003,14 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-attest-ake"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aead",
  "cargo-emit",
@@ -1033,7 +1033,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-core"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "base64",
  "bitflags 2.4.1",
@@ -1063,7 +1063,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-enclave-api"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "mc-attest-ake",
@@ -1078,7 +1078,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-trusted"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -1089,7 +1089,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "cfg-if 1.0.0",
@@ -1121,7 +1121,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "base64",
  "displaydoc",
@@ -1143,9 +1143,9 @@ dependencies = [
 
 [[package]]
 name = "mc-attestation-verifier"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fa489aed434f230862bb92ad3059380203793c30f99c603172f602290edd610"
+checksum = "fcf39fb1af41156ec868564ab53156d6dd75f1dc8a7a073acdfb217b6140d9e4"
 dependencies = [
  "der",
  "displaydoc",
@@ -1163,7 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "hex_fmt",
@@ -1186,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "mc-common"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cfg-if 1.0.0",
  "displaydoc",
@@ -1207,7 +1207,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-common",
  "mc-crypto-digestible",
@@ -1219,7 +1219,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1234,7 +1234,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
@@ -1244,7 +1244,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ake-enclave"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aes-gcm",
  "digest",
@@ -1266,7 +1266,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aead",
  "digest",
@@ -1280,7 +1280,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cfg-if 1.0.0",
  "curve25519-dalek",
@@ -1293,7 +1293,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1302,7 +1302,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "signature",
@@ -1310,7 +1310,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "blake2",
  "digest",
@@ -1319,7 +1319,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -1348,7 +1348,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-multisig"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-noise"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -1378,7 +1378,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1399,7 +1399,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature-signer"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1419,7 +1419,7 @@ dependencies = [
 
 [[package]]
 name = "mc-enclave-boundary"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-common",
  "mc-rand",
@@ -1430,7 +1430,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-kex-rng"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "digest",
  "displaydoc",
@@ -1445,14 +1445,14 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-ocall-oram-storage-edl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-fog-ocall-oram-storage-trusted"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aes",
  "aligned-cmov",
@@ -1469,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-recovery-db-iface"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "chrono",
  "displaydoc",
@@ -1485,7 +1485,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-attest-verifier-types",
  "mc-crypto-digestible",
@@ -1495,14 +1495,14 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-fog-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1517,7 +1517,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-api"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-edl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -1544,7 +1544,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-impl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aligned-cmov",
  "mc-attest-core",
@@ -1567,7 +1567,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-view-enclave-trusted"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "lazy_static",
@@ -1667,11 +1667,11 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-alloc"
-version = "6.0.0"
+version = "6.0.2"
 
 [[package]]
 name = "mc-sgx-build"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cc",
  "lazy_static",
@@ -1681,7 +1681,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cfg-if 1.0.0",
  "mc-sgx-alloc",
@@ -1694,7 +1694,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat-edl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "mc-sgx-debug-edl",
@@ -1703,9 +1703,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-build"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2f26e46d3279e257c6a418450332c94d0815486b8dbfdac76387e314e0c1093"
+checksum = "94420a570e76dfc39924b4ec712c2df21a8d77e61ca5ba0857300b1c59889a5d"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -1713,9 +1713,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-sys-types"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b56553b93bd334e1f468394e739f1e404cc54085872da7993cbf85438f25d6c"
+checksum = "1c5c33323d0f2855e63efaa538bdd7094104ff79f963734b4122f23302cff581"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -1726,9 +1726,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-types"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cc4a12a26208d90e08c0eaf85f8318c8f9ab8fd8abd9c505bcf64def220d2ff"
+checksum = "1191b0bb2868ff5bdf7766d3b3e9fa9bb94c23149ae21a82485e6f5f44074106"
 dependencies = [
  "bitflags 2.4.1",
  "displaydoc",
@@ -1744,7 +1744,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-css"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "mc-sgx-core-types",
@@ -1753,9 +1753,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-sys-types"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de6add229c047dc25fa8950ebf8e5fcc21a7f4d2b52c0b85b67b13d2edca08e9"
+checksum = "2dd3e93a316a5c142de6fb9179970abc04ca4767732b90d118c90d531db47e89"
 dependencies = [
  "bindgen 0.66.1",
  "mc-sgx-core-build",
@@ -1764,9 +1764,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-types"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8592ab2cf83ec03324dba68e3f24d9dac716d1cefa7db434f8fdf79e2aafcf9f"
+checksum = "42c618d93a3f9561bdc27231fa7965ebe855c8d74f5cd5467da194042e0671a9"
 dependencies = [
  "const-oid",
  "displaydoc",
@@ -1785,36 +1785,36 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-debug"
-version = "6.0.0"
+version = "6.0.2"
 
 [[package]]
 name = "mc-sgx-debug-edl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-enclave-id"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-sgx-types",
 ]
 
 [[package]]
 name = "mc-sgx-panic"
-version = "6.0.0"
+version = "6.0.2"
 
 [[package]]
 name = "mc-sgx-panic-edl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-report-cache-api"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -1826,7 +1826,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-service"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-sgx-build",
  "mc-sgx-types",
@@ -1834,7 +1834,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cfg-if 1.0.0",
  "mc-common",
@@ -1844,14 +1844,14 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog-edl"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-sync"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-sgx-panic",
  "mc-sgx-types",
@@ -1859,20 +1859,20 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "mc-sgx-core-sys-types",
 ]
 
 [[package]]
 name = "mc-sgx-util"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70a17bdd557d482382794a59232314fe9cfb7a9c4450aec867f737d815e5f5b0"
+checksum = "b3c237bec3e33530c4b1a171c8c078ad5d525d5fae177ac9d62e8e454b3fffb7"
 
 [[package]]
 name = "mc-transaction-core"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "aes",
  "bulletproofs-og",
@@ -1910,7 +1910,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1928,7 +1928,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-script"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "displaydoc",
@@ -1939,7 +1939,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-sgx"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "cc",
@@ -1950,7 +1950,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-encodings"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "base64",
  "displaydoc",
@@ -1961,14 +1961,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "generic-array",
  "hex_fmt",
@@ -1978,7 +1978,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-serial"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "prost",
  "serde",
@@ -1987,11 +1987,11 @@ dependencies = [
 
 [[package]]
 name = "mc-util-u64-ratio"
-version = "6.0.0"
+version = "6.0.2"
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "6.0.0"
+version = "6.0.2"
 dependencies = [
  "serde",
 ]
@@ -2895,6 +2895,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows-targets"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a18201040b24831fbb9e4eb208f8892e1f50a37feb53cc7ff887feb8f50e7cd"
+dependencies = [
+ "windows_aarch64_gnullvm 0.52.0",
+ "windows_aarch64_msvc 0.52.0",
+ "windows_i686_gnu 0.52.0",
+ "windows_i686_msvc 0.52.0",
+ "windows_x86_64_gnu 0.52.0",
+ "windows_x86_64_gnullvm 0.52.0",
+ "windows_x86_64_msvc 0.52.0",
+]
+
+[[package]]
 name = "windows_aarch64_gnullvm"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2905,6 +2920,12 @@ name = "windows_aarch64_gnullvm"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b38e32f0abccf9987a4e3079dfb67dcd799fb61361e53e2882c3cbaf0d905d8"
+
+[[package]]
+name = "windows_aarch64_gnullvm"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb7764e35d4db8a7921e09562a0304bf2f93e0a51bfccee0bd0bb0b666b015ea"
 
 [[package]]
 name = "windows_aarch64_msvc"
@@ -2919,6 +2940,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc35310971f3b2dbbf3f0690a219f40e2d9afcf64f9ab7cc1be722937c26b4bc"
 
 [[package]]
+name = "windows_aarch64_msvc"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbaa0368d4f1d2aaefc55b6fcfee13f41544ddf36801e793edbbfd7d7df075ef"
+
+[[package]]
 name = "windows_i686_gnu"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2929,6 +2956,12 @@ name = "windows_i686_gnu"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a75915e7def60c94dcef72200b9a8e58e5091744960da64ec734a6c6e9b3743e"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28637cb1fa3560a16915793afb20081aba2c92ee8af57b4d5f28e4b3e7df313"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -2943,6 +2976,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f55c233f70c4b27f66c523580f78f1004e8b5a8b659e05a4eb49d4166cca406"
 
 [[package]]
+name = "windows_i686_msvc"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffe5e8e31046ce6230cc7215707b816e339ff4d4d67c65dffa206fd0f7aa7b9a"
+
+[[package]]
 name = "windows_x86_64_gnu"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2953,6 +2992,12 @@ name = "windows_x86_64_gnu"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53d40abd2583d23e4718fddf1ebec84dbff8381c07cae67ff7768bbf19c6718e"
+
+[[package]]
+name = "windows_x86_64_gnu"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d6fa32db2bc4a2f5abeacf2b69f7992cd09dca97498da74a151a3132c26befd"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
@@ -2967,6 +3012,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b7b52767868a23d5bab768e390dc5f5c55825b6d30b86c844ff2dc7414044cc"
 
 [[package]]
+name = "windows_x86_64_gnullvm"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a657e1e9d3f514745a572a6846d3c7aa7dbe1658c056ed9c3344c4109a6949e"
+
+[[package]]
 name = "windows_x86_64_msvc"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2979,10 +3030,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 
 [[package]]
-name = "x25519-dalek"
-version = "2.0.0"
+name = "windows_x86_64_msvc"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb66477291e7e8d2b0ff1bcb900bf29489a9692816d79874bea351e7a8b6de96"
+checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
+
+[[package]]
+name = "x25519-dalek"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7e468321c81fb07fa7f4c636c3972b9100f0346e5b6a9f2bd0603a52f7ed277"
 dependencies = [
  "curve25519-dalek",
  "rand_core",

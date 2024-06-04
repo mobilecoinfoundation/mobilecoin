@@ -1,6 +1,6 @@
 [package]
 name = "mc-core"
-version = "6.0.0"
+version = "6.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "MobileCoin Core Library"
@@ -17,7 +17,7 @@ default = ["bip39"]
 
 [dependencies]
 curve25519-dalek = { version = "4.1.1", default-features = false }
-ed25519-dalek = { version = "2.1.0", default-features = false }
+ed25519-dalek = { version = "2.1.1", default-features = false }
 generic-array = { version = "0.14.7", default-features = false, features = [ "more_lengths" ] }
 hkdf = { version = "0.12.4" }
 serde = { version = "1.0", optional = true, default-features = false, features = [ "derive" ] }
@@ -32,13 +32,13 @@ mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 
 [dev-dependencies]
 
-anyhow = { version = "1.0.79" }
-clap = { version = "4.4.14", features = [ "derive" ] }
+anyhow = { version = "1.0.80" }
+clap = { version = "4.5.1", features = [ "derive" ] }
 hex = { version = "0.4.3", default-features = false }
 lazy_static = { version = "1.4.0" }
 rand_core = { version = "0.6.3", default-features = false }
-serde = { version = "1.0.195", features = [ "derive" ] }
-serde_json = { version = "1.0.111" }
+serde = { version = "1.0.197", features = [ "derive" ] }
+serde_json = { version = "1.0.114" }
 
 mc-test-vectors-definitions = { path = "../test-vectors/definitions" }
 mc-util-from-random = { path = "../util/from-random", default-features = false }

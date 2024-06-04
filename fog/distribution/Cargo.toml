@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-distribution"
-version = "6.0.0"
+version = "6.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -29,15 +29,15 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-clap = { version = "4.4", features = ["derive", "env"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
 grpcio = "0.13"
 lazy_static = "1.4"
-mc-attestation-verifier = "0.4.2"
+mc-attestation-verifier = "0.4.3"
 rand = "0.8"
-rayon = "1.8"
+rayon = "1.9"
 retry = "2.0"
-tempfile = "3.9"
+tempfile = "3.10"
 
 curve25519-dalek = { version = "4.1.1", default-features = false }
 

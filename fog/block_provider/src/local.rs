@@ -14,8 +14,8 @@ use std::time::Duration;
 
 #[derive(Clone)]
 pub struct LocalBlockProvider<L: Ledger + Clone + Sync> {
-    ledger: L,
-    watcher: Option<WatcherDB>,
+    pub ledger: L,
+    pub watcher: Option<WatcherDB>,
 }
 
 impl<L: Ledger + Clone + Sync> LocalBlockProvider<L> {

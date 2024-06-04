@@ -302,7 +302,6 @@ class Node:
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/ledger-distribution',
             f'--ledger-path {self.ledger_dir}',
             f'--dest "file://{self.ledger_distribution_dir}"',
-            f'--state-file {WORK_DIR}/ledger-distribution-state-{self.node_num}',
         ])
         print(f'Starting local ledger distribution: {cmd}')
         self.ledger_distribution_process = subprocess.Popen(cmd, shell=True)

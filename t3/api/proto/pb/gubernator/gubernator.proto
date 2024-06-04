@@ -1,0 +1,189 @@
+/*
+Copyright 2018-2022 Mailgun Technologies Inc
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+package pb.gubernator;
+
+import "google/api/annotations.proto";
+
+option cc_generic_services = true;
+option go_package = "github.com/mailgun/gubernator";
+
+service V1 {
+  // Given a list of rate limit requests, return the rate limits of each.
+  rpc GetRateLimits(GetRateLimitsReq) returns (GetRateLimitsResp) {
+    option (google.api.http) = {
+      post: "/v1/GetRateLimits"
+      body: "*"
+    };
+  }
+
+  // This method is for round trip benchmarking and can be used by
+  // the client to determine connectivity to the server
+  rpc HealthCheck(HealthCheckReq) returns (HealthCheckResp) {
+    option (google.api.http) = {
+      get: "/v1/HealthCheck"
+    };
+  }
+}
+
+// Must specify at least one Request
+message GetRateLimitsReq {
+  repeated RateLimitReq requests = 1;
+}
+
+// RateLimits returned are in the same order as the Requests
+message GetRateLimitsResp {
+  repeated RateLimitResp responses = 1;
+}
+
+enum Algorithm {
+  // Token bucket algorithm https://en.wikipedia.org/wiki/Token_bucket
+  TOKEN_BUCKET = 0;
+  // Leaky bucket algorithm https://en.wikipedia.org/wiki/Leaky_bucket
+  LEAKY_BUCKET = 1;
+}
+
+// A set of int32 flags used to control the behavior of a rate limit in gubernator
+enum Behavior {
+  // BATCHING is the default behavior. This enables batching requests which protects the
+  // service from thundering herd. IE: When a service experiences spikes of unexpected high
+  // volume requests.
+  //
+  // Using this option introduces a small amount of latency depending on
+  // the `batchWait` setting. Defaults to around 500 Microseconds of additional
+  // latency in low throughput situations. For high volume loads, batching can reduce
+  // the overall load on the system substantially.
+  BATCHING = 0; // <-- this is here because proto requires it, but has no effect if used
+
+  // Disables batching. Use this for super low latency rate limit requests when
+  // thundering herd is not a concern but latency of requests is of paramount importance.
+  NO_BATCHING = 1;
+
+  // Enables Global caching of the rate limit. Use this if the rate limit applies globally to
+  // all ingress requests. (IE: Throttle hundreds of thousands of requests to an entire
+  // datacenter or cluster of http servers)
+  //
+  // Using this option gubernator will continue to use a single peer as the rate limit coordinator
+  // to increment and manage the state of the rate limit, however the result of the rate limit is
+  // distributed to each peer and cached locally. A rate limit request received from any peer in the
+  // cluster will first check the local cache for a rate limit answer, if it exists the peer will
+  // immediately return the answer to the client and asynchronously forward the aggregate hits to
+  // the peer coordinator. Because of GLOBALS async nature we lose some accuracy in rate limit
+  // reporting, which may result in allowing some requests beyond the chosen rate limit. However we
+  // gain massive performance as every request coming into the system does not have to wait for a
+  // single peer to decide if the rate limit has been reached.
+  GLOBAL = 2;
+
+  // Changes the behavior of the `Duration` field. When `Behavior` is set to `DURATION_IS_GREGORIAN`
+  // the `Duration` of the rate limit is reset whenever the end of selected GREGORIAN calendar
+  // interval is reached.
+  //
+  // Given the following `Duration` values
+  //   0 = Minutes
+  //   1 = Hours
+  //   2 = Days
+  //   3 = Weeks
+  //   4 = Months
+  //   5 = Years
+  //
+  // Examples when using `Behavior = DURATION_IS_GREGORIAN`
+  //
+  // If  `Duration = 2` (Days) then the rate limit will expire at the end of the current day the
+  // rate limit was created.
+  //
+  // If `Duration = 0` (Minutes) then the rate limit will expire at the end of the current minute
+  // the rate limit was created.
+  //
+  // If `Duration = 4` (Months) then the rate limit will expire at the end of the current month
+  // the rate limit was created.
+  DURATION_IS_GREGORIAN = 4;
+
+  // If this flag is set causes the rate limit to reset any accrued hits stored in the cache, and will
+  // ignore any `Hit` values provided in the current request. The effect this has is dependent on
+  // algorithm chosen. For instance, if used with `TOKEN_BUCKET` it will immediately expire the
+  // cache value. For `LEAKY_BUCKET` it sets the `Remaining` to `Limit`.
+  RESET_REMAINING = 8;
+
+  // Enables rate limits to be pushed to other regions. Currently this is only implemented when using
+  // 'member-list' peer discovery. Also requires GUBER_DATA_CENTER to be set to different values on at
+  // least 2 instances of Gubernator.
+  MULTI_REGION = 16;
+
+// TODO: Add support for LOCAL. Which would force the rate limit to be handled by the local instance
+}
+
+message RateLimitReq {
+  // The name of the rate limit IE: 'requests_per_second', 'gets_per_minute`
+  string name = 1;
+
+  // Uniquely identifies this rate limit IE: 'ip:10.2.10.7' or 'account:123445'
+  string unique_key = 2;
+
+  // Rate limit requests optionally specify the number of hits a request adds to the matched limit. If Hit
+  // is zero, the request returns the current limit, but does not increment the hit count.
+  int64 hits = 3;
+
+  // The number of requests that can occur for the duration of the rate limit
+  int64 limit = 4;
+
+  // The duration of the rate limit in milliseconds
+  // Second = 1000 Milliseconds
+  // Minute = 60000 Milliseconds
+  // Hour = 3600000 Milliseconds
+  int64 duration = 5;
+
+  // The algorithm used to calculate the rate limit. The algorithm may change on
+  // subsequent requests, when this occurs any previous rate limit hit counts are reset.
+  Algorithm algorithm = 6;
+
+  // Behavior is a set of int32 flags that control the behavior of the rate limit in gubernator
+  Behavior behavior = 7;
+
+  // Maximum burst size that the limit can accept.
+  int64 burst = 8;
+}
+
+enum Status {
+  UNDER_LIMIT = 0;
+  OVER_LIMIT = 1;
+}
+
+message RateLimitResp {
+  // The status of the rate limit.
+  Status status = 1;
+  // The currently configured request limit (Identical to RateLimitRequest.rate_limit_config.limit).
+  int64 limit = 2;
+  // This is the number of requests remaining before the limit is hit.
+  int64 remaining = 3;
+  // This is the time when the rate limit span will be reset, provided as a unix timestamp in milliseconds.
+  int64 reset_time = 4;
+  // Contains the error; If set all other values should be ignored
+  string error = 5;
+  // This is additional metadata that a client might find useful. (IE: Additional headers, corrdinator ownership, etc..)
+  map<string, string> metadata = 6;
+}
+
+message HealthCheckReq {}
+message HealthCheckResp {
+  // Valid entries are 'healthy' or 'unhealthy'
+  string status = 1;
+  // If 'unhealthy', message indicates the problem
+  string message = 2;
+  // The number of peers we know about
+  int32 peer_count = 3;
+}
