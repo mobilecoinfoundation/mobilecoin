@@ -17,7 +17,7 @@ default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-
 [dependencies]
 
 base64 = { version = "0.21", default-features = false }
-curve25519-dalek = { version = "4.1.1", default-features = false, features = ["rand_core"] }
+curve25519-dalek = { version = "4.1.3", default-features = false, features = ["rand_core"] }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 ed25519 = { version = "2.2.3", default-features = false }
