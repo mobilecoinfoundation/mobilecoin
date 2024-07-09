@@ -38,7 +38,7 @@ mc-util-serial = { path = "../../util/serial" }
 mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 
 # `default` feature enables curve25519-dalek target detection for x86_64 with and without AVX
-curve25519-dalek = { version = "4.1.1", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

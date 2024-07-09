@@ -37,7 +37,7 @@ mc-util-u64-ratio = { path = "../../util/u64-ratio" }
 mc-util-vec-map = { path = "../../util/vec-map" }
 mc-util-zip-exact = { path = "../../util/zip-exact" }
 
-curve25519-dalek = { version = "4.1.1", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
 
 [dev-dependencies]
 assert_matches = "1.5"

@@ -14,7 +14,7 @@ prost = ["dep:prost", "mc-crypto-keys/prost"]
 
 [dependencies]
 # External dependencies
-curve25519-dalek = { version = "4.1.1", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
 prost = { version = "0.12", optional = true, default-features = false }
 serde = { version = "1.0.197", optional = true, default-features = false, features = [ "derive" ] }
 subtle = { version = "2.4.1", default-features = false }

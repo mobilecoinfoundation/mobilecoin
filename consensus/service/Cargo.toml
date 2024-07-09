@@ -83,4 +83,4 @@ rand_hc = "0.3"
 serial_test = "3.0"
 tempfile = "3.10"
 
-curve25519-dalek = { version = "4.1.1", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
