@@ -145,8 +145,7 @@ impl TxSummaryStreamingVerifierCtx {
                     report.change_sub(amount)?;
                 } else {
                     // Otherwise, add this as an output to ourself
-                    report
-                        .output_add(TransactionEntity::OurAddress(*address_hash), amount)?;
+                    report.output_add(TransactionEntity::OurAddress(*address_hash), amount)?;
                 }
             } else {
                 // If we _don't_ have address information but it's to our own address...
