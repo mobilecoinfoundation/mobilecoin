@@ -38,6 +38,8 @@ pub enum Error {
     Amount(AmountError),
     /// ZipExact error: {0}
     ZipExact(ZipExactError),
+    /// Missing address for own output
+    MissingOutputAddress,
 }
 
 impl From<BlockVersionError> for Error {
