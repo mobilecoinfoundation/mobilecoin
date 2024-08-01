@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Copyright (c) 2018-2024 The MobileCoin Foundation
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -18,7 +18,7 @@ spec:
   - server auth
   - client auth
   dnsNames:
-  - {{ include "consensusNode.peerHostname" . }}
+  - {{ .Values.node.config.peerHostname }}
   issuerRef:
     name: internal-ca-issuer
     kind: ClusterIssuer

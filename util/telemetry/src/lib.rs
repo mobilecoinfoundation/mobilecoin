@@ -48,7 +48,7 @@ pub fn versioned_tracer(
     version: Option<&'static str>,
     schema_url: Option<&'static str>,
 ) -> BoxedTracer {
-    tracer_provider().versioned_tracer(name, version, schema_url)
+    tracer_provider().versioned_tracer(name, version, schema_url, None)
 }
 
 /// Creates a context when an explicit context is required. Useful when tracing

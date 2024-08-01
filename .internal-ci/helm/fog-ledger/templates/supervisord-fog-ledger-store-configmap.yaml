@@ -1,0 +1,20 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fog-ledger.fullname" . }}-supervisord-fog-ledger-store
+  labels:
+    {{- include "fog-ledger.labels" . | nindent 4 }}
+data:
+  fog_ledger_store.conf: |
+    [program:fog-ledger-store]
+    priority=100
+    command=/usr/bin/key_image_store
+      --client-responder-id "%(ENV_HOSTNAME)s.{{ include "fog-ledger.fullname" . }}-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
+      --client-listen-uri insecure-key-image-store://0.0.0.0:3228/?responder-id="%(ENV_HOSTNAME)s.{{ include "fog-ledger.fullname" . }}-store.{{ .Release.Namespace }}.svc.cluster.local:3228"
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

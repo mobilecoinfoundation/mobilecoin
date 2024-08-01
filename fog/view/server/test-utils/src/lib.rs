@@ -3,8 +3,6 @@
 //! Contains helper methods and structs used by the router integration test.
 
 use grpcio::ChannelBuilder;
-use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
@@ -58,11 +56,10 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
 /// simply reordering the fields would cause the test to fail without a clear
 /// explanation as to why.
 
-type TestViewServer =
-    ViewServer<SgxViewEnclave, AttestClient, SqlRecoveryDb, EpochShardingStrategy>;
+type TestViewServer = ViewServer<SgxViewEnclave, SqlRecoveryDb, EpochShardingStrategy>;
 
 pub struct RouterTestEnvironment {
-    pub router_server: Option<FogViewRouterServer<SgxViewEnclave, AttestClient>>,
+    pub router_server: Option<FogViewRouterServer<SgxViewEnclave>>,
     pub router_streaming_client: Option<FogViewRouterGrpcClient>,
     pub router_unary_client: Option<FogViewGrpcClient>,
     pub store_servers: Option<Vec<TestViewServer>>,
@@ -86,13 +83,10 @@ impl RouterTestEnvironment {
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
-            ias_api_key: Default::default(),
             shard_uris,
-            ias_spid: Default::default(),
             client_listen_uri: RouterClientListenUri::Streaming(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
-            omap_capacity,
             admin_listen_uri,
         };
         let router_server = Self::create_router_server(config, store_clients, &logger);
@@ -126,13 +120,10 @@ impl RouterTestEnvironment {
             client_responder_id: router_uri
                 .responder_id()
                 .expect("Could not get responder id for Fog View Router."),
-            ias_api_key: Default::default(),
-            ias_spid: Default::default(),
             shard_uris,
             client_listen_uri: RouterClientListenUri::Unary(router_uri.clone()),
             client_auth_token_max_lifetime: Default::default(),
             client_auth_token_secret: None,
-            omap_capacity,
             admin_listen_uri,
         };
         let router_server = Self::create_router_server(config, store_clients, &logger);
@@ -151,23 +142,15 @@ impl RouterTestEnvironment {
         config: FogViewRouterConfig,
         shards: Arc<RwLock<Vec<Shard>>>,
         logger: &Logger,
-    ) -> FogViewRouterServer<SgxViewEnclave, AttestClient> {
+    ) -> FogViewRouterServer<SgxViewEnclave> {
         let enclave = SgxViewEnclave::new(
             get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
             config.client_responder_id.clone(),
-            config.omap_capacity,
+            0,
             logger.clone(),
         );
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-        let mut router_server = FogViewRouterServer::new(
-            config,
-            enclave,
-            ra_client,
-            shards,
-            SystemTimeProvider::default(),
-            logger.clone(),
-        );
+        let mut router_server =
+            FogViewRouterServer::new(config, enclave, shards, SystemTimeProvider, logger.clone());
         router_server.start();
         router_server
     }
@@ -177,13 +160,9 @@ impl RouterTestEnvironment {
         logger: Logger,
     ) -> FogViewRouterGrpcClient {
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+        let identity = mc_fog_view_enclave_measurement::mr_signer_identity(None);
 
-        FogViewRouterGrpcClient::new(router_uri, verifier, grpcio_env, logger)
+        FogViewRouterGrpcClient::new(router_uri, [identity], grpcio_env, logger)
     }
 
     fn create_router_unary_client(
@@ -192,16 +171,13 @@ impl RouterTestEnvironment {
         logger: Logger,
     ) -> FogViewGrpcClient {
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
-        let mr_signer_verifier =
-            MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+        let identity = mc_fog_view_enclave_measurement::mr_signer_identity(None);
 
         FogViewGrpcClient::new(
             chain_id,
             router_uri,
             GRPC_RETRY_CONFIG,
-            verifier,
+            [identity],
             grpcio_env,
             logger,
         )
@@ -246,8 +222,6 @@ impl RouterTestEnvironment {
                     client_listen_uri: uri.clone(),
                     client_auth_token_secret: None,
                     omap_capacity,
-                    ias_spid: Default::default(),
-                    ias_api_key: Default::default(),
                     admin_listen_uri: Default::default(),
                     client_auth_token_max_lifetime: Default::default(),
                     sharding_strategy,
@@ -262,16 +236,12 @@ impl RouterTestEnvironment {
                     logger.clone(),
                 );
 
-                let ra_client =
-                    AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
-
                 let Epoch(ref sharding_strategy) = config.sharding_strategy;
                 let mut store = ViewServer::new(
                     config.clone(),
                     enclave,
                     db.clone(),
-                    ra_client,
-                    SystemTimeProvider::default(),
+                    SystemTimeProvider,
                     sharding_strategy.clone(),
                     logger.clone(),
                 );

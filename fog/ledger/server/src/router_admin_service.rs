@@ -26,7 +26,6 @@ pub struct LedgerRouterAdminService {
 }
 
 impl LedgerRouterAdminService {
-    #[allow(dead_code)]
     pub fn new(
         shard_clients: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<KeyImageStoreApiClient>>>>,
         logger: Logger,

@@ -12,7 +12,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
-use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, SgxError, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, NonceAuthRequest, NonceAuthResponse, NonceSession,
@@ -66,15 +66,11 @@ pub enum ViewEnclaveRequest {
     /// Get a new report
     NewEReport(TargetInfo),
 
-    /// Verify a quote
-    /// The report part should be a quoting enclave report
-    VerifyQuote(Quote, Report),
+    /// Verify attestation evidence, and cache it if it is accepted
+    VerifyAttestationEvidence(DcapEvidence),
 
-    /// Verify an IAS report, and cache it if it is accepted
-    VerifyIasReport(VerificationReport),
-
-    /// Get the cached verification report if any
-    GetIasReport,
+    /// Get the cached attestation evidence if any
+    GetAttestationEvidence,
 
     // View-enclave specific
     /// Accept a client connection

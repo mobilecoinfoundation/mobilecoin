@@ -5,8 +5,9 @@
 use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
+use der::DateTime;
+use mc_attest_core::{DcapEvidence, EvidenceKind};
+use mc_attestation_verifier::TrustedIdentity;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, NoiseCipher, NoiseDigest, ProtocolName,
@@ -22,8 +23,8 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    /// This is the local node's attestation evidence.
+    pub(crate) dcap_evidence: DcapEvidence,
 
     _kex: PhantomData<KexAlgo>,
     _cipher: PhantomData<Cipher>,
@@ -37,10 +38,10 @@ where
     DigestAlgo: NoiseDigest,
 {
     /// Create a new input event to initiate a node-to-node channel.
-    pub fn new(local_identity: KexAlgo::Private, ias_report: VerificationReport) -> Self {
+    pub fn new(local_identity: KexAlgo::Private, dcap_evidence: DcapEvidence) -> Self {
         Self {
             local_identity,
-            ias_report,
+            dcap_evidence,
             _kex: PhantomData,
             _cipher: PhantomData,
             _digest: PhantomData,
@@ -174,8 +175,8 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
+    /// This is the local node's attestation evidence.
+    pub(crate) dcap_evidence: DcapEvidence,
 
     /// The auth request input, including payload, if any
     pub(crate) data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
@@ -198,11 +199,11 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeNX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        ias_report: VerificationReport,
+        dcap_evidence: DcapEvidence,
     ) -> Self {
         Self {
             local_identity,
-            ias_report,
+            dcap_evidence,
             data,
         }
     }
@@ -221,10 +222,10 @@ where
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
-    /// This is the local node's ias report.
-    pub(crate) ias_report: VerificationReport,
-    /// This is the verifier used to examine the initiator's IAS report
-    pub(crate) verifier: Verifier,
+    /// This is the local node's attestation evidence.
+    pub(crate) dcap_evidence: DcapEvidence,
+    /// The identities that the initiator's attestation evidence must conform to
+    pub(crate) identities: Vec<TrustedIdentity>,
 
     /// The auth request input, including payload, if any
     pub(crate) data: AuthRequestOutput<HandshakeIX, KexAlgo, Cipher, DigestAlgo>,
@@ -247,13 +248,13 @@ where
     pub fn new(
         data: AuthRequestOutput<HandshakeIX, KexAlgo, Cipher, DigestAlgo>,
         local_identity: KexAlgo::Private,
-        ias_report: VerificationReport,
-        verifier: Verifier,
+        dcap_evidence: DcapEvidence,
+        identities: impl Into<Vec<TrustedIdentity>>,
     ) -> Self {
         Self {
             local_identity,
-            ias_report,
-            verifier,
+            dcap_evidence,
+            identities: identities.into(),
             data,
         }
     }
@@ -284,17 +285,23 @@ impl From<AuthResponseOutput> for Vec<u8> {
 /// An authentication response is output from a responder
 impl MealyOutput for AuthResponseOutput {}
 
-/// The authentication response is combined with a verifier for the initiator.
+/// The authentication response is combined with identities for the initiator.
 pub struct AuthResponseInput {
     pub(crate) data: Vec<u8>,
-    pub(crate) verifier: Verifier,
+    pub(crate) identities: Vec<TrustedIdentity>,
+    pub(crate) time: Option<DateTime>,
 }
 
 impl AuthResponseInput {
-    pub fn new(data: AuthResponseOutput, verifier: Verifier) -> Self {
+    pub fn new(
+        data: AuthResponseOutput,
+        identity: impl Into<Vec<TrustedIdentity>>,
+        time: impl Into<Option<DateTime>>,
+    ) -> Self {
         Self {
             data: data.0,
-            verifier,
+            identities: identity.into(),
+            time: time.into(),
         }
     }
 }
@@ -314,8 +321,28 @@ impl From<AuthResponseInput> for Vec<u8> {
 /// An authentication response input to a responder
 impl MealyInput for AuthResponseInput {}
 
-/// The IAS report is the final output when authentication succeeds.
-impl MealyOutput for VerificationReport {}
+/// An unverified attestation evidence is used when the initiator may not
+/// know the identity of the enclave.
+pub struct UnverifiedAttestationEvidence {
+    pub(crate) data: Vec<u8>,
+}
+
+impl UnverifiedAttestationEvidence {
+    pub fn new(data: AuthResponseOutput) -> Self {
+        Self { data: data.0 }
+    }
+}
+
+impl AsRef<[u8]> for UnverifiedAttestationEvidence {
+    fn as_ref(&self) -> &[u8] {
+        self.data.as_ref()
+    }
+}
+
+/// An authentication response from a responder
+impl MealyInput for UnverifiedAttestationEvidence {}
+
+impl MealyOutput for EvidenceKind {}
 
 /// A type similar to aead::Payload used to distinguish writer inputs from
 /// outputs.

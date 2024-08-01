@@ -3,7 +3,6 @@
 
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
-use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_api::view_grpc::FogViewStoreApiClient;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
@@ -37,7 +36,7 @@ fn main() {
     let sgx_enclave = SgxViewEnclave::new(
         enclave_path,
         config.client_responder_id.clone(),
-        config.omap_capacity,
+        0,
         logger.clone(),
     );
 
@@ -71,15 +70,8 @@ fn main() {
     }
     let shards = Arc::new(RwLock::new(shards));
 
-    let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
-    let mut router_server = FogViewRouterServer::new(
-        config,
-        sgx_enclave,
-        ias_client,
-        shards,
-        SystemTimeProvider::default(),
-        logger,
-    );
+    let mut router_server =
+        FogViewRouterServer::new(config, sgx_enclave, shards, SystemTimeProvider, logger);
     router_server.start();
 
     loop {

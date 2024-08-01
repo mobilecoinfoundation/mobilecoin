@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! Construct and submit transactions to the validator network.
 
@@ -12,7 +12,7 @@ use mc_common::{
 use mc_connection::{
     BlockInfo, BlockchainConnection, ConnectionManager, RetryableUserTxConnection, UserTxConnection,
 };
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
@@ -60,6 +60,9 @@ pub struct Outlay {
 
     /// Destination.
     pub receiver: PublicAddress,
+
+    /// Optional tx private key to use.
+    pub tx_private_key: Option<RistrettoPrivate>,
 }
 
 /// An outlay, with token id information.
@@ -72,6 +75,9 @@ pub struct OutlayV2 {
 
     /// Destination.
     pub receiver: PublicAddress,
+
+    /// Optional tx private key to use.
+    pub tx_private_key: Option<RistrettoPrivate>,
 }
 
 /// A single pending transaction.
@@ -268,8 +274,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `opt_fee` - Transaction fee value in smallest representable units. If
     ///   zero, use network-reported minimum fee.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
-    /// * `opt_memo_builder` - Optional memo builder to use instead of the
-    ///   default one (EmptyMemoBuilder).
+    /// * `memo_builder` - Memo builder to use.
     pub fn build_transaction(
         &self,
         sender_monitor_id: &MonitorId,
@@ -280,7 +285,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         last_block_infos: &[BlockInfo],
         opt_fee: u64,
         opt_tombstone: u64,
-        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
+        memo_builder: Box<dyn MemoBuilder + 'static + Send + Sync>,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{outlays:?}")));
         log::trace!(logger, "Building pending transaction...");
@@ -304,6 +309,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map(|outlay_v1| OutlayV2 {
                 receiver: outlay_v1.receiver.clone(),
                 amount: Amount::new(outlay_v1.value, token_id),
+                tx_private_key: outlay_v1.tx_private_key,
             })
             .collect();
 
@@ -317,7 +323,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             last_block_infos,
             opt_fee,
             opt_tombstone,
-            opt_memo_builder,
+            Some(memo_builder),
         )
     }
 
@@ -425,10 +431,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .collect();
             let proofs = self.get_membership_proofs(&outputs)?;
 
-            all_selected_utxos
-                .into_iter()
-                .zip(proofs.into_iter())
-                .collect()
+            all_selected_utxos.into_iter().zip(proofs).collect()
         };
         log::trace!(logger, "Got membership proofs");
 
@@ -621,7 +624,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let selected_utxos = {
             let inputs = self
                 .mobilecoind_db
-                .get_utxos_for_subaddress(monitor_id, subaddress_index)?;
+                .get_utxos_for_subaddress(monitor_id, subaddress_index)?
+                .into_iter()
+                .filter(|utxo| utxo.token_id == *token_id)
+                .collect::<Vec<_>>();
             Self::select_utxos_for_optimization(
                 num_blocks_in_ledger,
                 &inputs,
@@ -654,7 +660,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .collect();
             let proofs = self.get_membership_proofs(&outputs)?;
 
-            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+            selected_utxos.into_iter().zip(proofs).collect()
         };
         log::trace!(logger, "Got membership proofs");
 
@@ -681,6 +687,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlays = vec![OutlayV2 {
             receiver: monitor_data.account_key.subaddress(subaddress_index),
             amount: Amount::new(total_value - fee, token_id),
+            tx_private_key: None,
         }];
 
         // Build and return the TxProposal object
@@ -764,7 +771,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
             let tx_outs: Vec<TxOut> = inputs.iter().map(|utxo| utxo.tx_out.clone()).collect();
             let proofs = self.get_membership_proofs(&tx_outs)?;
-            inputs.iter().cloned().zip(proofs.into_iter()).collect()
+            inputs.iter().cloned().zip(proofs).collect()
         };
         log::trace!(logger, "Got membership proofs");
 
@@ -785,6 +792,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlays = vec![OutlayV2 {
             receiver: receiver.clone(),
             amount: Amount::new(total_value - fee, token_id),
+            tx_private_key: None,
         }];
 
         // Build and return the TxProposal object
@@ -1060,10 +1068,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .ledger_db
             .get_tx_out_proof_of_memberships(&mixin_indices)?;
 
-        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = mixins
-            .into_iter()
-            .zip(membership_proofs.into_iter())
-            .collect();
+        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> =
+            mixins.into_iter().zip(membership_proofs).collect();
 
         // Group mixins and proofs into individual rings.
         let result: Vec<Vec<(_, _)>> = mixins_with_proofs
@@ -1278,7 +1284,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 confirmation,
                 ..
             } = tx_builder
-                .add_output(outlay.amount, &outlay.receiver, rng)
+                .add_output_with_tx_private_key(
+                    outlay.amount,
+                    &outlay.receiver,
+                    outlay.tx_private_key,
+                    rng,
+                )
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {err}")))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
@@ -1642,6 +1653,7 @@ mod test {
                 attempted_spend_height: 0,
                 attempted_spend_tombstone: 0,
                 token_id: *token_id,
+                memo_payload: vec![],
             })
             .collect()
     }
@@ -1764,6 +1776,38 @@ mod test {
                 selected_utxos,
                 vec![utxos[0].clone(), utxos[2].clone(), utxos[4].clone()]
             );
+        }
+    }
+
+    #[test]
+    fn test_select_utxos_for_optimization_works_with_eusd() {
+        // Optimizing with max_inputs=2 should select 100, 2000
+        {
+            let mut utxos = generate_utxos(6);
+            let eusd = TokenId::from(1);
+
+            utxos[0].value = 100 * MILLIMOB_TO_PICOMOB;
+            utxos[1].value = 200 * MILLIMOB_TO_PICOMOB;
+            utxos[2].value = 150 * MILLIMOB_TO_PICOMOB;
+            utxos[3].value = 300 * MILLIMOB_TO_PICOMOB;
+            utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
+            utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
+            utxos[0].token_id = *eusd;
+            utxos[1].token_id = *eusd;
+            utxos[2].token_id = *eusd;
+            utxos[3].token_id = *eusd;
+            utxos[4].token_id = *eusd;
+            utxos[5].token_id = *eusd;
+
+            let selected_utxos = TransactionsManager::<
+                ThickClient<HardcodedCredentialsProvider>,
+                MockFogPubkeyResolver,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 2, eusd, Mob::MINIMUM_FEE
+            )
+            .unwrap();
+
+            assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
         }
     }
 

@@ -52,7 +52,8 @@ impl TryFrom<&external::CurveScalar> for Scalar {
             .get_data()
             .try_into()
             .map_err(|_| ConversionError::ArrayCastError)?;
-        Ok(Scalar::from_bits(bytes))
+        let maybe_scalar: Option<Scalar> = Scalar::from_canonical_bytes(bytes).into();
+        maybe_scalar.ok_or(ConversionError::InvalidContents)
     }
 }
 

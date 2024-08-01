@@ -5,7 +5,7 @@
 
 use clap::Parser;
 use displaydoc::Display;
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attestation_verifier::{TrustedIdentity, TrustedMrSignerIdentity};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
@@ -13,6 +13,7 @@ use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_resolver::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
+use mc_t3_api::T3Uri;
 use mc_util_parse::{load_css_file, parse_duration_in_seconds};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(all(feature = "ip-check", not(feature = "bypass-ip-check")))]
@@ -98,6 +99,20 @@ pub struct Config {
     /// An authorization token for the ipinfo.io service, if available
     #[clap(long, env = "MC_IP_INFO_TOKEN", default_value = "")]
     pub ip_info_token: String,
+
+    /// Optional T3 URI. When provided, reporting to T3 will be enabled
+    #[clap(
+        long,
+        env = "T3_URI",
+        requires = "t3_api_key",
+        requires = "mobilecoind_db",
+        conflicts_with = "offline"
+    )]
+    pub t3_uri: Option<T3Uri>,
+
+    /// T3 API Key
+    #[clap(long, env = "T3_API_KEY", requires = "t3_uri")]
+    pub t3_api_key: Option<String>,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
@@ -164,27 +179,18 @@ impl Config {
         QuorumSet::new_with_node_ids(node_ids.len() as u32, node_ids)
     }
 
-    /// Get the attestation verifier used to verify fog reports when sending to
+    /// Get the attestation identity used to verify fog reports when sending to
     /// fog recipients
-    pub fn get_fog_ingest_verifier(&self) -> Option<Verifier> {
+    pub fn fog_ingest_identity(&self) -> Option<TrustedIdentity> {
         self.fog_ingest_enclave_css.as_ref().map(|signature| {
-            let mr_signer_verifier = {
-                let mut mr_signer_verifier = MrSignerVerifier::new(
-                    signature.mrsigner().into(),
-                    signature.product_id(),
-                    signature.version(),
-                );
-                mr_signer_verifier.allow_hardening_advisories(&[
-                    "INTEL-SA-00334",
-                    "INTEL-SA-00615",
-                    "INTEL-SA-00657",
-                ]);
-                mr_signer_verifier
-            };
-
-            let mut verifier = Verifier::default();
-            verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-            verifier
+            let mr_signer_identity = TrustedMrSignerIdentity::new(
+                signature.mrsigner().into(),
+                signature.product_id(),
+                signature.version(),
+                [] as [&str; 0],
+                ["INTEL-SA-00334", "INTEL-SA-00615", "INTEL-SA-00657"],
+            );
+            mr_signer_identity.into()
         })
     }
 
@@ -203,16 +209,16 @@ impl Config {
 
         let conn = GrpcFogReportConnection::new(self.peers_config.chain_id.to_owned(), env, logger);
 
-        let verifier = self.get_fog_ingest_verifier();
+        let identity = self.fog_ingest_identity();
 
         Arc::new(move |fog_uris| -> Result<FogResolver, String> {
             if fog_uris.is_empty() {
                 Ok(Default::default())
-            } else if let Some(verifier) = verifier.as_ref() {
+            } else if let Some(identity) = identity.as_ref() {
                 let report_responses = conn
                     .fetch_fog_reports(fog_uris.iter().cloned())
                     .map_err(|err| format!("Failed fetching fog reports: {err}"))?;
-                Ok(FogResolver::new(report_responses, verifier)
+                Ok(FogResolver::new(report_responses, [identity])
                     .map_err(|err| format!("Invalid fog url: {err}"))?)
             } else {
                 Err(
@@ -319,7 +325,7 @@ impl PeersConfig {
     /// Instantiate a client for each of the peer URIs.
     pub fn create_peers(
         &self,
-        verifier: Verifier,
+        identity: TrustedIdentity,
         grpc_env: Arc<grpcio::Environment>,
         logger: Logger,
     ) -> Vec<ThickClient<HardcodedCredentialsProvider>> {
@@ -331,7 +337,7 @@ impl PeersConfig {
                 ThickClient::new(
                     self.chain_id.to_owned(),
                     client_uri.clone(),
-                    verifier.clone(),
+                    [identity.clone()],
                     grpc_env.clone(),
                     HardcodedCredentialsProvider::from(client_uri),
                     logger.clone(),
@@ -344,7 +350,7 @@ impl PeersConfig {
     /// Instantiate a ConnectionManager for all the peers.
     pub fn create_peer_manager(
         &self,
-        verifier: Verifier,
+        identity: TrustedIdentity,
         logger: &Logger,
     ) -> ConnectionManager<ThickClient<HardcodedCredentialsProvider>> {
         let grpc_env = Arc::new(
@@ -353,7 +359,7 @@ impl PeersConfig {
                 .name_prefix("peer")
                 .build(),
         );
-        let peers = self.create_peers(verifier, grpc_env, logger.clone());
+        let peers = self.create_peers(identity, grpc_env, logger.clone());
 
         ConnectionManager::new(peers, logger.clone())
     }

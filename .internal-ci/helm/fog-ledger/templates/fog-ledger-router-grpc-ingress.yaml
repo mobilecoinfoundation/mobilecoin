@@ -1,0 +1,56 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- if .Values.fogLedger.router.ingress.enabled }}
+{{- range $routerHosts := $.Values.fogLedger.router.hosts }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fog-ledger.fullname" $ }}-router-grpc-{{ $routerHosts.partner }}
+  labels:
+    app: fog-ledger
+    {{- include "fog-ledger.labels" $ | nindent 4 }}
+  annotations:
+    {{- if $.Values.fogLedger.router.ingress.common.blocklist.enabled }}
+    haproxy.org/blacklist: {{ $.Values.fogLedger.router.ingress.common.blocklist.pattern }}
+    {{- end }}
+    {{ toYaml (tpl $.Values.fogLedger.router.ingress.common.annotations $ | fromYaml) | nindent 4 }}
+    {{ toYaml (tpl $.Values.fogLedger.router.ingress.grpc.annotations $ | fromYaml) | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ $routerHosts.responderID }}
+    secretName: {{ include "fog-ledger.fullname" $ }}-tls-{{ $routerHosts.partner }}
+  rules:
+  - host: {{ $routerHosts.responderID }}
+    http:
+      paths:
+      - path: /fog_ledger.FogBlockAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
+            port:
+              name: ledger-grpc
+      - path: /fog_ledger.FogKeyImageAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
+            port:
+              name: ledger-grpc
+      - path: /fog_ledger.FogMerkleProofAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
+            port:
+              name: ledger-grpc
+      - path: /fog_ledger.FogUntrustedTxOutApi
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger.fullname" $ }}-router-{{ $routerHosts.partner }}
+            port:
+              name: ledger-grpc
+---
+{{- end }}
+{{- end }}

@@ -24,9 +24,9 @@ where
     buffer: GenericArray<u8, <Core as KexRngCore<KexAlgo>>::OutputSize>,
 }
 
-////
+//
 // Implement high-level traits
-////
+//
 
 impl<Core, KexAlgo> BufferedRng for BufferedKexRng<Core, KexAlgo>
 where
@@ -113,9 +113,9 @@ where
     }
 }
 
-////
+//
 // Implement underlying required traits
-////
+//
 
 // Clone
 impl<Core, KexAlgo> Clone for BufferedKexRng<Core, KexAlgo>

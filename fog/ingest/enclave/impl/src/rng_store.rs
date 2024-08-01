@@ -144,7 +144,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> RngStore<OSC> {
         let result_code = self.omap.as_mut().unwrap().access_and_insert(
             &aligned_shared_secret,
             &Default::default(),
-            &mut McRng::default(),
+            &mut McRng,
             |_status_code, counter_buf| {
                 let mut counter_val = u64::from_ne_bytes(*counter_buf.as_ref());
                 // Compute the next rng output given shared secret and counter value

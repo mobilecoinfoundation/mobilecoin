@@ -71,14 +71,14 @@ pub enum Error {
     /// The method call was not valid for the state machine for the data.
     //
     // This indicates a bug in the calling code, typically attempting to
-    // re-submit an already-verified quote or IAS report.
+    // re-submit an already-verified quote or attestation evidence.
     InvalidState,
 
-    /// No IAS report has been verified yet
-    NoReportAvailable,
+    /// No attestation evidence has been verified yet
+    NoAttestationEvidenceAvailable,
 
-    /// Too many IAS reports are already in-flight
-    TooManyPendingReports,
+    /// Too many attestation evidence instances are already in-flight
+    TooManyPendingAttestationEvidenceInstances,
 
     /// Error parsing key: {0}
     Key(KeyError),

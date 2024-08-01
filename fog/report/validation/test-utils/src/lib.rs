@@ -2,7 +2,7 @@ pub use mc_account_keys::PublicAddress;
 pub use mc_fog_report_validation::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 use std::collections::BTreeMap;
 
-/// A mock fog resolver for tests, which skips all IAS, x509, and grpc
+/// A mock fog resolver for tests, which skips all x509 and grpc
 /// It maps Fog-urls (Strings) to FullyValidatedFogPubkey
 ///
 /// DO NOT use this except in test code!

@@ -20,7 +20,7 @@ use mc_util_serial::{
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of errors which can occur inside a consensus enclave.
-#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, Serialize)]
 pub enum Error {
     /// Error communicating with SGX: {0}
     Sgx(SgxError),

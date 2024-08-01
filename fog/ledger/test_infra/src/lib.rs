@@ -2,17 +2,12 @@
 
 //! Functionality for mocking and testing components in the ledger server
 
-use http::Uri;
-use hyper::{
-    client::HttpConnector,
-    service::{make_service_fn, service_fn},
-    Body, Client, Request, Response, Server,
-};
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, EnclaveReportDataContents, Report, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, NonceAuthRequest,
     NonceAuthResponse, NonceSession,
 };
+use mc_attest_untrusted::DcapQuotingEnclave;
 use mc_blockchain_types::{
     Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature,
 };
@@ -30,28 +25,45 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     TokenId,
 };
-use rand::seq::SliceRandom;
-use std::{net::SocketAddr, sync::Arc};
-use tokio::{sync::oneshot, task::JoinHandle};
 
 #[derive(Default, Clone)]
 pub struct MockEnclave {}
 
 impl ReportableEnclave for MockEnclave {
-    fn new_ereport(&self, _qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
-        Ok((Report::default(), QuoteNonce::default()))
+    fn new_ereport(
+        &self,
+        _qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
+        let report_data = EnclaveReportDataContents::new(
+            Default::default(),
+            [0u8; 32].as_slice().try_into().expect("bad key"),
+            None,
+        );
+        Ok((Report::default(), report_data))
     }
 
-    fn verify_quote(&self, _quote: Quote, _qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        Ok(IasNonce::default())
-    }
-
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+    fn verify_attestation_evidence(
+        &self,
+        _attestation_evidence: DcapEvidence,
+    ) -> ReportableEnclaveResult<()> {
         Ok(())
     }
 
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        Ok(VerificationReport::default())
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
+        let report_data = EnclaveReportDataContents::new(
+            [0x1au8; 16].into(),
+            [0x50u8; 32].as_slice().try_into().expect("bad key"),
+            [0x34u8; 32],
+        );
+        let mut report = Report::default();
+        report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
+        let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
+        let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
+        Ok(DcapEvidence {
+            quote,
+            collateral,
+            report_data,
+        })
     }
 }
 
@@ -293,72 +305,5 @@ impl Ledger for MockLedger {
         _mint_tx: &MintTx,
     ) -> Result<ActiveMintConfig, Error> {
         unimplemented!()
-    }
-}
-
-pub struct ShardProxyServer {
-    server_handle: Option<JoinHandle<Result<(), hyper::Error>>>,
-    stop_channel: Option<oneshot::Sender<()>>,
-}
-
-impl ShardProxyServer {
-    async fn route(
-        request: Request<Body>,
-        client: Arc<Client<HttpConnector>>,
-        endpoints: Arc<Vec<String>>,
-    ) -> Result<Response<Body>, hyper::Error> {
-        let endpoint = {
-            let mut rng = rand::thread_rng();
-            endpoints.choose(&mut rng).unwrap()
-        };
-        let (mut parts, body) = request.into_parts();
-
-        let mut uri_parts = parts.uri.clone().into_parts();
-        uri_parts.authority = Some(endpoint.parse().unwrap());
-        uri_parts.scheme = Some("http".parse().unwrap());
-        parts.uri = Uri::from_parts(uri_parts).unwrap();
-
-        let request = Request::from_parts(parts, body);
-        client.request(request).await
-    }
-
-    async fn shutdown(channel: oneshot::Receiver<()>) {
-        channel.await.unwrap_or(());
-    }
-
-    pub fn new(address: &SocketAddr, endpoints: Vec<String>) -> Self {
-        let client = Arc::new(Client::builder().http2_only(true).build_http());
-        let endpoints = Arc::new(endpoints);
-        let (tx, rx) = oneshot::channel::<()>();
-
-        let make_service = make_service_fn(move |_| {
-            let client = client.clone();
-            let endpoints = endpoints.clone();
-
-            async move {
-                Ok::<_, hyper::Error>(service_fn(move |req| {
-                    Self::route(req, client.clone(), endpoints.clone())
-                }))
-            }
-        });
-
-        let server = Server::bind(address).serve(make_service);
-        let graceful = server.with_graceful_shutdown(Self::shutdown(rx));
-
-        let server_handle = tokio::spawn(async move { graceful.await });
-
-        Self {
-            server_handle: Some(server_handle),
-            stop_channel: Some(tx),
-        }
-    }
-
-    pub async fn stop(&mut self) {
-        if let Some(stop_channel) = self.stop_channel.take() {
-            let _ = stop_channel.send(());
-        }
-        if let Some(server_handle) = self.server_handle.take() {
-            let _ = server_handle.await;
-        }
     }
 }

@@ -4,6 +4,18 @@
 
 #![deny(missing_docs)]
 #![feature(proc_macro_hygiene, decl_macro)]
+// Needed due to the `FromForm` macro implementation in rocket
+// Without it one gets:
+//        --> admin-http-gateway/src/main.rs:93:1
+//         |
+//      93 | / struct SetRustLogForm {
+//      94 | |     rust_log: String,
+//      95 | | }
+//         | |_^
+//         |
+//         = note: `-D renamed-and-removed-lints` implied by `-D warnings`
+//         = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
+#![allow(renamed_and_removed_lints)]
 
 use clap::Parser;
 use grpcio::ChannelBuilder;

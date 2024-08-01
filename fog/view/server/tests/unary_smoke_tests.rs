@@ -8,6 +8,7 @@
 // It exercises both the ingest enclave, and the fog-related crypto that makes
 // its way into the client.
 
+use mc_attest_verifier_types::prost;
 use mc_blockchain_types::{Block, BlockID, BlockVersion};
 use mc_common::logger;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
@@ -129,7 +130,7 @@ fn test_view_integration(view_omap_capacity: u64, store_count: usize, blocks_per
         &ReportData {
             pubkey_expiry: 4,
             ingest_invocation_id: None,
-            report: Default::default(),
+            attestation_evidence: prost::DcapEvidence::default().into(),
         },
     )
     .unwrap();
@@ -722,7 +723,7 @@ fn test_middle_missing_range_with_decommission(store_count: usize, blocks_per_st
         &ReportData {
             pubkey_expiry: 10,
             ingest_invocation_id: None,
-            report: Default::default(),
+            attestation_evidence: prost::DcapEvidence::default().into(),
         },
     )
     .unwrap();

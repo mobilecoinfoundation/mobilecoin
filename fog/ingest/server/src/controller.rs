@@ -10,7 +10,7 @@ use crate::{
     server::IngestServerConfig,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
-use mc_attest_net::RaClient;
+use mc_attest_verifier_types::prost;
 use mc_blockchain_types::{Block, BlockContents, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
@@ -20,7 +20,7 @@ use mc_connection::Connection;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::{
     ingest_common::{IngestControllerMode, IngestStateFile, IngestSummary},
-    report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report,
+    report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_evidence,
 };
 use mc_fog_ingest_enclave::{
     Error as EnclaveError, IngestEnclave, IngestSgxEnclave, NewEnclaveError,
@@ -59,10 +59,8 @@ use std::{
 /// So the idea here is instead that the IngestController owns no threads, the
 /// IngestWorker is external to it, and all the grpcio threads are also external
 /// to it, and talk to Arc<IngestController> to accomplish their tasks.
-pub struct IngestController<
-    R: RaClient + Send + Sync + 'static,
-    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
+pub struct IngestController<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// The config object for the server
@@ -74,7 +72,7 @@ pub struct IngestController<
     /// The recovery db that we write rng records and txout records to
     recovery_db: DB,
     /// The cache for reports from this enclave
-    report_cache: Arc<Mutex<ReportCache<IngestSgxEnclave, R>>>,
+    report_cache: Arc<Mutex<ReportCache<IngestSgxEnclave>>>,
     /// grpc environment (thread pool) for grpc connections to our peers
     /// Note: we only make synchronous grpc calls in igp connection object,
     /// and this env isn't used to recieve any connections,
@@ -87,15 +85,12 @@ pub struct IngestController<
     logger: Logger,
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestController<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> IngestController<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Create a new ingest controller
-    pub fn new(config: IngestServerConfig, ra_client: R, recovery_db: DB, logger: Logger) -> Self {
+    pub fn new(config: IngestServerConfig, recovery_db: DB, logger: Logger) -> Self {
         let controller_state = Arc::new(Mutex::new(IngestControllerState::new(
             &config,
             logger.clone(),
@@ -183,9 +178,7 @@ where
         // Initialize report cache
         let report_cache = Arc::new(Mutex::new(ReportCache::new(
             enclave.clone(),
-            ra_client,
-            config.ias_spid,
-            &counters::ENCLAVE_REPORT_TIMESTAMP,
+            &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
             logger.clone(),
         )));
 
@@ -272,7 +265,7 @@ where
     /// but with checks for idle state, and updates to sealed backups
     pub fn set_ingress_private_key(&self, msg: EnclaveMessage<PeerSession>) -> Result<(), Error> {
         // Lock our state for this entire call
-        let mut state = self.get_state();
+        let state = self.get_state();
         if !state.is_idle() {
             return Err(Error::ServerNotIdle);
         }
@@ -282,9 +275,9 @@ where
         if set_ingress_private_key_result.did_private_key_change {
             // Seal the new private keys we ended up with to disk
             *self.last_sealed_key.lock().unwrap() = None;
-            self.write_state_file_inner(&mut state);
+            self.write_state_file_inner(&state);
 
-            // Don't hold the lock while we make network calls to IAS
+            // Don't hold the lock any longer than necessary
             drop(state);
 
             // Refresh report cache
@@ -314,7 +307,7 @@ where
         log::info!(self.logger, "Setting new key in controller");
         let mut state = self.get_state();
         self.new_keys_inner(&mut state)?;
-        Ok(self.get_ingest_summary_inner(&mut state))
+        Ok(self.get_ingest_summary_inner(&state))
     }
 
     // Does work of new_keys but takes MutexGuard for controller_state as argument
@@ -447,7 +440,7 @@ where
                 log::trace!(self.logger, "publish report");
                 let mut retry_seconds = 1;
                 loop {
-                    match self.publish_report(&ingress_pubkey, &mut state) {
+                    match self.publish_report(&ingress_pubkey, &state) {
                         Ok(ingress_key_status) => {
                             // If our key is retired, and the index we want to scan is past expiry,
                             // early return. Note, we don't even NEED to scan
@@ -692,7 +685,7 @@ where
         let mut state = self.get_state();
         if state.is_active() {
             log::info!(self.logger, "We are already active! Early return");
-            return Ok(self.get_ingest_summary_inner(&mut state));
+            return Ok(self.get_ingest_summary_inner(&state));
         }
 
         // A valid report cache is required to initiate an outgoing attested connection.
@@ -821,7 +814,7 @@ where
         // no blocks come after we activate. This is needed because in some tests,
         // the only transactions sent are fog transactions, so there can't be
         // a block unless this key is published before the next block comes.
-        let key_status = self.publish_report(&our_pubkey, &mut state)?;
+        let key_status = self.publish_report(&our_pubkey, &state)?;
 
         // If our key is retired, and the index we want to scan is past expiry, early
         // return. Note, we don't even NEED to scan when block.index ==
@@ -895,7 +888,7 @@ where
         self.update_enclave_report_cache()?;
 
         // Lock the state for the duration of this call
-        let mut state = self.get_state();
+        let state = self.get_state();
         if !state.is_idle() {
             return Err(Error::ServerNotIdle);
         }
@@ -922,10 +915,10 @@ where
         );
 
         *self.last_sealed_key.lock().unwrap() = None;
-        self.write_state_file_inner(&mut state);
-        let result = self.get_ingest_summary_inner(&mut state);
+        self.write_state_file_inner(&state);
+        let result = self.get_ingest_summary_inner(&state);
 
-        // Don't hold the state mutex while we are talking to IAS
+        // Don't hold the state mutex any longer than necessary
         drop(state);
 
         // Update our report cache since we changed the private key
@@ -1010,14 +1003,11 @@ where
 
     /// Get the IngestSummary object
     pub fn get_ingest_summary(&self) -> IngestSummary {
-        self.get_ingest_summary_inner(&mut self.get_state())
+        self.get_ingest_summary_inner(&self.get_state())
     }
 
     // Helper for get_ingest_summary that takes an existing lock on our state
-    fn get_ingest_summary_inner(
-        &self,
-        state: &mut MutexGuard<IngestControllerState>,
-    ) -> IngestSummary {
+    fn get_ingest_summary_inner(&self, state: &MutexGuard<IngestControllerState>) -> IngestSummary {
         let mut result = state.get_ingest_summary();
         let ingress_pubkey = CompressedRistrettoPublic::from(
             &self
@@ -1195,16 +1185,20 @@ where
     fn publish_report(
         &self,
         ingress_public_key: &CompressedRistrettoPublic,
-        state: &mut MutexGuard<IngestControllerState>,
+        state: &MutexGuard<IngestControllerState>,
     ) -> Result<IngressPublicKeyStatus, Error> {
         // Get a report and check that it makes sense with what we think is happening
-        let report = {
-            let report = self.enclave.get_ias_report()?;
+        let evidence = {
+            let dcap_evidence = self.enclave.get_attestation_evidence()?;
+            let prost_evidence =
+                prost::DcapEvidence::try_from(&dcap_evidence).map_err(|_| Error::Serialization)?;
+            let attestation_evidence = prost_evidence.into();
             // Check that key in report data matches ingress_public_key.
             // If not, then there is some kind of race.
-            let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&report)?;
+            let found_key =
+                try_extract_unvalidated_ingress_pubkey_from_fog_evidence(&attestation_evidence)?;
             if &found_key == ingress_public_key {
-                report
+                attestation_evidence
             } else {
                 // Hmm, let's try refreshing the enclave cache
                 log::debug!(
@@ -1213,10 +1207,15 @@ where
                 );
                 self.update_enclave_report_cache()?;
 
-                let report = self.enclave.get_ias_report()?;
-                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_report(&report)?;
+                let dcap_evidence = self.enclave.get_attestation_evidence()?;
+                let prost_evidence = prost::DcapEvidence::try_from(&dcap_evidence)
+                    .map_err(|_| Error::Serialization)?;
+                let attestation_evidence = prost_evidence.into();
+                let found_key = try_extract_unvalidated_ingress_pubkey_from_fog_evidence(
+                    &attestation_evidence,
+                )?;
                 if &found_key == ingress_public_key {
-                    report
+                    attestation_evidence
                 } else {
                     // This means that the caller is wrong about what the
                     // current ingress public key is, and we don't have anything we can publish.
@@ -1243,7 +1242,7 @@ where
 
         let report_data = ReportData {
             ingest_invocation_id: state.get_ingest_invocation_id(),
-            report,
+            attestation_evidence: evidence,
             pubkey_expiry: state.get_next_block_index() + state.get_pubkey_expiry_window(),
         };
         let report_id = self.config.fog_report_id.as_ref();
@@ -1275,12 +1274,12 @@ where
     // a block, or when the state is actively changed.
     // This is a no-op if there is no state file configured.
     fn write_state_file(&self) {
-        self.write_state_file_inner(&mut self.get_state())
+        self.write_state_file_inner(&self.get_state())
     }
 
     // Helper for write_state_file which takes an already existing lock on the state
     // mutex
-    fn write_state_file_inner(&self, state: &mut MutexGuard<IngestControllerState>) {
+    fn write_state_file_inner(&self, state: &MutexGuard<IngestControllerState>) {
         // This ensures that if the server goes down, we know at what block it stopped
         // and we know where to start up if we start up again.
         if let Some(state_file) = self.config.state_file.as_ref() {

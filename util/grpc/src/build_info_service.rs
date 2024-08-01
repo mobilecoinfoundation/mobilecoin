@@ -42,7 +42,6 @@ pub fn get_build_info() -> BuildInfo {
     build_info.set_target_feature(::mc_util_build_info::target_feature().to_owned());
     build_info.set_rustflags(::mc_util_build_info::rustflags().to_owned());
     build_info.set_sgx_mode(::mc_util_build_info::sgx_mode().to_owned());
-    build_info.set_ias_mode(::mc_util_build_info::ias_mode().to_owned());
     build_info
 }
 

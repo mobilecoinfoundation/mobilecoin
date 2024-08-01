@@ -175,7 +175,7 @@ mod tests {
         let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
-        let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+        let values = [TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
 
         // `validate` should be called one for each pending value.
         tx_manager
@@ -254,7 +254,7 @@ mod tests {
         let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
-        let tx_hashes = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+        let tx_hashes = [TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
 
         let values: Vec<ConsensusValue> = tx_hashes
             .iter()

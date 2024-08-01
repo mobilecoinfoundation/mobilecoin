@@ -46,11 +46,11 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 /// The constant chosen for the burn address view private key.
 /// This is arbitrary but we decided to make it nonzero, because we are using
 /// this number to multiply, and multiplying by zero can lead to degeneracies.
-pub const BURN_ADDRESS_VIEW_PRIVATE: Scalar = Scalar::from_bits([1u8; 32]);
+pub const BURN_ADDRESS_VIEW_PRIVATE_BYTES: [u8; 32] = [1u8; 32];
 
 /// The burn address view private key in the keys-crate wrapper type
 pub fn burn_address_view_private() -> RistrettoPrivate {
-    RistrettoPrivate::from(BURN_ADDRESS_VIEW_PRIVATE)
+    RistrettoPrivate::from(Scalar::from_canonical_bytes(BURN_ADDRESS_VIEW_PRIVATE_BYTES).unwrap())
 }
 
 /// The public address for burning funds transparently.
@@ -117,5 +117,21 @@ fn burn_address_spend_public() -> RistrettoPoint {
 // that all addresses in MobileCoin are subaddresses, but it's simpler not to
 // have to do that.
 fn burn_address_view_public() -> RistrettoPoint {
-    BURN_ADDRESS_VIEW_PRIVATE * burn_address_spend_public()
+    Scalar::from_canonical_bytes(BURN_ADDRESS_VIEW_PRIVATE_BYTES).unwrap()
+        * burn_address_spend_public()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn burn_address_view_private_doesnt_panic() {
+        let _ = burn_address_view_private();
+    }
+
+    #[test]
+    fn burn_address_view_public_doesnt_panic() {
+        let _ = burn_address_view_public();
+    }
 }

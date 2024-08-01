@@ -579,9 +579,7 @@ mod ed25519_tests {
         );
     }
 
-    ////
     // Validate ED25519_*_PREFIX against openssl implementation
-    ////
     //
     // In review, Isis suggested that the 12 byte pattern ED25519_SIG_DER_PREFIX
     // should be validated by

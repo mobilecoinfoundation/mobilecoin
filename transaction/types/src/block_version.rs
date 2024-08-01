@@ -59,7 +59,7 @@ impl FromStr for BlockVersion {
 impl BlockVersion {
     /// The maximum value of block_version that this build of
     /// mc-transaction-core has support for
-    pub const MAX: Self = Self(3);
+    pub const MAX: Self = Self::FOUR;
 
     /// Refers to the block version number at network launch.
     pub const ZERO: Self = Self(0);
@@ -73,6 +73,9 @@ impl BlockVersion {
     /// Constant for block version three
     pub const THREE: Self = Self(3);
 
+    /// Constant for block version four
+    pub const FOUR: Self = Self(4);
+
     /// Iterator over block versions from one up to max, inclusive. For use in
     /// tests.
     pub fn iterator() -> BlockVersionIterator {
@@ -82,74 +85,74 @@ impl BlockVersion {
     /// The encrypted memos feature is introduced in v1.
     /// [MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3)
     pub fn e_memo_feature_is_supported(&self) -> bool {
-        self.0 >= 1
+        self >= &Self::ONE
     }
 
     /// The confidential token ids feature is introduced in v2.
     /// [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25)
     pub fn masked_token_id_feature_is_supported(&self) -> bool {
-        self.0 >= 2
+        self >= &Self::TWO
     }
 
     /// Transactions must be sorted from v3 onward.
     /// [MCIP #34](https://github.com/mobilecoinfoundation/mcips/pull/34)
     pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// Mint transactions are introduced in v2.
     /// [MCIP #37](https://github.com/mobilecoinfoundation/mcips/pull/37)
     pub fn mint_transactions_are_supported(&self) -> bool {
-        self.0 >= 2
+        self >= &Self::TWO
     }
 
     /// Minting_to_fog_addresses is supported in v3
     /// [MCIP #53](https://github.com/mobilecoinfoundation/mcips/pull/53)
     pub fn minting_to_fog_addresses_is_supported(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// The extended message digest is used when signing MLSAGs
     /// in v2 and higher. This is described in
     /// [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/25).
     pub fn mlsags_sign_extended_message_digest(&self) -> bool {
-        self.0 >= 2
+        self >= &Self::TWO
     }
 
     /// Mixed transactions are introduced in v3
     /// [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
     pub fn mixed_transactions_are_supported(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// Signed input rules are introduced in v3.
     /// [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
     pub fn signed_input_rules_are_supported(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// Masked amount V2 derivation introduced with block version 3.
     /// [MCIP #42](https://github.com/mobilecoinfoundation/mcips/pull/42)
     pub fn masked_amount_v2_is_supported(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// `BlockData.metadata` is required starting from v3.
     /// [MCIP #43](https://github.com/mobilecoinfoundation/mcips/pull/43)
     pub fn require_block_metadata(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// MLSAGs sign extended-message-and-tx-summary digest starting from v3.
     /// [MCIP #52](https://github.com/mobilecoinfoundation/mcips/pull/52)
     pub fn mlsags_sign_extended_message_and_tx_summary_digest(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 
     /// Nested multisigs are supporoted starting from v3.
     /// [MCIP #TODO]
     pub fn nested_multisigs_are_supported(&self) -> bool {
-        self.0 >= 3
+        self >= &Self::THREE
     }
 }
 

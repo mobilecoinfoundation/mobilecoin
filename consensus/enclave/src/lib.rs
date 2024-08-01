@@ -10,7 +10,7 @@ pub use mc_consensus_enclave_api::{
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
+    DcapEvidence, EnclaveReportDataContents, EvidenceKind, Report, SgxError, TargetInfo,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -93,26 +93,28 @@ impl ConsensusServiceSgxEnclave {
 pub type SealedBlockSigningKey = Vec<u8>;
 
 impl ReportableEnclave for ConsensusServiceSgxEnclave {
-    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+    fn new_ereport(
+        &self,
+        qe_info: TargetInfo,
+    ) -> ReportableEnclaveResult<(Report, EnclaveReportDataContents)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
+    fn verify_attestation_evidence(
+        &self,
+        attestation_evidence: DcapEvidence,
+    ) -> ReportableEnclaveResult<()> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyAttestationEvidence(
+            attestation_evidence,
+        ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
+    fn get_attestation_evidence(&self) -> ReportableEnclaveResult<DcapEvidence> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetAttestationEvidence)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
@@ -202,7 +204,7 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<(PeerSession, VerificationReport)> {
+    ) -> Result<(PeerSession, EvidenceKind)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

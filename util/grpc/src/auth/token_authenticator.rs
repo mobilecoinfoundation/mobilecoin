@@ -190,13 +190,9 @@ mod tests {
         let shared_secret = [3; 32];
         const TEST_USERNAME: &str = "test user";
 
-        let generator =
-            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
-        let authenticator = TokenAuthenticator::new(
-            shared_secret,
-            TOKEN_MAX_LIFETIME,
-            SystemTimeProvider::default(),
-        );
+        let generator = TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider);
+        let authenticator =
+            TokenAuthenticator::new(shared_secret, TOKEN_MAX_LIFETIME, SystemTimeProvider);
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
         let user = authenticator
@@ -208,11 +204,8 @@ mod tests {
     #[test]
     fn missing_creds_fails_authentication() {
         let shared_secret = [3; 32];
-        let authenticator = TokenAuthenticator::new(
-            shared_secret,
-            TOKEN_MAX_LIFETIME,
-            SystemTimeProvider::default(),
-        );
+        let authenticator =
+            TokenAuthenticator::new(shared_secret, TOKEN_MAX_LIFETIME, SystemTimeProvider);
 
         assert_eq!(
             authenticator.authenticate(None),
@@ -225,12 +218,11 @@ mod tests {
         let shared_secret = [3; 32];
         const TEST_USERNAME: &str = "test user";
 
-        let generator =
-            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
+        let generator = TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider);
 
         // Signature will fail if authenticator uses a different shared secret.
         let authenticator =
-            TokenAuthenticator::new([4; 32], TOKEN_MAX_LIFETIME, SystemTimeProvider::default());
+            TokenAuthenticator::new([4; 32], TOKEN_MAX_LIFETIME, SystemTimeProvider);
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
 

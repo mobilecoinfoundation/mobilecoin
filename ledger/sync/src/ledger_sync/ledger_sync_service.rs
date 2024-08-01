@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! LedgerSyncService provides a mechanism for synchronizing a local ledger with
 //! the network. It uses consensus nodes as the source of truth for blocks, and
@@ -546,13 +546,10 @@ fn group_by_block(
     for (responder_id, blocks) in node_to_blocks {
         for block in blocks.iter() {
             let block_id_to_group: &mut HashMap<BlockID, HashSet<ResponderId>> =
-                block_index_to_grouping
-                    .entry(block.index)
-                    .or_insert_with(HashMap::default);
+                block_index_to_grouping.entry(block.index).or_default();
 
-            let group: &mut HashSet<ResponderId> = block_id_to_group
-                .entry(block.id.clone())
-                .or_insert_with(HashSet::default);
+            let group: &mut HashSet<ResponderId> =
+                block_id_to_group.entry(block.id.clone()).or_default();
 
             group.insert(responder_id.clone());
         }

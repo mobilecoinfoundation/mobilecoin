@@ -6,8 +6,6 @@
 use futures::executor::block_on;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
-use mc_attest_net::{Client as AttestClient, RaClient};
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_blockchain_types::{BlockSignature, BlockVersion};
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -15,6 +13,7 @@ use mc_common::{
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
 use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
     KeyImageResultExtension, LedgerGrpcClient, OutputResultExtension,
@@ -81,7 +80,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         let db_full_path = ledger_dir.path();
         let mut ledger = recreate_ledger_db(db_full_path);
 
-        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
         // Populate ledger with some data
         add_block_to_ledger(
@@ -90,7 +89,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             &recipients,
             &[],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -98,7 +97,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             &recipients,
             &[KeyImage::from(1)],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         let num_blocks = add_block_to_ledger(
             block_version,
@@ -106,7 +105,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             &recipients,
             &[KeyImage::from(2)],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
 
         {
@@ -123,59 +122,45 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
             .unwrap();
             let config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
                 client_responder_id: client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
                 shard_uris: vec![],
-                ias_spid: Default::default(),
-                ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-            let ra_client =
-                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
             let mut ledger_server = LedgerRouterServer::new(
                 config,
                 enclave,
-                ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
             ledger_server.start();
 
-            // Make ledger enclave client
-            let mut mr_signer_verifier =
-                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            mr_signer_verifier.allow_hardening_advisories(
-                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-            );
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
 
             let mut client = FogMerkleProofGrpcClient::new(
                 "local".to_string(),
                 client_listen_uri.clone(),
                 GRPC_RETRY_CONFIG,
-                verifier.clone(),
+                [identity.clone()],
                 grpc_env.clone(),
                 logger.clone(),
             );
@@ -230,7 +215,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
                 "wrong".to_string(),
                 client_listen_uri,
                 GRPC_RETRY_CONFIG,
-                verifier,
+                [identity],
                 grpc_env,
                 logger.clone(),
             );
@@ -290,7 +275,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
         let mut ledger = recreate_ledger_db(db_full_path);
 
         // Make WatcherDB
-        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
         // Populate ledger with some data
         // Origin block cannot have key images
@@ -300,7 +285,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &[],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -308,7 +293,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &keys[0..2],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -316,7 +301,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &keys[3..6],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         let num_blocks = add_block_to_ledger(
             block_version,
@@ -324,7 +309,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
             &recipients,
             &keys[6..9],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
 
         // Populate watcher with Signature and Timestamp for block 1
@@ -361,32 +346,28 @@ fn fog_ledger_key_images_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for store"),
                 client_listen_uri: store_uri.clone(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir.clone(),
-                ias_api_key: Default::default(),
-                ias_spid: Default::default(),
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir.clone()),
+                mobilecoind_uri: None,
                 admin_listen_uri: Some(store_admin_uri),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 omap_capacity: OMAP_CAPACITY,
                 sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+                poll_interval: Duration::from_millis(250),
             };
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &store_config.client_responder_id,
-                OMAP_CAPACITY,
+                store_config.omap_capacity,
                 logger.clone(),
             );
-            let ra_client =
-                AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
             let mut store_server = KeyImageStoreServer::new_from_config(
                 store_config,
                 store_enclave,
-                ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 EpochShardingStrategy::default(),
-                SystemTimeProvider::default(),
+                SystemTimeProvider,
                 logger.clone(),
             );
 
@@ -403,56 +384,42 @@ fn fog_ledger_key_images_test(logger: Logger) {
             .unwrap();
             let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: client_listen_uri.clone(),
                 shard_uris: vec![store_uri],
                 client_responder_id: client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
-                ias_spid: Default::default(),
-                ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &router_config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
-            let ra_client =
-                AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
             let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
-                ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
             store_server.start();
             router_server.start();
 
-            // Make ledger enclave client
-            let mut mr_signer_verifier =
-                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            mr_signer_verifier.allow_hardening_advisories(
-                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-            );
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
 
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
             let mut client =
-                LedgerGrpcClient::new(client_listen_uri, verifier, grpc_env, logger.clone());
+                LedgerGrpcClient::new(client_listen_uri, [identity], grpc_env, logger.clone());
 
             // Check on key images
             let mut response =
@@ -548,7 +515,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
-    let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+    let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
     // Populate ledger with some data
     // Origin block cannot have key images
@@ -558,7 +525,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &[alice.default_subaddress()],
         &[],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -566,7 +533,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &[alice.default_subaddress(), bob.default_subaddress()],
         &[KeyImage::from(1)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -578,7 +545,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         ],
         &[KeyImage::from(2)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     let num_blocks = add_block_to_ledger(
         BlockVersion::MAX,
@@ -586,7 +553,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &recipients,
         &[KeyImage::from(3)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
 
     {
@@ -603,39 +570,33 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         .unwrap();
         let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
+            ledger_db: Some(db_full_path.to_path_buf()),
+            watcher_db: Some(watcher_dir),
+            mobilecoind_uri: None,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
             client_responder_id: client_listen_uri
                 .responder_id()
                 .expect("Couldn't get responder ID for router"),
             shard_uris: vec![],
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
-            omap_capacity: OMAP_CAPACITY,
         };
 
         let enclave = LedgerSgxEnclave::new(
             get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
-            OMAP_CAPACITY,
+            0,
             logger.clone(),
         );
 
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
         let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ra_client,
-            ledger.clone(),
-            watcher.clone(),
+            LocalBlockProvider::new(ledger.clone(), watcher.clone()),
             logger.clone(),
         );
 
@@ -650,7 +611,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         );
 
         // Try to get a block
-        let queries = [0..1];
+        let queries = [0..1; 1];
         let result = client.get_blocks(&queries).unwrap();
         // Check that we got 1 block, as expected
         assert_eq!(result.blocks.len(), 1);
@@ -665,7 +626,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         assert_eq!(result.global_txo_count, ledger.num_txos().unwrap());
 
         // Try to get two blocks
-        let queries = [1..3];
+        let queries = [1..3; 1];
         let result = client.get_blocks(&queries).unwrap();
 
         // Check that we got 2 blocks, as expected
@@ -713,7 +674,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     let db_full_path = ledger_dir.path();
     let mut ledger = recreate_ledger_db(db_full_path);
 
-    let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+    let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
     // Populate ledger with some data
     // Origin block cannot have key images
@@ -723,7 +684,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &[alice.default_subaddress()],
         &[],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -731,7 +692,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &[alice.default_subaddress(), bob.default_subaddress()],
         &[KeyImage::from(1)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -743,7 +704,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         ],
         &[KeyImage::from(2)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
     add_block_to_ledger(
         BlockVersion::MAX,
@@ -751,7 +712,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &recipients,
         &[KeyImage::from(3)],
         &mut rng,
-        &mut watcher,
+        &watcher,
     );
 
     {
@@ -768,39 +729,33 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         .unwrap();
         let config = LedgerRouterConfig {
             chain_id: "local".to_string(),
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
+            ledger_db: Some(db_full_path.to_path_buf()),
+            watcher_db: Some(watcher_dir),
+            mobilecoind_uri: None,
             admin_listen_uri,
             client_listen_uri: client_listen_uri.clone(),
             client_responder_id: client_listen_uri
                 .responder_id()
                 .expect("Couldn't get responder ID for router"),
             shard_uris: vec![],
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             query_retries: 3,
-            omap_capacity: OMAP_CAPACITY,
         };
 
         let enclave = LedgerSgxEnclave::new(
             get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
-            OMAP_CAPACITY,
+            0,
             logger.clone(),
         );
 
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
         let mut ledger_server = LedgerRouterServer::new(
             config,
             enclave,
-            ra_client,
-            ledger.clone(),
-            watcher.clone(),
+            LocalBlockProvider::new(ledger.clone(), watcher.clone()),
             logger.clone(),
         );
 
@@ -870,7 +825,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
         let mut ledger = recreate_ledger_db(db_full_path);
 
         // Make WatcherDB
-        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
         // Populate ledger with some data
         // Origin block cannot have key images
@@ -880,7 +835,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &[],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -888,7 +843,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &keys[0..2],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         add_block_to_ledger(
             block_version,
@@ -896,7 +851,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &keys[3..6],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
         let num_blocks = add_block_to_ledger(
             block_version,
@@ -904,7 +859,7 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             &recipients,
             &keys[6..9],
             &mut rng,
-            &mut watcher,
+            &watcher,
         );
 
         // Populate watcher with Signature and Timestamp for block 1
@@ -941,32 +896,28 @@ fn fog_router_unary_key_image_test(logger: Logger) {
                     .responder_id()
                     .expect("Couldn't get responder ID for store"),
                 client_listen_uri: store_uri.clone(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir.clone(),
-                ias_api_key: Default::default(),
-                ias_spid: Default::default(),
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir.clone()),
+                mobilecoind_uri: None,
                 admin_listen_uri: Some(store_admin_uri),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 omap_capacity: OMAP_CAPACITY,
                 sharding_strategy: ShardingStrategy::Epoch(EpochShardingStrategy::default()),
+                poll_interval: Duration::from_millis(250),
             };
             let store_enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &store_config.client_responder_id,
-                OMAP_CAPACITY,
+                store_config.omap_capacity,
                 logger.clone(),
             );
-            let ra_client =
-                AttestClient::new(&store_config.ias_api_key).expect("Could not create IAS client");
             let mut store_server = KeyImageStoreServer::new_from_config(
                 store_config,
                 store_enclave,
-                ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 EpochShardingStrategy::default(),
-                SystemTimeProvider::default(),
+                SystemTimeProvider,
                 logger.clone(),
             );
 
@@ -983,59 +934,45 @@ fn fog_router_unary_key_image_test(logger: Logger) {
             .unwrap();
             let router_config = LedgerRouterConfig {
                 chain_id: "local".to_string(),
-                ledger_db: db_full_path.to_path_buf(),
-                watcher_db: watcher_dir,
+                ledger_db: Some(db_full_path.to_path_buf()),
+                watcher_db: Some(watcher_dir),
+                mobilecoind_uri: None,
                 admin_listen_uri: admin_listen_uri.clone(),
                 client_listen_uri: router_client_listen_uri.clone(),
                 client_responder_id: router_client_listen_uri
                     .responder_id()
                     .expect("Couldn't get responder ID for router"),
                 shard_uris: vec![store_uri],
-                ias_spid: Default::default(),
-                ias_api_key: Default::default(),
                 client_auth_token_secret: None,
                 client_auth_token_max_lifetime: Default::default(),
                 query_retries: 3,
-                omap_capacity: OMAP_CAPACITY,
             };
 
             let enclave = LedgerSgxEnclave::new(
                 get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
                 &router_config.client_responder_id,
-                OMAP_CAPACITY,
+                0,
                 logger.clone(),
             );
 
-            let ra_client =
-                AttestClient::new(&router_config.ias_api_key).expect("Could not create IAS client");
             let mut router_server = LedgerRouterServer::new(
                 router_config,
                 enclave,
-                ra_client,
-                ledger.clone(),
-                watcher.clone(),
+                LocalBlockProvider::new(ledger.clone(), watcher.clone()),
                 logger.clone(),
             );
 
             store_server.start();
             router_server.start();
 
-            // Make ledger enclave client
-            let mut mr_signer_verifier =
-                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-            mr_signer_verifier.allow_hardening_advisories(
-                mc_fog_ledger_enclave_measurement::HARDENING_ADVISORIES,
-            );
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
 
             let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
             let mut client = FogKeyImageGrpcClient::new(
                 String::default(),
                 router_client_listen_uri,
                 GRPC_RETRY_CONFIG,
-                verifier,
+                [identity],
                 grpc_env,
                 logger.clone(),
             );
@@ -1132,7 +1069,7 @@ fn add_block_to_ledger(
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
-    watcher: &mut WatcherDB,
+    watcher: &WatcherDB,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);
     let block_data = mc_ledger_db::test_utils::add_block_to_ledger(

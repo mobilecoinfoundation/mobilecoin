@@ -1468,7 +1468,7 @@ mod test {
 
             create_transaction(
                 BlockVersion::MAX,
-                &mut ledger,
+                &ledger,
                 &tx_out,
                 &sender,
                 &recipient.default_subaddress(),

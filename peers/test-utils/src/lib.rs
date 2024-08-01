@@ -135,7 +135,7 @@ impl<L: Ledger + Sync> PartialEq for MockPeerConnection<L> {
 
 impl<L: Ledger + Sync> PartialOrd for MockPeerConnection<L> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }
 

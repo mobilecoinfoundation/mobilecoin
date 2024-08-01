@@ -1,0 +1,28 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- range $routerHosts := $.Values.fogView.router.hosts }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fog-view.fullname" $ }}-router-{{ $routerHosts.partner }}
+  labels:
+    app: fog-view-router
+    partner: {{ $routerHosts.partner }}
+    {{- include "fog-view.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: fog-view-router
+    partner: {{ $routerHosts.partner }}
+    {{- include "fog-view.selectorLabels" $ | nindent 4 }}
+  ports:
+  - name: view-grpc
+    port: 3225
+    targetPort: view-grpc
+  - name: mgmt-http
+    port: 8000
+    targetPort: mgmt-http
+  - name: view-http
+    port: 8225
+    targetPort: view-http
+---
+{{- end }}

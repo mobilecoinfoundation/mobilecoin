@@ -51,21 +51,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "mcCoreCommonConfig.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-mobilecoind quorum value
-*/}}
-{{- define "mcCoreCommonConfig.mobilecoindQuorum" -}}
-{ "threshold": {{ tpl .Values.mobilecoind.threshold . }}, "members": {{ include "mcCoreCommonConfig.mobilecoindQuorumMembers" . }} }
-{{- end }}
-
-{{/*
-Generate mobilecoind quorum value
-*/}}
-{{- define "mcCoreCommonConfig.mobilecoindQuorumMembers" }}
-  {{- $members := list }}
-  {{- range .Values.mobilecoind.nodes }}
-    {{- $members = append $members (dict "type" "Node" "args" (tpl .client $)) }}
-  {{- end }}
-  {{- toJson $members }}
-{{- end }}

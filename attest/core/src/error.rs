@@ -5,9 +5,7 @@
 use crate::{
     quote::QuoteSignType,
     types::{
-        epid_group_id::EpidGroupId,
-        measurement::{Measurement, MrEnclave, MrSigner},
-        pib::PlatformInfoBlob,
+        epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         update_info::UpdateInfo,
     },
 };
@@ -19,6 +17,8 @@ use core::{
     hash::{Hash, Hasher},
 };
 use displaydoc::Display;
+use mc_sgx_core_types::{MrEnclave, MrSigner};
+use mc_sgx_dcap_types::{QlError, Quote3Error};
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
@@ -144,6 +144,14 @@ impl From<EncodingError> for NonceError {
     }
 }
 
+impl From<mc_sgx_core_types::FfiError> for NonceError {
+    fn from(_src: mc_sgx_core_types::FfiError) -> NonceError {
+        // The FFI error is either wrong length or bad enum value so we always
+        // map to invalid input length since nonces are byte arrays.
+        NonceError::Convert(EncodingError::InvalidInputLength)
+    }
+}
+
 /// An enumeration of possible errors while working with a PlatformInfoBase
 /// object
 #[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -237,6 +245,22 @@ pub enum QuoteError {
     InvalidSize(u32),
     /// The base64 encoder did not output valid UTF-8 data
     InvalidUtf8,
+    /// Quote3: {0}
+    Quote3(Quote3Error),
+    /// Quote Library API: {0}
+    QlError(QlError),
+}
+
+impl From<QlError> for QuoteError {
+    fn from(src: QlError) -> Self {
+        QuoteError::QlError(src)
+    }
+}
+
+impl From<Quote3Error> for QuoteError {
+    fn from(src: Quote3Error) -> Self {
+        QuoteError::Quote3(src)
+    }
 }
 
 impl From<DecodeError> for QuoteError {
@@ -607,42 +631,6 @@ impl PartialEq for SgxError {
 impl PartialEq<sgx_status_t> for SgxError {
     fn eq(&self, other: &sgx_status_t) -> bool {
         self.0 == *other
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum TargetInfoError {
-    /// SGX error: {0}
-    Sgx(SgxError),
-    /// Quoting enclave busy
-    QeBusy,
-    /// Error retrying: {0}
-    Retry(String),
-    /// String or binary conversion error: {0}
-    Convert(EncodingError),
-}
-
-impl From<DecodeError> for TargetInfoError {
-    fn from(src: DecodeError) -> Self {
-        TargetInfoError::Convert(src.into())
-    }
-}
-
-impl From<EncodingError> for TargetInfoError {
-    fn from(src: EncodingError) -> Self {
-        TargetInfoError::Convert(src)
-    }
-}
-
-impl From<SgxError> for TargetInfoError {
-    fn from(src: SgxError) -> Self {
-        TargetInfoError::Sgx(src)
-    }
-}
-
-impl From<sgx_status_t> for TargetInfoError {
-    fn from(src: sgx_status_t) -> TargetInfoError {
-        TargetInfoError::Sgx(src.into())
     }
 }
 

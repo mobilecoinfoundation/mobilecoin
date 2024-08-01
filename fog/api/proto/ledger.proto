@@ -389,6 +389,6 @@ message TxOutResult {
 enum TxOutResultCode {
     NotFound = 0;
     Found = 1;
-    MalformedRequest = 2;
+    MalformedRequest = 2 [deprecated=true];
     DatabaseError = 3;
 }

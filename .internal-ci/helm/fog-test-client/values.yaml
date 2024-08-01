@@ -72,4 +72,4 @@ serviceMonitor:
   enabled: true
 
 jaegerTracing:
-  collector: 'dns:///jaeger-collector:14250'
+  enabled: false

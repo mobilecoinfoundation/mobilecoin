@@ -1,0 +1,18 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fog-ledger.fullname" . }}-supervisord-fog-ledger-router
+  labels:
+    {{- include "fog-ledger.labels" . | nindent 4 }}
+data:
+  fog_ledger_router.conf: |
+    [program:fog-ledger-router]
+    priority=100
+    command=/usr/bin/ledger_router
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

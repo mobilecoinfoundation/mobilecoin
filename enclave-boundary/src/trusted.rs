@@ -67,7 +67,7 @@ impl RetryBuffer {
         // the output and return a retry ID.
         let outdata_len = outdata.len();
         if outdata_len > outbuf.len() {
-            let mut csprng = McRng::default();
+            let mut csprng = McRng;
             let mut retry_guard = self
                 .retry_data
                 .lock()

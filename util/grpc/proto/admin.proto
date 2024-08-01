@@ -27,7 +27,7 @@ service AdminAPI {
 
 message GetPrometheusMetricsResponse {
     // Prometheus-encoded metrics.
-    // https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md
+    // https://github.com/prometheus/docs/blob/main/content/docs/instrumenting/exposition_formats.md
     string metrics = 1;
 }
 

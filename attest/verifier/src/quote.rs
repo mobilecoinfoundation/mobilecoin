@@ -9,11 +9,11 @@ use crate::{
     Verify,
 };
 use alloc::vec::Vec;
-use mc_attest_core::{Basename, EpidGroupId, Quote, QuoteSignType, SecurityVersion};
+use mc_attest_core::{Basename, EpidGroupId, IsvSvn, Quote, QuoteSignType};
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of quote content verifiers
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Kind {
     Basename(BasenameVerifier),
     /// Verify the quote body with the report matches (exactly) the one
@@ -58,8 +58,8 @@ impl_kind_from_inner! {
 }
 
 impl_kind_from_verifier! {
-    QeSecurityVersionVerifier, QeSvn, SecurityVersion;
-    PceSecurityVersionVerifier, PceSvn, SecurityVersion;
+    QeSecurityVersionVerifier, QeSvn, IsvSvn;
+    PceSecurityVersionVerifier, PceSvn, IsvSvn;
     XeidVerifier, Xeid, u32;
 }
 
@@ -107,35 +107,35 @@ impl Verify<Quote> for EpidGroupIdVerifier {
 
 /// A [`Verify<Quote>`] implementation that will simply check that the QE
 /// security version is at least the version given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct PceSecurityVersionVerifier(SecurityVersion);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct PceSecurityVersionVerifier(IsvSvn);
 
 impl Verify<Quote> for PceSecurityVersionVerifier {
     fn verify(&self, quote: &Quote) -> bool {
         quote
             .pce_security_version()
-            .map(|pce_svn| pce_svn >= self.0)
+            .map(|pce_svn| pce_svn.as_ref() >= self.0.as_ref())
             .unwrap_or(false)
     }
 }
 
 /// A [`Verify<Quote>`] implementation that will simply check that the QE
 /// security version is at least the version given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct QeSecurityVersionVerifier(SecurityVersion);
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct QeSecurityVersionVerifier(IsvSvn);
 
 impl Verify<Quote> for QeSecurityVersionVerifier {
     fn verify(&self, quote: &Quote) -> bool {
         quote
             .qe_security_version()
-            .map(|qe_svn| qe_svn >= self.0)
+            .map(|qe_svn| qe_svn.as_ref() >= self.0.as_ref())
             .unwrap_or(false)
     }
 }
 
 /// A [`Verify<Quote>`] implementation that will collect the results of many
 /// independent [`Verify<ReportBody>`] implementations.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ReportBodyVerifier(Vec<ReportBodyKind>);
 
 impl Verify<Quote> for ReportBodyVerifier {
@@ -273,13 +273,14 @@ mod test {
     fn pce_svn_newer_pass() {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = Kind::PceSvn(
+        let verifier = Kind::PceSvn(PceSecurityVersionVerifier(
             (quote
                 .pce_security_version()
                 .expect("PCE SVN could not be read")
+                .as_ref()
                 - 1)
             .into(),
-        );
+        ));
 
         assert!(verifier.verify(&quote));
     }
@@ -290,13 +291,14 @@ mod test {
     fn pce_svn_older_fail() {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = Kind::PceSvn(
+        let verifier = Kind::PceSvn(PceSecurityVersionVerifier(
             (quote
                 .pce_security_version()
                 .expect("PCE SVN could not be read")
+                .as_ref()
                 + 1)
             .into(),
-        );
+        ));
 
         assert!(!verifier.verify(&quote));
     }
@@ -321,13 +323,14 @@ mod test {
     fn qe_svn_newer_pass() {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = Kind::QeSvn(
+        let verifier = Kind::QeSvn(QeSecurityVersionVerifier(
             (quote
                 .qe_security_version()
                 .expect("QE SVN could not be read")
+                .as_ref()
                 - 1)
             .into(),
-        );
+        ));
 
         assert!(verifier.verify(&quote));
     }
@@ -337,13 +340,14 @@ mod test {
     fn qe_svn_older_fail() {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = Kind::QeSvn(
+        let verifier = Kind::QeSvn(QeSecurityVersionVerifier(
             (quote
                 .qe_security_version()
                 .expect("QE SVN could not be read")
+                .as_ref()
                 + 1)
             .into(),
-        );
+        ));
 
         assert!(!verifier.verify(&quote));
     }

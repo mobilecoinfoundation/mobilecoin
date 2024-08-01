@@ -38,9 +38,9 @@ use mc_crypto_keys::{Kex, Ristretto};
 use mc_oblivious_aes_gcm::{Aes256Gcm, CtDecryptResult};
 use rand_core::{CryptoRng, RngCore};
 
-////
+//
 // CONFIGURATION
-////
+//
 
 pub type RistrettoHkdfBlake2bAes256Gcm = HkdfBox<Ristretto, Blake2b512, Aes256Gcm>;
 
@@ -61,9 +61,9 @@ const ACCEPTABLE_MINOR_VERSIONS: &[u8] = &[0];
 /// statements in the implementation below.
 type ImplTuple = (RistrettoHkdfBlake2bAes256Gcm,);
 
-////
+//
 // Implementation
-////
+//
 
 /// An object implementing CryptoBox trait that calls out to one of several
 /// other implementations, then attaches versioning tags. When decrypting, it

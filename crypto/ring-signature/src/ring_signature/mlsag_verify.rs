@@ -59,20 +59,6 @@ impl<'a, R: Ring> MlsagVerify<'a, R> {
         // point.
         self.ring.check()?;
 
-        // Scalars must be canonical.
-        let is_canonical = bool::from(self.c_zero.scalar.is_canonical());
-        if !is_canonical {
-            return Err(Error::InvalidCurveScalar);
-        }
-
-        // Scalars must be canonical.
-        for response in self.responses {
-            let is_canonical = bool::from(response.scalar.is_canonical());
-            if !is_canonical {
-                return Err(Error::InvalidCurveScalar);
-            }
-        }
-
         // Recompute challenges.
         recomputed_c.iter_mut().for_each(|v| *v = Scalar::ZERO);
 

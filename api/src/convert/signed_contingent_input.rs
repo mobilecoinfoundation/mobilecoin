@@ -95,7 +95,7 @@ mod tests {
             BlockVersion::MAX,
             input_credentials,
             fpr.clone(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
 

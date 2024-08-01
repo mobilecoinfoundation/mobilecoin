@@ -219,7 +219,7 @@ mod tests {
             FeeMap::try_from_iter([(Mob::ID, 4000000000), (TokenId::from(60), 128000)]).unwrap();
 
         let mut ledger_db = create_ledger();
-        let authenticator = Arc::new(AnonymousAuthenticator::default());
+        let authenticator = Arc::new(AnonymousAuthenticator);
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let blocks_data = initialize_ledger(
@@ -253,7 +253,7 @@ mod tests {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
             Duration::from_secs(60),
-            SystemTimeProvider::default(),
+            SystemTimeProvider,
         ));
 
         let blockchain_api_service = BlockchainApiService::new(
@@ -283,7 +283,7 @@ mod tests {
     // `get_blocks` should returns the correct range of blocks.
     fn test_get_blocks_response_range(logger: Logger) {
         let mut ledger_db = create_ledger();
-        let authenticator = Arc::new(AnonymousAuthenticator::default());
+        let authenticator = Arc::new(AnonymousAuthenticator);
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let expected_blocks = initialize_ledger(
@@ -335,7 +335,7 @@ mod tests {
     // data if a client requests data that does not exist.
     fn test_get_blocks_request_out_of_bounds(logger: Logger) {
         let mut ledger_db = create_ledger();
-        let authenticator = Arc::new(AnonymousAuthenticator::default());
+        let authenticator = Arc::new(AnonymousAuthenticator);
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let _blocks = initialize_ledger(
@@ -367,7 +367,7 @@ mod tests {
     // requested range is larger.
     fn test_get_blocks_max_size(logger: Logger) {
         let mut ledger_db = create_ledger();
-        let authenticator = Arc::new(AnonymousAuthenticator::default());
+        let authenticator = Arc::new(AnonymousAuthenticator);
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let expected_blocks = initialize_ledger(
@@ -407,7 +407,7 @@ mod tests {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
             Duration::from_secs(60),
-            SystemTimeProvider::default(),
+            SystemTimeProvider,
         ));
 
         let blockchain_api_service = BlockchainApiService::new(

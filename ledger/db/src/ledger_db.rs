@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 use crate::{
     ActiveMintConfig, ActiveMintConfigs, Error, Ledger, LedgerMetrics, MetadataStore,

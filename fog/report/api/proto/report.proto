@@ -31,12 +31,13 @@ message Report {
     /// The fog_report_id of users with which this pubkey should be used
     /// This should match fog_report_id in Bob's public_address
     string fog_report_id = 1;
-
-    /// The IAS report of the Fog Ingest node.
+    /// The attestation evidence for the fog ingest node.
     ///
-    /// This report structure includes the ingest server's ingress public key.
-    external.VerificationReport report = 2;
-
+    /// This includes the ingest server's ingress public key.
+    oneof attestation_evidence {
+        external.VerificationReport verification_report = 2;
+        external.DcapEvidence dcap_evidence = 4;
+    }
     /// The first block index in which a well-formed client may not use this public key.
     /// This is the same semantic as tombstone block of a Tx, which is the first block index
     /// in which the Tx cannot appear.

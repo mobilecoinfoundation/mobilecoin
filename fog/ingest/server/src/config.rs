@@ -4,11 +4,11 @@
 //! Configuration parameters for the Fog Ingest Node
 
 use clap::Parser;
-use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
-use mc_util_parse::parse_duration_in_seconds;
+use mc_mobilecoind_api::MobilecoindUri;
+use mc_util_parse::{parse_duration_in_millis, parse_duration_in_seconds};
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
@@ -17,18 +17,6 @@ use std::{path::PathBuf, time::Duration};
 #[derive(Clone, Serialize, Parser)]
 #[clap(version)]
 pub struct IngestConfig {
-    /// The IAS SPID to use when getting a quote
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
-
-    /// PEM-formatted keypair to send with an Attestation Request.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
-    /// Path to watcher db (lmdb) - includes block timestamps
-    #[clap(long, env = "MC_WATCHER_DB")]
-    pub watcher_db: PathBuf,
-
     /// Local Ingest Node ID
     #[clap(long, env = "MC_LOCAL_NODE_ID")]
     pub local_node_id: ResponderId,
@@ -51,8 +39,21 @@ pub struct IngestConfig {
     pub peers: Vec<IngestPeerUri>,
 
     /// Path to ledger db (lmdb), used for ingest in a polling fashion
-    #[clap(long, env = "MC_LEDGER_DB")]
-    pub ledger_db: PathBuf,
+    #[clap(
+        long,
+        env = "MC_LEDGER_DB",
+        requires = "watcher_db",
+        conflicts_with = "mobilecoind_uri"
+    )]
+    pub ledger_db: Option<PathBuf>,
+
+    /// Path to watcher db (lmdb) - includes block timestamps
+    #[clap(long, env = "MC_WATCHER_DB")]
+    pub watcher_db: Option<PathBuf>,
+
+    /// Mobilecoind URI (to use instead of lmdb)
+    #[clap(long, env = "MC_MOBILECOIND_URI")]
+    pub mobilecoind_uri: Option<MobilecoindUri>,
 
     /// report_id associated the reports produced by this ingest service.
     /// This should match what appears in users' public addresses.
@@ -80,7 +81,7 @@ pub struct IngestConfig {
 
     /// The amount we add to current block height to compute pubkey_expiry in
     /// reports
-    #[clap(long, default_value = "100", env = "MC_PUBKEY_EXPIRY_WINDOW")]
+    #[clap(long, default_value = "10", env = "MC_PUBKEY_EXPIRY_WINDOW")]
     pub pubkey_expiry_window: u64,
 
     /// How often the active server checks up on each of the peer backups
@@ -105,6 +106,10 @@ pub struct IngestConfig {
     /// Postgres config
     #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+
+    /// How many milliseconds to wait between polling.
+    #[clap(long = "poll_interval_ms", default_value = "250", value_parser = parse_duration_in_millis, env = "MC_POLL_INTERVAL_MS")]
+    pub poll_interval: Duration,
 }
 
 #[cfg(test)]
@@ -116,7 +121,6 @@ mod tests {
          ["/usr/bin/fog_ingest_server",
       "--ledger-db", "/fog-data/ledger",
       "--watcher-db", "/fog-data/watcher",
-     "--ias-spid", "00000000000000000000000000000000", "--ias-api-key", "00000000000000000000000000000000",
       "--client-listen-uri", "insecure-fog-ingest://0.0.0.0:3226/",
       "--peer-listen-uri", "insecure-igp://0.0.0.0:8090/",
       "--local-node-id", "fogingest2.buildtest.svc.cluster.local:443",

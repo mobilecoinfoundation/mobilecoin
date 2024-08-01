@@ -33,6 +33,7 @@ impl<T: RingCtAddress> RingCtAddress for &T {
 /// Typically derived via slip10, and containing root view and spend private
 /// keys.
 #[derive(Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct Account {
     /// Root view private key
     view_private: RootViewPrivate,
@@ -76,6 +77,7 @@ impl Account {
 /// (offline or via hardware). Protobuf encoding is equivalent to
 /// [mc_account_keys::ViewAccountKey]
 #[derive(Zeroize)]
+#[zeroize(drop)]
 pub struct ViewAccount {
     /// Root view private key
     view_private: RootViewPrivate,
@@ -121,7 +123,8 @@ impl From<&Account> for ViewAccount {
 /// MobileCoin spend subaddress object.
 ///
 /// Contains view and spend private keys.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Zeroize)]
+#[zeroize(drop)]
 pub struct SpendSubaddress {
     /// sub-address view private key
     pub view_private: SubaddressViewPrivate,
@@ -156,7 +159,8 @@ impl SpendSubaddress {
 /// MobileCoin view-only subaddress object.
 ///
 /// Contains view private and spend public key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Zeroize)]
+#[zeroize(drop)]
 pub struct ViewSubaddress {
     /// sub-address view private key
     pub view_private: SubaddressViewPrivate,
@@ -230,7 +234,7 @@ impl From<&ViewSubaddress> for PublicSubaddress {
 /// Represents a "standard" public address hash created using merlin,
 /// used in memos as a compact representation of a MobileCoin public address.
 /// This hash is collision resistant.
-#[derive(Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Default, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct ShortAddressHash([u8; 16]);
 
 impl From<[u8; 16]> for ShortAddressHash {

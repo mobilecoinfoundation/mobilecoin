@@ -168,7 +168,7 @@ impl TxSummaryStreamingVerifierCtx {
             if &expected == tx_out_summary {
                 // Add as an output to the report
                 report.output_add(
-                    TransactionEntity::OtherAddress(address_hash.clone()),
+                    TransactionEntity::OtherAddress(*address_hash),
                     amount,
                 )?;
             } else {

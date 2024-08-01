@@ -114,9 +114,10 @@ CREATE TABLE reports (
     -- This should match fog_report_id in Bob's public_address
     fog_report_id VARCHAR(64) NOT NULL UNIQUE,
 
-    -- The signed intel report from Fog ingest node
-    -- This report structure includes the pubkey bytes themselves
-    -- At time of writing this is a protobuf serialized VerificationReport from attest crate
+    -- The attestation evidences from the Fog ingest node
+    -- This evidence structure includes the pubkey bytes themselves
+    -- At time of writing this is a protobuf serialized DcapEvidence from attest crate
+    -- The name `report` derives from "Attestation Verification Report (AVR)" from the legacy EPID attestation scheme
     report BYTEA NOT NULL,
 
     -- The last block at which a well-formed client may use this pubkey.

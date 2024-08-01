@@ -4,11 +4,11 @@
 //! A utility for examining the contents of a given watcher db.
 
 use clap::Parser;
-use mc_attest_core::VerificationReportData;
+use mc_attest_core::{EvidenceKind, VerificationReportData};
 use mc_common::logger::{create_app_logger, o};
 use mc_crypto_keys::Ed25519Public;
 use mc_util_repr_bytes::ReprBytes;
-use mc_watcher::{error::WatcherDBError, watcher_db::WatcherDB};
+use mc_watcher::{attestation_evidence_collector, error::WatcherDBError, watcher_db::WatcherDB};
 use std::path::PathBuf;
 use url::Url;
 
@@ -109,7 +109,7 @@ fn display_report_status(
     let signer = signer.unwrap();
 
     let reports = watcher_db
-        .get_verification_reports_for_signer(&signer)
+        .attestation_evidence_for_signer(&signer)
         .expect("get_verification_reports_for_signer failed");
 
     // Should only have one URL associated with this signer
@@ -121,14 +121,21 @@ fn display_report_status(
                 match reports.len() {
                     0 => "no reports".to_owned(),
                     1 => match &reports[0] {
-                        Some(report) => {
-                            let report_data = VerificationReportData::try_from(report)
-                                .expect("failed constructing verification report data");
-                            format!(
-                                "report available, id {} generated at {}",
-                                report_data.id, report_data.timestamp
-                            )
-                        }
+                        Some(report) => match report {
+                            EvidenceKind::Epid(report) => {
+                                let report_data = VerificationReportData::try_from(report)
+                                    .expect("failed constructing verification report data");
+                                format!(
+                                    "report available, id {} generated at {}",
+                                    report_data.id, report_data.timestamp
+                                )
+                            }
+                            EvidenceKind::Dcap(evidence) => {
+                                let signer = attestation_evidence_collector::get_block_signer_from_dcap_evidence(evidence)
+                                    .expect("failed getting signer from dcap evidence");
+                                format!("DCAP evidence available, signer {signer}")
+                            }
+                        },
                         None => "no report".to_owned(),
                     },
                     _ => "MULTIPLE REPORTS AVAILABLE".to_owned(),

@@ -266,9 +266,9 @@ impl DbCryptoProvider {
         //    ciphertext back to the caller.
         // 2) When the db is encrypted but has not yet been unlocked by calling
         //    check_and_store_password. In order to provide a better user experience, we
-        //    test if that is the case before assuming no password is required.
-        //    This allows callers to get a meaningful error (PasswordNeeded) instead of
-        //    prost decode errors.
+        //    test if that is the case before assuming no password is required. This
+        //    allows callers to get a meaningful error (PasswordNeeded) instead of prost
+        //    decode errors.
         match (state.is_db_encrypted, state.encryption_key.is_empty()) {
             // Db is not encrypted and password is empty
             (false, true) => Ok(ciphertext.to_vec()),

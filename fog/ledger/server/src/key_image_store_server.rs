@@ -1,63 +1,55 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::sync::{Arc, Mutex};
-
+use crate::{
+    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
+    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
+};
 use futures::executor::block_on;
-use mc_attest_core::ProviderId;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
 };
 use mc_fog_api::ledger_grpc;
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
-use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
     TokenAuthenticator,
 };
-use mc_watcher::watcher_db::WatcherDB;
-
-use crate::{
-    config::LedgerStoreConfig, counters, db_fetcher::DbFetcher,
-    sharding_strategy::ShardingStrategy, DbPollSharedState, KeyImageService,
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
 };
 
-pub struct KeyImageStoreServer<E, SS, RC>
+pub struct KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
-    RC: RaClient + Send + Sync + 'static,
 {
     server: grpcio::Server,
     client_listen_uri: KeyImageStoreUri,
-    db_fetcher: DbFetcher<LedgerDB, E, SS>,
+    db_fetcher: DbFetcher<E, SS>,
     enclave: E,
-    ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
-    ias_spid: ProviderId,
     logger: Logger,
 }
 
-impl<E, SS, RC> KeyImageStoreServer<E, SS, RC>
+impl<E, SS> KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
-    RC: RaClient + Send + Sync + 'static,
 {
     /// Creates a new key image store server instance
     pub fn new_from_config(
         config: LedgerStoreConfig,
         enclave: E,
-        ra_client: RC,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS, RC> {
+    ) -> KeyImageStoreServer<E, SS> {
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
             if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
                 Arc::new(TokenAuthenticator::new(
@@ -66,18 +58,16 @@ where
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         Self::new(
             client_authenticator,
             config.client_listen_uri,
             enclave,
-            ra_client,
-            config.ias_spid,
-            ledger,
-            watcher,
+            block_provider,
             sharding_strategy,
+            config.poll_interval,
             logger,
         )
     }
@@ -86,13 +76,11 @@ where
         client_authenticator: Arc<dyn Authenticator + Sync + Send>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
-        ra_client: RC,
-        ias_spid: ProviderId,
-        ledger: LedgerDB,
-        watcher: WatcherDB,
+        block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
+        poll_interval: Duration,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS, RC> {
+    ) -> KeyImageStoreServer<E, SS> {
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
         let use_tls = client_listen_uri.use_tls();
@@ -104,8 +92,6 @@ where
 
         let key_image_service = KeyImageService::new(
             uri,
-            ledger,
-            watcher,
             enclave.clone(),
             shared_state,
             client_authenticator,
@@ -115,22 +101,22 @@ where
             key_image_service,
             client_listen_uri,
             enclave,
-            ra_client,
-            ias_spid,
+            block_provider,
             sharding_strategy,
+            poll_interval,
             logger,
         )
     }
 
     pub fn new_from_service(
-        mut key_image_service: KeyImageService<LedgerDB, E>,
+        mut key_image_service: KeyImageService<E>,
         client_listen_uri: KeyImageStoreUri,
         enclave: E,
-        ra_client: RC,
-        ias_spid: ProviderId,
+        block_provider: Box<dyn BlockProvider>,
         sharding_strategy: SS,
+        poll_interval: Duration,
         logger: Logger,
-    ) -> KeyImageStoreServer<E, SS, RC> {
+    ) -> KeyImageStoreServer<E, SS> {
         let readiness_indicator = ReadinessIndicator::default();
 
         let env = Arc::new(
@@ -166,12 +152,12 @@ where
             .expect("Could not build Key Image Store Server");
 
         let db_fetcher = DbFetcher::new(
-            key_image_service.get_ledger(),
+            block_provider,
             enclave.clone(),
             sharding_strategy,
-            key_image_service.get_watcher(),
             key_image_service.get_db_poll_shared_state(),
             readiness_indicator,
+            poll_interval,
             logger.clone(),
         );
 
@@ -180,8 +166,6 @@ where
             client_listen_uri,
             db_fetcher,
             enclave,
-            ra_client,
-            ias_spid,
             report_cache_thread: None,
             logger,
         }
@@ -192,9 +176,7 @@ where
         self.report_cache_thread = Some(
             ReportCacheThread::start(
                 self.enclave.clone(),
-                self.ra_client.clone(),
-                self.ias_spid,
-                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
                 self.logger.clone(),
             )
             .expect("failed starting report cache thread"),
@@ -216,11 +198,10 @@ where
     }
 }
 
-impl<E, SS, RC> Drop for KeyImageStoreServer<E, SS, RC>
+impl<E, SS> Drop for KeyImageStoreServer<E, SS>
 where
     E: LedgerEnclaveProxy,
     SS: ShardingStrategy + Send + Sync + 'static,
-    RC: RaClient + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         self.stop();

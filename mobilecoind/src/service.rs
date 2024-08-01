@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! The mobilecoind Service
 //! * provides a GRPC server
@@ -12,13 +12,18 @@ use crate::{
     monitor_store::{MonitorData, MonitorId},
     payments::{Outlay, OutlayV2, SciForTx, TransactionsManager, TxProposal},
     sync::SyncThread,
+    transaction_memo::TransactionMemo,
     utxo_store::{UnspentTxOut, UtxoId},
 };
+use api::ledger::{TxOutResult, TxOutResultCode};
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{
-    burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+    burn_address, AccountKey, PublicAddress, RootIdentity, ShortAddressHash,
+    DEFAULT_SUBADDRESS_INDEX,
 };
+use mc_api::blockchain::ArchiveBlock;
+use mc_blockchain_types::BlockIndex;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -40,15 +45,16 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Amount, TokenId,
+    Amount, MemoPayload, TokenId,
 };
-use mc_transaction_extra::{BurnRedemptionMemo, TxOutConfirmationNumber};
+use mc_transaction_extra::{BurnRedemptionMemo, MemoType, TxOutConfirmationNumber};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
     BuildInfoService, ConnectionUriGrpcioServer,
 };
 use mc_watcher::watcher_db::WatcherDB;
+use mc_watcher_api::TimestampResultCode;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -126,7 +132,7 @@ impl Service {
         // Health check service.
         let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
 
-        // Admon service.
+        // Admin service.
         let admin_service = AdminService::new(
             "mobilecoind".to_owned(),
             listen_uri.to_string(),
@@ -343,7 +349,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<api::GetUnspentTxOutListResponse, RpcStatus> {
         // Get MonitorId from from the GRPC request.
         let monitor_id = MonitorId::try_from(&request.monitor_id)
-            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get UnspentTxOuts.
         let utxos = self
@@ -362,8 +368,33 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Convert to protos.
         let proto_utxos: Vec<api::UnspentTxOut> = utxos.iter().map(|utxo| utxo.into()).collect();
 
-        // Returrn response.
+        // Return response.
         let mut response = api::GetUnspentTxOutListResponse::new();
+        response.set_output_list(RepeatedField::from_vec(proto_utxos));
+        Ok(response)
+    }
+
+    fn get_all_unspent_tx_out_impl(
+        &mut self,
+        request: api::GetAllUnspentTxOutRequest,
+    ) -> Result<api::GetAllUnspentTxOutResponse, RpcStatus> {
+        // Get MonitorId from from the GRPC request.
+        let monitor_id = MonitorId::try_from(&request.monitor_id)
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get UnspentTxOuts.
+        let utxos = self
+            .mobilecoind_db
+            .get_utxos_for_monitor(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_utxos_for_monitor", err, &self.logger)
+            })?;
+
+        // Convert to protos.
+        let proto_utxos: Vec<api::UnspentTxOut> = utxos.iter().map(|utxo| utxo.into()).collect();
+
+        // Return response.
+        let mut response = api::GetAllUnspentTxOutResponse::new();
         response.set_output_list(RepeatedField::from_vec(proto_utxos));
         Ok(response)
     }
@@ -436,7 +467,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<api::GetPublicAddressResponse, RpcStatus> {
         // Get MonitorId from from the GRPC request.
         let monitor_id = MonitorId::try_from(&request.monitor_id)
-            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get monitor data.
         let data = self
@@ -472,6 +503,83 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .b58_encode()
                 .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
         );
+
+        Ok(response)
+    }
+
+    fn get_short_address_hash_impl(
+        &mut self,
+        request: api::GetShortAddressHashRequest,
+    ) -> Result<api::GetShortAddressHashResponse, RpcStatus> {
+        let address = PublicAddress::try_from(request.get_public_address())
+            .map_err(|err| rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger))?;
+
+        let hash = ShortAddressHash::from(&address);
+
+        let mut response = api::GetShortAddressHashResponse::new();
+        response.set_hash(hash.as_ref().to_vec());
+        Ok(response)
+    }
+
+    fn validate_authenticated_sender_memo_impl(
+        &mut self,
+        request: api::ValidateAuthenticatedSenderMemoRequest,
+    ) -> Result<api::ValidateAuthenticatedSenderMemoResponse, RpcStatus> {
+        // Read the utxo proto
+        let utxo = UnspentTxOut::try_from(request.get_utxo())
+            .map_err(|err| rpc_invalid_arg_error("unspent_tx_out.try_from", err, &self.logger))?;
+
+        let memo_payload = MemoPayload::try_from(&utxo.memo_payload[..])
+            .map_err(|err| rpc_invalid_arg_error("memo_payload.try_from", err, &self.logger))?;
+
+        // Read the sender proto
+        let sender = PublicAddress::try_from(request.get_sender())
+            .map_err(|err| rpc_invalid_arg_error("sender.try_from", err, &self.logger))?;
+
+        // Get MonitorId from the GRPC request.
+        let monitor_id = MonitorId::try_from(request.get_monitor_id())
+            .map_err(|err| rpc_invalid_arg_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data.
+        let data = self
+            .mobilecoind_db
+            .get_monitor_data(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        let subaddress_vpk = data
+            .account_key
+            .subaddress_view_private(utxo.subaddress_index);
+        let tx_out_public_key = &utxo.tx_out.public_key;
+
+        let mut response = api::ValidateAuthenticatedSenderMemoResponse::new();
+
+        response.set_success(bool::from(match MemoType::try_from(&memo_payload) {
+            Ok(MemoType::AuthenticatedSender(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(MemoType::AuthenticatedSenderWithPaymentRequestId(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(MemoType::AuthenticatedSenderWithPaymentIntentId(memo)) => {
+                memo.validate(&sender, &subaddress_vpk, tx_out_public_key)
+            }
+            Ok(other) => {
+                return Err(rpc_invalid_arg_error(
+                    "Not an authenticated sender memo",
+                    format!("{other:?}"),
+                    &self.logger,
+                ));
+            }
+            Err(err) => {
+                return Err(rpc_invalid_arg_error(
+                    "Not an authenticated sender memo",
+                    format!("{err:?}"),
+                    &self.logger,
+                ));
+            }
+        }));
 
         Ok(response)
     }
@@ -562,12 +670,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let index = self
             .ledger_db
             .get_tx_out_index_by_public_key(&compressed_tx_public_key)
-            .map_err(|err| {
-                rpc_internal_error(
+            .map_err(|err| match err {
+                LedgerError::NotFound => {
+                    RpcStatus::with_message(RpcStatusCode::NOT_FOUND, "tx_out not found".into())
+                }
+                _ => rpc_internal_error(
                     "ledger_db.get_tx_out_index_by_public_key",
                     err,
                     &self.logger,
-                )
+                ),
             })?;
 
         let tx_out = self.ledger_db.get_tx_out_by_index(index).map_err(|err| {
@@ -613,6 +724,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let key_image = KeyImage::from(&onetime_private_key);
 
+        let memo_payload = tx_out.decrypt_memo(&shared_secret).into();
+
         let utxo = UnspentTxOut {
             tx_out,
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
@@ -621,6 +734,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             token_id: *amount.token_id,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
+            memo_payload,
         };
 
         let mut response = api::ParseTransferCodeResponse::new();
@@ -705,7 +819,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let wrapper =
             api::printable::PrintableWrapper::b58_decode(request.get_b58_code().to_string())
                 .map_err(|err| {
-                    rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger)
+                    rpc_invalid_arg_error("PrintableWrapper_b58_decode", err, &self.logger)
                 })?;
 
         // An address code could be a public address or a payment request
@@ -764,9 +878,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let excluded_indexes = excluded
             .iter()
-            .map(|tx_out| self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash()))
-            .collect::<Result<Vec<u64>, LedgerError>>()
-            .map_err(|e| rpc_internal_error("ledger_error", e, &self.logger))?; // TODO better error handling
+            .enumerate()
+            .map(|(idx, tx_out)| {
+                self.ledger_db
+                    .get_tx_out_index_by_hash(&tx_out.hash())
+                    .map_err(|err| match err {
+                        LedgerError::NotFound => RpcStatus::with_message(
+                            RpcStatusCode::NOT_FOUND,
+                            format!("tx_out {idx} not found"),
+                        ),
+                        _ => rpc_internal_error("get_tx_out_index_by_hash", err, &self.logger),
+                    })
+            })
+            .collect::<Result<Vec<u64>, RpcStatus>>()?;
 
         let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
             .transactions_manager
@@ -795,15 +919,49 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         request: api::GetMembershipProofsRequest,
     ) -> Result<api::GetMembershipProofsResponse, RpcStatus> {
-        let outputs: Vec<TxOut> = request
-            .get_outputs()
-            .iter()
-            .map(|tx_out| {
-                // Proto -> Rust struct conversion.
-                TxOut::try_from(tx_out)
-                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
-            })
-            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
+        let outputs: Vec<TxOut> = match (request.outputs.is_empty(), request.indices.is_empty()) {
+            // No outputs but indices are provided
+            (true, false) => request
+                .get_indices()
+                .iter()
+                .map(|idx| {
+                    self.ledger_db
+                        .get_tx_out_by_index(*idx)
+                        .map_err(|err| match err {
+                            LedgerError::NotFound => RpcStatus::with_message(
+                                RpcStatusCode::NOT_FOUND,
+                                format!("tx_out {idx} not found"),
+                            ),
+                            _ => rpc_invalid_arg_error("get_tx_out_by_index", err, &self.logger),
+                        })
+                })
+                .collect::<Result<Vec<TxOut>, RpcStatus>>()?,
+
+            // Outputs and no indices
+            (false, true) => {
+                request
+                    .get_outputs()
+                    .iter()
+                    .map(|tx_out| {
+                        // Proto -> Rust struct conversion.
+                        TxOut::try_from(tx_out)
+                            .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
+                    })
+                    .collect::<Result<Vec<TxOut>, RpcStatus>>()?
+            }
+
+            // No outputs or indices
+            (true, true) => vec![],
+
+            // Both outputs and indices
+            (false, false) => {
+                return Err(rpc_invalid_arg_error(
+                    "request",
+                    "cannot provide both outputs and indices",
+                    &self.logger,
+                ))
+            }
+        };
 
         let proofs: Vec<TxOutMembershipProof> = self
             .transactions_manager
@@ -902,6 +1060,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })
             .collect::<Result<Vec<Outlay>, RpcStatus>>()?;
 
+        // Get transaction memo builder.
+        let transaction_memo = TransactionMemo::try_from(request.get_memo())
+            .map_err(|err| rpc_invalid_arg_error("transaction_memo.try_from", err, &self.logger))?;
+        let memo_builder = transaction_memo.memo_builder(&sender_monitor_data.account_key);
+
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
@@ -914,7 +1077,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                None, // opt_memo_builder
+                memo_builder,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1200,6 +1363,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlays = vec![Outlay {
             value: request.get_burn_amount(),
             receiver: burn_address(),
+            tx_private_key: None,
         }];
 
         // Create memo builder.
@@ -1228,7 +1392,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                Some(Box::new(memo_builder)),
+                Box::new(memo_builder),
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1261,6 +1425,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let outlay = Outlay {
             receiver: account_key.default_subaddress(),
             value: request.value,
+            tx_private_key: None,
         };
 
         // Generate transaction.
@@ -1609,7 +1774,81 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 response.mut_signatures().push(signature_message);
             }
         }
+
+        let (timestamp, timestamp_result_code) = self.get_block_timestamp(request.block);
+        response.set_timestamp_result_code((&timestamp_result_code).into());
+        response.set_timestamp(timestamp);
+
         Ok(response)
+    }
+
+    fn get_latest_block_impl(
+        &mut self,
+        _request: api::Empty,
+    ) -> Result<api::GetBlockResponse, RpcStatus> {
+        let num_blocks = self
+            .ledger_db
+            .num_blocks()
+            .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
+
+        let request = api::GetBlockRequest {
+            block: num_blocks - 1,
+            ..Default::default()
+        };
+
+        self.get_block_impl(request)
+    }
+
+    fn get_blocks_data_impl(
+        &self,
+        request: api::GetBlocksDataRequest,
+    ) -> Result<api::GetBlocksDataResponse, RpcStatus> {
+        let mut results = Vec::with_capacity(request.blocks.len());
+
+        let latest_block: mc_api::blockchain::Block = (&self
+            .ledger_db
+            .get_latest_block()
+            .map_err(|err| rpc_internal_error("ledger_db.get_latest_block", err, &self.logger))?)
+            .into();
+
+        for block_index in request.blocks.iter() {
+            let block_data = match self.ledger_db.get_block_data(*block_index) {
+                Ok(block_data) => block_data,
+                Err(LedgerError::NotFound) => {
+                    results.push(api::BlockDataWithTimestamp {
+                        block_index: *block_index,
+                        found: false,
+                        ..Default::default()
+                    });
+                    continue;
+                }
+                Err(err) => {
+                    return Err(rpc_internal_error(
+                        "ledger_db.get_block_data",
+                        err,
+                        &self.logger,
+                    ));
+                }
+            };
+
+            let (block_timestamp, block_timestamp_result_code) =
+                self.get_block_timestamp(*block_index);
+
+            results.push(api::BlockDataWithTimestamp {
+                block_index: *block_index,
+                found: true,
+                block_data: Some(ArchiveBlock::from(&block_data)).into(),
+                timestamp_result_code: (&block_timestamp_result_code).into(),
+                timestamp: block_timestamp,
+                ..Default::default()
+            });
+        }
+
+        Ok(api::GetBlocksDataResponse {
+            results: results.into(),
+            latest_block: Some(latest_block).into(),
+            ..Default::default()
+        })
     }
 
     fn get_tx_status_as_sender_impl(
@@ -1987,6 +2226,36 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(response)
     }
 
+    fn get_tx_out_results_by_pub_key_impl(
+        &mut self,
+        request: api::GetTxOutResultsByPubKeyRequest,
+    ) -> Result<api::GetTxOutResultsByPubKeyResponse, RpcStatus> {
+        let tx_out_pub_keys = request
+            .tx_out_public_keys
+            .iter()
+            .map(CompressedRistrettoPublic::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| rpc_invalid_arg_error("tx_out_public_keys", err, &self.logger))?;
+
+        let latest_block: mc_api::blockchain::Block = (&self
+            .ledger_db
+            .get_latest_block()
+            .map_err(|err| rpc_internal_error("ledger_db.get_latest_block", err, &self.logger))?)
+            .into();
+
+        let results = tx_out_pub_keys
+            .iter()
+            .map(|pk| self.get_tx_out_result(pk))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| rpc_internal_error("get_tx_out_result", err, &self.logger))?;
+
+        Ok(api::GetTxOutResultsByPubKeyResponse {
+            results: results.into(),
+            latest_block: Some(latest_block).into(),
+            ..Default::default()
+        })
+    }
+
     fn get_balance_impl(
         &mut self,
         request: api::GetBalanceRequest,
@@ -2033,6 +2302,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
             .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
         // Get all utxos for this monitor id.
         let mut utxos = self
             .mobilecoind_db
@@ -2066,6 +2343,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             request.sender_subaddress
         };
 
+        // Get transaction memo builder.
+        let transaction_memo = TransactionMemo::try_from(request.get_memo())
+            .map_err(|err| rpc_invalid_arg_error("transaction_memo.try_from", err, &self.logger))?;
+        let memo_builder = transaction_memo.memo_builder(&sender_monitor_data.account_key);
+
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
@@ -2078,7 +2360,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
-                None,
+                memo_builder,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -2153,8 +2435,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let local_block_index = num_blocks - 1;
 
-        // Get LastBlockInfo from our peers
-        let block_infos = self.get_last_block_infos();
+        // Get LastBlockInfo from our peers - this is the same code as
+        // `self.get_last_block_infos` but avoids locking the same rwlock twice from the same thread (see potential deadlock scenario example in https://doc.rust-lang.org/std/sync/struct.RwLock.html).
+        let block_infos = network_state
+            .peer_to_block_info()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
         // choose the block info which is latest in terms of block index (we may be
         // isolated from some of the nodes)
         let last_block_info = block_infos
@@ -2243,6 +2531,57 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         Ok(api::Empty::default())
     }
+
+    fn get_block_timestamp(&self, block_index: BlockIndex) -> (u64, TimestampResultCode) {
+        self.watcher_db
+            .as_ref()
+            .and_then(|watcher| watcher.get_block_timestamp(block_index).ok())
+            .unwrap_or((u64::MAX, TimestampResultCode::WatcherDatabaseError))
+    }
+
+    fn get_tx_out_result(
+        &self,
+        tx_out_pubkey: &CompressedRistrettoPublic,
+    ) -> Result<TxOutResult, LedgerError> {
+        let mut result = TxOutResult::new();
+        result.set_tx_out_pubkey(tx_out_pubkey.into());
+
+        let tx_out_index = match self.ledger_db.get_tx_out_index_by_public_key(tx_out_pubkey) {
+            Ok(index) => index,
+            Err(LedgerError::NotFound) => {
+                result.result_code = TxOutResultCode::NotFound;
+                return Ok(result);
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
+
+        result.result_code = TxOutResultCode::Found;
+        result.tx_out_global_index = tx_out_index;
+
+        let block_index = match self.ledger_db.get_block_index_by_tx_out_index(tx_out_index) {
+            Ok(index) => index,
+            Err(err) => {
+                log::error!(
+                    self.logger,
+                    "Unexpected error when getting block by tx out index {}: {}",
+                    tx_out_index,
+                    err
+                );
+                result.result_code = TxOutResultCode::DatabaseError;
+                return Ok(result);
+            }
+        };
+
+        let (timestamp, ts_result) = self.get_block_timestamp(block_index);
+
+        result.block_index = block_index;
+        result.timestamp = timestamp;
+        result.timestamp_result_code = ts_result as u32;
+
+        Ok(result)
+    }
 }
 
 macro_rules! build_api {
@@ -2277,6 +2616,7 @@ build_api! {
     get_monitor_list Empty GetMonitorListResponse get_monitor_list_impl,
     get_monitor_status GetMonitorStatusRequest GetMonitorStatusResponse get_monitor_status_impl,
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
+    get_all_unspent_tx_out GetAllUnspentTxOutRequest GetAllUnspentTxOutResponse get_all_unspent_tx_out_impl,
 
     // Utilities
     generate_root_entropy Empty GenerateRootEntropyResponse generate_root_entropy_impl,
@@ -2284,6 +2624,8 @@ build_api! {
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
     get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
+    get_short_address_hash GetShortAddressHashRequest GetShortAddressHashResponse get_short_address_hash_impl,
+    validate_authenticated_sender_memo ValidateAuthenticatedSenderMemoRequest ValidateAuthenticatedSenderMemoResponse validate_authenticated_sender_memo_impl,
 
     // b58 codes
     parse_request_code ParseRequestCodeRequest ParseRequestCodeResponse parse_request_code_impl,
@@ -2311,10 +2653,13 @@ build_api! {
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
     get_block GetBlockRequest GetBlockResponse get_block_impl,
+    get_latest_block Empty GetBlockResponse get_latest_block_impl,
+    get_blocks_data GetBlocksDataRequest GetBlocksDataResponse get_blocks_data_impl,
     get_tx_status_as_sender SubmitTxResponse GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_block_index_by_tx_pub_key GetBlockIndexByTxPubKeyRequest GetBlockIndexByTxPubKeyResponse get_block_index_by_tx_pub_key_impl,
+    get_tx_out_results_by_pub_key GetTxOutResultsByPubKeyRequest GetTxOutResultsByPubKeyResponse get_tx_out_results_by_pub_key_impl,
 
     // Convenience calls
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
@@ -2356,17 +2701,20 @@ mod test {
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
     use mc_rand::RngCore;
-    use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
+    use mc_transaction_builder::{
+        EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder, TransactionBuilder, TxOutContext,
+    };
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
+        encrypted_fog_hint::EncryptedFogHint,
         fog_hint::FogHint,
         get_tx_out_shared_secret,
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tokens::Mob,
         tx::{Tx, TxOut},
-        Amount, Token,
+        Amount, CompressedCommitment, EncryptedMemo, MaskedAmount, MaskedAmountV2, Token,
     };
-    use mc_transaction_extra::{MemoType, SignedContingentInput};
+    use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -2609,7 +2957,7 @@ mod test {
         // Add a block with a non-MOB token ID.
         add_block_to_ledger(
             &mut ledger_db,
-            BlockVersion::THREE,
+            BLOCK_VERSION,
             &vec![
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
@@ -2694,6 +3042,7 @@ mod test {
                     token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    memo_payload: MemoPayload::default().into(),
                 }
             })
             .collect();
@@ -2728,6 +3077,141 @@ mod test {
         assert_eq!(
             HashSet::from_iter(utxos.iter()),
             HashSet::from_iter(expected_utxos.iter().filter(|utxo| utxo.token_id == 2))
+        );
+    }
+
+    #[test_with_logger]
+    fn test_get_all_unspent_tx_out_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let account_key = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[account_key.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                account_key.default_subaddress(),
+            ],
+            Amount::new(1000, 2.into()),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Add a block with a non-MOB token ID, to an off subaddress
+        add_block_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                account_key.subaddress(1),
+            ],
+            Amount::new(1000, 2.into()),
+            &[KeyImage::from(102)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Query with the known id
+        let mut request = api::GetAllUnspentTxOutRequest::new();
+        request.set_monitor_id(id.to_vec());
+
+        let response = client
+            .get_all_unspent_tx_out(&request)
+            .expect("failed to get all unspent tx out");
+
+        let utxos: Vec<UnspentTxOut> = response
+            .output_list
+            .iter()
+            .map(|proto_utxo| {
+                UnspentTxOut::try_from(proto_utxo).expect("failed converting proto utxo")
+            })
+            .collect();
+
+        // Verify the data we got matches what we expected. This assumes knowledge about
+        // how the test ledger is constructed by the test utils.
+        let num_blocks = ledger_db.num_blocks().unwrap();
+        let account_tx_outs: Vec<TxOut> = (0..num_blocks)
+            .map(|idx| {
+                let block_contents = ledger_db.get_block_contents(idx).unwrap();
+                // We grab the 4th tx out in each block since the test ledger had 3 random
+                // recipients, followed by our known recipient.
+                // See the call to `get_testing_environment` at the beginning of the test.
+                block_contents.outputs[3].clone()
+            })
+            .collect();
+
+        let expected_utxos: Vec<UnspentTxOut> = account_tx_outs
+            .iter()
+            .enumerate()
+            .map(|(idx, tx_out)| {
+                let (amount, _) = tx_out
+                    .view_key_match(account_key.view_private_key())
+                    .unwrap();
+
+                // Get the expected subaddress index, based on block index. Everything is on 0
+                // except in the last block, where we used subaddrss 1.
+                let subaddress_index = if idx as u64 == num_blocks - 1 { 1 } else { 0 };
+
+                // Calculate the key image for this tx out.
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key,
+                    account_key.view_private_key(),
+                    &account_key.subaddress_spend_private(subaddress_index),
+                );
+                let key_image = KeyImage::from(&onetime_private_key);
+
+                // Craft the expected UnspentTxOut
+                UnspentTxOut {
+                    tx_out: tx_out.clone(),
+                    subaddress_index,
+                    key_image,
+                    value: amount.value,
+                    token_id: *amount.token_id,
+                    attempted_spend_height: 0,
+                    attempted_spend_tombstone: 0,
+                    memo_payload: MemoPayload::default().into(),
+                }
+            })
+            .collect();
+
+        // Compare - we should have one utxo in each block.
+        assert_eq!(utxos.len(), num_blocks as usize);
+        assert_eq!(
+            HashSet::from_iter(utxos.iter()),
+            HashSet::from_iter(expected_utxos.iter())
         );
     }
 
@@ -2898,6 +3382,231 @@ mod test {
     }
 
     #[test_with_logger]
+    fn test_get_short_address_hash_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([57u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        let account_key = AccountKey::random(&mut rng);
+        let public_address = account_key.default_subaddress();
+
+        // Try to compute the short address hash
+        let mut request = api::GetShortAddressHashRequest::new();
+        // Check that an invalid request returns an error
+        assert!(client.get_short_address_hash(&request).is_err());
+
+        request.set_public_address((&public_address).into());
+        let response = client.get_short_address_hash(&request).unwrap();
+
+        // Test that the short address hash is correct
+        let hash = ShortAddressHash::from(&public_address);
+        assert_eq!(&response.hash[..], hash.as_ref());
+    }
+
+    #[test_with_logger]
+    fn test_validate_authenticated_sender_memo_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([57u8; 32]);
+        // In this test, Bob is a mobilecoind user,
+        // who gets a TxOut from alice with a sender memo with payment request id
+        let bob_account_key = AccountKey::random(&mut rng);
+        let bob_addr = bob_account_key.subaddress(10);
+        let data = MonitorData::new(
+            bob_account_key.clone(),
+            10, // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // This is alice
+        let alice_account_key = AccountKey::random(&mut rng);
+        let alice_addr = alice_account_key.default_subaddress();
+        let alice_cred = SenderMemoCredential::from(&alice_account_key);
+        let alice_hash = ShortAddressHash::from(&alice_addr);
+
+        // Alice makes a TxOut for Bob, with an authenticated sender memo for her
+        // default subaddress
+        let amount = Amount::new(5000000, 0.into());
+
+        let e_fog_hint = EncryptedFogHint::fake_onetime_hint(&mut rng);
+
+        // Use RTH memo builder to write a sender memo with payment request id
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(alice_cred);
+        memo_builder.set_payment_request_id(99);
+
+        let memo_tx_out = TxOut::new_with_memo(
+            BLOCK_VERSION,
+            amount,
+            &bob_addr,
+            &FromRandom::from_random(&mut rng),
+            e_fog_hint,
+            |memo_ctxt| memo_builder.make_memo_for_output(amount, &bob_addr, memo_ctxt),
+        )
+        .unwrap();
+
+        // Alice adds the TxOut to the ledger
+        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[memo_tx_out], &mut rng).unwrap();
+
+        // Allow the monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Bob should find the UTXO
+        let mut request = api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_subaddress_index(10);
+        let response = client.get_unspent_tx_out_list(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), 1);
+        let utxo = &response.output_list[0];
+
+        // The utxo details should be as expected
+        assert_eq!(utxo.value, 5000000);
+        assert_eq!(utxo.token_id, 0);
+        assert_eq!(utxo.subaddress_index, 10);
+        // The utxo should have a memo payload
+        assert_eq!(utxo.memo_payload.len(), 66);
+
+        // The utxo should have been decoded successfully
+        let decoded = utxo.get_decoded_memo();
+        assert!(!decoded.has_unknown_memo());
+        assert!(decoded.has_authenticated_sender_memo());
+        // The details should match to alice's hash and have a payment request id
+        let asm = decoded.get_authenticated_sender_memo();
+        assert_eq!(asm.get_sender_hash(), alice_hash.as_ref());
+        assert!(asm.has_payment_request_id());
+        assert_eq!(asm.get_payment_request_id(), 99);
+        assert!(!asm.has_payment_intent_id());
+
+        // If we go fetch Alice's address via her hash, we should be able to validate
+        // the memo.
+        let mut request = api::ValidateAuthenticatedSenderMemoRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_utxo(utxo.clone());
+        request.set_sender((&alice_addr).into());
+
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(response.success);
+
+        // If we don't use the right address during validation, then validation should
+        // fail
+        request.set_sender((&bob_addr).into());
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(!response.success);
+    }
+
+    #[test_with_logger]
+    fn test_vectors_validate_authenticated_sender_memo_impl(logger: Logger) {
+        // In this test, we take an actual TxOut generated by signal, at block version
+        // 3, sent to a full-service account, and confirm that mobilecoind can
+        // also find the TxOut and validate the memo.
+
+        // no known recipient, 3 random recipients and no monitors.
+        let mut rng: StdRng = SeedableRng::from_seed([93u8; 32]);
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BlockVersion::THREE, 3, &[], &[], logger.clone(), &mut rng);
+
+        let mut request = api::GetAccountKeyFromMnemonicRequest::new();
+        request.set_mnemonic("veteran leaf business lounge rocket prepare endorse town text reject nothing fuel earn solid want drum clog flip entire icon swallow birth loyal return".to_owned());
+        let response = client.get_account_key_from_mnemonic(&request).unwrap();
+
+        let account_key = AccountKey::try_from(response.get_account_key()).unwrap();
+
+        let data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            2,  // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // Insert into database.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Construct the test TxOut
+        let tx_out = TxOut {
+            public_key: CompressedRistrettoPublic::try_from(&hex::decode("026279e22d00e163a9edd28506dbe778752ed53a5cc5625d5d712b3f371d8f1f").unwrap()[..]).unwrap(),
+            target_key: CompressedRistrettoPublic::try_from(&hex::decode("5cf12e056b9131692405f410cc03049b49d6e2d12b05c3be8f9504fbe2ba9d48").unwrap()[..]).unwrap(),
+            e_fog_hint: EncryptedFogHint::try_from(&hex::decode("725539d655e35bf2ffbbb21aa056da02da8a2f36a9014cb9c474fb2573ed4c972e0964dc03fdff12b46dd1c0bbe4d341c8d4a42f6b09782fb3b5d93e1116b1bb9f65d205af9328fb0a5b8f3347626f7ebc4e0100").unwrap()[..]).unwrap(),
+            e_memo: Some(EncryptedMemo::try_from(&hex::decode("c4277d6a49b752fd39666d1317216e41d8f0bc6ed2d74fc06f36c9f07b6d9954c26d2ce7c3ff4aa95dc1c2e26f50e025d57534258a327f6c5ddd3916acdfa174e2f3").unwrap()[..]).unwrap()),
+            masked_amount: Some(MaskedAmount::V2(MaskedAmountV2 {
+                commitment: CompressedCommitment::try_from(&hex::decode("42ff4c72f8b4c02e0ccba20b0197fa19e33522b131c243a7df9660639f1e4949").unwrap()[..]).unwrap(),
+                masked_value: 9333989940299914976,
+                masked_token_id: hex::decode("be23706fb90b5bfb").unwrap()
+            }))
+        };
+
+        // Add the TxOut to the ledger
+        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out], &mut rng).unwrap();
+
+        // Allow the monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Bob should find the UTXO
+        let mut request = api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_subaddress_index(0);
+        let response = client.get_unspent_tx_out_list(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), 1);
+        let utxo = &response.output_list[0];
+
+        // The utxo details should be as expected
+        assert_eq!(utxo.value, 1000000000);
+        assert_eq!(utxo.token_id, 0);
+        assert_eq!(utxo.subaddress_index, 0);
+        // The utxo should have a memo payload
+        assert_eq!(utxo.memo_payload.len(), 66);
+
+        // The utxo should have been decoded successfully
+        let decoded = utxo.get_decoded_memo();
+        assert!(!decoded.has_unknown_memo());
+        assert!(decoded.has_authenticated_sender_memo());
+
+        // The details should have no payment request / intent id's
+        let asm = decoded.get_authenticated_sender_memo();
+        assert!(!asm.has_payment_request_id());
+        assert!(!asm.has_payment_intent_id());
+
+        // The short hash should match the expected value
+        // Get public address and hash from the b58 address
+        let sender_b58 = "WZKU1isCc7HUrNgpugWZaUhfLnsxsL3w3s3KaTu8AkwtCjqt9AEpWh3TNhG9dXjAKkL8qRput4paEeCAMS4PJ2E6r44ysPgMiStkjq2ons6GLaQqtVpYZQzxsbsLAtPkpXhKnxyjfHZxtD3CExzxxGUpnmZNjvdVJh1nByZaJ7pjhdPK81haNPqL7Kv7tk9m9A9segvmyZjzjkvFuHYrnWjgMwsfGpkkhtHz8yp3ftrUs";
+
+        let mut request = api::ParseAddressCodeRequest::new();
+        request.set_b58_code(sender_b58.to_owned());
+        let response = client.parse_address_code(&request).unwrap();
+        let public_address = response.get_receiver();
+
+        let mut request = api::GetShortAddressHashRequest::new();
+        request.set_public_address(public_address.clone());
+        let response = client.get_short_address_hash(&request).unwrap();
+        let expected_hash = response.get_hash();
+
+        assert_eq!(asm.get_sender_hash(), expected_hash);
+
+        // If we go fetch Alice's address via her hash, we should be able to validate
+        // the memo.
+        let mut request = api::ValidateAuthenticatedSenderMemoRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_utxo(utxo.clone());
+        request.set_sender(public_address.clone());
+
+        let response = client.validate_authenticated_sender_memo(&request).unwrap();
+        assert!(response.success);
+    }
+
+    #[test_with_logger]
     fn test_get_ledger_info_impl(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
@@ -2955,6 +3664,70 @@ mod test {
         assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
         assert_eq!(response.key_images.len(), 0); // test code does not generate
                                                   // any key images
+        assert_eq!(
+            response.timestamp_result_code,
+            mc_api::watcher::TimestampResultCode::WatcherDatabaseError
+        ); // test code doesnt have a watcher
+    }
+
+    #[test_with_logger]
+    fn test_get_latest_block_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        // Call get latet block
+        let response = client.get_latest_block(&Default::default()).unwrap();
+
+        assert_eq!(
+            Block::try_from(response.get_block()).unwrap(),
+            ledger_db.get_latest_block().unwrap(),
+        );
+        // FIXME: Implement block signatures for mobilecoind and test
+        assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
+        assert_eq!(response.key_images.len(), 1);
+        assert_eq!(
+            response.timestamp_result_code,
+            mc_api::watcher::TimestampResultCode::WatcherDatabaseError
+        ); // test code doesnt have a watcher
+    }
+
+    #[test_with_logger]
+    fn test_get_blocks_data(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        // Call get block data
+        let mut request = api::GetBlocksDataRequest::new();
+        request.set_blocks(vec![0, 2, 100, 1]);
+
+        let response = client.get_blocks_data(&request).unwrap();
+        assert_eq!(
+            Block::try_from(response.get_latest_block()).unwrap(),
+            ledger_db.get_latest_block().unwrap()
+        );
+
+        let blocks = response.get_results();
+        assert_eq!(blocks.len(), 4);
+        assert!(blocks[0].found);
+        assert!(blocks[1].found);
+        assert!(!blocks[2].found);
+        assert!(blocks[3].found);
+
+        assert_eq!(
+            blocks.iter().map(|b| b.block_index).collect::<Vec<_>>(),
+            request.get_blocks()
+        );
+
+        assert_eq!(
+            blocks[0].get_block_data(),
+            &ArchiveBlock::from(&ledger_db.get_block_data(0).unwrap())
+        );
     }
 
     #[test_with_logger]
@@ -3272,7 +4045,7 @@ mod test {
             BLOCK_VERSION,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let TxOutContext {
@@ -3394,6 +4167,7 @@ mod test {
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                     token_id: *Mob::ID,
+                    memo_payload: vec![],
                 }
             })
             .collect();
@@ -3514,7 +4288,7 @@ mod test {
         {
             add_block_to_ledger(
                 &mut ledger_db,
-                BlockVersion::THREE,
+                BLOCK_VERSION,
                 &[account_key.subaddress(5)],
                 Amount::new(102030, 2.into()),
                 &[KeyImage::from(101)],
@@ -3779,6 +4553,7 @@ mod test {
             ]
         };
 
+        // Try with only outputs
         let mut request = api::GetMembershipProofsRequest::new();
         request.set_outputs(RepeatedField::from_vec(
             outputs.iter().map(api::external::TxOut::from).collect(),
@@ -3807,6 +4582,37 @@ mod test {
 
             assert_eq!(output_with_proof.get_proof(), &expected_proof);
         }
+
+        // Try with only indices, we should receive an identical response.
+        let mut request2 = api::GetMembershipProofsRequest::new();
+        request2.set_indices(vec![
+            ledger_db
+                .get_tx_out_index_by_hash(&outputs[0].hash())
+                .unwrap(),
+            ledger_db
+                .get_tx_out_index_by_hash(&outputs[1].hash())
+                .unwrap(),
+            ledger_db
+                .get_tx_out_index_by_hash(&outputs[2].hash())
+                .unwrap(),
+        ]);
+
+        let response2 = client.get_membership_proofs(&request2).unwrap();
+
+        assert_eq!(response, response2);
+
+        // Try with no indices or outputs
+        let request3 = api::GetMembershipProofsRequest::new();
+        let response3 = client.get_membership_proofs(&request3).unwrap();
+        assert!(response3.output_list.is_empty());
+
+        // Try with both, we should get an error.
+        let mut request4 = api::GetMembershipProofsRequest::new();
+        request4.set_outputs(RepeatedField::from_vec(
+            outputs.iter().map(api::external::TxOut::from).collect(),
+        ));
+        request4.set_indices(vec![1]);
+        assert!(client.get_membership_proofs(&request4).is_err());
     }
 
     #[test_with_logger]
@@ -4083,10 +4889,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -4158,7 +4966,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (amount, _blinding) = tx
+                let ((amount, _blinding), tx_out, shared_secret) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -4174,11 +4982,29 @@ mod test {
                             .unwrap()
                             .get_value(&shared_secret)
                             .ok()
+                            .map(|amount| (amount, tx_out, shared_secret))
                     })
                     .expect("There should be an output belonging to the account key.");
 
                 assert_eq!(amount.token_id, Mob::ID);
                 assert_eq!(amount.value, *expected_value);
+
+                // Receivers get an AuthenticatedSender memo, sender gets a DestinationMemo
+                let memo = tx_out.e_memo.as_ref().unwrap().decrypt(&shared_secret);
+                if account_key == &&sender {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::Destination(dst_memo)
+                        if dst_memo.get_num_recipients() == 2 &&
+                            dst_memo.get_total_outlay() == outlays.iter().map(|outlay| outlay.value).sum::<u64>() + dst_memo.get_fee()
+                    );
+                } else {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::AuthenticatedSender(authenticated_sender_memo)
+                        if authenticated_sender_memo.validate(&sender.default_subaddress(), &account_key.default_subaddress_view_private(), &tx_out.public_key).unwrap_u8() == 1
+                    );
+                }
             }
 
             // Santity test fee
@@ -4254,7 +5080,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (amount, _blinding) = tx
+                let ((amount, _blinding), tx_out, shared_secret) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -4270,11 +5096,29 @@ mod test {
                             .unwrap()
                             .get_value(&shared_secret)
                             .ok()
+                            .map(|amount| (amount, tx_out, shared_secret))
                     })
                     .expect("There should be an output belonging to the account key.");
 
                 assert_eq!(amount.token_id, TokenId::from(2));
                 assert_eq!(amount.value, *expected_value);
+
+                // Receivers get an AuthenticatedSender memo, sender gets a DestinationMemo
+                let memo = tx_out.e_memo.as_ref().unwrap().decrypt(&shared_secret);
+                if account_key == &&sender {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::Destination(dst_memo)
+                        if dst_memo.get_num_recipients() == 2 &&
+                            dst_memo.get_total_outlay() == outlays.iter().map(|outlay| outlay.value).sum::<u64>() + dst_memo.get_fee()
+                    );
+                } else {
+                    assert_matches!(
+                        MemoType::try_from(&memo).unwrap(),
+                        MemoType::AuthenticatedSender(authenticated_sender_memo)
+                        if authenticated_sender_memo.validate(&sender.default_subaddress(), &account_key.default_subaddress_view_private(), &tx_out.public_key).unwrap_u8() == 1
+                    );
+                }
             }
 
             // Santity test fee
@@ -4334,6 +5178,7 @@ mod test {
             request.set_outlay_list(RepeatedField::from_vec(vec![api::Outlay::from(&Outlay {
                 receiver: receiver1.default_subaddress(),
                 value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT * num_blocks,
+                tx_private_key: None,
             })]));
             assert!(client.generate_tx(&request).is_err());
         }
@@ -4350,6 +5195,151 @@ mod test {
                 outlays.iter().map(api::Outlay::from).collect(),
             ));
             assert!(client.generate_tx(&request).is_err());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_generate_tx_explicit_memo(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger(
+            &mut ledger_db,
+            BlockVersion::MAX,
+            &[
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount::new(1_000_000_000_000, TokenId::from(2)),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Generate random recipient.
+        let receiver1 = AccountKey::random(&mut rng);
+
+        let outlays = vec![Outlay {
+            value: 123,
+            receiver: receiver1.default_subaddress(),
+            tx_private_key: None,
+        }];
+
+        // Call generate tx.
+        let mut request = api::GenerateTxRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input_list(RepeatedField::from_vec(
+            utxos
+                .iter()
+                .filter(|utxo| utxo.token_id == *Mob::ID)
+                .map(api::UnspentTxOut::from)
+                .collect(),
+        ));
+        request.set_outlay_list(RepeatedField::from_vec(
+            outlays.iter().map(api::Outlay::from).collect(),
+        ));
+        let mut rth = mc_mobilecoind_api::TransactionMemo_RTH::default();
+        rth.set_payment_request_id(55551);
+
+        request.set_memo(mc_mobilecoind_api::TransactionMemo {
+            transaction_memo: Some(
+                mc_mobilecoind_api::TransactionMemo_oneof_transaction_memo::rth(rth),
+            ),
+            ..Default::default()
+        });
+
+        let response = client.generate_tx(&request).unwrap();
+        let tx_proposal = response.get_tx_proposal();
+        let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+        // The transaction should contain two outputs (outlay + change)
+        assert_eq!(tx.prefix.outputs.len(), 2);
+
+        let change_value = test_utils::DEFAULT_PER_RECIPIENT_AMOUNT
+            - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
+            - Mob::MINIMUM_FEE;
+
+        for (account_key, expected_value) in
+            &[(&receiver1, outlays[0].value), (&sender, change_value)]
+        {
+            // Find the first output belonging to the account, and get its value.
+            // This assumes that each output is sent to a different account key.
+            let ((amount, _blinding), tx_out, shared_secret) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    let output_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                    let shared_secret = get_tx_out_shared_secret(
+                        account_key.view_private_key(),
+                        &output_public_key,
+                    );
+                    tx_out
+                        .get_masked_amount()
+                        .unwrap()
+                        .get_value(&shared_secret)
+                        .ok()
+                        .map(|amount| (amount, tx_out, shared_secret))
+                })
+                .expect("There should be an output belonging to the account key.");
+
+            assert_eq!(amount.token_id, Mob::ID);
+            assert_eq!(amount.value, *expected_value);
+
+            // Receivers get an AuthenticatedSender memo, sender gets a DestinationMemo
+            let memo = tx_out.e_memo.as_ref().unwrap().decrypt(&shared_secret);
+            if account_key == &&sender {
+                assert_matches!(
+                    MemoType::try_from(&memo).unwrap(),
+                    MemoType::DestinationWithPaymentRequestId(dst_memo)
+                    if dst_memo.get_num_recipients() == 1 &&
+                        dst_memo.get_total_outlay() == outlays.iter().map(|outlay| outlay.value).sum::<u64>() + dst_memo.get_fee() &&
+                        dst_memo.get_payment_request_id() == 55551
+                );
+            } else {
+                assert_matches!(
+                    MemoType::try_from(&memo).unwrap(),
+                    MemoType::AuthenticatedSenderWithPaymentRequestId(authenticated_sender_memo)
+                    if authenticated_sender_memo.validate(&sender.default_subaddress(), &account_key.default_subaddress_view_private(), &tx_out.public_key).unwrap_u8() == 1 &&
+                        authenticated_sender_memo.payment_request_id() == 55551
+                );
+            }
         }
     }
 
@@ -4849,6 +5839,80 @@ mod test {
     }
 
     #[test_with_logger]
+    /// Should return a correct proof-of-membership for each requested TxOut.
+    fn test_get_tx_out_results_by_pub_key(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(sender.clone(), 0, 20, 0, "").unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Select some outputs from the ledger.
+        let outputs: Vec<TxOut> = {
+            let unspent_outputs = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap();
+
+            vec![
+                unspent_outputs[1].tx_out.clone(),
+                unspent_outputs[3].tx_out.clone(),
+                unspent_outputs[5].tx_out.clone(),
+            ]
+        };
+
+        // Send request for 3 known tx outs and 1 unknown key
+        let request = api::GetTxOutResultsByPubKeyRequest {
+            tx_out_public_keys: vec![
+                (&outputs[0].public_key).into(),
+                (&outputs[1].public_key).into(),
+                (&outputs[2].public_key).into(),
+                (&CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng))).into(),
+            ]
+            .into(),
+            ..Default::default()
+        };
+
+        let response = client.get_tx_out_results_by_pub_key(&request).unwrap();
+
+        assert_eq!(response.results.len(), request.tx_out_public_keys.len());
+
+        for i in 0..3 {
+            assert_eq!(
+                response.results[i].tx_out_pubkey.get_ref(),
+                &request.tx_out_public_keys[i]
+            );
+            assert_eq!(response.results[i].result_code, TxOutResultCode::Found);
+        }
+
+        assert_eq!(
+            response.results[3].tx_out_pubkey.get_ref(),
+            &request.tx_out_public_keys[3]
+        );
+        assert_eq!(response.results[3].result_code, TxOutResultCode::NotFound);
+
+        assert_eq!(
+            Block::try_from(response.get_latest_block()).unwrap(),
+            ledger_db.get_latest_block().unwrap()
+        );
+    }
+
+    #[test_with_logger]
     fn test_generate_transfer_code_tx(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
@@ -5171,10 +6235,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -5423,10 +6489,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -5608,10 +6676,12 @@ mod test {
             Outlay {
                 value: 10,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 20,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -5752,10 +6822,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -5876,10 +6948,12 @@ mod test {
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
+                tx_private_key: None,
             },
             Outlay {
                 value: 456,
                 receiver: receiver2.default_subaddress(),
+                tx_private_key: None,
             },
         ];
 
@@ -6228,7 +7302,7 @@ mod test {
             BLOCK_VERSION,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let TxOutContext { tx_out, .. } = transaction_builder
@@ -6341,7 +7415,7 @@ mod test {
             BLOCK_VERSION,
             Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
-            EmptyMemoBuilder::default(),
+            EmptyMemoBuilder,
         )
         .unwrap();
         let TxOutContext { tx_out, .. } = transaction_builder

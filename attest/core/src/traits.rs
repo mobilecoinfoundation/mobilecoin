@@ -3,17 +3,13 @@
 //! Trait definitions for rust structures with an FFI analogue
 
 pub(crate) use alloc::{format as _alloc_format, vec::Vec};
-pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
 pub(crate) use core::{
     cmp::{Ord, Ordering},
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
 pub(crate) use hex::{decode_to_slice as hex_decode, encode_to_slice as hex_encode};
-pub(crate) use mc_util_encodings::{
-    base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, IntelLayout,
-    ToBase64, ToHex, ToX64,
-};
+pub(crate) use mc_util_encodings::{Error as EncodingError, FromHex, IntelLayout, ToHex, ToX64};
 pub(crate) use mc_util_repr_bytes::derive_debug_and_display_hex_from_as_ref;
 pub(crate) use serde::{
     de::{

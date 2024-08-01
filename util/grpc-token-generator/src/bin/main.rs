@@ -27,7 +27,7 @@ pub struct Config {
 fn main() {
     let config = Config::parse();
     let token_generator =
-        TokenBasicCredentialsGenerator::new(config.shared_secret, SystemTimeProvider::default());
+        TokenBasicCredentialsGenerator::new(config.shared_secret, SystemTimeProvider);
     let creds = token_generator
         .generate_for(&config.username)
         .expect("Failed generating token");

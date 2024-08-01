@@ -14,7 +14,7 @@ use mc_attest_core::{IasNonce, VerificationReportData};
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of AVR data verifiers
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Kind {
     /// A verifier that checks the nonce of the IAS report
     Nonce(NonceVerifier),
@@ -56,7 +56,7 @@ impl Verify<VerificationReportData> for NonceVerifier {
 
 /// A [`VerifyIasReportData`] implementation which applies a list of verifiers
 /// against the quote structure.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QuoteVerifier(Vec<QuoteKind>);
 
 impl Verify<VerificationReportData> for QuoteVerifier {

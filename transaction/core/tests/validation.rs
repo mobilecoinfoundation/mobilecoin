@@ -362,7 +362,7 @@ fn test_validate_ring_elements_are_unique() {
             let mut tx_prefix = tx.prefix.clone();
             tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
 
-            for mut tx_out in tx_prefix.inputs[1].ring.iter_mut() {
+            for tx_out in tx_prefix.inputs[1].ring.iter_mut() {
                 let mut bytes = tx_out.target_key.to_bytes();
                 bytes[0] = !bytes[0];
                 tx_out.target_key = CompressedRistrettoPublic::from_bytes(&bytes).unwrap();

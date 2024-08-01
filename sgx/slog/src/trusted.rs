@@ -36,13 +36,13 @@ impl slog::Drain for EnclaveOCallDrain {
 }
 
 /// Utility method to create a Logger suitable for in-enclave logging.
-#[cfg(feature = "ias-dev")]
+#[cfg(feature = "sgx-sim")]
 pub fn default_logger() -> Logger {
     Logger::root(slog::Fuse(EnclaveOCallDrain {}), o!())
 }
 
 // No logs from enclave when not compiled in development mode.
-#[cfg(not(feature = "ias-dev"))]
+#[cfg(not(feature = "sgx-sim"))]
 pub fn default_logger() -> Logger {
     Logger::root(slog::Fuse(slog::Discard), o!())
 }

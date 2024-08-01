@@ -200,7 +200,7 @@ mod test {
 
     #[test]
     fn authenticate_anonymous() {
-        let authenticator = AnonymousAuthenticator::default();
+        let authenticator = AnonymousAuthenticator;
 
         // Authorizing without any headers should work.
         let metadata = MetadataBuilder::new().build();
@@ -251,11 +251,8 @@ mod test {
     #[test]
     fn authenticate_token() {
         let shared_secret = [66; 32];
-        let authenticator = TokenAuthenticator::new(
-            shared_secret,
-            TOKEN_MAX_LIFETIME,
-            SystemTimeProvider::default(),
-        );
+        let authenticator =
+            TokenAuthenticator::new(shared_secret, TOKEN_MAX_LIFETIME, SystemTimeProvider);
         const TEST_USERNAME: &str = "user123";
 
         // Authorizing without any headers should fail.
@@ -283,8 +280,7 @@ mod test {
         }
 
         // Authorizing with a valid Authorization header should succeed.
-        let generator =
-            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
+        let generator = TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider);
         let creds = generator
             .generate_for(TEST_USERNAME)
             .expect("failed generating token");

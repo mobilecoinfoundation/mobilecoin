@@ -240,12 +240,12 @@ mod test {
     #[test]
     fn display() {
         assert_eq!(
-            format!("{}", HandshakeIX::default()),
+            format!("{HandshakeIX}"),
             String::from("IX:\n  -> e, s\n  <- e, ee, se, s, es\n")
         );
 
         assert_eq!(
-            format!("{}", HandshakeNX::default()),
+            format!("{HandshakeNX}"),
             String::from("NX:\n  -> e\n  <- e, ee, s, es\n")
         );
     }

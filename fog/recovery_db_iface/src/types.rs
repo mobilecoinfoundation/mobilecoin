@@ -5,9 +5,9 @@
 
 use chrono::NaiveDateTime;
 use core::{fmt, ops::Deref};
-use mc_attest_core::VerificationReport;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_report_types::AttestationEvidence;
 use mc_fog_types::{
     common::BlockRange,
     view::{DecommissionedIngestInvocation, RngRecord},
@@ -248,8 +248,8 @@ pub struct ReportData {
     /// The ingest invocation id that wrote this report.
     pub ingest_invocation_id: Option<IngestInvocationId>,
 
-    /// The Intel Attestation Service report, which include the pubkey
-    pub report: VerificationReport,
+    /// The enclave attestation evidence, which include the pubkey
+    pub attestation_evidence: AttestationEvidence,
 
     /// The pubkey_expiry (a block height)
     pub pubkey_expiry: u64,

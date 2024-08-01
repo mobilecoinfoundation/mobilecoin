@@ -5,47 +5,13 @@
 //! This validation scheme was proposed for standardization in
 //! mobilecoinfoundation/mcips/pull/4
 
-use hmac::{Hmac, Mac};
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
 };
-use sha2::Sha512;
 use subtle::{Choice, ConstantTimeEq};
 
 use crate::SenderMemoCredential;
-
-type HmacSha512 = Hmac<Sha512>;
-
-/// Shared code for memo types in category 0x01, whose last 16 bytes is an HMAC
-/// This HMAC key is always first the 32 bytes of a shared secret, then the 32
-/// bytes of the TxOut public key, then all the bytes of the decrypted memo,
-/// omitting the last 16 which are the HMAC.
-///
-/// Arguments:
-/// * shared_secret, produced in some way between sender and recipient.
-/// * tx_out_public_key, from the TxOut associated to this memo
-/// * memo_data. The last 16 bytes of this slice will be ignored.
-pub fn compute_category1_hmac(
-    shared_secret: &[u8; 32],
-    tx_out_public_key: &CompressedRistrettoPublic,
-    memo_type_bytes: [u8; 2],
-    memo_data: &[u8; 64],
-) -> [u8; 16] {
-    let mut mac = HmacSha512::new_from_slice(shared_secret.as_ref())
-        .expect("hmac can take a key of any size");
-    // First add domain separation
-    mac.update(b"mc-memo-mac");
-    // Next add tx_out_public_key, binding this mac to a paritcular TxOut
-    mac.update(tx_out_public_key.as_ref());
-    // Next add memo type bytes (2)
-    mac.update(&memo_type_bytes);
-    // Next add all the memo data bytes, except for the last 16 (which are the mac)
-    mac.update(&memo_data[..(64 - 16)]);
-    let mut result = [0u8; 16];
-    result.copy_from_slice(&mac.finalize().into_bytes()[0..16]);
-    result
-}
 
 /// Shared code for validation of 0x0100 and 0x0101 memos
 pub fn validate_authenticated_sender(
@@ -64,13 +30,13 @@ pub fn validate_authenticated_sender(
     let shared_secret =
         receiving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
 
-    let expected_hmac = compute_category1_hmac(
+    let expected_hmac = mc_crypto_memo_mac::compute_category1_hmac(
         shared_secret.as_ref(),
         tx_out_public_key,
         memo_type_bytes,
-        memo_data,
+        &memo_data[..48].try_into().expect("length mismatch"),
     );
-    let found_hmac: [u8; 16] = memo_data[(64 - 16)..].try_into().unwrap();
+    let found_hmac: [u8; 16] = memo_data[(64 - 16)..].try_into().expect("length mismatch");
     result &= expected_hmac.ct_eq(&found_hmac);
     result
 }
@@ -92,11 +58,11 @@ pub fn compute_authenticated_sender_memo(
         .subaddress_spend_private_key
         .key_exchange(receiving_subaddress_view_public_key);
 
-    let hmac_value = compute_category1_hmac(
+    let hmac_value = mc_crypto_memo_mac::compute_category1_hmac(
         shared_secret.as_ref(),
         tx_out_public_key,
         memo_type_bytes,
-        &memo_data,
+        &memo_data[..48].try_into().expect("length mismatch"),
     );
     memo_data[48..].copy_from_slice(&hmac_value);
     memo_data

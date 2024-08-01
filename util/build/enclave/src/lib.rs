@@ -12,7 +12,7 @@ use mbedtls_sys::types::{
 };
 use mc_sgx_css::{Error as SignatureError, Signature};
 use mc_util_build_script::{rerun_if_path_changed, CargoBuilder, Environment};
-use mc_util_build_sgx::{ConfigBuilder, IasMode, SgxEnvironment, SgxMode, SgxSign};
+use mc_util_build_sgx::{ConfigBuilder, SgxEnvironment, SgxMode, SgxSign};
 use pkg_config::{Config, Error as PkgConfigError};
 use rand::{thread_rng, RngCore};
 use std::{
@@ -154,7 +154,7 @@ pub struct Builder {
     /// The target architecture
     target_arch: String,
 
-    /// The CARGO_TARGET_DIR path
+    /// The CARGO_TARGET_DIR path for the enclave
     target_dir: PathBuf,
 
     /// The CARGO_TARGET_DIR/profile path
@@ -214,9 +214,6 @@ impl Builder {
         if sgx.sgx_mode() == SgxMode::Simulation {
             features_vec.push("sgx-sim".to_owned());
         }
-        if sgx.ias_mode() == IasMode::Development {
-            features_vec.push("ias-dev".to_owned());
-        }
 
         let staticlib = MetadataCommand::new()
             .cargo_path(env.cargo())
@@ -246,8 +243,6 @@ impl Builder {
         cargo_builder
             .target(ENCLAVE_TARGET_TRIPLE)
             .add_rust_flags(&[
-                "-D",
-                "warnings",
                 "-C",
                 &feature_buf,
                 "--cfg",
@@ -263,7 +258,7 @@ impl Builder {
             staticlib,
             target_arch: env.target_arch().to_owned(),
             out_dir: env.out_dir().to_owned(),
-            target_dir: env.target_dir().to_owned(),
+            target_dir: env.target_dir().join(enclave_name),
             profile_target_dir: env.profile_target_dir().to_owned(),
             profile: env.profile().to_owned(),
             sgx_version: sgx_version.to_owned(),
@@ -284,6 +279,7 @@ impl Builder {
 
     /// Set a new "base" target dir to use when building an enclave
     pub fn target_dir(&mut self, target_dir: &Path) -> &mut Self {
+        self.target_dir = target_dir.to_owned();
         self.cargo_builder.target_dir(target_dir);
         self
     }
@@ -655,8 +651,7 @@ impl Builder {
             SgxMode::Simulation => "_sim",
         };
 
-        // "target/mc_foo_enclave"
-        let staticlib_target_dir = self.target_dir.join(&self.name);
+        let staticlib_target_dir = &self.target_dir;
 
         // e.g. "mc_foo_enclave_trusted"
         let staticlib_crate_name = self.staticlib.workspace_members[0]

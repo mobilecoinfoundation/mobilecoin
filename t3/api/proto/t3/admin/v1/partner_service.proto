@@ -1,0 +1,58 @@
+syntax = "proto3";
+package t3.admin.v1;
+option java_multiple_files = true;
+import "t3/v1/t3.proto";
+
+service PartnerService {
+  rpc AddPartner(AddPartnerRequest) returns (AddPartnerResponse);
+  rpc ListPartners(ListPartnersRequest) returns (ListPartnersResponse);
+  rpc ModifyPartner(ModifyPartnerRequest) returns (ModifyPartnerResponse);
+}
+
+message Partner {
+  string short_name = 1; // The short name of the partner used for TransparentTransaction.reporter, must be unique
+  string long_name = 2; // The full name of the partner
+  string contact_email = 3;
+  string contact_name = 4;
+
+  // Partners cannot be deleted
+  int64 created_at_epoch = 5;
+  int64 updated_at_epoch = 6; // 0 if never updated
+
+  t3.v1.KnownInstitution institution = 7;
+}
+
+message AddPartnerRequest {
+  Partner partner = 1;
+}
+message AddPartnerResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  Partner partner = 2;
+}
+
+message ListPartnersRequest { }
+message ListPartnersResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  repeated Partner partners = 2;
+}
+
+message ModifyPartnerRequest {
+  string short_name = 1; // current short name of partner to modify
+  Partner partner = 2; // new updated partner data
+}
+message ModifyPartnerResponse {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+    RESULT_OK = 1;
+  }
+  Result result = 1;
+  Partner partner = 2;
+}

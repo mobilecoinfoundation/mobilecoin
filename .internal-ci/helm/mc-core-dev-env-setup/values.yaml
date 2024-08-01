@@ -82,20 +82,3 @@ consensusNodeConfig3:
     peer:
       hostname: '{{ printf "peer3.%s.development.mobilecoin.com" .Release.Namespace }}'
     txSourceUrl: '{{ with .Values.global.node.ledgerDistribution }}{{ printf "https://s3-%s.amazonaws.com/%s/%s/" .awsRegion .s3Bucket (printf "node3.%s.development.mobilecoin.com" $.Release.Namespace) }}{{ end }}'
-
-fogIngestConfig:
-  enabled: true
-  fogRecoveryDatabase:
-    configMap:
-      enabled: true
-    secret:
-      enabled: true
-
-fogServicesConfig:
-  enabled: true
-  fogRecoveryDatabaseReader:
-    configMap:
-      enabled: true
-  fogPublicFQDN:
-    domainname: '{{ printf "fog.%s.development.mobilecoin.com" .Release.Namespace }}'
-    fogReportSANs: '{{ printf "fog-report.%s.development.mobilecoin.com" .Release.Namespace }}'

@@ -322,7 +322,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
             return Ok(None);
         }
 
-        self.W.extend(valid_values.into_iter());
+        self.W.extend(valid_values);
         self.do_nominate_phase();
         self.do_ballot_protocol();
         Ok(self.out_msg())
@@ -633,8 +633,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // Invariant: X and Y are disjoint.
         assert!(self.X.is_disjoint(&self.Y));
 
-        self.Z
-            .extend(self.additional_values_confirmed_nominated().into_iter());
+        self.Z.extend(self.additional_values_confirmed_nominated());
         // let mut new_Z = self.additional_values_confirmed_nominated();
         // if !new_Z.is_empty() {
         //     new_Z.append(&mut self.Z);

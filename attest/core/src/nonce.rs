@@ -2,14 +2,14 @@
 
 //! Nonce structures
 
-use crate::{error::NonceError, impl_sgx_newtype_for_bytestruct};
+use crate::error::NonceError;
 use alloc::{vec, vec::Vec};
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     write,
 };
 use hex_fmt::HexFmt;
-use mc_sgx_types::sgx_quote_nonce_t;
+use mc_sgx_core_types::QuoteNonce;
 use mc_util_encodings::{Error as EncodingError, FromHex, ToHex};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -17,21 +17,16 @@ use subtle::{Choice, ConstantTimeEq};
 
 /// A trait used to define common operations on nonce values
 pub trait Nonce:
-    AsRef<[u8]>
-    + PartialEq
-    + Sized
-    + for<'bytes> TryFrom<&'bytes [u8]>
-    + TryFrom<Vec<u8>>
-    + ConstantTimeEq
+    AsRef<[u8]> + PartialEq + Sized + for<'bytes> TryFrom<&'bytes [u8]> + ConstantTimeEq
 {
     /// Generate a new nonce from random data
     fn new<R: RngCore + CryptoRng>(csprng: &mut R) -> Result<Self, NonceError>
     where
-        NonceError: From<<Self as TryFrom<Vec<u8>>>::Error>,
+        NonceError: for<'bytes> From<<Self as TryFrom<&'bytes [u8]>>::Error>,
     {
         let mut bytevec: Vec<u8> = vec![0u8; Self::size()];
         csprng.fill_bytes(&mut bytevec);
-        let result = bytevec.try_into()?;
+        let result = bytevec.as_slice().try_into()?;
         Ok(result)
     }
 
@@ -60,36 +55,9 @@ pub trait Nonce:
     }
 }
 
-/// The fixed length of an SGX quote nonce
-const QUOTE_NONCE_LENGTH: usize = 16;
-
-/// A structure wrapping a nonce to be used in an SGX quote
-///
-/// # Example
-///
-/// ```
-/// use mc_attest_core::{Nonce, QuoteNonce};
-/// use rand::prelude::*;
-/// use rand_hc::Hc128Rng as FixedRng;
-///
-/// // chosen by fair dice roll, or: use a real rng in real code, folks.
-/// let mut csprng: FixedRng = SeedableRng::seed_from_u64(0);
-/// let nonce = QuoteNonce::new(&mut csprng).expect("Could not create nonce");
-/// let nonce_contents: &[u8] = nonce.as_ref();
-/// let expected = [226u8, 30, 184, 201, 207, 62, 43, 114, 89, 4, 220, 27, 84, 79, 238, 234];
-/// assert_eq!(nonce_contents, &expected[..]);
-/// ```
-#[derive(Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct QuoteNonce(sgx_quote_nonce_t);
-
-impl_sgx_newtype_for_bytestruct! {
-    QuoteNonce, sgx_quote_nonce_t, QUOTE_NONCE_LENGTH, rand;
-}
-
 impl Nonce for QuoteNonce {
     fn size() -> usize {
-        QUOTE_NONCE_LENGTH
+        QuoteNonce::SIZE
     }
 }
 

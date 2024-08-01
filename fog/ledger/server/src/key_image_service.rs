@@ -13,20 +13,16 @@ use mc_fog_api::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
-use mc_ledger_db::Ledger;
 use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
-use mc_watcher::watcher_db::WatcherDB;
 use std::{
     sync::{Arc, Mutex},
     time::Instant,
 };
 
 #[derive(Clone)]
-pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
+pub struct KeyImageService<E: LedgerEnclaveProxy> {
     /// The ClientListenUri for this Fog Ledger Service.
     client_listen_uri: KeyImageStoreUri,
-    ledger: L,
-    watcher: WatcherDB,
     enclave: E,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
@@ -34,11 +30,9 @@ pub struct KeyImageService<L: Ledger + Clone, E: LedgerEnclaveProxy> {
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
 }
 
-impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
+impl<E: LedgerEnclaveProxy> KeyImageService<E> {
     pub fn new(
         client_listen_uri: KeyImageStoreUri,
-        ledger: L,
-        watcher: WatcherDB,
         enclave: E,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
@@ -46,20 +40,11 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     ) -> Self {
         Self {
             client_listen_uri,
-            ledger,
-            watcher,
             enclave,
             authenticator,
             logger,
             db_poll_shared_state,
         }
-    }
-    pub fn get_watcher(&mut self) -> WatcherDB {
-        self.watcher.clone()
-    }
-
-    pub fn get_ledger(&mut self) -> L {
-        self.ledger.clone()
     }
 
     pub fn get_db_poll_shared_state(&mut self) -> Arc<Mutex<DbPollSharedState>> {
@@ -99,21 +84,17 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     /// for use in [KeyImageService::check_key_images_auth()]
     /// and [KeyImageService::check_key_image_store_auth()]
     fn prepare_untrusted_query(&mut self) -> UntrustedKeyImageQueryResponse {
-        let (
-            highest_processed_block_count,
-            last_known_block_cumulative_txo_count,
-            latest_block_version,
-        ) = {
+        let (processed_block_range, last_known_block_cumulative_txo_count, latest_block_version) = {
             let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
             (
-                shared_state.highest_processed_block_count,
+                shared_state.processed_block_range.clone(),
                 shared_state.last_known_block_cumulative_txo_count,
                 shared_state.latest_block_version,
             )
         };
 
         UntrustedKeyImageQueryResponse {
-            highest_processed_block_count,
+            processed_block_range,
             last_known_block_cumulative_txo_count,
             latest_block_version,
             max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
@@ -186,7 +167,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     }
 }
 
-impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<L, E> {
+impl<E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<E> {
     fn auth(
         &mut self,
         ctx: grpcio::RpcContext,

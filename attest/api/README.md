@@ -6,11 +6,11 @@ This crate provides two API methods, `Auth`, and `Call`, which are more extensiv
 
 ## Auth
 
-This method takes an `AuthRequest` structure, which contains the DER serialized ephemeral public key of the initiator and the algorithm selection, and a transcript hash. It returns an `AuthResponse` structure, which contains the DER-serialized ephemeral public key of the responder, the next step of the transcript hash, and an encrypted blob containing the server's DER-encoded static, public-identity key, an updated transcript hash (including the identity key), and a second, inner cipher text containing the server's cached IAS verification report.
+This method takes an `AuthRequest` structure, which contains the DER serialized ephemeral public key of the initiator and the algorithm selection, and a transcript hash. It returns an `AuthResponse` structure, which contains the DER-serialized ephemeral public key of the responder, the next step of the transcript hash, and an encrypted blob containing the server's DER-encoded static, public-identity key, an updated transcript hash (including the identity key), and a second, inner cipher text containing the server's cached attestation evidence.
 
 ## Call
 
-This method has different behavior depending on the context. In all cases it will use the outer, plaintext transcript from `AuthResponse` as the session_id, and an encrypted payload. The first encrypted message after an `Auth` call will contain the client's DER-encoded, static, public-identity key, an updated transcript, and an inner ciphertext containing either a cryptonote transaction (when called from a client), or a cached IAS verification report and forwarded transaction (when called from another node)
+This method has different behavior depending on the context. In all cases it will use the outer, plaintext transcript from `AuthResponse` as the session_id, and an encrypted payload. The first encrypted message after an `Auth` call will contain the client's DER-encoded, static, public-identity key, an updated transcript, and an inner ciphertext containing either a cryptonote transaction (when called from a client), or a cached attestation evidence and forwarded transaction (when called from another node)
 
 The next request to the Call method should contain only the encrypted transaction.
 

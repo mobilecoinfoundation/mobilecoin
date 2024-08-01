@@ -7,18 +7,15 @@ use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-////
-// A message cipher is a symmetric cipher meant to be used by the enclave as an
-// alternative to intel's "Sealing" when persistence across power cycles is not
-// needed.
-//
-// The trait also provides convenient wrappers over prost serialization.
-//
-// The payloads are encrypted in a way that includes the nonce
-// and the key number in a ciphertext header. Rekeying happens under the hood
-// when the counter is exhausted.
-////
-
+/// A message cipher is a symmetric cipher meant to be used by the enclave as an
+/// alternative to intel's "Sealing" when persistence across power cycles is not
+/// needed.
+///
+/// The trait also provides convenient wrappers over prost serialization.
+///
+/// The payloads are encrypted in a way that includes the nonce
+/// and the key number in a ciphertext header. Rekeying happens under the hood
+/// when the counter is exhausted.
 pub trait MessageCipher {
     fn new<R: CryptoRng + RngCore>(rng: &mut R) -> Self;
 

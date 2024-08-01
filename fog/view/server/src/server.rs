@@ -9,7 +9,6 @@ use crate::{
     fog_view_service::FogViewService, sharding_strategy::ShardingStrategy,
 };
 use futures::executor::block_on;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
@@ -38,26 +37,23 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub struct ViewServer<E, RC, DB, SS>
+pub struct ViewServer<E, DB, SS>
 where
     E: ViewEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     config: MobileAcctViewConfig,
     server: grpcio::Server,
     enclave: E,
-    ra_client: RC,
     report_cache_thread: Option<ReportCacheThread>,
     db_poll_thread: DbPollThread<E, DB, SS>,
     logger: Logger,
 }
 
-impl<E, RC, DB, SS> ViewServer<E, RC, DB, SS>
+impl<E, DB, SS> ViewServer<E, DB, SS>
 where
     E: ViewEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
@@ -66,11 +62,10 @@ where
         config: MobileAcctViewConfig,
         enclave: E,
         recovery_db: DB,
-        ra_client: RC,
         time_provider: impl TimeProvider + 'static,
         sharding_strategy: SS,
         logger: Logger,
-    ) -> ViewServer<E, RC, DB, SS> {
+    ) -> ViewServer<E, DB, SS> {
         let readiness_indicator = ReadinessIndicator::default();
 
         let db_poll_thread = DbPollThread::new(
@@ -96,7 +91,7 @@ where
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
 
         // Health check service
@@ -141,7 +136,6 @@ where
             config,
             server,
             enclave,
-            ra_client,
             report_cache_thread: None,
             db_poll_thread,
             logger,
@@ -153,9 +147,7 @@ where
         self.report_cache_thread = Some(
             ReportCacheThread::start(
                 self.enclave.clone(),
-                self.ra_client.clone(),
-                self.config.ias_spid,
-                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
                 self.logger.clone(),
             )
             .expect("failed starting report cache thread"),
@@ -193,10 +185,9 @@ where
     }
 }
 
-impl<E, RC, DB, SS> Drop for ViewServer<E, RC, DB, SS>
+impl<E, DB, SS> Drop for ViewServer<E, DB, SS>
 where
     E: ViewEnclaveProxy,
-    RC: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {

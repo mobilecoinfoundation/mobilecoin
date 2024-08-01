@@ -19,17 +19,6 @@ lazy_static! {
         }
     };
 
-    // Read IAS_MODE environment variable --set in Docker or makefile
-    // Expects values DEV and PROD
-    pub static ref IAS_MODE_DEV: bool = {
-        println!("cargo:rerun-if-env-changed=IAS_MODE");
-        let ias_mode = env::var("IAS_MODE").expect("Could not read IAS_MODE! Should be PROD or DEV");
-        match ias_mode.as_str() {
-            "DEV" => true,
-            "PROD" => false,
-            _ => panic!("IAS_MODE should be DEV or PROD, found {}", ias_mode)
-        }
-    };
 
     // Intel SDK installation dir
     pub static ref SDK_DIR: PathBuf = {

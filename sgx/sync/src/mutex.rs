@@ -356,7 +356,7 @@ impl<T: ?Sized> SgxMutex<T> {
     /// the current thread.
     pub fn lock(&self) -> LockResult<SgxMutexGuard<T>> {
         unsafe {
-            drop(self.inner.lock());
+            let _ = self.inner.lock();
             SgxMutexGuard::new(self)
         }
     }
@@ -416,7 +416,7 @@ impl<T: ?Sized> SgxMutex<T> {
                 (ptr::read(inner), ptr::read(poison), ptr::read(data))
             };
             mem::forget(self);
-            drop(inner.destroy());
+            let _ = inner.destroy();
             drop(inner);
 
             poison::map_result(poison.borrow(), |_| data.into_inner())
@@ -442,7 +442,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for SgxMutex<T> {
     fn drop(&mut self) {
         // IMPORTANT: This code must be kept in sync with `Mutex::into_inner`.
         unsafe {
-            drop(self.inner.destroy());
+            let _ = self.inner.destroy();
         }
     }
 }

@@ -4,7 +4,6 @@
 #![deny(missing_docs)]
 use crate::sharding_strategy::EpochShardingStrategy;
 use clap::Parser;
-use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
@@ -27,14 +26,6 @@ pub struct MobileAcctViewConfig {
     /// referencing this node.
     #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
-
-    /// PEM-formatted keypair to send with an Attestation Request.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
-    /// The IAS SPID to use when getting a quote
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
 
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
@@ -125,27 +116,6 @@ pub struct FogViewRouterConfig {
     /// the `sharding_strategies` field.
     #[clap(long, use_value_delimiter = true, env = "MC_VIEW_SHARD_URIS")]
     pub shard_uris: Vec<FogViewStoreUri>,
-
-    /// PEM-formatted keypair to send with an Attestation Request.
-    #[clap(long, env = "MC_IAS_API_KEY")]
-    pub ias_api_key: String,
-
-    /// The IAS SPID to use when getting a quote
-    #[clap(long, env = "MC_IAS_SPID")]
-    pub ias_spid: ProviderId,
-
-    /// The capacity to build the OMAP (ORAM hash table) with.
-    /// About 75% of this capacity can be used.
-    /// The hash table will overflow when there are more TxOut's than this,
-    /// and the server will have to be restarted with a larger number.
-    ///
-    /// Note: At time of writing, the hash table will be allocated to use all
-    /// available SGX EPC memory, and then beyond that it will be allocated on
-    /// the heap in the untrusted side. Once the needed capacity exceeds RAM,
-    /// you will either get killed by OOM killer, or it will start being swapped
-    /// to disk by linux kernel.
-    #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
-    pub omap_capacity: u64,
 
     /// Router admin listening URI.
     #[clap(long, env = "MC_ADMIN_LISTEN_URI")]

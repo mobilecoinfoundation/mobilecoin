@@ -17,7 +17,7 @@ consensus_client_url = "mc://node2.test.mobilecoin.com/"
 ```
 
 ```sh
-SGX_MODE=HW IAS_MODE=PROD MC_LOG=debug,hyper=error,want=error,reqwest=error,mio=error,rustls=error \
+SGX_MODE=HW MC_LOG=debug,hyper=error,want=error,reqwest=error,mio=error,rustls=error \
     cargo run -p mc-watcher --bin mc-watcher -- \
     --sources-path sources.toml \
     --watcher-db /tmp/watcher-db

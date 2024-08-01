@@ -22,7 +22,7 @@ curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
 TARGETDIR=${CARGO_TARGET_DIR:-./target}/release
 
 echo "Building mobilecoind and mc-mobilecoind-json. This will take a few moments."
-SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+SGX_MODE=HW CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
         cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
 
 if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then

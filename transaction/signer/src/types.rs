@@ -53,6 +53,7 @@ pub struct TxoSyncReq {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TxoUnsynced {
     /// Subaddress for unsynced TxOut
+    #[serde(with = "string")]
     pub subaddress: u64,
 
     /// tx_out_public_key for unsynced TxOut
@@ -182,6 +183,19 @@ impl AsRef<[u8; 32]> for AccountId {
     }
 }
 
+/// Create [AccountId] object from hex-encoded string
+impl TryFrom<String> for AccountId {
+    type Error = hex::FromHexError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let mut byte_array = [0u8; 32];
+        match hex::decode_to_slice(value, &mut byte_array) {
+            Ok(()) => Ok(Self(byte_array)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 /// Create [AccountId] object from raw hash
 impl From<[u8; 32]> for AccountId {
     fn from(value: [u8; 32]) -> Self {
@@ -193,6 +207,32 @@ impl From<[u8; 32]> for AccountId {
 impl From<&[u8; 32]> for AccountId {
     fn from(value: &[u8; 32]) -> Self {
         Self(*value)
+    }
+}
+
+/// u64 string encoding for serde
+pub(crate) mod string {
+    use std::{fmt::Display, str::FromStr};
+
+    use serde::{de, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: Display,
+        S: Serializer,
+    {
+        serializer.collect_str(value)
+    }
+
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: FromStr,
+        T::Err: Display,
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(de::Error::custom)
     }
 }
 

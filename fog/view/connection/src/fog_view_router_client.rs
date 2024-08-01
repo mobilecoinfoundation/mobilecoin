@@ -3,15 +3,19 @@
 //! Makes requests to the fog view router service
 
 use aes_gcm::Aes256Gcm;
+use der::DateTime;
 use futures::{executor::block_on, SinkExt, TryStreamExt};
 use grpcio::{ChannelBuilder, ClientDuplexReceiver, ClientDuplexSender, Environment};
 use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AttestAkeError, Ready, Start, Transition,
 };
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
-use mc_common::logger::{log, o, Logger};
+use mc_attest_core::EvidenceKind;
+use mc_attestation_verifier::TrustedIdentity;
+use mc_common::{
+    logger::{log, o, Logger},
+    time::{SystemTimeProvider, TimeProvider},
+};
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_fog_api::{
@@ -45,8 +49,8 @@ pub struct FogViewRouterGrpcClient {
 
     uri: FogViewRouterUri,
 
-    /// An object which can verify a fog node's provided IAS report
-    verifier: Verifier,
+    /// The identities that a fog node's attestation evidence must match, one of
+    identities: Vec<TrustedIdentity>,
 }
 
 impl FogViewRouterGrpcClient {
@@ -55,12 +59,12 @@ impl FogViewRouterGrpcClient {
     ///
     /// Arguments:
     /// * uri: The Uri to connect to
-    /// * verifier: The attestation verifier
+    /// * identities: The identities that are allowed for attestation
     /// * env: A grpc environment (thread pool) to use for this connection
     /// * logger: For logging
     pub fn new(
         uri: FogViewRouterUri,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Self {
@@ -79,7 +83,7 @@ impl FogViewRouterGrpcClient {
             request_sender,
             response_receiver,
             uri,
-            verifier,
+            identities: identities.into(),
         }
     }
 
@@ -87,11 +91,11 @@ impl FogViewRouterGrpcClient {
         self.attest_cipher.is_some()
     }
 
-    async fn attest(&mut self) -> Result<VerificationReport, Error> {
+    async fn attest(&mut self) -> Result<EvidenceKind, Error> {
         // If we have an existing attestation, nuke it.
         self.deattest();
 
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let initiator = Start::new(self.uri.responder_id()?.to_string());
 
@@ -112,15 +116,21 @@ impl FogViewRouterGrpcClient {
             .ok_or(Error::ResponseNotReceived)?;
         let auth_response_msg = response.take_auth();
 
+        let epoch_time = SystemTimeProvider
+            .since_epoch()
+            .map_err(|_| Error::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| Error::Other("Time out of range".to_owned()))?;
+
         // Process server response, check if key exchange is successful
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
-        let (initiator, verification_report) =
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, attestation_evidence) =
             initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.attest_cipher = Some(initiator);
 
-        Ok(verification_report)
+        Ok(attestation_evidence)
     }
 
     fn deattest(&mut self) {
@@ -223,6 +233,9 @@ pub enum Error {
 
     /// Response not received
     ResponseNotReceived,
+
+    /// Other
+    Other(String),
 }
 
 impl From<DecodeError> for Error {

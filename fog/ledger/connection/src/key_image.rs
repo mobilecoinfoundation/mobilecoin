@@ -3,9 +3,12 @@
 use super::Error;
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
-use mc_attest_verifier::Verifier;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::BlockIndex;
-use mc_common::logger::{o, Logger};
+use mc_common::{
+    logger::{o, Logger},
+    trace_time,
+};
 use mc_fog_api::{ledger::KeyImageResultCode, ledger_grpc::FogKeyImageApiClient};
 use mc_fog_enclave_connection::EnclaveConnection;
 use mc_fog_types::ledger::{
@@ -21,6 +24,7 @@ pub struct FogKeyImageGrpcClient {
     conn: EnclaveConnection<FogLedgerUri, FogKeyImageApiClient>,
     grpc_retry_config: GrpcRetryConfig,
     uri: FogLedgerUri,
+    logger: Logger,
 }
 
 impl FogKeyImageGrpcClient {
@@ -31,14 +35,14 @@ impl FogKeyImageGrpcClient {
     ///   empty.
     /// * uri: The uri to connect to
     /// * grpc_retry_config: The retry policy to use when connecting
-    /// * verifier: The attestation verifier
+    /// * identities: The identities that are allowed for attestation
     /// * env: The grpc environment (thread pool) to use for this connection
     /// * logger: for logging
     pub fn new(
         chain_id: String,
         uri: FogLedgerUri,
         grpc_retry_config: GrpcRetryConfig,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Self {
@@ -49,9 +53,16 @@ impl FogKeyImageGrpcClient {
         let grpc_client = FogKeyImageApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(chain_id, uri.clone(), grpc_client, verifier, logger),
+            conn: EnclaveConnection::new(
+                chain_id,
+                uri.clone(),
+                grpc_client,
+                identities,
+                logger.clone(),
+            ),
             grpc_retry_config,
             uri,
+            logger,
         }
     }
 
@@ -60,6 +71,8 @@ impl FogKeyImageGrpcClient {
         &mut self,
         key_images: &[KeyImage],
     ) -> Result<CheckKeyImagesResponse, Error> {
+        trace_time!(self.logger, "FogKeyImageGrpcClient::check_key_images");
+
         let request = CheckKeyImagesRequest {
             queries: key_images
                 .iter()

@@ -21,7 +21,7 @@ on:
         description: "Block Version"
         type: string
         required: true
-        default: '3'
+        default: '4'
       chart_repo:
         description: "Chart Repo URL"
         type: string

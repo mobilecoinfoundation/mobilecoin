@@ -33,7 +33,7 @@ pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
     let recipient = AccountKey::random(&mut rng);
     let tx = create_transaction(
         block_version,
-        &mut ledger,
+        &ledger,
         &tx_out,
         &sender,
         &recipient.default_subaddress(),
@@ -70,7 +70,7 @@ pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
     let recipient = AccountKey::random(&mut rng);
     let tx = create_transaction_with_amount_and_comparer::<_, _, O>(
         block_version,
-        &mut ledger,
+        &ledger,
         &tx_out,
         &sender,
         &recipient.default_subaddress(),
@@ -101,7 +101,7 @@ pub fn create_test_tx_with_amount_and_comparer_and_recipients<O: TxOutputsOrderi
 
     let tx = create_transaction_with_amount_and_comparer_and_recipients::<_, _, O>(
         block_version,
-        &mut ledger,
+        &ledger,
         &tx_out,
         &sender,
         recipients,

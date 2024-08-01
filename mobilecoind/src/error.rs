@@ -60,6 +60,9 @@ pub enum Error {
     /// Failed to deserialize lmdb key bytes
     KeyDeserialization,
 
+    /// Failed to deserialize lmdb value bytes
+    ValueDeserialization,
+
     /// Subaddress SPK not found
     SubaddressSPKNotFound,
 
@@ -119,6 +122,9 @@ pub enum Error {
 
     /// Signed Contingent Input: {0}
     SignedContingentInput(SignedContingentInputError),
+
+    /// Protobuf error: {0}
+    Protobuf(protobuf::ProtobufError),
 }
 
 impl From<RetryError<ConnectionError>> for Error {
@@ -202,5 +208,11 @@ impl From<FeeMapError> for Error {
 impl From<SignedContingentInputError> for Error {
     fn from(e: SignedContingentInputError) -> Self {
         Self::SignedContingentInput(e)
+    }
+}
+
+impl From<protobuf::ProtobufError> for Error {
+    fn from(e: protobuf::ProtobufError) -> Self {
+        Self::Protobuf(e)
     }
 }

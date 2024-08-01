@@ -26,13 +26,13 @@ fn report_panic_message_impl(panic_msg_bytes: &[u8]) {
         // By logging to STDERR also we make sure the message gets to an OS
         // buffer before the process dies.
         Ok(v) => {
-            eprintln!("Enclave panic:\n{}", v);
-            global_log::crit!("Enclave panic:\n{}\n", v)
+            eprintln!("Enclave panic: {}", v);
+            global_log::crit!("Enclave panic: {}", v)
         },
         Err(e) => {
-            eprintln!("Enclave panic message contained invalid utf8:\n{}\n{:?}", e, panic_msg_bytes);
+            eprintln!("Enclave panic message contained invalid utf8: ({}) {:?}", e, panic_msg_bytes);
             global_log::crit!(
-                "Enclave panic message contained invalid utf8:\n{}\n{:?}",
+                "Enclave panic message contained invalid utf8: ({}) {:?}",
                 e,
                 panic_msg_bytes
             )

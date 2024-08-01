@@ -2,7 +2,6 @@
 
 //! Ledger Sync test app
 
-use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_blockchain_test_utils::get_blocks;
 use mc_blockchain_types::BlockVersion;
 use mc_common::{logger::log, ResponderId};
@@ -92,15 +91,9 @@ fn main() {
             .build(),
     );
 
-    let mut mr_signer_verifier =
-        MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
-    mr_signer_verifier
-        .allow_hardening_advisories(mc_consensus_enclave_measurement::HARDENING_ADVISORIES);
+    let identity = mc_consensus_enclave_measurement::mr_signer_identity(None);
 
-    let mut verifier = Verifier::default();
-    verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-
-    log::debug!(logger, "Verifier: {:?}", verifier);
+    log::debug!(logger, "Attestation identity: {:?}", identity);
 
     let peers = vec!["1", "2", "3", "4"]
         .into_iter()
@@ -113,7 +106,7 @@ fn main() {
                 // TODO: Supply a chain-id here?
                 String::default(),
                 node_uri.clone(),
-                verifier.clone(),
+                [identity.clone()],
                 grpc_env.clone(),
                 HardcodedCredentialsProvider::from(&node_uri),
                 logger.clone(),

@@ -14,6 +14,7 @@ use crate::{
 };
 use aes_gcm::Aes256Gcm;
 use cookie::CookieJar;
+use der::DateTime;
 use displaydoc::Display;
 use grpcio::{
     CallOption, ChannelBuilder, ClientUnaryReceiver, Environment, Error as GrpcError,
@@ -23,11 +24,12 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::VerificationReport;
-use mc_attest_verifier::Verifier;
+use mc_attest_core::EvidenceKind;
+use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
+    time::{SystemTimeProvider, TimeProvider},
     trace_time,
 };
 use mc_consensus_api::{
@@ -69,6 +71,8 @@ pub enum ThickClientAttestationError {
     UriConversionError(UriConversionError),
     /// Credentials provider error: {0}
     CredentialsProvider(Box<dyn CredentialsProviderError + 'static>),
+    /// Other: {0}
+    Other(String),
 }
 
 impl From<GrpcError> for ThickClientAttestationError {
@@ -123,9 +127,10 @@ impl AttestationError for ThickClientAttestationError {
     fn should_retry(&self) -> bool {
         match self {
             Self::Grpc(_) | Self::Cipher(_) | Self::CredentialsProvider(_) => true,
-            Self::Ake(AkeError::ReportVerification(_)) => false,
+            Self::Ake(AkeError::AttestationEvidenceVerification(_)) => false,
             Self::Ake(_) => true,
             Self::InvalidResponderID(_, _) | Self::UriConversionError(_) => false,
+            Self::Other(_) => false,
         }
     }
 }
@@ -146,8 +151,9 @@ pub struct ThickClient<CP: CredentialsProvider> {
     attested_api_client: AttestedApiClient,
     /// The gRPC API client we will use for legacy transaction submission.
     consensus_client_api_client: ConsensusClientApiClient,
-    /// An object which can verify a consensus node's provided IAS report
-    verifier: Verifier,
+    /// The allowed identities for the enclave. If the enclave matches any of
+    /// these identities it will be allowed to attest.
+    identities: Vec<TrustedIdentity>,
     /// The AKE state machine object, if one is available.
     enclave_connection: Option<Ready<Aes256Gcm>>,
     /// Generic interface for retreiving GRPC credentials.
@@ -162,7 +168,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
     pub fn new(
         chain_id: String,
         uri: ClientUri,
-        verifier: Verifier,
+        identities: impl Into<Vec<TrustedIdentity>>,
         env: Arc<Environment>,
         credentials_provider: CP,
         logger: Logger,
@@ -182,7 +188,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             blockchain_api_client,
             consensus_client_api_client,
             attested_api_client,
-            verifier,
+            identities: identities.into(),
             enclave_connection: None,
             credentials_provider,
             cookies: CookieJar::default(),
@@ -298,12 +304,12 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
         self.enclave_connection.is_some()
     }
 
-    fn attest(&mut self) -> StdResult<VerificationReport, Self::Error> {
+    fn attest(&mut self) -> StdResult<EvidenceKind, Self::Error> {
         trace_time!(self.logger, "ThickClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
 
-        let mut csprng = McRng::default();
+        let mut csprng = McRng;
 
         let initiator = Start::new(self.uri.responder_id()?.to_string());
 
@@ -318,14 +324,18 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
                     .map_err(ThickClientAttestationError::from)
             })?;
 
+        let epoch_time = SystemTimeProvider
+            .since_epoch()
+            .map_err(|_| ThickClientAttestationError::Other("Time went backwards".to_owned()))?;
+        let time = DateTime::from_unix_duration(epoch_time)
+            .map_err(|_| ThickClientAttestationError::Other("Time out of range".to_owned()))?;
         let auth_response_event =
-            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
-        let (initiator, verification_report) =
-            initiator.try_next(&mut csprng, auth_response_event)?;
+            AuthResponseInput::new(auth_response_msg.into(), self.identities.clone(), time);
+        let (initiator, evidence) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 
-        Ok(verification_report)
+        Ok(evidence)
     }
 
     fn deattest(&mut self) {
@@ -466,6 +476,6 @@ impl<CP: CredentialsProvider> Ord for ThickClient<CP> {
 
 impl<CP: CredentialsProvider> PartialOrd for ThickClient<CP> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }

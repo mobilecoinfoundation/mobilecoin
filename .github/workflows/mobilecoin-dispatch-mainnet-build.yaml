@@ -11,7 +11,7 @@ on:
 
 jobs:
   list-values:
-    runs-on: [self-hosted, small, Linux]
+    runs-on: mcf-dev-small-x64
     steps:
     - name: values
       run: |

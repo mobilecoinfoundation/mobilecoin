@@ -110,7 +110,6 @@ fn main() {
     let target_feature = env_with_fallback("CARGO_CFG_TARGET_FEATURE", "?");
     let rustflags = env_with_fallback("RUSTFLAGS", "?");
     let sgx_mode = env_with_fallback("SGX_MODE", "?");
-    let ias_mode = env_with_fallback("IAS_MODE", "?");
 
     // Format the contents
     let gen_contents = format!(
@@ -127,7 +126,6 @@ pub fn target_os() -> &'static str {{ "{target_os}" }}
 pub fn target_feature() -> &'static str {{ "{target_feature}" }}
 pub fn rustflags() -> &'static str {{ "{rustflags}" }}
 pub fn sgx_mode() -> &'static str {{ "{sgx_mode}" }}
-pub fn ias_mode() -> &'static str {{ "{ias_mode}" }}
 // Note: Please update `build-info/src/lib.rs` if you add more stuff
 "###,
     );
@@ -135,10 +133,6 @@ pub fn ias_mode() -> &'static str {{ "{ias_mode}" }}
     // Check the current contents and see if they are different
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR environment not set?"));
     let out_file = out_dir.join("build_info_generated.rs");
-    println!(
-        "cargo:rerun-if-changed={}",
-        out_file.clone().into_os_string().into_string().unwrap()
-    );
     if let Ok(current_contents) = fs::read_to_string(out_file.clone()) {
         eprintln!("current contents:\n{current_contents}");
         eprintln!("gen contents:\n{gen_contents}");

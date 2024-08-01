@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_blockchain_test_utils::get_blocks;
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ingest_server::{
     server::{IngestServer, IngestServerConfig},
     state_file::StateFile,
@@ -46,7 +46,7 @@ fn make_uris(base_port: u16, idx: u8) -> (FogIngestUri, IngestPeerUri) {
 /// Test helper wrapping an IngestServer, tracking its state file path, and
 /// client and peer listen URIs.
 pub struct TestIngestNode {
-    pub server: IngestServer<AttestClient, SqlRecoveryDb>,
+    pub server: IngestServer<SqlRecoveryDb>,
     pub state_file_path: PathBuf,
     pub client_listen_uri: FogIngestUri,
     pub peer_listen_uri: IngestPeerUri,
@@ -81,7 +81,7 @@ impl TestIngestNode {
 
 // Impl Deref and DerefMut so that tests can call IngestServer methods.
 impl Deref for TestIngestNode {
-    type Target = IngestServer<AttestClient, SqlRecoveryDb>;
+    type Target = IngestServer<SqlRecoveryDb>;
     fn deref(&self) -> &Self::Target {
         &self.server
     }
@@ -214,7 +214,6 @@ impl IngestServerTestHelper {
             .collect();
 
         let config = IngestServerConfig {
-            ias_spid: Default::default(),
             local_node_id,
             peer_listen_uri: peer_listen_uri.clone(),
             peers,
@@ -227,16 +226,13 @@ impl IngestServerTestHelper {
             state_file: Some(StateFile::new(state_file_path.clone())),
             enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
             omap_capacity: OMAP_CAPACITY,
+            poll_interval: Duration::from_millis(250),
         };
-
-        let ra_client = AttestClient::new("").expect("Failed to create IAS client");
 
         let mut server = IngestServer::new(
             config,
-            ra_client,
             self.recovery_db.clone(),
-            self.watcher.clone(),
-            self.ledger.clone(),
+            LocalBlockProvider::new(self.ledger.clone(), self.watcher.clone()),
             logger,
         );
         server.start().expect("Failed to start IngestServer");

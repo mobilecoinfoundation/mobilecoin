@@ -13,8 +13,6 @@ use crate::{
 };
 use futures::executor::block_on;
 use mc_attest_api::attest_grpc::create_attested_api;
-use mc_attest_core::ProviderId;
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -23,13 +21,12 @@ use mc_fog_api::{
     ingest_common::{IngestControllerMode, IngestSummary},
     ingest_grpc, ingest_peer_grpc,
 };
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
-use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
-use mc_watcher::watcher_db::WatcherDB;
 use std::{collections::BTreeSet, path::PathBuf, sync::Arc, time::Duration};
 
 /// The configuration options accepted by the IngestServer
@@ -50,9 +47,6 @@ pub struct IngestServerConfig {
     /// Overflow will occur at ~70% utilization
     /// FIXME: The unit here should probably just be bytes
     pub omap_capacity: u64,
-
-    /// The IAS SPID to use when getting a quote
-    pub ias_spid: ProviderId,
 
     /// Local Ingest Node ID
     pub local_node_id: ResponderId,
@@ -95,20 +89,20 @@ pub struct IngestServerConfig {
     /// During cargo tests we use a helper that searches the target/ dir for the
     /// enclave.so file.
     pub enclave_path: PathBuf,
+
+    /// Time to wait between ledger polls
+    pub poll_interval: Duration,
 }
 
 /// All of the state and grpcio objects and threads associated to the ingest
 /// server
-pub struct IngestServer<
-    R: RaClient + Send + Sync + 'static,
-    DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-> where
+pub struct IngestServer<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
+where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
     config: IngestServerConfig,
-    ledger_db: LedgerDB,
-    watcher: WatcherDB,
-    controller: Arc<IngestController<R, DB>>,
+    block_provider: Box<dyn BlockProvider>,
+    controller: Arc<IngestController<DB>>,
     server: Option<grpcio::Server>,
     peer_server: Option<grpcio::Server>,
     ingest_worker: Option<IngestWorker>,
@@ -117,10 +111,7 @@ pub struct IngestServer<
     logger: Logger,
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > IngestServer<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> IngestServer<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
@@ -128,10 +119,8 @@ where
     /// db's
     pub fn new(
         config: IngestServerConfig,
-        ra_client: R,
         recovery_db: DB,
-        watcher: WatcherDB,
-        ledger_db: LedgerDB,
+        block_provider: Box<dyn BlockProvider>,
         logger: Logger,
     ) -> Self {
         // Validate peer list in config:
@@ -155,15 +144,13 @@ where
 
         let controller = Arc::new(IngestController::new(
             config.clone(),
-            ra_client,
             recovery_db,
             logger.clone(),
         ));
 
         Self {
             config,
-            ledger_db,
-            watcher,
+            block_provider,
             controller,
             server: None,
             peer_server: None,
@@ -203,7 +190,7 @@ where
         // Package it into grpc service
         let ingest_service = ingest_grpc::create_account_ingest_api(IngestService::new(
             self.controller.clone(),
-            self.ledger_db.clone(),
+            self.block_provider.clone(),
             self.logger.clone(),
         ));
 
@@ -252,7 +239,7 @@ where
         let health_service =
             mc_util_grpc::HealthService::new(None, self.logger.clone()).into_service();
 
-        let attested_service = create_attested_api(AttestedApiService::<R, DB>::new(
+        let attested_service = create_attested_api(AttestedApiService::<DB>::new(
             self.controller.clone(),
             self.logger.clone(),
         ));
@@ -295,9 +282,9 @@ where
         log::info!(self.logger, "Starting ingest worker");
         self.ingest_worker = Some(IngestWorker::new(
             self.controller.clone(),
-            self.ledger_db.clone(),
-            self.watcher.clone(),
+            self.block_provider.clone(),
             self.config.watcher_timeout,
+            self.config.poll_interval,
             self.logger.clone(),
         ));
 
@@ -374,7 +361,7 @@ where
     /// Tell the server to activate.
     /// This is used in tests when it would be simpler than making an RPC client
     pub fn activate(&self) -> Result<IngestSummary, IngestServiceError> {
-        self.controller.activate(self.ledger_db.num_blocks()?)
+        self.controller.activate(self.block_provider.num_blocks()?)
     }
 
     /// Tell the server to retire
@@ -394,10 +381,7 @@ where
     }
 }
 
-impl<
-        R: RaClient + Send + Sync + 'static,
-        DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > Drop for IngestServer<R, DB>
+impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static> Drop for IngestServer<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {

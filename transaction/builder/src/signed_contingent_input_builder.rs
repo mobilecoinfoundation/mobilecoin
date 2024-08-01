@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2024 The MobileCoin Foundation
 
 //! A builder object for signed contingent inputs (see MCIP #31)
 //! This plays a similar role to the transaction builder.
@@ -10,6 +10,7 @@ use crate::{
 use alloc::{boxed::Box, vec::Vec};
 use core::cmp::min;
 use mc_account_keys::PublicAddress;
+use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
@@ -20,6 +21,7 @@ use mc_transaction_core::{
     RevealedTxOut, TokenId, UnmaskedAmount,
 };
 use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber};
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper utility for creating signed contingent inputs with required outputs,
@@ -249,15 +251,15 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (hint, pubkey_expiry) =
             crate::transaction_builder::create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
 
-        let (tx_out, shared_secret, _tx_private_key) =
-            crate::transaction_builder::create_output_with_fog_hint(
-                self.block_version,
-                amount,
-                recipient,
-                hint,
-                memo_fn,
-                rng,
-            )?;
+        let tx_private_key = RistrettoPrivate::from_random(rng);
+        let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
+            self.block_version,
+            amount,
+            recipient,
+            hint,
+            memo_fn,
+            &tx_private_key,
+        )?;
 
         let (amount, blinding) = tx_out
             .get_masked_amount()
@@ -412,15 +414,15 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let (hint, pubkey_expiry) =
             crate::transaction_builder::create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
 
-        let (tx_out, shared_secret, _tx_private_key) =
-            crate::transaction_builder::create_output_with_fog_hint(
-                self.block_version,
-                amount,
-                recipient,
-                hint,
-                memo_fn,
-                rng,
-            )?;
+        let tx_private_key = RistrettoPrivate::from_random(rng);
+        let (tx_out, shared_secret) = crate::transaction_builder::create_output_with_fog_hint(
+            self.block_version,
+            amount,
+            recipient,
+            hint,
+            memo_fn,
+            &tx_private_key,
+        )?;
         self.impose_tombstone_block_limit(pubkey_expiry);
 
         let amount_shared_secret =
@@ -609,7 +611,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -732,7 +734,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -843,7 +845,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -873,7 +875,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1103,7 +1105,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1133,7 +1135,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1334,7 +1336,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1368,7 +1370,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1401,7 +1403,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1661,7 +1663,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1680,7 +1682,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1753,7 +1755,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1772,7 +1774,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1864,7 +1866,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1887,7 +1889,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1971,7 +1973,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1990,7 +1992,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2081,7 +2083,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2115,7 +2117,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2206,7 +2208,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2235,7 +2237,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2326,7 +2328,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2345,7 +2347,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2437,7 +2439,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2470,7 +2472,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2554,7 +2556,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2617,7 +2619,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2828,7 +2830,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2891,7 +2893,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3106,7 +3108,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3170,7 +3172,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3386,7 +3388,7 @@ pub mod tests {
                 block_version,
                 input_credentials,
                 fog_resolver.clone(),
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3440,7 +3442,7 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder::default(),
+                EmptyMemoBuilder,
             )
             .unwrap();
 

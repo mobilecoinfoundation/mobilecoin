@@ -20,7 +20,6 @@ use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
-use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
@@ -108,7 +107,6 @@ pub type ProposeTxCallback =
 
 pub struct ConsensusService<
     E: ConsensusEnclave + Clone + Send + Sync + 'static,
-    R: RaClient + Send + Sync + 'static,
     TXM: TxManager + Clone + Send + Sync + 'static,
     MTXM: MintTxManager + Clone + Send + Sync + 'static,
 > {
@@ -117,7 +115,6 @@ pub struct ConsensusService<
     enclave: E,
     ledger_db: LedgerDB,
     env: Arc<Environment>,
-    ra_client: R,
     logger: Logger,
 
     report_cache_thread: Option<ReportCacheThread>,
@@ -152,16 +149,14 @@ pub struct ConsensusService<
 
 impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
-        R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
         MTXM: MintTxManager + Clone + Send + Sync + 'static,
-    > ConsensusService<E, R, TXM, MTXM>
+    > ConsensusService<E, TXM, MTXM>
 {
     pub fn new<TP: TimeProvider + 'static>(
         config: Config,
         enclave: E,
         ledger_db: LedgerDB,
-        ra_client: R,
         tx_manager: Arc<TXM>,
         mint_tx_manager: Arc<MTXM>,
         time_provider: Arc<TP>,
@@ -221,7 +216,7 @@ impl<
                     time_provider,
                 ))
             } else {
-                Arc::new(AnonymousAuthenticator::default())
+                Arc::new(AnonymousAuthenticator)
             };
         let tracked_sessions = Arc::new(Mutex::new(LruCache::new(config.client_tracking_capacity)));
         // Return
@@ -231,7 +226,6 @@ impl<
             enclave,
             ledger_db,
             env,
-            ra_client,
             logger,
 
             report_cache_thread: None,
@@ -261,9 +255,7 @@ impl<
         let ret = {
             self.report_cache_thread = Some(ReportCacheThread::start(
                 self.enclave.clone(),
-                self.ra_client.clone(),
-                self.config.ias_spid,
-                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                &counters::ENCLAVE_ATTESTATION_EVIDENCE_TIMESTAMP,
                 self.logger.clone(),
             )?);
             self.start_admin_rpc_server()?;
@@ -443,7 +435,7 @@ impl<
         );
 
         // Peers currently do not support request authentication.
-        let peer_authenticator = Arc::new(AnonymousAuthenticator::default());
+        let peer_authenticator = Arc::new(AnonymousAuthenticator);
 
         // Initialize services.
         let enclave = Arc::new(self.enclave.clone());
@@ -793,10 +785,9 @@ impl<
 
 impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
-        R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
         MTXM: MintTxManager + Clone + Send + Sync + 'static,
-    > Drop for ConsensusService<E, R, TXM, MTXM>
+    > Drop for ConsensusService<E, TXM, MTXM>
 {
     fn drop(&mut self) {
         let _ = self.stop();

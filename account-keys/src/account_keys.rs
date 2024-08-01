@@ -296,8 +296,7 @@ impl PartialEq for AccountKey {
 
 impl PartialOrd for AccountKey {
     fn partial_cmp(&self, other: &AccountKey) -> Option<Ordering> {
-        self.default_subaddress()
-            .partial_cmp(&other.default_subaddress())
+        Some(self.cmp(other))
     }
 }
 

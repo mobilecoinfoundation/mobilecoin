@@ -4,19 +4,20 @@
 //! LedgerDB for new blocks, then gets all the key images associated to those
 //! blocks and adds them to the enclave.
 use crate::{counters, sharding_strategy::ShardingStrategy, DbPollSharedState};
+use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
+use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_fog_types::common::BlockRange;
-use mc_ledger_db::{self, Error as LedgerError, Ledger};
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
 };
-use mc_watcher::watcher_db::WatcherDB;
+use mc_watcher_api::TimestampResultCode;
 use retry::{delay, retry, OperationResult};
 use std::{
     cmp::min,
@@ -37,12 +38,12 @@ const BLOCKS_BEHIND: u64 = 100;
 
 /// An object for managing background data fetches from the ledger database.
 pub struct DbFetcher<
-    DB: Ledger + 'static,
     E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Send + Sync + 'static,
 > {
     /// Struct representing the thread and its context.
-    thread: Option<DbFetcherThread<DB, E, SS>>,
+    thread: Option<DbFetcherThread<E, SS>>,
+
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
 
@@ -51,31 +52,30 @@ pub struct DbFetcher<
 }
 
 impl<
-        DB: Ledger + 'static,
         E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
         SS: ShardingStrategy + Send + Sync + 'static,
-    > DbFetcher<DB, E, SS>
+    > DbFetcher<E, SS>
 {
     pub fn new(
-        db: DB,
+        block_provider: Box<dyn BlockProvider>,
         enclave: E,
         sharding_strategy: SS,
-        watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
+        poll_interval: Duration,
         logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
         let thread_shared_state = db_poll_shared_state;
         let thread = Some(DbFetcherThread::new(
-            db,
+            block_provider,
             thread_stop_requested,
             sharding_strategy,
             enclave,
-            watcher,
             thread_shared_state,
             readiness_indicator,
+            poll_interval,
             logger,
         ));
 
@@ -112,10 +112,9 @@ impl<
 }
 
 impl<
-        DB: Ledger + 'static,
         E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
         SS: ShardingStrategy + Send + Sync + 'static,
-    > Drop for DbFetcher<DB, E, SS>
+    > Drop for DbFetcher<E, SS>
 {
     fn drop(&mut self) {
         let _ = self.stop();
@@ -123,49 +122,46 @@ impl<
 }
 
 struct DbFetcherThread<
-    DB: Ledger,
     E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
     SS: ShardingStrategy + Send + Sync + 'static,
 > {
-    db: DB,
+    block_provider: Box<dyn BlockProvider>,
     stop_requested: Arc<AtomicBool>,
     sharding_strategy: SS,
     enclave: E,
-    watcher: WatcherDB,
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
     readiness_indicator: ReadinessIndicator,
+    poll_interval: Duration,
     logger: Logger,
 }
 
 /// Background worker thread implementation that takes care of periodically
 /// polling data out of the database. Add join handle
 impl<
-        DB: Ledger,
         E: LedgerEnclaveProxy + Clone + Send + Sync + 'static,
         SS: ShardingStrategy + Send + Sync + 'static,
-    > DbFetcherThread<DB, E, SS>
+    > DbFetcherThread<E, SS>
 {
-    const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
     const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
     pub fn new(
-        db: DB,
+        block_provider: Box<dyn BlockProvider>,
         stop_requested: Arc<AtomicBool>,
         sharding_strategy: SS,
         enclave: E,
-        watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         readiness_indicator: ReadinessIndicator,
+        poll_interval: Duration,
         logger: Logger,
     ) -> Self {
         Self {
-            db,
+            block_provider,
             stop_requested,
             sharding_strategy,
             enclave,
-            watcher,
             db_poll_shared_state,
             readiness_indicator,
+            poll_interval,
             logger,
         }
     }
@@ -173,62 +169,58 @@ impl<
     pub fn run(mut self) {
         log::info!(self.logger, "Db fetcher thread started.");
         let block_range = self.sharding_strategy.get_block_range();
-        let mut next_block_index = 0;
+        let mut next_block_index = block_range.start_block;
         loop {
+            loop {
+                if self.stop_requested.load(Ordering::SeqCst) {
+                    break;
+                }
+
+                let Some(num_blocks) = self.load_block_data(&mut next_block_index) else {
+                    std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
+                    continue;
+                };
+
+                let end = min(num_blocks, block_range.end_block);
+
+                if next_block_index < end.saturating_sub(BLOCKS_BEHIND) {
+                    self.readiness_indicator.set_unready();
+                } else {
+                    self.readiness_indicator.set_ready();
+                }
+
+                if end <= next_block_index {
+                    break;
+                }
+            }
+
+            if !block_range.contains(next_block_index) {
+                log::info!(self.logger, "Db fetcher thread reached end of block range.");
+                break;
+            }
+
             if self.stop_requested.load(Ordering::SeqCst) {
                 log::info!(self.logger, "Db fetcher thread stop requested.");
                 break;
             }
 
-            // Each call to load_block_data attempts to load one block for each known
-            // invocation. We want to keep loading blocks as long as we have data to load,
-            // but that could take some time which is why the loop is also gated
-            // on the stop trigger in case a stop is requested during loading.
-            while self.load_block_data(&mut next_block_index, &block_range)
-                && !self.stop_requested.load(Ordering::SeqCst)
-            {
-                // Hack: If we notice that we are way behind the ledger, set ourselves unready
-                match self.db.num_blocks() {
-                    Ok(num_blocks) => {
-                        // if there are > BLOCKS_BEHIND *available* blocks we haven't loaded yet,
-                        // set unready
-                        if min(num_blocks, block_range.end_block) > next_block_index + BLOCKS_BEHIND
-                        {
-                            self.readiness_indicator.set_unready();
-                        }
-                    }
-                    Err(err) => {
-                        log::error!(self.logger, "Could not get num blocks from db: {}", err);
-                    }
-                };
-            }
-
-            // If we get this far then we loaded all available block data from the DB into
-            // the enclave.
-            //
-            // However, it is possible that mobilecoind is slow to sync, and then we may
-            // think we are ready when we haven't actually loaded anything.
-            // It would be better if we could somehow couple this with a probe to
-            // mobilecoind to ensure that mobilecoind thinks it is caught up.
-            // Setting ourselves unready when we notice we are way behind is a workaround.
-            self.readiness_indicator.set_ready();
-
-            std::thread::sleep(Self::POLLING_FREQUENCY);
+            std::thread::sleep(self.poll_interval);
         }
     }
 
-    /// Attempt to load the next block that we
-    /// are aware of and tracking.
-    /// Returns true if we might have more block data to load.
-    fn load_block_data(&mut self, next_block_index: &mut u64, block_range: &BlockRange) -> bool {
-        // Default to true: if there is an error, we may have more work, we don't know
-        let mut may_have_more_work = true;
+    /// Attempt to load the next block that we are aware of and tracking.
+    ///
+    /// The `next_block_index` will be incremented if the block is successfully
+    /// loaded.
+    ///
+    /// Returns the number of blocks in the block provider. None if unable to
+    /// communicate with block provider.
+    fn load_block_data(&mut self, next_block_index: &mut u64) -> Option<u64> {
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
-        match self.db.get_block_contents(*next_block_index) {
-            Err(LedgerError::NotFound) => may_have_more_work = false,
+        let blocks = match self.block_provider.get_blocks_data(&[*next_block_index]) {
             Err(e) => {
                 log::error!(
                     self.logger,
@@ -236,84 +228,72 @@ impl<
                     next_block_index,
                     e
                 );
-                std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
+                return None;
             }
-            Ok(block_contents) => {
-                // Tracing
-                let tracer = tracer!();
+            Ok(blocks) => blocks,
+        };
 
-                let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
-                    .with_start_time(start_time)
-                    .start(&tracer);
+        let latest_block = blocks.latest_block;
 
-                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
+        if let Some(next_block) = blocks.results.get(0).and_then(|r| r.as_ref()) {
+            let tracer = tracer!();
 
-                let _active = mark_span_as_active(span);
+            let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)
+                .with_start_time(start_time)
+                .start(&tracer);
 
-                // Only add blocks within the epoch to the ORAM
-                if block_range.contains(*next_block_index) {
-                    // Get the timestamp for the block.
-                    let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
-                        self.watcher
+            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
+
+            let _active = mark_span_as_active(span);
+
+            // Get the timestamp for the block.
+            let timestamp =
+                if next_block.block_timestamp_result_code == TimestampResultCode::TimestampFound {
+                    next_block.block_timestamp
+                } else {
+                    tracer.in_span("poll_block_timestamp", |_cx| {
+                        self.block_provider
                             .poll_block_timestamp(*next_block_index, watcher_timeout)
-                    });
+                    })
+                };
 
-                    // Add block to enclave.
-                    let records = block_contents
-                        .key_images
-                        .iter()
-                        .map(|key_image| KeyImageData {
-                            key_image: *key_image,
-                            block_index: *next_block_index,
-                            timestamp,
-                        })
-                        .collect();
+            // Add block to enclave.
+            let records = next_block
+                .block_data
+                .contents()
+                .key_images
+                .iter()
+                .map(|key_image| KeyImageData {
+                    key_image: *key_image,
+                    block_index: *next_block_index,
+                    timestamp,
+                })
+                .collect();
 
-                    tracer.in_span("add_records_to_enclave", |_cx| {
-                        self.add_records_to_enclave(*next_block_index, records);
-                    });
-                }
+            tracer.in_span("add_records_to_enclave", |_cx| {
+                self.add_records_to_enclave(*next_block_index, records);
+            });
 
-                // Update shared state.
-                tracer.in_span("update_shared_state", |_cx| {
-                    let mut shared_state =
-                        self.db_poll_shared_state.lock().expect("mutex poisoned");
-                    // this is next_block_index + 1 because next_block_index is actually the block
-                    // we just processed, so we have fully processed next_block_index + 1 blocks
-                    shared_state.highest_processed_block_count = *next_block_index + 1;
-                    match self.db.num_txos() {
-                        Err(e) => {
-                            log::error!(
-                                self.logger,
-                                "Unexpected error when checking for ledger num txos {}: {:?}",
-                                next_block_index,
-                                e
-                            );
-                        }
-                        Ok(global_txo_count) => {
-                            // keep track of count for ledger enclave untrusted
-                            shared_state.last_known_block_cumulative_txo_count = global_txo_count;
-                        }
-                    }
-                    match self.db.get_latest_block() {
-                        Err(e) => {
-                            log::error!(
-                                self.logger,
-                                "Unexpected error when checking for ledger latest block version {}: {:?}",
-                                next_block_index,
-                                e
-                            );
-                        }
-                        Ok(block) => {
-                            shared_state.latest_block_version = block.version;
-                        }
-                    }
-                });
-
-                *next_block_index += 1;
-            }
+            *next_block_index += 1;
+            let mut processed_block_range = self.sharding_strategy.get_block_range();
+            processed_block_range.end_block = *next_block_index;
+            self.update_db_poll_shared_state(&latest_block, processed_block_range);
         }
-        may_have_more_work
+        // Adding 1 as indices are 0 based, but "number of blocks" is 1 based.
+        Some(latest_block.index + 1)
+    }
+
+    fn update_db_poll_shared_state(
+        &mut self,
+        latest_block: &Block,
+        processed_block_range: BlockRange,
+    ) {
+        tracer!().in_span("update_shared_state", |_cx| {
+            let mut shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
+            shared_state.processed_block_range = processed_block_range;
+            shared_state.last_known_block_cumulative_txo_count = latest_block.cumulative_txo_count;
+            shared_state.latest_block_version = latest_block.version;
+        });
     }
 
     fn add_records_to_enclave(&mut self, block_index: u64, records: Vec<KeyImageData>) {

@@ -3,7 +3,7 @@
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::{collections::BTreeMap, vec::Vec};
-use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_core::{DcapEvidence, TargetInfo};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, NonceAuthRequest, NonceAuthResponse,
     NonceSession, SealedClientMessage,
@@ -62,25 +62,18 @@ pub enum EnclaveCall {
     /// Creates a new report for the enclave with the provided target info.
     NewEreport(TargetInfo),
 
-    /// The [LedgerEnclave::verify_quote()] method.
+    /// The [LedgerEnclave::verify_attestation_evidence()] method.
     ///
-    /// * Verifies that the Quoting Enclave is sane,
-    /// * Verifies that the Quote matches the previously generated report.
-    /// * Caches the quote.
-    VerifyQuote(Quote, Report),
-
-    /// The [LedgerEnclave::verify_ias_report()] method.
-    ///
-    /// * Verifies the signed report from IAS matches the previously received
+    /// * Verifies the attestation evidence matches the previously received
     ///   quote,
-    /// * Caches the signed report. This cached report may be overwritten by
-    ///   later calls.
-    VerifyReport(VerificationReport),
+    /// * Caches the attestation evidence. This cached attestation evidence may
+    ///   be overwritten by later calls.
+    VerifyAttestationEvidence(DcapEvidence),
 
-    /// The [LedgerEnclave::get_ias_report()] method.
+    /// The [LedgerEnclave::get_attestation_evidence()] method.
     ///
-    /// Retrieves a previously cached report, if any.
-    GetReport,
+    /// Retrieves a previously cached attestation evidence, if any.
+    GetAttestationEvidence,
 
     /// The [LedgerEnclave::get_outputs()] method.
     ///

@@ -1,4 +1,4 @@
-{{/* Copyright (c) 2018-2022 The MobileCoin Foundation */}}
+{{/* Copyright (c) 2018-2023 The MobileCoin Foundation */}}
 
 {{/* Expand the name of the Chart. */}}
 {{- define "mobilecoind.name" -}}
@@ -42,16 +42,4 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "mobilecoind.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "mobilecoind.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-hostnames - we need this for ingress.
-lookup name from configmap if we have created the objects in mobilecoind-config separately.
-*/}}
-{{- define "mobilecoind.hostname" -}}
-  {{- if eq .Values.mobilecoindConfig.enabled false }}
-    {{- (lookup "v1" "ConfigMap" .Release.Namespace "mobilecoind").data.hostname | default "" }}
-  {{- else }}
-    {{- tpl .Values.mobilecoindConfig.hostname . }}
-  {{- end }}
 {{- end }}

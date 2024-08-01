@@ -2,7 +2,7 @@
 
 use super::Error;
 use grpcio::{ChannelBuilder, Environment};
-use mc_common::logger::Logger;
+use mc_common::{logger::Logger, trace_time};
 use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc, ledger_grpc::FogBlockApiClient};
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
@@ -15,7 +15,6 @@ pub struct FogBlockGrpcClient {
     blocks_client: FogBlockApiClient,
     creds: BasicCredentials,
     grpc_retry_config: GrpcRetryConfig,
-    #[allow(dead_code)]
     logger: Logger,
 }
 
@@ -46,6 +45,8 @@ impl FogBlockGrpcClient {
         &mut self,
         missed_block_ranges: Vec<BlockRange>,
     ) -> Result<ledger::BlockResponse, Error> {
+        trace_time!(self.logger, "FogBlockGrpcClient::get_missed_block_ranges");
+
         let mut request = ledger::BlockRequest::new();
         request.ranges = RepeatedField::from_vec(missed_block_ranges);
 

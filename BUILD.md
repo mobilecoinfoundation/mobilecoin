@@ -55,15 +55,15 @@ A docker-less build also works fine for development:
 
 ## Build configuration
 
-There are two project-wide SGX-related configuration variables `SGX_MODE` and `IAS_MODE`.
+There is a project-wide SGX-related configuration variables `SGX_MODE`.
 
-These are set by environment variables, and they must be the same for all artifacts,
+It is set by an environment variable, and it must be the same for all artifacts,
 even those that don't depend directly on SGX. E.g. `mobilecoind` must have the same configuration
-as `consensus_service` for Intel Remote Attestation to work, otherwise an error will occur at runtime.
+as `consensus_service`, otherwise an error will occur at runtime.
 
-For local testing, you should usually use `SGX_MODE=SW` and `IAS_MODE=DEV`.
+For local testing, you should usually use `SGX_MODE=SW`.
 If you are seeking to build a client that you can test against MobileCoin's official testnet,
-you must use `SGX_MODE=HW` and `IAS_MODE=PROD`, because testnet is configured as a production environment.
+you must use `SGX_MODE=HW`, because testnet is configured as a production environment.
 
 #### SGX_MODE
 
@@ -78,24 +78,13 @@ This mode is required for Intel Remote Attestation to work and provide security.
 
 The clients and servers must all agree about this setting, or attestation will fail.
 
-#### IAS_MODE
-
-`IAS_MODE=DEV` means that we will hit the Intel provided "dev endpoints" during remote attestation.
-These won't require the real production signing key in connection to the MRENCLAVE measurements.
-
-`IAS_MODE=PROD` means that we will hit the real Intel provided endpoints for remote attestation.
-
-In code, this discrepancy is largely handled by the `attest-net` crate.
-
-The clients and servers must all agree about this setting, or attestation will fail.
-
 #### Why are these environment variables?
 
 `cargo` supports crate-level features, and feature unification across the build plan.
 `cargo` does not support any notion of "global project-wide configuration".
 
 In practice, it's too hard invoke cargo to get all the features enabled exactly correctly on
-all the right crates, if every crate has an `sgx_mode` and `ias_mode` feature.
+all the right crates, if every crate has an `sgx_mode` feature.
 
 Even if cargo had workspace-level features, which it doesn't, that wouldn't be good enough for us
 because our build requires using multiple workspaces. We must keep the cargo features on some
@@ -103,9 +92,9 @@ targets separated and not unified.
 Unifying cargo features across enclave targets and server targets will break the enclave builds.
 This is because the enclave builds in a special `no_std` environment.
 
-Making `SGX_MODE` and `IAS_MODE` environment variables, and making `build.rs` scripts that read
-them and set features on these crates as needed, is the simplest way to make sure that there is
-one source of truth for these values for all of the artifacts in the whole build.
+Making `SGX_MODE` an environment variable, and making `build.rs` scripts that reads
+it and set features on these crates as needed, is the simplest way to make sure that there is
+one source of truth for this value for all of the artifacts in the whole build.
 
 The `SGX_MODE` environment variable configuration is also used throughout Intel SGX SDK examples.
 
@@ -133,9 +122,9 @@ To reproducibly build the enclave, (get exactly the right MRENCLAVE value), you 
 in the container.
 
 For local testing, you don't need to get exactly the right MRENCLAVE value. You can set up
-test networks with whatever MRENCLAVE your build produces, and clients that check this value
-using the Remote Attestation process.
+test networks with whatever MRENCLAVE your build produces, and clients that check this value.
 
-If you want to download a prebuilt enclave, signed using the production signing key, in order use `IAS_MODE=PROD`
-and participate in a production-environment network, check out the `enclave-signing-material` instructions:
-https://github.com/mobilecoinfoundation/mobilecoin/blob/master/consensus/service/BUILD.md#enclave-signing-material
+If you want to download a prebuilt enclave, signed using the production signing key, you will need a PCCS, 
+<https://download.01.org/intel-sgx/sgx-dcap/1.10/linux/docs/SGX_DCAP_Caching_Service_Design_Guide.pdf>.
+Intel provides an example implementation
+<https://github.com/intel/SGXDataCenterAttestationPrimitives/tree/master/QuoteGeneration/pccs>.

@@ -1,0 +1,28 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- $network := .Values.mobilecoin.network | required "mobilecoin.network is required." }}
+{{- $partner := .Values.mobilecoin.partner | required "mobilecoin.partner is required." }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "fog-view.fullname" . }}-store
+  labels:
+    publish: grafana-cloud
+    app: fog-view-store
+    {{- include "fog-view.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: fog-view-store
+      {{- include "fog-view.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: mgmt-http
+    relabelings:
+    - targetLabel: network
+      replacement: {{ $network }}
+    - targetLabel: partner
+      replacement: {{ $partner }}
+    - action: replace
+      sourceLabels:
+      - __meta_kubernetes_pod_label_stack
+      targetLabel: view_stack
+

@@ -10,11 +10,11 @@ use mc_api::ConversionError;
 use mc_common::ResponderId;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::report_parse::ReportParseError;
+use mc_fog_block_provider::Error as BlockProviderError;
 use mc_fog_ingest_enclave::Error as EnclaveError;
 use mc_fog_recovery_db_iface::RecoveryDbError;
 use mc_fog_sql_recovery_db::Error as SqlRecoveryDbError;
 use mc_fog_uri::IngestPeerUri;
-use mc_ledger_db::Error as LedgerDbError;
 use mc_sgx_report_cache_api::Error as ReportableEnclaveError;
 use mc_sgx_report_cache_untrusted::Error as ReportCacheError;
 use mc_util_uri::{UriConversionError, UriParseError};
@@ -25,8 +25,8 @@ use std::collections::BTreeMap;
 pub enum IngestServiceError {
     /// Ingest enclave error: {0}
     Enclave(EnclaveError),
-    /// LedgerDb Error: {0}
-    LedgerDb(LedgerDbError),
+    /// Block provider: {0}
+    BlockProvider(BlockProviderError),
     /// RecoveryDbError: {0}
     RecoveryDb(Box<dyn RecoveryDbError>),
     /// Serialization
@@ -64,9 +64,9 @@ impl From<EnclaveError> for IngestServiceError {
     }
 }
 
-impl From<LedgerDbError> for IngestServiceError {
-    fn from(src: LedgerDbError) -> Self {
-        Self::LedgerDb(src)
+impl From<BlockProviderError> for IngestServiceError {
+    fn from(src: BlockProviderError) -> Self {
+        Self::BlockProvider(src)
     }
 }
 

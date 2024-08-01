@@ -55,7 +55,7 @@ impl PartialEq for MockUserTxConnection {
 
 impl PartialOrd for MockUserTxConnection {
     fn partial_cmp(&self, other: &MockUserTxConnection) -> Option<Ordering> {
-        self.uri.addr().partial_cmp(&other.uri.addr())
+        Some(self.cmp(other))
     }
 }
 

@@ -95,7 +95,7 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
             .map(|(fog_report_id, report_data)| {
                 Ok(Report {
                     fog_report_id,
-                    report: report_data.report,
+                    attestation_evidence: Some(report_data.attestation_evidence),
                     pubkey_expiry: report_data.pubkey_expiry,
                 })
             })

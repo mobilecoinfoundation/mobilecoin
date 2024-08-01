@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_attest_net::{Client, RaClient};
 use mc_common::{
     logger::{log, test_with_logger, Logger},
     ResponderId,
@@ -43,18 +42,7 @@ fn consensus_enclave_graceful_teardown(logger: Logger) {
             blockchain_config.clone(),
         );
 
-        // Update enclave report cache, using SIM or HW-mode RA client as appropriate
-        let ias_spid = Default::default();
-        let ias_api_key = core::str::from_utf8(&[0u8; 64]).unwrap();
-        let ias_client = Client::new(ias_api_key).expect("Could not create IAS client");
-
-        let report_cache = ReportCache::new(
-            enclave.clone(),
-            ias_client,
-            ias_spid,
-            &DUMMY_INT_GAUGE,
-            logger.clone(),
-        );
+        let report_cache = ReportCache::new(enclave.clone(), &DUMMY_INT_GAUGE, logger.clone());
         report_cache.start_report_cache().unwrap();
         report_cache.update_enclave_report_cache().unwrap();
     }

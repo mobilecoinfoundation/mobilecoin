@@ -64,17 +64,6 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-IAS Secret Name
-*/}}
-{{- define "chart.iasSecretName" -}}
-  {{- if .Values.ias.secret.external }}
-    {{- .Values.ias.secret.name }}
-  {{- else }}
-    {{- include "chart.fullname" . }}-{{ .Values.ias.secret.name }}
-  {{- end }}
-{{- end }}
-
-{{/*
 Sentry ConfigMap Name
 */}}
 {{- define "chart.sentryConfigMapName" -}}

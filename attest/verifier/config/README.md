@@ -5,13 +5,11 @@ A JSON schema for basic attestation configs.
 
 This crate defines a schema for storing a set of trusted measurements for SGX
 enclaves in json. These measurements can be grouped by version, and named.
-Then, a helper function can produce an `mc-attest-verifier::Verifier`
-which is appropriate for a given enclave name.
 
 This crate simply provides a serialization format and organizational schema over
 the data that is martialed into a Verifier using the builder format.
 
-This is meant to help clients that connect to several mobilecoin enclaves to configure their verifiers
+This is meant to help clients that connect to several MobileCoin enclaves to configure their verifiers
 appropriately. Thus, it has more to do with clients than the actual attestation implementation.
 
 Format
@@ -103,5 +101,5 @@ Suggestions for use
 It is suggested that clients such as full-service might take the `trusted-measurements.json` file as a startup parameter,
 or have a search location.
 
-For mobile clients, it may be more convenient if they take the bake this json is as a string literal and update it with each release.
-Both approaches are reasonable.
+For mobile clients, it may be more convenient if they bake this json is as a string literal and update it with each
+release. Both approaches are reasonable.

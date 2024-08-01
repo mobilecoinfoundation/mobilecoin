@@ -296,21 +296,21 @@ where
     ///      but Fog Ingest isn't currently doing that because all nodes are
     ///      idle.
     ///   2. If there are:
-    ///         a) 0 outstanding keys:
-    ///              No node will be activated. We now have to:
-    ///                 (i)  Set new keys on an idle node.
-    ///                 (ii) Activate that node.
-    ///         b) 1 outsanding key:
-    ///              Try to find an idle node that contains that key.
-    ///                 (i)  If you find one, great! Just activate that node. If
-    ///                      activation is unsuccessful, then return an error
-    ///                      and return to the overseer polling logic.
-    ///                 (ii) If you don't find an idle node with that key,
-    ///                      then you have to report that key as lost, set
-    ///                      new keys on an idle node, and activate that node.
-    ///        c) > 1 outstanding key:
-    ///             (i) Disable
-    ///             (ii) TODO: Send an alert.
+    ///     a. 0 outstanding keys:
+    ///        No node will be activated. We now have to:
+    ///        i. Set new keys on an idle node.
+    ///        ii. Activate that node.
+    ///     b. 1 outsanding key:
+    ///        Try to find an idle node that contains that key.
+    ///        i. If you find one, great! Just activate that node. If
+    ///           activation is unsuccessful, then return an error
+    ///           and return to the overseer polling logic.
+    ///        ii. If you don't find an idle node with that key,
+    ///            then you have to report that key as lost, set
+    ///            new keys on an idle node, and activate that node.
+    ///     c. > 1 outstanding key:
+    ///        i. Disable
+    ///        ii. TODO: Send an alert.
     fn perform_automatic_failover(
         &self,
         ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping>,
@@ -381,12 +381,12 @@ where
     }
 
     /// Performs the following logic when one inactive outstanding key is found:
-    ///   1) Tries to find an idle node that contains that key.
-    ///      (i)  If it's found, it activates the node that contains it. If
-    ///           activation is unsuccessful, then it returns an error.
-    ///      (ii) If no idle node is found that contains the key, then it
-    ///           reports that key as lost, sets new keys on an idle node, and
-    ///           activates that node.
+    ///   1. Tries to find an idle node that contains that key.
+    ///     a. If it's found, it activates the node that contains it. If
+    ///        activation is unsuccessful, then it returns an error.
+    ///     b. If no idle node is found that contains the key, then it
+    ///        reports that key as lost, sets new keys on an idle node, and
+    ///        activates that node.
     fn handle_one_inactive_outstanding_key(
         &self,
         inactive_outstanding_key: CompressedRistrettoPublic,

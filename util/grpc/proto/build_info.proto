@@ -12,6 +12,8 @@ service BuildInfoApi {
 }
 
 message BuildInfo {
+  reserved 10;
+  reserved "ias_mode";
   string git_commit = 1;
   string profile = 2;
   string debug = 3;
@@ -21,5 +23,4 @@ message BuildInfo {
   string target_feature = 7;
   string rustflags = 8;
   string sgx_mode = 9;
-  string ias_mode = 10;
 }
