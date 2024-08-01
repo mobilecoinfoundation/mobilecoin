@@ -167,10 +167,7 @@ impl TxSummaryStreamingVerifierCtx {
                 Self::expected_tx_out_summary(self.block_version, amount, address, tx_private_key)?;
             if &expected == tx_out_summary {
                 // Add as an output to the report
-                report.output_add(
-                    TransactionEntity::OtherAddress(*address_hash),
-                    amount,
-                )?;
+                report.output_add(TransactionEntity::OtherAddress(*address_hash), amount)?;
             } else {
                 return Err(Error::AddressVerificationFailed);
             }
