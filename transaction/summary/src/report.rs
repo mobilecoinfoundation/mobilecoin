@@ -189,7 +189,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
             // If we have an entry, subtract the change value from this
             Some(v) => {
                 v.2 =
-                    v.2.checked_sub(value as i128)
+                    v.2.checked_sub(value)
                         .ok_or(Error::NumericOverflow)?
             }
             // If we do not, create a new entry
@@ -218,7 +218,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
             // If we have an entry, add the value to this
             Some(v) => {
                 v.2 =
-                    v.2.checked_add(value as i128)
+                    v.2.checked_add(value)
                         .ok_or(Error::NumericOverflow)?
             }
             // If we do not, create a new entry
