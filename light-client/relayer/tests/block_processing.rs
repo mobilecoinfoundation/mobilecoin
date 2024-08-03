@@ -45,6 +45,7 @@ fn append_tx_outs_as_block(
         &last_block,
         &Default::default(),
         &block_contents,
+        last_block.timestamp + 1,
     );
 
     // Sign this block with all the signer identities
