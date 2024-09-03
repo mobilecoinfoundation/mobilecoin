@@ -251,9 +251,6 @@ where
     logger: Logger,
 }
 
-/// How long to wait between polling db
-const DB_POLL_INTERNAL: Duration = Duration::from_millis(100);
-
 impl<E, DB, SS> DbPollThread<E, DB, SS>
 where
     E: ViewEnclaveProxy,
@@ -350,7 +347,7 @@ where
         log::debug!(logger, "Db poll thread started");
 
         let mut worker = DbPollThreadWorker::new(
-            config,
+            config.clone(),
             stop_requested,
             enclave,
             db,
@@ -369,7 +366,8 @@ where
                 WorkerTickResult::HasMoreWork => {}
 
                 WorkerTickResult::Sleep => {
-                    sleep(DB_POLL_INTERNAL);
+                    // This waits between polling. Is this doubled up with sleeps in DbFetcher?
+                    sleep(config.db_polling_interval_ms);
                 }
             }
         }
@@ -434,7 +432,7 @@ pub enum WorkerTickResult {
     Sleep,
 }
 
-/// Telemetry: block indes currently being worked on.
+/// Telemetry: block index currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 impl<E, DB, SS> DbPollThreadWorker<E, DB, SS>
@@ -457,6 +455,7 @@ where
 
         let db_fetcher = DbFetcher::new(
             db.clone(),
+            config.db_polling_interval_ms,
             db_fetcher_readiness_indicator.clone(),
             sharding_strategy.clone(),
             config.block_query_batch_size,
