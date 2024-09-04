@@ -305,6 +305,7 @@ jobs:
           --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
           --set=global.postgresql.auth.database=fog_recovery
           --set=architecture=replication
+          --set=postgresqlSharedPreloadLibraries=pgaudit,pg_stat_statements
         chart_wait_timeout: 5m
         release_name: fog-recovery-postgresql
         namespace: ${{ inputs.namespace }}
