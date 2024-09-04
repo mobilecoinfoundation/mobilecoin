@@ -294,6 +294,19 @@ jobs:
         object_name: fog-recovery-reader-0-postgresql
         src: ${{ env.PG_PATH }}/sec
 
+    - name: Generate PostgreSQL values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/postgresql-values.yaml"
+        architecture: replication
+        global:
+          postgresql:
+            auth:
+              database: fog_recovery
+              existingSecret: fog-recovery-postgresql
+        postgresqlSharedPreloadLibraries: pgaudit,pg_stat_statements
+        EOF
+
     - name: Deploy PostgreSQL instance
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -301,11 +314,7 @@ jobs:
         chart_repo: https://charts.bitnami.com/bitnami
         chart_name: postgresql
         chart_version: 15.2.2
-        chart_set: |
-          --set=global.postgresql.auth.existingSecret=fog-recovery-postgresql
-          --set=global.postgresql.auth.database=fog_recovery
-          --set=architecture=replication
-          --set=postgresqlSharedPreloadLibraries=pgaudit,pg_stat_statements
+        chart_values: ${{ env.VALUES_BASE_PATH }}/postgresql-values.yaml
         chart_wait_timeout: 5m
         release_name: fog-recovery-postgresql
         namespace: ${{ inputs.namespace }}
