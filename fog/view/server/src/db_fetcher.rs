@@ -417,7 +417,7 @@ mod tests {
         let db = db_test_context.get_db_instance();
         let db_fetcher = DbFetcher::new(
             db.clone(),
-            Duration::from_millis(250),
+            Duration::from_millis(100),
             Default::default(),
             EpochShardingStrategy::default(),
             1,
@@ -654,7 +654,7 @@ mod tests {
         let db = db_test_context.get_db_instance();
         let db_fetcher = DbFetcher::new(
             db.clone(),
-            Duration::from_millis(250),
+            Duration::from_millis(100),
             Default::default(),
             EpochShardingStrategy::default(),
             1,
@@ -718,7 +718,7 @@ mod tests {
         let db = db_test_context.get_db_instance();
         let db_fetcher = DbFetcher::new(
             db.clone(),
-            Duration::from_millis(250),
+            Duration::from_millis(100),
             Default::default(),
             EpochShardingStrategy::default(),
             1,
