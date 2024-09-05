@@ -345,9 +345,9 @@ where
         logger: Logger,
     ) {
         log::debug!(logger, "Db poll thread started");
-
+        let polling_interval = config.db_polling_interval_ms;
         let mut worker = DbPollThreadWorker::new(
-            config.clone(),
+            config,
             stop_requested,
             enclave,
             db,
@@ -366,8 +366,7 @@ where
                 WorkerTickResult::HasMoreWork => {}
 
                 WorkerTickResult::Sleep => {
-                    // This waits between polling. Is this doubled up with sleeps in DbFetcher?
-                    sleep(config.db_polling_interval_ms);
+                    sleep(polling_interval);
                 }
             }
         }

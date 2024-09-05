@@ -74,7 +74,7 @@ pub struct DbFetcher {
 impl DbFetcher {
     pub fn new<DB, SS>(
         db: DB,
-        db_polling_interval_ms: Duration,
+        db_polling_interval: Duration,
         readiness_indicator: ReadinessIndicator,
         sharding_strategy: SS,
         block_query_batch_size: usize,
@@ -102,7 +102,7 @@ impl DbFetcher {
                 .spawn(move || {
                     DbFetcherThread::start(
                         db,
-                        db_polling_interval_ms,
+                        db_polling_interval,
                         thread_stop_requested,
                         thread_shared_state,
                         thread_num_queued_records_limiter,
@@ -178,7 +178,7 @@ where
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     db: DB,
-    db_polling_interval_ms: Duration,
+    db_polling_interval: Duration,
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
     block_tracker: BlockTracker<SS>,
@@ -197,7 +197,7 @@ where
 {
     pub fn start(
         db: DB,
-        db_polling_interval_ms: Duration,
+        db_polling_interval: Duration,
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
@@ -212,7 +212,7 @@ where
         );
         let thread = Self {
             db,
-            db_polling_interval_ms,
+            db_polling_interval,
             stop_requested,
             shared_state,
             block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
@@ -245,7 +245,7 @@ where
             // loaded into the queue.
             self.readiness_indicator.set_ready();
 
-            sleep(self.db_polling_interval_ms);
+            sleep(self.db_polling_interval);
         }
     }
 
@@ -384,7 +384,7 @@ where
                     // We might have more work to do, we aren't sure because of the error
                     may_have_more_work = true;
                     // Let's back off for one interval when there is an error
-                    sleep(self.db_polling_interval_ms);
+                    sleep(self.db_polling_interval);
                 }
             }
         }
