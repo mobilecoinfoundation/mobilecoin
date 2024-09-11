@@ -106,6 +106,8 @@ fogLedger:
     ingress:
       enabled: true
       common:
+        # Set a static salt for the dynamic cookie. See helpers for more info.
+        # cookieSalt: ''
         tls:
           clusterIssuer: letsencrypt-production-http
         blocklist:
