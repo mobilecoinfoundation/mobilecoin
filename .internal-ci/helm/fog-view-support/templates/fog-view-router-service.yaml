@@ -1,0 +1,26 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fog-view-service.fullname" $ }}-router
+  labels:
+    app: fog-view-router
+    {{- include "fog-view-service.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: fog-view-router
+    {{- include "fog-view-service.selectorLabels" $ | nindent 4 }}
+    # route to blue or green fogShardGenerator stacks.
+    color: {{ .Values.fogView.router.color }}
+  ports:
+  - name: view-grpc
+    port: 3225
+    targetPort: view-grpc
+  - name: mgmt-http
+    port: 8000
+    targetPort: mgmt-http
+  - name: view-http
+    port: 8225
+    targetPort: view-http
+---
