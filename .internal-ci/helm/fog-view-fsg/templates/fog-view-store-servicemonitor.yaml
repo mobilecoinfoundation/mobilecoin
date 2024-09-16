@@ -8,13 +8,11 @@ metadata:
   labels:
     publish: grafana-cloud
     app: fog-view-store
-    color: {{ .Values.fogView.stackConfig.color }}
     {{- include "fog-view-fsg.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
       app: fog-view-store
-      color: {{ .Values.fogView.stackConfig.color }}
       {{- include "fog-view-fsg.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt-http

@@ -12,14 +12,13 @@ mobilecoin:
   partner: ''
 
 fogView:
-  # Stack configurations by network.
-  stackConfig:
-    # Affinity to a specific topology.kubernetes.io/zone= label value.
-    # zone will be "region-zoneId" format like "italynorth-1"
-    zone: ''
-    # color label of the fogShardGenerator stack. blue|green
-    color: 'blue'
+  # Affinity to a specific topology.kubernetes.io/zone= label value.
+  # zone will be "region-zoneId" format like "italynorth-1"
+  zone: ''
+  # color label of the fogShardGenerator stack. blue|green
+  color: 'blue'
 
+  stackConfig:
     network:
       # Assume default is a dev network. We can always define a "network" value if needed.
       default:
