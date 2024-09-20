@@ -2,16 +2,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "fog-view-fsg.fullname" $ }}-router-headless
+  name: {{ include "fog-view-service.fullname" . }}-router
   labels:
     app: fog-view-router
-    {{- include "fog-view-fsg.labels" $ | nindent 4 }}
+    {{- include "fog-view-service.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
-  clusterIP: None
   selector:
     app: fog-view-router
-    {{- include "fog-view-fsg.selectorLabels" $ | nindent 4 }}
+    color: {{ .Values.fogView.color }}
   ports:
   - name: view-grpc
     port: 3225

@@ -1,6 +1,6 @@
-# Fog-View
+# Fog-View-FSG
 
-Run a MobileCoin fog-view instance.
+Run a MobileCoin fog-view fogShardGenerator chart
 
 ### Required Values
 
@@ -12,17 +12,15 @@ mobilecoin:
   partner: mc
 
 fogView:
-  router:
-    hosts:
-    # add more instances here to generate additional routers
-    - partner: mc
-      responderID: fog.prod.mobilecoinww.com
+  color: (blue|green)
+  zone: <azure region + AZ number>
+  responderID: fog.prod.mobilecoinww.com
 ```
 
 Install chart:
 
 ```bash
-helm upgrade fog-view mcf-public/fog-view -i -f values.yaml
+helm upgrade fog-view-fsg-blue-z1 mcf-public/fog-view-fsg -i -f values.yaml
 ```
 
 ### Required ConfigMaps
@@ -55,20 +53,6 @@ type: Opaque
 stringData:
   postgresql-password: <password>
 ```
-
-IAS example
-
-```yaml
-apiVersion: v1
-metadata:
-  name: ias
-kind: Secret
-type: Opaque
-stringData:
-  MC_IAS_API_KEY
-  MC_IAS_SPID
-```
-
 ### Optional ConfigMaps
 
 sentry:

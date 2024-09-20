@@ -4,16 +4,16 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fog-view-fsg.fullname" . }}-store
+  name: {{ include "fog-view-service.fullname" . }}-router
   labels:
     publish: grafana-cloud
-    app: fog-view-store
-    {{- include "fog-view-fsg.labels" . | nindent 4 }}
+    app: fog-view-router
+    {{- include "fog-view-service.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: fog-view-store
-      {{- include "fog-view-fsg.selectorLabels" . | nindent 6 }}
+      app: fog-view-router
+      {{- include "fog-view-service.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt-http
     relabelings:
@@ -29,4 +29,4 @@ spec:
       sourceLabels:
       - __meta_kubernetes_pod_label_color
       targetLabel: color
-
+---

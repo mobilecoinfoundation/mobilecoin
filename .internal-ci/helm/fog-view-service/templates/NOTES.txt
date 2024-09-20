@@ -13,4 +13,4 @@
 #+#    #+# #+#    #+#    #+#     #+#   #+#+#
  ########   ######## ########### ###    ####
 
-fog-view fogShardGenerator has been deployed.
+fog-view-service has been deployed.
