@@ -38,6 +38,16 @@ on:
         type: string
         required: false
         default: "500"
+      shard_size:
+        description: "View/Ledger Shard size in blocks"
+        type: string
+        required: false
+        default: "20000"
+      shard_exceed_block_height_by:
+        description: "View/Ledger New shards should start this many blocks before the end of the current shard"
+        type: string
+        required: false
+        default: "5000"
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -263,6 +273,11 @@ jobs:
           partner: dev
 
         fogView:
+          stackConfig:
+            default:
+              shardSize: ${{ inputs.shard_size }}
+              exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+
           router:
             hosts:
             - partner: a
@@ -310,6 +325,10 @@ jobs:
           partner: dev
 
         fogLedger:
+          stackConfig:
+            default:
+              shardSize: ${{ inputs.shard_size }}
+              exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
           router:
             hosts:
             - partner: a
