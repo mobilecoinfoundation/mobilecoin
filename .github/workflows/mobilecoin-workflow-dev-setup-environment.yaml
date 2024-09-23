@@ -305,6 +305,20 @@ jobs:
               database: fog_recovery
               existingSecret: fog-recovery-postgresql
         postgresqlSharedPreloadLibraries: pgaudit,pg_stat_statements
+        primary:
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+            limits:
+              memory: 8Gi
+        readReplicas:
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+            limits:
+              memory: 8Gi
         EOF
 
     - name: Deploy PostgreSQL instance
