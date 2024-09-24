@@ -103,9 +103,9 @@ jobs:
       shell: bash
       run: |
         echo "[profile s3]" > /tmp/aws_cli_profile
-        echo "s3 =" >> ./aws_cli_profile
-        echo "max_concurrent_requests = 200" >> ./aws_cli_profile
-        echo "max_queue_size = 20000" >> ./aws_cli_profile
+        echo "s3 =" >> /tmp/aws_cli_profile
+        echo "max_concurrent_requests = 200" >> /tmp/aws_cli_profile
+        echo "max_queue_size = 20000" >> /tmp/aws_cli_profile
 
         export AWS_CONFIG_FILE=/tmp/aws_cli_profile
         export AWS_PROFILE=s3
