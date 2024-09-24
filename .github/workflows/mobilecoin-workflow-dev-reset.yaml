@@ -102,6 +102,14 @@ jobs:
         NAMESPACE: ${{ inputs.namespace }}
       shell: bash
       run: |
+        echo "[profile s3]" > /tmp/aws_cli_profile
+        echo "s3 =" >> ./aws_cli_profile
+        echo "max_concurrent_requests = 200" >> ./aws_cli_profile
+        echo "max_queue_size = 20000" >> ./aws_cli_profile
+
+        export AWS_CONFIG_FILE=/tmp/aws_cli_profile
+        export AWS_PROFILE=s3
+
         for i in 1 2 3
         do
             aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
