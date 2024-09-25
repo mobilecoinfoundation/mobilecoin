@@ -61,6 +61,7 @@ jobs:
       shell: bash
       run: |
         echo "[profile s3]" > /tmp/aws_cli_profile
+        # shellcheck disable=SC2129 # style issue on multiple echo lines. The alternative is harder to read.
         echo "s3 =" >> /tmp/aws_cli_profile
         echo "  max_concurrent_requests = 50" >> /tmp/aws_cli_profile
         echo "  max_queue_size = 10000" >> /tmp/aws_cli_profile
