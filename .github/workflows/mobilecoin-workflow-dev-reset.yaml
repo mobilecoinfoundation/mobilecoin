@@ -41,7 +41,11 @@ jobs:
     steps:
     - name: Test Docker
       shell: bash
-      run: docker info
+      run: |-
+        docker info
+        echo "HOME=$HOME"
+        ls -al $HOME/.docker
+        sleep 3600
   # reset-helm:
   #   runs-on: mcf-dev-small-x64
   #   strategy:
