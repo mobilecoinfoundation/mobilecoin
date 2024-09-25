@@ -36,88 +36,94 @@ on:
         required: true
 
 jobs:
-  reset-helm:
+  test-docker:
     runs-on: mcf-dev-small-x64
-    strategy:
-      matrix:
-        chart:
-        - consensus-node-1
-        - consensus-node-2
-        - consensus-node-3
-        - fog-ingest-blue
-        - fog-ingest-green
-        - fog-recovery-postgresql
-        - fog-services
-        - mobilecoind
-        - mc-core-common-config
-        - mc-core-dev-env-setup
-        - fog-report-a
-        - fog-report-b
     steps:
-    - name: Delete release
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: helm-release-delete
-        namespace: ${{ inputs.namespace }}
-        release_name: ${{ matrix.chart }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-
-  reset-k8s:
-    runs-on: mcf-dev-small-x64
-    needs:
-    - reset-helm
-    steps:
-    - name: Delete PersistentVolumeClaims
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: pvcs-delete
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-
-    - name: Delete namespace
-      if: inputs.delete_namespace
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: namespace-delete
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-
-  reset-s3:
-    runs-on: mcf-dev-large-x64
-    container:
-      image: mobilecoin/gha-s3-pg-helper:v0
-    steps:
-    - name: Clear out s3 bucket objects
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: eu-central-1
-        BUCKET: mobilecoin.eu.development.chain
-        NAMESPACE: ${{ inputs.namespace }}
+    - name: Test Docker
       shell: bash
-      run: |
-        echo "[profile s3]" > /tmp/aws_cli_profile
-        echo "s3 =" >> /tmp/aws_cli_profile
-        echo "  max_concurrent_requests = 50" >> /tmp/aws_cli_profile
-        echo "  max_queue_size = 10000" >> /tmp/aws_cli_profile
+      run: docker info
+  # reset-helm:
+  #   runs-on: mcf-dev-small-x64
+  #   strategy:
+  #     matrix:
+  #       chart:
+  #       - consensus-node-1
+  #       - consensus-node-2
+  #       - consensus-node-3
+  #       - fog-ingest-blue
+  #       - fog-ingest-green
+  #       - fog-recovery-postgresql
+  #       - fog-services
+  #       - mobilecoind
+  #       - mc-core-common-config
+  #       - mc-core-dev-env-setup
+  #       - fog-report-a
+  #       - fog-report-b
+  #   steps:
+  #   - name: Delete release
+  #     uses: mobilecoinofficial/gha-k8s-toolbox@v1
+  #     with:
+  #       action: helm-release-delete
+  #       namespace: ${{ inputs.namespace }}
+  #       release_name: ${{ matrix.chart }}
+  #       rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+  #       rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+  #       rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
-        export AWS_CONFIG_FILE=/tmp/aws_cli_profile
-        export AWS_PROFILE=s3
+  # reset-k8s:
+  #   runs-on: mcf-dev-small-x64
+  #   needs:
+  #   - reset-helm
+  #   steps:
+  #   - name: Delete PersistentVolumeClaims
+  #     uses: mobilecoinofficial/gha-k8s-toolbox@v1
+  #     with:
+  #       action: pvcs-delete
+  #       namespace: ${{ inputs.namespace }}
+  #       rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+  #       rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+  #       rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
-        for i in 1 2 3
-        do
-            aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
-            pids[i]=$!
-        done
+  #   - name: Delete namespace
+  #     if: inputs.delete_namespace
+  #     uses: mobilecoinofficial/gha-k8s-toolbox@v1
+  #     with:
+  #       action: namespace-delete
+  #       namespace: ${{ inputs.namespace }}
+  #       rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+  #       rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+  #       rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
-        # wait for all pids to finish
-        for pid in "${pids[@]}"
-        do
-            wait "${pid}"
-        done
+  # reset-s3:
+  #   runs-on: mcf-dev-large-x64
+  #   container:
+  #     image: mobilecoin/gha-s3-pg-helper:v0
+  #   steps:
+  #   - name: Clear out s3 bucket objects
+  #     env:
+  #       AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+  #       AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+  #       AWS_DEFAULT_REGION: eu-central-1
+  #       BUCKET: mobilecoin.eu.development.chain
+  #       NAMESPACE: ${{ inputs.namespace }}
+  #     shell: bash
+  #     run: |
+  #       echo "[profile s3]" > /tmp/aws_cli_profile
+  #       echo "s3 =" >> /tmp/aws_cli_profile
+  #       echo "  max_concurrent_requests = 50" >> /tmp/aws_cli_profile
+  #       echo "  max_queue_size = 10000" >> /tmp/aws_cli_profile
+
+  #       export AWS_CONFIG_FILE=/tmp/aws_cli_profile
+  #       export AWS_PROFILE=s3
+
+  #       for i in 1 2 3
+  #       do
+  #           aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
+  #           pids[i]=$!
+  #       done
+
+  #       # wait for all pids to finish
+  #       for pid in "${pids[@]}"
+  #       do
+  #           wait "${pid}"
+  #       done
