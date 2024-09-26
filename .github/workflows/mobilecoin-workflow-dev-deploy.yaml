@@ -38,6 +38,16 @@ on:
         type: string
         required: false
         default: "500"
+      shard_size:
+        description: "View/Ledger Shard size in blocks"
+        type: string
+        required: false
+        default: "20000"
+      shard_exceed_block_height_by:
+        description: "View/Ledger New shards should start this many blocks before the end of the current shard"
+        type: string
+        required: false
+        default: "5000"
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -109,7 +119,7 @@ jobs:
         chart_name: consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
-        chart_wait_timeout: 10m
+        chart_wait_timeout: 60m
         release_name: ${{ matrix.release.name }}
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
@@ -147,7 +157,7 @@ jobs:
         chart_name: mobilecoind
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
-        chart_wait_timeout: 5m
+        chart_wait_timeout: 60m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
@@ -263,6 +273,12 @@ jobs:
           partner: dev
 
         fogView:
+          stackConfig:
+            network:
+              default:
+                shardSize: ${{ inputs.shard_size }}
+                exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+
           router:
             hosts:
             - partner: a
@@ -310,6 +326,11 @@ jobs:
           partner: dev
 
         fogLedger:
+          stackConfig:
+            network:
+              default:
+                shardSize: ${{ inputs.shard_size }}
+                exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
           router:
             hosts:
             - partner: a

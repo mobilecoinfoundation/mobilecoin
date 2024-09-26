@@ -44,7 +44,7 @@ jobs:
     secrets: inherit
 
   restore-s3-archive:
-    runs-on: mcf-dev-small-x64
+    runs-on: mcf-dev-large-x64
     needs:
     - reset
     container:
@@ -60,6 +60,15 @@ jobs:
         VERSION: ${{ inputs.bootstrap_version }}
       shell: bash
       run: |
+        echo "[profile s3]" > /tmp/aws_cli_profile
+        # shellcheck disable=SC2129 # style issue on multiple echo lines. The alternative is harder to read.
+        echo "s3 =" >> /tmp/aws_cli_profile
+        echo "  max_concurrent_requests = 50" >> /tmp/aws_cli_profile
+        echo "  max_queue_size = 10000" >> /tmp/aws_cli_profile
+
+        export AWS_CONFIG_FILE=/tmp/aws_cli_profile
+        export AWS_PROFILE=s3
+
         for i in 1 2 3
         do
             aws s3 cp --only-show-errors --recursive --acl public-read \
