@@ -31,7 +31,7 @@ on:
         - none
         - v5.1.1-dev.alpha.5946
         - v5.2.3-dev.alpha.6224
-        - v6.0.2-dev.alpha.959965
+        - v6.0.2-dev.alpha.795965
       minimum_block:
         description: "Minimum block to wait for"
         type: choice
@@ -41,7 +41,7 @@ on:
         - '500'
         - '5946'
         - '6224'
-        - '959965'
+        - '795965'
       shard_size:
         description: "Shard Size"
         type: string
