@@ -335,7 +335,8 @@ jobs:
         - mobilecoind
         - watcher
         - fog-report
-        - fog-view
+        - fog-view-service
+        - fog-view-fsg
         - fog-ledger
     steps:
     - name: Checkout
