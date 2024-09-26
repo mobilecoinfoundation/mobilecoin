@@ -119,7 +119,7 @@ jobs:
         chart_name: consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
-        chart_wait_timeout: 45m
+        chart_wait_timeout: 60m
         release_name: ${{ matrix.release.name }}
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
@@ -157,7 +157,7 @@ jobs:
         chart_name: mobilecoind
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
-        chart_wait_timeout: 30m
+        chart_wait_timeout: 60m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
