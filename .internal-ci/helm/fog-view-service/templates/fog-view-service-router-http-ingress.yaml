@@ -1,6 +1,6 @@
 # Copyright (c) 2018-2023 The MobileCoin Foundation
 {{- if .Values.fogView.router.ingress.enabled }}
-{{- $responderId := .Values.responderID | required "fogView.responderID is required." }}
+{{- $responderId := .Values.fogView.responderID | required "fogView.responderID is required." }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
