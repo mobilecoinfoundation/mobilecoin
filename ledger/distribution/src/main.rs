@@ -15,7 +15,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use protobuf::Message;
 use retry::{delay, retry, OperationResult};
-use rusoto_core::{Region, RusotoError};
+use rusoto_core::{request::BufferedHttpResponse, Region, RusotoError};
 use rusoto_s3::{HeadObjectError, HeadObjectRequest, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
@@ -210,6 +210,13 @@ impl BlockHandler for S3BlockWriter {
                 match result {
                     Ok(_) => OperationResult::Ok(true),
                     Err(RusotoError::Service(HeadObjectError::NoSuchKey(_))) => {
+                        OperationResult::Ok(false)
+                    }
+                    // Happens when the bucket itself doesn't exist
+                    // Separate from the above condition for the `status.as_u16()` logic
+                    Err(RusotoError::Unknown(BufferedHttpResponse { status, .. }))
+                        if status.as_u16() == 404 =>
+                    {
                         OperationResult::Ok(false)
                     }
                     Err(e) => {
