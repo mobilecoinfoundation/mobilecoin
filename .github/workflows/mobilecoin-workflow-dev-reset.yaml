@@ -53,8 +53,6 @@ jobs:
         - mc-core-dev-env-setup
         - fog-report-a
         - fog-report-b
-        - fog-view
-        - fog-ledger
     steps:
     - name: Delete release
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -91,7 +89,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
   reset-s3:
-    runs-on: mcf-dev-small-x64
+    runs-on: mcf-dev-large-x64
     container:
       image: mobilecoin/gha-s3-pg-helper:v0
     steps:
@@ -102,8 +100,25 @@ jobs:
         AWS_DEFAULT_REGION: eu-central-1
         BUCKET: mobilecoin.eu.development.chain
         NAMESPACE: ${{ inputs.namespace }}
+      shell: bash
       run: |
+        echo "[profile s3]" > /tmp/aws_cli_profile
+        # shellcheck disable=SC2129 # style issue on multiple echo lines. The alternative is harder to read.
+        echo "s3 =" >> /tmp/aws_cli_profile
+        echo "  max_concurrent_requests = 50" >> /tmp/aws_cli_profile
+        echo "  max_queue_size = 10000" >> /tmp/aws_cli_profile
+
+        export AWS_CONFIG_FILE=/tmp/aws_cli_profile
+        export AWS_PROFILE=s3
+
         for i in 1 2 3
         do
-          aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com"
+            aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
+            pids[i]=$!
+        done
+
+        # wait for all pids to finish
+        for pid in "${pids[@]}"
+        do
+            wait "${pid}"
         done

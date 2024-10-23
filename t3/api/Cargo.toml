@@ -1,6 +1,6 @@
 [package]
 name = "mc-t3-api"
-version = "6.0.2"
+version = "6.1.0"
 edition = "2021"
 authors = ["MobileCoin"]
 license = "GPL-3.0"

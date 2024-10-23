@@ -7,7 +7,7 @@ use clap::Parser;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::{FogViewRouterUri, FogViewStoreUri, FogViewUri};
-use mc_util_parse::parse_duration_in_seconds;
+use mc_util_parse::{parse_duration_in_millis, parse_duration_in_seconds};
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{str::FromStr, time::Duration};
@@ -68,6 +68,10 @@ pub struct MobileAcctViewConfig {
     /// and should not much harm performance otherwise when loading the DB.
     #[clap(long, default_value = "1000", env = "MC_BLOCK_QUERY_BATCH_SIZE")]
     pub block_query_batch_size: usize,
+
+    /// Database polling interval in ms.
+    #[clap(long, default_value = "250", value_parser = parse_duration_in_millis, env = "MC_DB_POLLING_INTERVAL_MS")]
+    pub db_polling_interval_ms: Duration,
 
     /// Determines which group of TxOuts the Fog View Store instance will
     /// process.
