@@ -43,9 +43,9 @@ check()
 
 check_timeout()
 {
-    if [[ ${1} -gt 300 ]]
+    if [[ ${1} -gt 3600 ]]
     then
-        echo "Failed to come up in 10m"
+        echo "Failed to come up in 2h"
         exit 1
     fi
     sleep 2

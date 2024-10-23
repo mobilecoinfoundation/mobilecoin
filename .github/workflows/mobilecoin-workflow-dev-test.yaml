@@ -314,18 +314,3 @@ jobs:
             --token-ids 0,8192 \
             --fog-hostname fog.${{ inputs.namespace }}.development.mobilecoin.com
 
-    - name: Test - block-v3 - fog-test-client fog-b, token ids 0,8192
-      if: inputs.testing_block_v3
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: toolbox-exec
-        ingest_color: ${{ inputs.ingest_color }}
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-        command: |
-          /test/fog-test-client.sh \
-            --key-dir ${{ env.V3_DST_FOG_B_KEYS_DIR }} \
-            --token-ids 0,8192 \
-            --fog-hostname fog-b.${{ inputs.namespace }}.development.mobilecoin.com

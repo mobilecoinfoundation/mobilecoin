@@ -52,7 +52,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/* grpcCookieSalt */}}
 {{- define "fog-ledger.grpcCookieSalt" -}}
-{{- randAlphaNum 8 }}
+{{- .Values.fogLedger.router.ingress.common.cookieSalt | default (randAlphaNum 8) }}
 {{- end }}
 
 {{/* stackConfig - get "network" name of fall back to default */}}

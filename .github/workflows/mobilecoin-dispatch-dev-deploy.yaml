@@ -29,10 +29,9 @@ on:
         default: none
         options:
         - none
-        - v5.0.3-dev
-        - v5.1.1-dev
         - v5.1.1-dev.alpha.5946
         - v5.2.3-dev.alpha.6224
+        - v6.0.2-dev.alpha.795965
       minimum_block:
         description: "Minimum block to wait for"
         type: choice
@@ -42,6 +41,17 @@ on:
         - '500'
         - '5946'
         - '6224'
+        - '795965'
+      shard_size:
+        description: "Shard Size"
+        type: string
+        required: true
+        default: '20000'
+      shard_exceed_block_height_by:
+        description: "Exceed Block Height By"
+        type: string
+        required: true
+        default: '5000'
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
@@ -102,4 +112,6 @@ jobs:
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
       minimum_block: ${{ inputs.minimum_block }}
+      shard_size: ${{ inputs.shard_size }}
+      shard_exceed_block_height_by: ${{ inputs.shard_exceed_block_height_by }}
     secrets: inherit
