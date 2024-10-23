@@ -308,10 +308,6 @@ jobs:
     steps:
       - name: Check out code
         uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3'
       - name: Set up environment
         working-directory: tools/fog-local-network
         shell: bash
