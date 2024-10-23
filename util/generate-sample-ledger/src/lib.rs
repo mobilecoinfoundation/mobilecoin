@@ -65,7 +65,7 @@ pub fn bootstrap_ledger(
     );
 
     let block_version = if max_token_id > 0 {
-        BlockVersion::THREE
+        BlockVersion::MAX
     } else {
         // This is historically the version created by bootstrap
         BlockVersion::ZERO
