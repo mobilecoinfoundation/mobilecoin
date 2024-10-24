@@ -16,7 +16,7 @@ use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use protobuf::Message;
 use retry::{delay, retry, OperationResult};
 use rusoto_core::{request::BufferedHttpResponse, Region, RusotoError};
-use rusoto_s3::{HeadObjectError, HeadObjectRequest, PutObjectRequest, S3Client, S3};
+use rusoto_s3::{HeadObjectRequest, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 use tokio::runtime::Handle;
