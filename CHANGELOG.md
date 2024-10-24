@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [6.1.1]
+
+### Fixed
+
+- Update grpcio for fog-local-network ([#4014])
+- Fix ledger distribution resync ([#4013])
+
 ## [6.1.0]
 
 ### Changed
