@@ -209,11 +209,8 @@ impl BlockHandler for S3BlockWriter {
                 let result = runtime.block_on(self.s3_client.head_object(req));
                 match result {
                     Ok(_) => OperationResult::Ok(true),
-                    Err(RusotoError::Service(HeadObjectError::NoSuchKey(_))) => {
-                        OperationResult::Ok(false)
-                    }
-                    // Happens when the bucket itself doesn't exist
-                    // Separate from the above condition for the `status.as_u16()` logic
+                    // Happens when the object doesn't exist, see
+                    // https://docs.aws.amazon.com/cli/latest/reference/s3api/head-object.html
                     Err(RusotoError::Unknown(BufferedHttpResponse { status, .. }))
                         if status.as_u16() == 404 =>
                     {
