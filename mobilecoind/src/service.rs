@@ -3574,7 +3574,7 @@ mod test {
             })
             .unwrap();
 
-        assert_eq!(resp.matched, true);
+        assert!(resp.matched);
         assert_eq!(resp.value, 102030);
         assert_eq!(resp.token_id, 1);
         assert_eq!(resp.get_shared_secret().data.len(), 32);
@@ -3591,7 +3591,7 @@ mod test {
             })
             .unwrap();
 
-        assert_eq!(resp.matched, false);
+        assert!(!resp.matched);
         assert_eq!(resp.value, 0);
         assert_eq!(resp.token_id, 0);
         assert_eq!(resp.get_shared_secret().data.len(), 0);
