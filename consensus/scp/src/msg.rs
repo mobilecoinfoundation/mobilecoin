@@ -10,7 +10,7 @@ use std::{
     cmp::Ordering,
     collections::BTreeSet,
     fmt,
-    hash::{BuildHasher, Hash, Hasher},
+    hash::{BuildHasher, Hash},
 };
 
 /// The highest possible ballot counter.
@@ -613,11 +613,7 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
         // Returns "<set.len, hash(set)>".
         let hasher_builder = HasherBuilder::default();
         let format_b_tree_set = |b_tree_set: &BTreeSet<V>| {
-            let hash = {
-                let mut hasher = hasher_builder.build_hasher();
-                b_tree_set.hash(&mut hasher);
-                hasher.finish()
-            };
+            let hash = hasher_builder.hash_one(b_tree_set);
             format!("<{}:{}>", b_tree_set.len(), hash)
         };
 

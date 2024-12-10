@@ -281,7 +281,7 @@ mod test {
     #[test]
     fn mrenclave_ok() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::default(),
         };
 
@@ -299,7 +299,7 @@ mod test {
     #[test]
     fn mrenclave_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_SIGNER),
             advisories: Advisories::default(),
         };
 
@@ -318,7 +318,7 @@ mod test {
     #[test]
     fn mrenclave_config_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239".to_owned(), "INTEL-SA-00123".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -340,7 +340,7 @@ mod test {
     #[test]
     fn mrenclave_config_and_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00123", "INTEL-SA-00239"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -362,7 +362,7 @@ mod test {
     #[test]
     fn mrenclave_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00123".to_owned(), "INTEL-SA-00239".to_owned()],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -384,7 +384,7 @@ mod test {
     #[test]
     fn mrenclave_multi_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334".to_owned(), "INTEL-SA-00615".to_owned()],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -406,7 +406,7 @@ mod test {
     #[test]
     fn mrenclave_sw_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239", "INTEL-SA-00123"],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -428,7 +428,7 @@ mod test {
     #[test]
     fn mrenclave_sw_empty_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 vec!["INTEL-SA-00334"],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -450,7 +450,7 @@ mod test {
     #[test]
     fn mrenclave_multi_sw_empty_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 vec!["INTEL-SA-00334"],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -472,7 +472,7 @@ mod test {
     #[test]
     fn mrenclave_multi_sw_short_fail() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(vec!["INTEL-SA-00334"], AdvisoryStatus::SWHardeningNeeded),
         };
 
@@ -491,7 +491,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -513,7 +513,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_pass() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -535,7 +535,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_pass_config() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00239", "INTEL-SA-00123"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -557,7 +557,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_no_config() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
                 AdvisoryStatus::SWHardeningNeeded,
@@ -579,7 +579,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_no_sw() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
                 AdvisoryStatus::ConfigurationNeeded,
@@ -601,7 +601,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_short_sw() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -623,7 +623,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_short_config() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334", "INTEL-SA-00615"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -644,7 +644,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_fail_sw() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00123", "INTEL-SA-00239"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -666,7 +666,7 @@ mod test {
     #[test]
     fn mrenclave_config_sw_fail_neither() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00123"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -689,7 +689,7 @@ mod test {
     #[test]
     fn mrenclave_multi_config_sw_fail_short() {
         let verifier = MrEnclaveVerifier {
-            mr_enclave: MrEnclave::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_enclave: MrEnclave::from(MR_ENCLAVE),
             advisories: Advisories::new(
                 &vec!["INTEL-SA-00334"],
                 AdvisoryStatus::ConfigurationAndSWHardeningNeeded,
@@ -711,7 +711,7 @@ mod test {
     #[test]
     fn mrsigner_ok() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
@@ -732,7 +732,7 @@ mod test {
     #[test]
     fn mrsigner_fail_notok() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
@@ -752,7 +752,7 @@ mod test {
     #[test]
     fn mrsigner_fail_mrsigner() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_ENCLAVE).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_ENCLAVE),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
@@ -772,7 +772,7 @@ mod test {
     #[test]
     fn mrsigner_fail_product_id() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 1.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::default(),
@@ -792,7 +792,7 @@ mod test {
     #[test]
     fn mrsigner_fail_version() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 1.into(),
             advisories: Advisories::default(),
@@ -814,7 +814,7 @@ mod test {
     #[test]
     fn mrsigner_pass_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -839,7 +839,7 @@ mod test {
     #[test]
     fn mrsigner_pass_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -864,7 +864,7 @@ mod test {
     #[test]
     fn mrsigner_pass_multi_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -889,7 +889,7 @@ mod test {
     #[test]
     fn mrsigner_pass_config_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -914,7 +914,7 @@ mod test {
     #[test]
     fn mrsigner_fail_config_sw_no_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -939,7 +939,7 @@ mod test {
     #[test]
     fn mrsigner_fail_config_sw_no_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -964,7 +964,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_no_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -989,7 +989,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_short_sw() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -1014,7 +1014,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_no_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -1039,7 +1039,7 @@ mod test {
     #[test]
     fn mrsigner_pass_multi_config_sw_short_config() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -1064,7 +1064,7 @@ mod test {
     #[test]
     fn mrsigner_fail_sw_config_sw_for_product() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 1.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -1089,7 +1089,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_sw_config_sw_for_product() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 1.into(),
             minimum_svn: 0.into(),
             advisories: Advisories::new(
@@ -1114,7 +1114,7 @@ mod test {
     #[test]
     fn mrsigner_fail_config_sw_for_version() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 1.into(),
             advisories: Advisories::new(
@@ -1139,7 +1139,7 @@ mod test {
     #[test]
     fn mrsigner_fail_multi_config_sw_for_version() {
         let verifier = MrSignerVerifier {
-            mr_signer: MrSigner::try_from(MR_SIGNER).expect("BUG: invalid test data"),
+            mr_signer: MrSigner::from(MR_SIGNER),
             product_id: 0.into(),
             minimum_svn: 1.into(),
             advisories: Advisories::new(

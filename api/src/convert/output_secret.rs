@@ -19,10 +19,7 @@ impl TryFrom<&external::OutputSecret> for OutputSecret {
 
     fn try_from(source: &external::OutputSecret) -> Result<Self, Self::Error> {
         Ok(OutputSecret {
-            amount: source
-                .get_amount()
-                .try_into()
-                .map_err(|_| ConversionError::KeyCastError)?,
+            amount: source.get_amount().into(),
             blinding: source.get_blinding().try_into()?,
         })
     }

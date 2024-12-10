@@ -1073,7 +1073,7 @@ pub mod transaction_builder_tests {
             // The transaction should have one output.
             assert_eq!(tx.prefix.outputs.len(), 1);
 
-            let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
+            let output: &TxOut = tx.prefix.outputs.first().unwrap();
 
             validate_tx_out(block_version, output).unwrap();
 
@@ -1157,7 +1157,7 @@ pub mod transaction_builder_tests {
             // The transaction should have one output.
             assert_eq!(tx.prefix.outputs.len(), 1);
 
-            let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
+            let output: &TxOut = tx.prefix.outputs.first().unwrap();
 
             validate_tx_out(block_version, output).unwrap();
 
@@ -1248,7 +1248,7 @@ pub mod transaction_builder_tests {
             // The transaction should have one output.
             assert_eq!(tx.prefix.outputs.len(), 1);
 
-            let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
+            let output: &TxOut = tx.prefix.outputs.first().unwrap();
 
             // The output should belong to the correct recipient.
             assert!(

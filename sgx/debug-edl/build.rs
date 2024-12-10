@@ -7,8 +7,7 @@ use std::{env::var, path::PathBuf};
 
 fn main() {
     let mut search_path =
-        PathBuf::try_from(var("CARGO_MANIFEST_DIR").expect("Could not read CARGO_MANIFEST_DIR"))
-            .expect("Could not construct PathBuf from CARGO_MANIEFST_DIR")
+        PathBuf::from(var("CARGO_MANIFEST_DIR").expect("Could not read CARGO_MANIFEST_DIR"))
             .canonicalize()
             .expect("Could not canonicalize CARGO_MANIFEST_DIR");
     search_path.push("src");

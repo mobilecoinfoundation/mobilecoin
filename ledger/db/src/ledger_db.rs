@@ -1714,7 +1714,7 @@ mod ledger_db_test {
 
         // The key images should be in the ledger.
         assert!(ledger_db
-            .contains_key_image(block1.contents().key_images.get(0).unwrap())
+            .contains_key_image(block1.contents().key_images.first().unwrap())
             .unwrap());
 
         let block1_key_images = ledger_db.get_key_images_by_block(1).unwrap();
@@ -1811,7 +1811,7 @@ mod ledger_db_test {
 
         // The key images should be in the ledger.
         assert!(ledger_db
-            .contains_key_image(block2.contents().key_images.get(0).unwrap())
+            .contains_key_image(block2.contents().key_images.first().unwrap())
             .unwrap());
 
         let block2_key_images = ledger_db.get_key_images_by_block(2).unwrap();

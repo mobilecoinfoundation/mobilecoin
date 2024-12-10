@@ -437,7 +437,7 @@ fn test_validate_outputs_are_sorted() {
     for block_version in BlockVersion::iterator() {
         let (tx, _ledger) = create_test_tx(block_version);
 
-        let mut output_a = tx.prefix.outputs.get(0).unwrap().clone();
+        let mut output_a = tx.prefix.outputs.first().unwrap().clone();
         output_a.public_key =
             CompressedRistrettoPublic::try_from(&[1u8; 32]).expect("Could not construct key");
 
@@ -572,7 +572,7 @@ fn test_transaction_signature_err_modified_output() {
         let (mut tx, _ledger) = create_test_tx(block_version);
 
         // Add an output.
-        let output = tx.prefix.outputs.get(0).unwrap().clone();
+        let output = tx.prefix.outputs.first().unwrap().clone();
         tx.prefix.outputs.push(output);
 
         match validate_signature(block_version, &tx, &mut rng) {

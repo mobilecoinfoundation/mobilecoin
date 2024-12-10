@@ -3,6 +3,10 @@
 //! This module implements the common keys traits for the Ed25519 digital
 //! signature scheme.
 
+// skipping clippy check here because we're mapping errors.
+// Not sure if moving to 'from' will raise the kind of errors that we want.
+#![allow(clippy::unnecessary_fallible_conversions)]
+
 use crate::{
     DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
     SignatureEncoding, SignatureError, Signer, Verifier,

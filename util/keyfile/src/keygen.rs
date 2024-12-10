@@ -32,8 +32,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 ) -> Result<(), Error> {
     let slip10key = mnemonic.clone().derive_slip10_key(account_index);
     let acct_key = match (fog_report_url, fog_authority_spki) {
-        (None, None) => AccountKey::try_from(slip10key)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?,
+        (None, None) => AccountKey::from(slip10key),
         (Some(fog_report_url), Some(fog_authority_spki)) => {
             AccountKey::from(slip10key).with_fog(fog_report_url, fog_report_id, fog_authority_spki)
         }

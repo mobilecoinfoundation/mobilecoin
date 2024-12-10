@@ -149,7 +149,7 @@ mod tests {
         let amount = Amount::new(10000, TokenId::from(10));
 
         let external_amount: external::Amount = (&amount).into();
-        let recovered_amount: Amount = (&external_amount).try_into().unwrap();
+        let recovered_amount: Amount = (&external_amount).into();
 
         assert_eq!(amount, recovered_amount);
     }

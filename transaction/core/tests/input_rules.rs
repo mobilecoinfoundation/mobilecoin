@@ -13,10 +13,9 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{RngType, SeedableRng};
 
-use util::{
-    create_test_tx, create_test_tx_with_amount_and_comparer_and_recipients,
-    INITIALIZE_LEDGER_AMOUNT,
-};
+use util::{create_test_tx, create_test_tx_with_amount_and_comparer_and_recipients};
+
+use mc_ledger_db::test_utils::INITIALIZE_LEDGER_AMOUNT;
 
 // Gets the set of rules from the first input of a Tx
 fn get_first_rules(tx: &Tx) -> &InputRules {

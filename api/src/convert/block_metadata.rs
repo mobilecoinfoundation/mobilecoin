@@ -34,11 +34,11 @@ impl TryFrom<&blockchain::BlockMetadataContents> for BlockMetadataContents {
         let quorum_set = src.get_quorum_set().try_into()?;
         let attestation_evidence = match &src.attestation_evidence {
             Some(BlockMetadataContents_oneof_attestation_evidence::dcap_evidence(evidence)) => {
-                let evidence = evidence.try_into()?;
+                let evidence = evidence.into();
                 AttestationEvidence::DcapEvidence(evidence)
             }
             Some(BlockMetadataContents_oneof_attestation_evidence::verification_report(report)) => {
-                let report = report.try_into()?;
+                let report = report.into();
                 AttestationEvidence::VerificationReport(report)
             }
             None => {

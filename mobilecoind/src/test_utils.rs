@@ -2,9 +2,7 @@
 
 //! Utilities for mobilecoind unit tests
 
-pub use mc_ledger_db::test_utils::{
-    add_block_to_ledger, add_txos_and_key_images_to_ledger, add_txos_to_ledger,
-};
+pub use mc_ledger_db::test_utils::{add_block_to_ledger, add_txos_to_ledger};
 
 use crate::{
     database::Database,

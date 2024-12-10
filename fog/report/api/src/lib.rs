@@ -40,9 +40,7 @@ impl From<&AttestationEvidence> for Report_oneof_attestation_evidence {
     fn from(value: &AttestationEvidence) -> Self {
         match value {
             AttestationEvidence::DcapEvidence(evidence) => {
-                Report_oneof_attestation_evidence::dcap_evidence(
-                    evidence.try_into().unwrap_or_default(),
-                )
+                Report_oneof_attestation_evidence::dcap_evidence(evidence.into())
             }
             AttestationEvidence::VerificationReport(report) => {
                 Report_oneof_attestation_evidence::verification_report(report.into())
