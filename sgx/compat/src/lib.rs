@@ -21,7 +21,6 @@ cfg_if! {
     }
     else {
         extern crate std;
-        mod thread {}
         pub use std::panic;
         pub use std::sync;
         pub use std::eprintln;
