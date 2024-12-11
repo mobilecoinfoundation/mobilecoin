@@ -17,8 +17,6 @@ use mc_transaction_core::{tx::Tx, BlockVersion};
 use mc_transaction_core_test_utils::AccountKey;
 use mc_util_test_helper::{RngType, SeedableRng};
 
-// pub use mc_ledger_db::test_utils::INITIALIZE_LEDGER_AMOUNT;
-
 pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
     let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
     let sender = AccountKey::random(&mut rng);
