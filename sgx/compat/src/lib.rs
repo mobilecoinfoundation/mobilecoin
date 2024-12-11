@@ -13,7 +13,6 @@ cfg_if! {
         pub use mc_sgx_panic as panic;
 
         // Compat with std
-        mod thread {}
 
         pub use mc_sgx_sync as sync;
         pub use mc_sgx_debug::eprintln;
