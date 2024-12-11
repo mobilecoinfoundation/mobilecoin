@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     fmt,
-    hash::{BuildHasher, Hash, Hasher},
+    hash::{BuildHasher, Hash},
 };
 
 /// The ballot contains the value on which to consense.
@@ -62,9 +62,8 @@ impl<V: Value> PartialOrd for Ballot<V> {
 // This makes debugging easier when looking at large ballots.
 impl<V: Value> fmt::Display for Ballot<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut hasher = HasherBuilder::default().build_hasher();
-        self.X.hash(&mut hasher);
-        let hashed_X_values = hasher.finish();
+        let hasher = HasherBuilder::default();
+        let hashed_X_values = hasher.hash_one(&self.X);
         write!(f, "<{}, {}:{:x}>", self.N, self.X.len(), hashed_X_values)
     }
 }

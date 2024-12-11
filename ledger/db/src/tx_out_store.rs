@@ -426,7 +426,7 @@ mod membership_proof_tests {
     // A valid proof-of-membership for the only TxOut in a set.
     fn test_is_valid_singleton() {
         let tx_outs = get_tx_outs(1);
-        let tx_out = tx_outs.get(0).unwrap();
+        let tx_out = tx_outs.first().unwrap();
         let hash = hash_leaf(tx_out);
         let elems = vec![TxOutMembershipElement {
             range: Range::new(0, 0).unwrap(),
@@ -1144,7 +1144,7 @@ pub mod tx_out_store_tests {
                                            |
                                        tx_out_0
         */
-        let tx_out_zero: &TxOut = tx_outs.get(0).unwrap();
+        let tx_out_zero: &TxOut = tx_outs.first().unwrap();
         let leaf_hash_zero = hash_leaf(tx_out_zero);
         {
             // The first root hash should be the leaf hash fn applied to the single TxOut.

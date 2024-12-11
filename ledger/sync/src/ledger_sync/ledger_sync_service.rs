@@ -198,7 +198,7 @@ impl<
 
         // All nodes in `responder_ids` should have the same blocks up to
         // `sync_to_block_index`. Copy those blocks from one of the nodes.
-        if let Some(responder_id) = responder_ids.get(0) {
+        if let Some(responder_id) = responder_ids.first() {
             if let Some(blocks) = node_to_blocks.get(responder_id) {
                 let blocks_to_sync: Vec<Block> = blocks
                     .iter()

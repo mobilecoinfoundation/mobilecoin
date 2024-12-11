@@ -111,7 +111,7 @@ mod testing {
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata};
     use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, BlockVersion, Token};
-    pub use rand_core::{CryptoRng, RngCore, SeedableRng};
+    pub use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
     /// Test that the private key that Bob uses with fog TxoFinder matches

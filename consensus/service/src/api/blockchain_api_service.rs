@@ -316,7 +316,7 @@ mod tests {
             let block_response = blockchain_api_service.get_blocks_helper(0, 1).unwrap();
             let blocks = block_response.blocks;
             assert_eq!(1, blocks.len());
-            assert_eq!(expected_blocks.get(0).unwrap(), blocks.get(0).unwrap());
+            assert_eq!(expected_blocks.first().unwrap(), blocks.first().unwrap());
         }
 
         {
@@ -324,7 +324,7 @@ mod tests {
             let block_response = blockchain_api_service.get_blocks_helper(0, 10).unwrap();
             let blocks = block_response.blocks;
             assert_eq!(10, blocks.len());
-            assert_eq!(expected_blocks.get(0).unwrap(), blocks.get(0).unwrap());
+            assert_eq!(expected_blocks.first().unwrap(), blocks.first().unwrap());
             assert_eq!(expected_blocks.get(7).unwrap(), blocks.get(7).unwrap());
             assert_eq!(expected_blocks.get(9).unwrap(), blocks.get(9).unwrap());
         }
@@ -395,7 +395,7 @@ mod tests {
         let block_response = blockchain_api_service.get_blocks_helper(0, 100).unwrap();
         let blocks = block_response.blocks;
         assert_eq!(5, blocks.len());
-        assert_eq!(expected_blocks.get(0).unwrap(), blocks.get(0).unwrap());
+        assert_eq!(expected_blocks.first().unwrap(), blocks.first().unwrap());
         assert_eq!(expected_blocks.get(4).unwrap(), blocks.get(4).unwrap());
     }
 

@@ -235,7 +235,7 @@ impl<
 
         let latest_block = blocks.latest_block;
 
-        if let Some(next_block) = blocks.results.get(0).and_then(|r| r.as_ref()) {
+        if let Some(next_block) = blocks.results.first().and_then(|r| r.as_ref()) {
             let tracer = tracer!();
 
             let mut span = block_span_builder(&tracer, "poll_block", *next_block_index)

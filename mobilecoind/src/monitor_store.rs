@@ -371,8 +371,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
         let mut rng = ChaChaRng::seed_from_u64(0);
 
         let identity = RootIdentity::from_random(&mut rng);
-        let key = AccountKey::try_from(&identity)
-            .expect("Could not create account key from non-fog identity");
+        let key = AccountKey::from(&identity);
         let data = MonitorData::new(key, 1, 10, 1, "test").expect("Could not create monitor data");
         let id = MonitorId::from(&data);
         let expected = hex::decode(HEXPECTED).expect("Could not decode expected data to bytes");

@@ -175,7 +175,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
     /// Handle an incoming message from the network.
     fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
         let outgoing_messages = self.handle_messages(vec![msg.clone()])?;
-        Ok(outgoing_messages.get(0).cloned())
+        Ok(outgoing_messages.first().cloned())
     }
 
     /// Handle incoming message from the network.

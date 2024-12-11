@@ -804,7 +804,7 @@ impl WorkerTokenState {
         // * Things are currently somewhat out of whack -- there are less than
         //   NUM_OUTPUTS utxos, or the largest is > 2x the value of the smallest.
         if avg_value >= smallest_interesting_split_tx_value
-            && top_utxos.get(0).map(|utxo| utxo.value).unwrap_or(0)
+            && top_utxos.first().map(|utxo| utxo.value).unwrap_or(0)
                 > 2 * top_utxos
                     .get(MAX_OUTPUTS_USIZE - 1)
                     .map(|utxo| utxo.value)

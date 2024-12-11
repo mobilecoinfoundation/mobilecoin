@@ -170,7 +170,7 @@ impl BlockProvider for MobilecoindBlockProvider {
             return Err(Error::UnexpectedNumResults(response.output_list.len()));
         }
 
-        let tx_out_with_proof = response.output_list.get(0).unwrap();
+        let tx_out_with_proof = response.output_list.first().unwrap();
         let tx_out = TxOut::try_from(tx_out_with_proof.get_output())?;
         let proof = TxOutMembershipProof::try_from(tx_out_with_proof.get_proof())?;
         Ok((tx_out, proof))

@@ -209,8 +209,7 @@ impl DistinguishedEncoding for Ed25519Public {
 
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Public {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
-        let sig =
-            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
+        let sig = DalekSignature::from(&signature.to_bytes());
         self.0
             .verify_prehashed(digest, None, &sig)
             .map_err(|_e| SignatureError::new())
@@ -228,8 +227,7 @@ impl PublicKey for Ed25519Public {}
 
 impl Verifier<Ed25519Signature> for Ed25519Public {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
-        let sig =
-            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
+        let sig = DalekSignature::from(&signature.to_bytes());
         self.0
             .verify_strict(message, &sig)
             .map_err(|_e| SignatureError::new())
@@ -359,8 +357,7 @@ impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519P
 
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Pair {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
-        let sig =
-            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
+        let sig = DalekSignature::from(&signature.to_bytes());
         self.0
             .verify_prehashed(digest, None, &sig)
             .map_err(|_e| SignatureError::new())
@@ -411,8 +408,7 @@ impl TryFrom<Vec<u8>> for Ed25519Pair {
 
 impl Verifier<Ed25519Signature> for Ed25519Pair {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
-        let sig =
-            DalekSignature::try_from(&signature.to_bytes()).map_err(|_e| SignatureError::new())?;
+        let sig = DalekSignature::from(&signature.to_bytes());
         self.0
             .verifying_key()
             .verify_strict(message, &sig)

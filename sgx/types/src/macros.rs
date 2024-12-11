@@ -4,15 +4,14 @@
 // modification, are permitted provided that the following conditions
 // are met:
 //
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in
-//    the documentation and/or other materials provided with the
-//    distribution.
-//  * Neither the name of Baidu, Inc., nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
+//  * Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//  * Neither the name of Baidu, Inc., nor the names of its contributors may be
+//    used to endorse or promote products derived from this software without
+//    specific prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -26,12 +25,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub use core::clone::Clone;
-pub use core::marker::Copy;
-pub use core::default::Default;
-pub use core::ptr;
 pub use core::mem::transmute;
-pub use marker::ContiguousMemory;
 
 #[macro_export]
 macro_rules! cfg_if {
@@ -66,7 +60,9 @@ macro_rules! __cfg_if_apply {
 
 #[macro_export]
 macro_rules! __item {
-    ($i:item) => ($i)
+    ($i:item) => {
+        $i
+    };
 }
 
 macro_rules! impl_copy_clone{
@@ -190,25 +186,35 @@ macro_rules! impl_enum {
 
 #[macro_export]
 macro_rules! meta_data_make_version {
-    ($major:ident, $minor:ident) => ( ($major as u64) << 32 | $minor as u64 )
+    ($major:ident, $minor:ident) => {
+        ($major as u64) << 32 | $minor as u64
+    };
 }
 
 #[macro_export]
 macro_rules! major_version_of_metadata {
-    ($version:ident) => ( ($version as u64) >> 32 )
+    ($version:ident) => {
+        ($version as u64) >> 32
+    };
 }
 
 #[macro_export]
 macro_rules! minor_version_of_metadata {
-    ($version:ident) => ( ($version as u64) & 0x0000_0000_FFFF_FFFF )
+    ($version:ident) => {
+        ($version as u64) & 0x0000_0000_FFFF_FFFF
+    };
 }
 
 #[macro_export]
 macro_rules! group_id {
-    ($gid:expr) => ( (GROUP_FLAG | $gid) )
+    ($gid:expr) => {
+        (GROUP_FLAG | $gid)
+    };
 }
 
 #[macro_export]
 macro_rules! is_group_id {
-    ($gid:expr) => ( (!!($gid & GROUP_FLAG)) )
+    ($gid:expr) => {
+        (!!($gid & GROUP_FLAG))
+    };
 }

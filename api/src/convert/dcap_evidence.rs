@@ -18,7 +18,7 @@ impl TryFrom<&DcapEvidence> for external::DcapEvidence {
 impl TryFrom<&external::DcapEvidence> for DcapEvidence {
     type Error = ConversionError;
     fn try_from(src: &external::DcapEvidence) -> Result<Self, Self::Error> {
-        let prost = prost::DcapEvidence::try_from(src)?;
+        let prost = prost::DcapEvidence::from(src);
         Ok((&prost).try_into()?)
     }
 }

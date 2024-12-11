@@ -234,7 +234,7 @@ impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<
 mod quorum_set_tests {
     use super::*;
     use crate::test_utils::test_node_id;
-    use core::hash::{BuildHasher, Hash, Hasher};
+    use core::hash::BuildHasher;
     use mc_common::HasherBuilder;
 
     fn assert_quorum_sets_equal(quorum_set_1: &QuorumSet, quorum_set_2: &QuorumSet) {
@@ -242,16 +242,8 @@ mod quorum_set_tests {
 
         // qs1 == qs2 must imply hash(qs1) == hash(qs2)
         let hasher_builder = HasherBuilder::default();
-        let quorum_set_1_hash = {
-            let mut hasher = hasher_builder.build_hasher();
-            quorum_set_1.hash(&mut hasher);
-            hasher.finish()
-        };
-        let quorum_set_2_hash = {
-            let mut hasher = hasher_builder.build_hasher();
-            quorum_set_2.hash(&mut hasher);
-            hasher.finish()
-        };
+        let quorum_set_1_hash = hasher_builder.hash_one(quorum_set_1);
+        let quorum_set_2_hash = hasher_builder.hash_one(quorum_set_2);
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
     #[test]
