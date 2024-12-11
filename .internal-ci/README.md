@@ -7,7 +7,6 @@ These build, dockerfiles, helm charts and scripts are used internally for Mobile
 This process will create a set of versioned docker containers and helm charts for deploying the release.
 
 - Containers - https://hub.docker.com/u/mobilecoin
-- Helm Chart Repo URL - https://s3.us-east-2.amazonaws.com/charts.mobilecoin.com/
 
 ### Versioning
 
@@ -94,14 +93,6 @@ TBD: Automatically deploy/destroy this release to the development cluster.
 
 ### Deployment Status & Environment Info
 
- * Inspect the `Actions` tab for the workflow for your branchname to monitor for completion/success
+ * Inspect the `Actions` tab for the workflow for your branch name to monitor for completion/success
  * From the `Jobs` list, select `Environment Info`, and expand `Print Environment Details` for the deployed Environment Information
  * The environment lifetime is tied to the branch lifetime, and will be torn down when the branch is deleted
-
-## CI Commit Message Flags
-
-This workflow watches the head(latest) commit for the current push and parses the commit message for defined bracket `[]` statements.
-
-### `[tag=]` Flag
-
-The `[tag=]` flag will override the automatically generated docker/helm tag and deploy the specified version in the `current-release-*` steps.
