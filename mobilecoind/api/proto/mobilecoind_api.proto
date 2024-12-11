@@ -33,6 +33,7 @@ service MobilecoindAPI {
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
     rpc GetShortAddressHash (GetShortAddressHashRequest) returns (GetShortAddressHashResponse) {}
     rpc ValidateAuthenticatedSenderMemo (ValidateAuthenticatedSenderMemoRequest) returns (ValidateAuthenticatedSenderMemoResponse) {}
+    rpc TxOutViewKeyMatch (TxOutViewKeyMatchRequest) returns (TxOutViewKeyMatchResponse) {}
 
     // b58 Codes
     rpc ParseRequestCode (ParseRequestCodeRequest) returns (ParseRequestCodeResponse) {}
@@ -507,6 +508,25 @@ message ValidateAuthenticatedSenderMemoRequest {
 
 message ValidateAuthenticatedSenderMemoResponse {
     bool success = 1;
+}
+
+message TxOutViewKeyMatchRequest {
+    external.TxOut txo = 1;
+    external.RistrettoPrivate view_private_key = 2;
+}
+
+message TxOutViewKeyMatchResponse {
+    // Whether the tx out belongs to the provided view private key.
+    bool matched = 1;
+
+    // The value of the tx out, only valid if matched is true.
+    uint64 value = 2;
+
+    // The token_id of the tx out, only valid if matched is true.
+    uint64 token_id = 3;
+
+    // The tx out shared secret, only valid if matched is true.
+    external.CompressedRistretto shared_secret = 4;
 }
 
 //
