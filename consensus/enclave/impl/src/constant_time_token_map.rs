@@ -88,12 +88,12 @@ impl<T: ConditionallySelectable + Default> CtTokenMap<T> {
     }
 
     /// Iterate over all entries in the map.
-    pub fn iter(&self) -> impl Iterator<Item = &(TokenId, T)> + DoubleEndedIterator {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &(TokenId, T)> {
         self.storage.iter()
     }
 
     /// Get an iterator over the keys of this map.
-    pub fn keys(&self) -> impl Iterator<Item = &TokenId> + DoubleEndedIterator {
+    pub fn keys(&self) -> impl DoubleEndedIterator<Item = &TokenId> {
         self.storage.iter().map(|(key, _val)| key)
     }
 }

@@ -63,10 +63,10 @@ pub unsafe extern "C" fn viewenclave_call(
         return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
     }
 
-    match catch_unwind(|| {
+    let c = catch_unwind(|| {
         let mut temp_outbuf_used = unsafe { *outbuf_used };
         let mut temp_outbuf_retry_id = unsafe { *outbuf_retry_id };
-        let ret = RETRY_BUFFER.call(
+        let res = RETRY_BUFFER.call(
             unsafe { slice::from_raw_parts(inbuf, inbuf_len) },
             unsafe { slice::from_raw_parts_mut(outbuf, outbuf_len) },
             &mut temp_outbuf_used,
@@ -74,12 +74,12 @@ pub unsafe extern "C" fn viewenclave_call(
         );
         unsafe {
             *outbuf_used = temp_outbuf_used;
-        }
-        unsafe {
             *outbuf_retry_id = temp_outbuf_retry_id;
         }
-        ret
-    }) {
+        res
+    });
+
+    match c {
         Ok(x) => match x {
             Ok(_) => sgx_status_t::SGX_SUCCESS,
             Err(retval) => retval,
