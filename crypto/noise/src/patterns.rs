@@ -230,6 +230,7 @@ impl_handshake_patterns! {
         // msg 1: request
         MessagePattern::Initiator(vec![Token::Ephemeral]),
     ];
+    // TODO: Add HandshakeNK pattern definition
 }
 
 #[cfg(test)]

@@ -13,6 +13,19 @@ use generic_array::{typenum::Unsigned, GenericArray};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 
+// TODO: import ChaCha20-Poly1305 implementation
+//
+// The traits needed for NoiseCipher `pub trait NoiseCipher: AeadMut + KeyInit + Sized`
+// AeadCore (contains AeadMut), and KeyInit are already implemented. I think we get `Sized` for free
+//
+// https://docs.rs/chacha20poly1305/latest/chacha20poly1305/#traits
+// Traits:
+//
+// AeadCore	Authenticated Encryption with Associated Data (AEAD) algorithm core trait.
+// AeadInPlace	In-place stateless AEAD trait.
+// KeyInit	Types which can be initialized from key.
+// KeySizeUser	Types which use key for initialization.
+
 const MAX_BYTES_SENT: u64 = (1u64 << 56) + 4;
 
 #[derive(
@@ -264,6 +277,8 @@ impl<Cipher: NoiseCipher> Default for CipherState<Cipher> {
         }
     }
 }
+
+// TODO: Add tests for ChaCha20-Poly1305 ?
 
 #[cfg(test)]
 mod test {

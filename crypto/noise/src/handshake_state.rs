@@ -16,6 +16,8 @@ use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
+// TODO: Besides adding a test, I dont think we need any code changes in here.
+
 /// The public error messages which can be included in this construction
 #[derive(
     Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
@@ -598,6 +600,8 @@ mod test {
     use rand_hc::Hc128Rng;
     use sha2::Sha512;
     use std::eprintln;
+
+    // TODO: Add handshakeNK test
 
     #[test]
     fn walkthrough_ix_25519_aesgcm_sha512() {

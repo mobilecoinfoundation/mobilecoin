@@ -121,15 +121,20 @@ macro_rules! impl_protocol_names {
     )*}
 }
 
+// TODO: Add Noise_NK_25519_CHACHA_SHA256
+
 impl_protocol_names! {
     "Noise_IX_25519_AESGCM_SHA512", HandshakeIX, X25519, Aes256Gcm, Sha512;
     "Noise_NX_25519_AESGCM_SHA512", HandshakeNX, X25519, Aes256Gcm, Sha512;
 }
 
+
 #[cfg(test)]
 mod test {
     use super::*;
     use core::str::FromStr;
+
+    // TODO: Add test for svr_nk_25519_chacha_sha256
 
     #[test]
     fn mobilecoin_ix_25519_aesgcm_sha512_from_str() {

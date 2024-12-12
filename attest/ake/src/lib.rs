@@ -48,6 +48,8 @@ mod test {
 
     const RESPONDER_ID_STR: &str = "node1.unittest.mobilenode.com";
 
+    // TODO: Write new test case for nk_handshake
+
     #[test]
     fn ix_handshake() {
         // Create a new identity pubkey for our "enclave"
