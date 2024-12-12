@@ -292,6 +292,9 @@ pub struct AuthResponseInput {
     pub(crate) time: Option<DateTime>,
 }
 
+// TODO: Maybe some changes here because in our handshakeNK type we already have the attestation
+// report when the initiator (client) starts the handshake
+
 impl AuthResponseInput {
     pub fn new(
         data: AuthResponseOutput,
