@@ -569,7 +569,7 @@ impl SqlRecoveryDb {
     ) -> Result<AddBlockDataStatus, Error> {
         let conn = &mut self.pool.get()?;
 
-        match conn
+        let res = conn
             .build_transaction()
             .read_write()
             .run(|conn| -> Result<(), Error> {
@@ -612,7 +612,9 @@ impl SqlRecoveryDb {
 
                 // Success.
                 Ok(())
-            }) {
+            });
+
+        match res {
             Ok(()) => Ok(AddBlockDataStatus {
                 block_already_scanned_with_this_key: false,
             }),

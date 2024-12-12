@@ -655,7 +655,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                                 block.index
                             );
 
-                            match thread_transactions_fetcher
+                            let results = thread_transactions_fetcher
                                 .get_block_data(thread_safe_responder_ids.as_slice(), &block)
                                 .map_err(LedgerSyncError::from)
                                 .and_then(|block_data| {
@@ -681,7 +681,9 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                                     } else {
                                         Ok(block_data)
                                     }
-                                }) {
+                                });
+
+                            match results {
                                 Ok(block_data) => {
                                     // Log
                                     log::trace!(

@@ -99,7 +99,7 @@ pub unsafe extern "C" fn ingest_enclave_call(
         return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
     }
 
-    match catch_unwind(|| {
+    let c = catch_unwind(|| {
         let mut temp_outbuf_used = unsafe { *outbuf_used };
         let mut temp_outbuf_retry_id = unsafe { *outbuf_retry_id };
         let res = RETRY_BUFFER.call(
@@ -113,7 +113,9 @@ pub unsafe extern "C" fn ingest_enclave_call(
             *outbuf_retry_id = temp_outbuf_retry_id;
         }
         res
-    }) {
+    });
+
+    match c {
         Ok(x) => match x {
             Ok(_) => sgx_status_t::SGX_SUCCESS,
             Err(retval) => retval,

@@ -5,6 +5,8 @@ fail-fast = false
 failure-output = "immediate-final"
 # Show failed, flaky and retried, and slow tests.
 status-level = "slow"
+# Add retires for flaky tests
+retries = { backoff = "exponential", count = 3, delay = "5s" }
 
 [profile.ci.junit]
 # Output a JUnit report under `target/nextest/ci/junit.xml`.

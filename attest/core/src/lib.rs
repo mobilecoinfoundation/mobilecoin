@@ -6,6 +6,10 @@
 #![no_std]
 #![feature(core_intrinsics)]
 #![allow(clippy::result_large_err)]
+// This is needed to use feature(core_intrinsics)
+// I believe were using the core_intrinsics feature for f64 abs support since we are in no_std.
+// This is IAS code so its almost dead.
+#![allow(internal_features)]
 
 extern crate alloc;
 #[macro_use]
