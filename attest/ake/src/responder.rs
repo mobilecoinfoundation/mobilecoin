@@ -116,6 +116,8 @@ impl ResponderTransitionMixin for Start {
     }
 }
 
+// TODO: Possibly Implement another version of below for HandshakeNK/SVR3 format
+
 /// Start + NodeAuthRequestInput => Ready + AuthResponseOutput
 ///
 /// This defines the responder's action when an AuthRequestInput for an IX

@@ -45,6 +45,8 @@ where
     }
 }
 
+// TODO: Add implementation for HandshakeNK
+
 /// Start + ClientInitiate => AuthPending + AuthRequestOutput
 impl<KexAlgo, Cipher, DigestAlgo>
     Transition<
@@ -139,6 +141,8 @@ where
     }
 }
 
+// TODO: Possibly implement another version of below for HandshakeNK/SVR3 format
+
 /// AuthPending + AuthResponseInput => Ready + EvidenceKind
 impl<KexAlgo, Cipher, DigestAlgo> Transition<Ready<Cipher>, AuthResponseInput, EvidenceKind>
     for AuthPending<KexAlgo, Cipher, DigestAlgo>
@@ -185,6 +189,8 @@ where
         }
     }
 }
+
+// TODO: Possibly implement another version of below for HandshakeNK/SVR3 format
 
 /// AuthPending + UnverifiedAttestationEvidence => Terminated + EvidenceKind
 impl<KexAlgo, Cipher, DigestAlgo>
