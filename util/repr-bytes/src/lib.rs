@@ -396,6 +396,8 @@ macro_rules! derive_core_cmp_from_as_ref {
             }
         }
 
+        // this check maybe be buggy and fixed in later versions:
+        // https://github.com/rust-lang/rust-clippy/issues/12154
         #[allow(clippy::unconditional_recursion)]
         impl PartialEq for $mytype {
             fn eq(&self, other: &Self) -> bool {

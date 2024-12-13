@@ -101,6 +101,8 @@ impl<C: Connection> Ord for SyncConnection<C> {
     }
 }
 
+// this check maybe be buggy and fixed in later versions:
+// https://github.com/rust-lang/rust-clippy/issues/12154
 #[allow(clippy::unconditional_recursion)]
 impl<C: Connection> PartialEq for SyncConnection<C> {
     fn eq(&self, other: &Self) -> bool {
