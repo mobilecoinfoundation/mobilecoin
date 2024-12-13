@@ -52,6 +52,7 @@ impl U64Ratio {
     }
 }
 
+// #[allow(clippy::unconditional_recursion)]
 impl PartialEq for U64Ratio {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -65,7 +66,7 @@ impl PartialEq for U64Ratio {
         //
         // This matches how fractions are defined in abstract algebra:
         // https://en.wikipedia.org/wiki/Field_of_fractions
-        (self.num * other.denom).eq(&(other.num * self.denom))
+        (self.num * other.denom) == (other.num * self.denom)
     }
 }
 

@@ -101,6 +101,7 @@ impl<C: Connection> Ord for SyncConnection<C> {
     }
 }
 
+#[allow(clippy::unconditional_recursion)]
 impl<C: Connection> PartialEq for SyncConnection<C> {
     fn eq(&self, other: &Self) -> bool {
         let self_g = self.read();

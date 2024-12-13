@@ -653,12 +653,14 @@ impl Builder {
 
         let staticlib_target_dir = &self.target_dir;
 
-        // e.g. "mc_foo_enclave_trusted"
-        let staticlib_crate_name = self.staticlib.workspace_members[0]
-            .repr
-            .split_whitespace()
-            .next()
-            .ok_or(Error::TrustedCrateName)?;
+        // The workspace_members IDs have changed to this format:
+        // path+file:///tmp/mobilenode/consensus/enclave/trusted#mc_consensus_enclave_trusted@6.1
+        // We want to capture everything after the last '#' and before the '@'
+        let workspace_id = self.staticlib.workspace_members[0].repr.clone();
+        let workspace_id_parts: Vec<&str> = workspace_id.split('#').collect();
+        let workspace_name = workspace_id_parts[1];
+        let workspace_name_parts: Vec<&str> = workspace_name.split('@').collect();
+        let staticlib_crate_name = workspace_name_parts[0];
 
         // "target/name/<profile>/libmc_foo_enclave_trusted.a" -- not xplatform, but
         // neither is our use of SGX, so meh.

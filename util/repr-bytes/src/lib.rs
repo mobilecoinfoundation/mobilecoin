@@ -396,11 +396,13 @@ macro_rules! derive_core_cmp_from_as_ref {
             }
         }
 
+        #[allow(clippy::unconditional_recursion)]
         impl PartialEq for $mytype {
             fn eq(&self, other: &Self) -> bool {
                 <Self as AsRef<$asref>>::as_ref(self).eq(<Self as AsRef<$asref>>::as_ref(other))
             }
         }
+
         impl Eq for $mytype {}
 
         impl ::core::hash::Hash for $mytype {

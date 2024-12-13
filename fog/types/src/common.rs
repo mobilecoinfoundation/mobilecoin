@@ -91,9 +91,7 @@ impl BlockRange {
     ) -> Option<(usize, BlockRange)> {
         let mut ranges = ranges.into_iter();
         let first = ranges.next().cloned();
-        let Some(mut merged_range) = first else {
-            return None;
-        };
+        let mut merged_range = first?;
         let mut index = 0;
 
         for range in ranges {
