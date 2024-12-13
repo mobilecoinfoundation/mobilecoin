@@ -425,7 +425,7 @@ mod shared_data_tests {
         const STORE_COUNT: usize = 4;
         let mut decrypted_query_responses = Vec::with_capacity(STORE_COUNT);
 
-        let missed_block_ranges = vec![
+        let missed_block_ranges = [
             BlockRange::new(0, 1),
             BlockRange::new(10, 12),
             BlockRange::new(33, 100),

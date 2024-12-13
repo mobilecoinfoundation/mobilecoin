@@ -1515,10 +1515,9 @@ mod test {
         outlay.set_value(1234);
 
         let outlay_index_to_tx_out_index = HashMap::from_iter(vec![(0, 0)]);
-        let outlay_confirmation_numbers =
-            vec![mc_transaction_extra::TxOutConfirmationNumber::from(
-                [0u8; 32],
-            )];
+        let outlay_confirmation_numbers = [mc_transaction_extra::TxOutConfirmationNumber::from(
+            [0u8; 32],
+        )];
 
         // Make proto TxProposal
         let mut proto_proposal = api::TxProposal::new();

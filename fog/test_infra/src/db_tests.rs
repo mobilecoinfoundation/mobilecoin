@@ -252,7 +252,7 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
         .unwrap();
 
     // Test that user has rng record event now
-    let test_rows0 = vec![kex_rng_pubkey1];
+    let test_rows0 = [kex_rng_pubkey1];
 
     let (user_events, next_start_from_user_event_id) = db.search_user_events(0).unwrap();
     let rng_records: Vec<RngRecord> = user_events
@@ -292,7 +292,7 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     // Check that if starting at next_start_from_user_event_id we only see the
     // second rng
-    let test_rows1 = vec![kex_rng_pubkey2];
+    let test_rows1 = [kex_rng_pubkey2];
 
     let (user_events, _next_start_from_user_event_id) = db
         .search_user_events(next_start_from_user_event_id)

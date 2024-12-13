@@ -52,6 +52,9 @@ impl U64Ratio {
     }
 }
 
+// this check maybe be buggy and fixed in later versions:
+// https://github.com/rust-lang/rust-clippy/issues/12154
+#[allow(clippy::unconditional_recursion)]
 impl PartialEq for U64Ratio {
     #[inline]
     fn eq(&self, other: &Self) -> bool {

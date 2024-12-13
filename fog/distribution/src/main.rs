@@ -66,7 +66,7 @@ use tempfile::tempdir;
 
 thread_local! {
     /// global variable storing connections to the consensus network
-    static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
+    static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = const { RefCell::new(None) };
 }
 
 fn set_conns(config: &Config, logger: &Logger) {
