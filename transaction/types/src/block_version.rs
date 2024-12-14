@@ -154,6 +154,11 @@ impl BlockVersion {
     pub fn nested_multisigs_are_supported(&self) -> bool {
         self >= &Self::THREE
     }
+
+    /// Timestamps are supported starting from v4.
+    pub fn timestamps_are_supported(&self) -> bool {
+        self >= &Self::FOUR
+    }
 }
 
 impl Deref for BlockVersion {

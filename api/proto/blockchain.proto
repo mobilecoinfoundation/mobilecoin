@@ -43,6 +43,9 @@ message Block {
 
     // Hash of the block's contents.
     BlockContentsHash contents_hash = 7;
+
+    // The block's timestamp. ms since Unix epoch
+    uint64 timestamp = 8;
 }
 
 message BlockContents {

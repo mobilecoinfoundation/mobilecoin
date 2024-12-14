@@ -22,15 +22,16 @@ pub struct PendingValues<TXM: TxManager, MTXM: MintTxManager> {
 
     /// We need to store pending values vec so we can process values
     /// on a first-come first-served basis. However, we want to be able to:
-    /// 1) Efficiently see if we already have a given transaction and ignore
-    /// duplicates 2) Track how long each transaction took to externalize.
+    ///     1. Efficiently see if we already have a given transaction and ignore
+    /// duplicates
+    ///     2. Track how long each transaction took to externalize.
     ///
     /// To accomplish these goals we store, in addition to the queue of pending
     /// values, a map that maps a value to when we first encountered it.
     /// This essentially gives us an ordered HashMap.
     ///
-    /// Note that we only store a timestamp for values that were handed to us
-    /// directly from a client. That behavior is enforced by
+    /// Note that we only store a received time for values that were handed to
+    /// us directly from a client. That behavior is enforced by
     /// ByzantineLedger. We skip tracking processing times for relayed
     /// values since we want to track the time from when the network first
     /// saw a value, and not when a specific node saw it.
@@ -65,17 +66,17 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
         self.pending_values.len()
     }
 
-    /// Try and add a pending value, associated with a given timestamp, to the
-    /// list. Returns `true` if the value is valid and not already on the
-    /// list, false otherwise.
-    pub fn push(&mut self, value: ConsensusValue, timestamp: Option<Instant>) -> bool {
+    /// Try and add a pending value, associated with the time the value was
+    /// received at, to the list. Returns `true` if the value is valid and
+    /// not already on the list, false otherwise.
+    pub fn push(&mut self, value: ConsensusValue, received_time: Option<Instant>) -> bool {
         if let Vacant(entry) = self.pending_values_map.entry(value.clone()) {
             match value {
                 ConsensusValue::TxHash(tx_hash) => {
                     // A new transaction.
                     if self.tx_manager.validate(&tx_hash).is_ok() {
                         // The transaction is well-formed and valid.
-                        entry.insert(timestamp);
+                        entry.insert(received_time);
                         self.pending_values.push(value);
                         true
                     } else {
@@ -90,7 +91,7 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                         .is_ok()
                     {
                         // The transaction is well-formed and valid.
-                        entry.insert(timestamp);
+                        entry.insert(received_time);
                         self.pending_values.push(value);
                         true
                     } else {
@@ -101,7 +102,7 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                 ConsensusValue::MintTx(ref mint_tx) => {
                     if self.mint_tx_manager.validate_mint_tx(mint_tx).is_ok() {
                         // The transaction is well-formed and valid.
-                        entry.insert(timestamp);
+                        entry.insert(received_time);
                         self.pending_values.push(value);
                         true
                     } else {
@@ -119,8 +120,8 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
         self.pending_values.iter()
     }
 
-    /// Try and get the timestamp associated with a given value.
-    pub fn get_timestamp_for_value(&self, tx_hash: &ConsensusValue) -> Option<Instant> {
+    /// Try and get the received time associated with a given value.
+    pub fn get_received_time_for_value(&self, tx_hash: &ConsensusValue) -> Option<Instant> {
         self.pending_values_map.get(tx_hash).cloned().flatten()
     }
 

@@ -937,13 +937,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             validated_mint_config_txs,
             mint_txs,
         };
-        //
+
         // Form the block.
         let block = Block::new_with_parent(
             config.block_version,
             parent_block,
             root_element,
             &block_contents,
+            0,
         );
 
         // Sign the block.
