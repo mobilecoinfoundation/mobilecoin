@@ -69,4 +69,24 @@ message ConsensusNodeConfig {
 
     // SCP message signing key.
     external.Ed25519Public scp_message_signing_key = 8;
+
+    // Maximum number of client session tracking structures to retain in
+    // a least-recently-used cache.
+    //
+    // This corresponds to Config::client_tracking_capacity
+    uint64 client_tracking_capacity = 9;
+
+    // How many seconds to retain instances of proposed-transaction
+    // failures, per-client. This is used to implement DOS-protection,
+    // protecting against clients who make too many failed
+    // transaction proposals within this span.
+    uint64 tx_failure_window_seconds = 10;
+
+    // How many tx proposal failures within the rolling window are required
+    // before it's treated as concerning, thereby tripping denial-of-service
+    // protection?
+    // In other words, how many failed transaction proposals are permitted
+    // within the last tx_failure_window_seconds before a user is
+    // disconnected or temporarily blocked?
+    uint32 tx_failure_limit = 11;
 }
