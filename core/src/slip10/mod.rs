@@ -142,14 +142,10 @@ impl Slip10KeyGenerator for Mnemonic {
 mod test {
     extern crate alloc;
 
-    use alloc::{string::String, vec::Vec};
-    use serde::{Deserialize, Serialize};
-
-    // use curve25519_dalek::scalar::Scalar;
-
-    use mc_crypto_keys::RistrettoPublic;
-
     use super::*;
+    use alloc::{string::String, vec::Vec};
+    use mc_crypto_keys::RistrettoPublic;
+    use serde::{Deserialize, Serialize};
 
     // Include test vectors as JSON strings
     const KEY_TO_RISTRETTO_STR: &str = include_str!("../../tests/slip10_key.json");
