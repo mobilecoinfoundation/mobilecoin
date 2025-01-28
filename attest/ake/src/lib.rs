@@ -30,10 +30,10 @@ pub use crate::{
     state::{AuthPending, Ready, Start, Terminated},
 };
 
+/// Unit tests for Attested Key Exchange
 #[cfg(test)]
 #[cfg(feature = "sgx-sim")]
 mod test {
-    //! Unit tests for Attested Key Exchange
     use super::*;
     use aes_gcm::Aes256Gcm;
     use mc_attest_core::Report;

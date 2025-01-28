@@ -22,7 +22,7 @@ use alloc::{
     vec::Vec,
 };
 use base64::Engine;
-use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, result::Result, str};
+use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, str};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use serde::{Deserialize, Serialize};
 

@@ -46,7 +46,7 @@ use core::{
     ops::{Deref, DerefMut},
     ptr,
 };
-use mc_sgx_types::{self, sgx_thread_mutex_t, SysError};
+use mc_sgx_types::{sgx_thread_mutex_t, SysError};
 
 pub unsafe fn raw_mutex(lock: &mut sgx_thread_mutex_t) -> *mut sgx_thread_mutex_t {
     lock as *mut _

@@ -145,9 +145,9 @@ mod test {
     use alloc::{string::String, vec::Vec};
     use serde::{Deserialize, Serialize};
 
-    use curve25519_dalek::scalar::Scalar;
+    // use curve25519_dalek::scalar::Scalar;
 
-    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::RistrettoPublic;
 
     use super::*;
 

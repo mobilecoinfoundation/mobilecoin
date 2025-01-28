@@ -108,10 +108,7 @@ fn validate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH},
-        TokenId,
-    };
+    use crate::mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH};
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;

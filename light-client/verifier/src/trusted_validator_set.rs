@@ -97,7 +97,7 @@ impl TrustedValidatorSet {
 pub mod tests {
     use super::*;
     use core::assert_matches::assert_matches;
-    use mc_blockchain_types::{AttestationEvidence, BlockMetadata, BlockMetadataContents};
+    use mc_blockchain_types::{AttestationEvidence, BlockMetadataContents};
     use mc_consensus_scp_types::test_utils::{test_node_id, test_node_id_and_signer};
 
     #[test]

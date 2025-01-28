@@ -111,7 +111,7 @@ impl<DigestAlgo: Digest> From<HandshakeHash<DigestAlgo>> for Vec<u8> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{patterns::HandshakeIX, protocol_name::ProtocolName};
+    use crate::patterns::HandshakeIX;
     use aes_gcm::Aes256Gcm;
     use mc_crypto_keys::X25519;
     use sha2::Sha512;

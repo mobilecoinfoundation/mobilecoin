@@ -401,9 +401,7 @@ fn merge_untrusted_responses<'a>(
 mod tests {
     use super::*;
     use alloc::vec;
-    use key_image_store::KeyImageStore;
     use mc_common::logger::create_root_logger;
-    use mc_fog_ledger_enclave_api::KeyImageData;
     use mc_oblivious_traits::HeapORAMStorageCreator;
     use mc_transaction_core::ring_signature::KeyImage;
     use yare::parameterized;

@@ -7,6 +7,7 @@ license-file = "LICENSE"
 documentation = "https://dingelish.github.io/"
 description = "Rust SGX SDK provides the ability to write Intel SGX applications in Rust Programming Language."
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
+edition = "2015"
 rust-version = "1.76.0"
 
 include = [

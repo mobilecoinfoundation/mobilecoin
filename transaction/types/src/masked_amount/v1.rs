@@ -6,7 +6,6 @@
 //! are "masked" using a shared secret.
 
 use alloc::vec::Vec;
-use core::convert::TryInto;
 
 use crate::{
     amount::{Amount, AmountError},
@@ -249,11 +248,8 @@ fn get_blinding(shared_secret: &RistrettoPublic) -> Scalar {
 
 #[cfg(test)]
 mod amount_tests {
-    #![allow(clippy::unnecessary_operation)]
-
     use super::*;
     use crate::proptest_fixtures::*;
-    use mc_crypto_ring_signature::{generators, CompressedCommitment};
     use proptest::prelude::*;
 
     proptest! {
@@ -268,7 +264,6 @@ mod amount_tests {
         }
 
         #[test]
-        #[allow(non_snake_case)]
         /// amount.commitment should agree with the value and blinding.
         fn test_commitment(
             value in any::<u64>(),

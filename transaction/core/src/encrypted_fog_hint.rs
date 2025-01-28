@@ -8,7 +8,7 @@
 //! builtin traits on arrays of size > 32.
 
 use alloc::{vec, vec::Vec};
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 use generic_array::{
     typenum::{Diff, Unsigned, U84},
     GenericArray,
@@ -110,7 +110,7 @@ impl EncryptedFogHint {
     #[inline]
     pub fn to_bytes(&self) -> [u8; ENCRYPTED_FOG_HINT_LEN] {
         let mut result = [0u8; ENCRYPTED_FOG_HINT_LEN];
-        result.copy_from_slice(self.as_ref());
+        result.copy_from_slice(self.as_ref().as_slice());
         result
     }
 

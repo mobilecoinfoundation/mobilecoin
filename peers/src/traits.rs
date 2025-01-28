@@ -58,7 +58,6 @@ pub trait RetryableConsensusConnection {
         retry_iterator: impl IntoIterator<Item = Duration>,
     ) -> RetryResult<()>;
 
-    ///
     fn fetch_txs(
         &self,
         hashes: &[TxHash],

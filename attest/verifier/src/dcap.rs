@@ -83,11 +83,11 @@ impl VerificationMessage<DcapVerifierOutput> for DcapVerifier {
 /// if `debug_allowed` is true.
 ///
 /// As documented in
-/// <https://download.01.org/intel-sgx/sgx-dcap/1.17/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A64%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C283%2C0%5D>
+/// <https://download.01.org/intel-sgx/sgx-dcap/1.17/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf>
 ///
-///     Production enclaves should not have the REPORT.Attribute.Debug flag set
-///     to 1. When the Debug flag is set, a debugger can read the enclave’s
-///     memory and should not be provisioned with production secrets.
+/// Production enclaves should not have the REPORT.Attribute.Debug flag set
+/// to 1. When the Debug flag is set a debugger can read the enclave
+/// memory and should not be provisioned with production secrets.
 fn debug_attribute_verifier(debug_allowed: bool) -> AttributesVerifier {
     // The default bits are all 0 meaning a non debug build.
     let attributes = Attributes::default();
@@ -177,7 +177,6 @@ mod test {
     use mc_attestation_verifier::{TrustedMrEnclaveIdentity, VerificationTreeDisplay};
     use mc_common::time::{SystemTimeProvider, TimeProvider};
     use mc_sgx_core_types::Report;
-    use p256::pkcs8::der::DateTime;
 
     fn report_and_report_data() -> (Report, EnclaveReportDataContents) {
         let mut report = Report::default();

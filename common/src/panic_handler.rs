@@ -3,9 +3,12 @@
 use super::logger;
 use backtrace::Backtrace;
 use std::{
-    env,
+    boxed::Box,
+    env, format,
     panic::{self, PanicInfo},
-    process, thread, time,
+    println, process,
+    string::ToString,
+    thread, time,
 };
 
 /// Call this to ensure a process exits if a threads panics.

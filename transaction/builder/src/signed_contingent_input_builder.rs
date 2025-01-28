@@ -551,7 +551,7 @@ pub mod tests {
     use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
-    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
     use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
@@ -567,10 +567,9 @@ pub mod tests {
             validate_ring_elements_are_sorted, validate_signature, validate_tx_out,
             TransactionValidationError,
         },
-        Amount, InputRuleError, Token, TokenId,
+        InputRuleError, Token,
     };
     use mc_transaction_extra::{MemoType, SignedContingentInputError};
-    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]

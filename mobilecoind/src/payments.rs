@@ -1621,9 +1621,8 @@ fn extract_fog_uri(addr: &PublicAddress) -> Result<Option<FogUri>, Error> {
 mod test {
     use super::*;
     use mc_connection::{HardcodedCredentialsProvider, ThickClient};
-    use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
-    use mc_transaction_core::{constants::MILLIMOB_TO_PICOMOB, tokens::Mob, Amount, Token};
+    use mc_transaction_core::{constants::MILLIMOB_TO_PICOMOB, tokens::Mob, Token};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

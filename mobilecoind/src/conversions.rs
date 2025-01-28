@@ -300,12 +300,12 @@ impl TryFrom<&api::SciForTx> for SciForTx {
 mod test {
     use super::*;
     use mc_account_keys::{AccountKey, ShortAddressHash};
-    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+    use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_ledger_db::{
         test_utils::{create_ledger, create_transaction, initialize_ledger},
         Ledger,
     };
-    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
+    use mc_transaction_core::{tokens::Mob, BlockVersion, Token};
     use mc_transaction_extra::{
         AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
         AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, SenderMemoCredential,

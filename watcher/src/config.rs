@@ -142,7 +142,6 @@ impl SourcesConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn sources_config_toml() {

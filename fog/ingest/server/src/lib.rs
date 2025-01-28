@@ -42,6 +42,7 @@ lazy_static::lazy_static! {
 // Helper to format a sequence as a comma-separated list
 // (This is used with lists of Ingest peer uris in logs,
 // because the debug logging of that object is harder to read)
+#[allow(dead_code)]
 struct SeqDisplay<T: Display, I: Iterator<Item = T> + Clone>(I);
 
 impl<T: Display, I: Iterator<Item = T> + Clone> Display for SeqDisplay<T, I> {

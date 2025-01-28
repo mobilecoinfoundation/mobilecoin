@@ -209,12 +209,11 @@ mod mlsag_tests {
     use super::*;
     use crate::generators;
     use curve25519_dalek::ristretto::CompressedRistretto;
-    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{RngCore, RngType, SeedableRng};
+    use mc_util_test_helper::{RngType, SeedableRng};
     use proptest::prelude::*;
 
-    use alloc::vec::Vec;
     #[derive(Clone)]
     struct RingMLSAGParameters {
         message: [u8; 32],

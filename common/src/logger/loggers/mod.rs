@@ -21,7 +21,12 @@ use sentry_logger::SentryLogger;
 use slog::Drain;
 use slog_json::Json;
 use slog_term::TermDecorator;
-use std::{env, io, sync::Mutex};
+use std::{
+    env, format, io,
+    string::{String, ToString},
+    sync::Mutex,
+    vec::Vec,
+};
 
 /// Custom timestamp function for use with slog-term
 fn custom_timestamp(io: &mut dyn io::Write) -> io::Result<()> {

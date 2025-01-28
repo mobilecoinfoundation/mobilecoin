@@ -4,7 +4,7 @@
 //! for background message processing by a worker thread. It allows multiple
 //! threads to send messages to the queue.
 
-use mc_util_metered_channel::{self, Receiver, Sender};
+use mc_util_metered_channel::{Receiver, Sender};
 use mc_util_metrics::IntGauge;
 use std::{io, sync::Arc, thread};
 

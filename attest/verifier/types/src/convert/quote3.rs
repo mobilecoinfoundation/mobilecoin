@@ -24,7 +24,7 @@ impl<T: AsRef<[u8]>> From<&Quote3<T>> for prost::Quote3 {
 
 #[cfg(test)]
 mod test {
-    use super::{prost, *};
+    use super::*;
     use ::prost::Message;
     use alloc::vec;
     use assert_matches::assert_matches;

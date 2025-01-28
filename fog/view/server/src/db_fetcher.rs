@@ -408,7 +408,6 @@ mod tests {
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{thread::sleep, time::Duration};
 
     #[test_with_logger]
     fn basic_single_ingress_key(logger: Logger) {

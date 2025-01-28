@@ -400,6 +400,8 @@ mod quorum_set_tests {
 
     #[test]
     fn test_is_valid() {
+        use std::string::String;
+
         // An empty quorum set is valid.
         assert!(QuorumSet::<String>::empty().is_valid());
 

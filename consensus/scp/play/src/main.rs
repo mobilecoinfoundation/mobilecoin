@@ -58,6 +58,7 @@ fn parse_node_id_from_uri(src: &str) -> Result<NodeID, String> {
     Ok(NodeID::from(&uri))
 }
 
+#[allow(dead_code)]
 struct TransactionValidationError;
 impl fmt::Display for TransactionValidationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

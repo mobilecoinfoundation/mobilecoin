@@ -8,11 +8,10 @@ use displaydoc::Display;
 use mc_util_build_script::Environment;
 use pkg_config::{Error as PkgConfigError, Library};
 use std::{
-    borrow::ToOwned,
     io::Error as IoError,
     path::{Path, PathBuf},
     process::Command,
-    string::{FromUtf8Error, String},
+    string::FromUtf8Error,
 };
 
 /// Errors which can occur when working with edger8r.
@@ -130,13 +129,13 @@ impl Edger8r {
     /// Set an enclave name. This will be used to generate the EDL filename if
     /// edl_path is unspecified.
     pub fn enclave_name(&mut self, enclave_name: &str) -> &mut Self {
-        self.enclave_name = enclave_name.to_owned();
+        enclave_name.clone_into(&mut self.enclave_name);
         self
     }
 
     /// Explicitly set a full path to an existing EDL file.
     pub fn edl(&mut self, enclave_edl: &Path) -> &mut Self {
-        self.edl_path = enclave_edl.to_owned();
+        enclave_edl.clone_into(&mut self.edl_path);
         self
     }
 

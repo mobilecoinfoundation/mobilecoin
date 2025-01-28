@@ -447,9 +447,8 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_attest_core::VerificationSignature;
-    use mc_attest_verifier_types::prost;
     use mc_blockchain_types::BlockSignature;
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use serial_test::serial;

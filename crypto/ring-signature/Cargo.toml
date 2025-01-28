@@ -14,10 +14,11 @@ prost = ["dep:prost", "mc-crypto-keys/prost", "mc-util-serial"]
 internals = []
 
 default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-dalek/default", "mc-crypto-hashes/default"]
+proptest = ["dep:proptest", "default"]
 
 [dependencies]
 
-curve25519-dalek = { version = "4.1.1", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
 
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }

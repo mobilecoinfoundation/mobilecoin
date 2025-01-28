@@ -14,7 +14,6 @@ use crate::{
     TokenId,
 };
 use alloc::vec::Vec;
-use core::convert::TryInto;
 use crc::Crc;
 use hkdf::Hkdf;
 use mc_crypto_digestible::Digestible;
@@ -273,11 +272,8 @@ fn get_blinding_factors(amount_shared_secret: &[u8; 32]) -> (u64, u64, Scalar) {
 
 #[cfg(test)]
 mod amount_tests {
-    #![allow(clippy::unnecessary_operation)]
-
     use super::*;
     use crate::proptest_fixtures::*;
-    use mc_crypto_ring_signature::{generators, CompressedCommitment};
     use proptest::prelude::*;
 
     proptest! {
@@ -292,7 +288,6 @@ mod amount_tests {
         }
 
         #[test]
-        #[allow(non_snake_case)]
         /// amount.commitment should agree with the value and blinding.
         fn test_commitment(
             value in any::<u64>(),

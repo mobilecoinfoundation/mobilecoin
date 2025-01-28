@@ -1005,7 +1005,7 @@ pub mod transaction_builder_tests {
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
-        NewTxError, TokenId,
+        NewTxError,
     };
     use mc_transaction_extra::{MemoType, SenderMemoCredential, TxOutGiftCode};
     use rand::{rngs::StdRng, SeedableRng};

@@ -22,7 +22,6 @@ use ::prost::Message;
 use chrono::NaiveDateTime;
 use clap::Parser;
 use diesel::{
-    pg::PgConnection,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
@@ -1617,14 +1616,10 @@ mod tests {
     use super::*;
     use chrono::prelude::*;
     use mc_attest_verifier_types::prost;
-    use mc_common::{
-        logger::{log, test_with_logger, Logger},
-        HashSet,
-    };
+    use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_report_types::AttestationEvidence;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
-    use mc_fog_types::view::FixedTxOutSearchResult;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, thread_rng, SeedableRng};
 

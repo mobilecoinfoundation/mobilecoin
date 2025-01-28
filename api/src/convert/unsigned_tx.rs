@@ -113,7 +113,7 @@ mod tests {
         test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
         TransactionBuilder,
     };
-    use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
+    use mc_transaction_core::{tokens::Mob, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
 
     // Test converting between external::UnsignedTx and

@@ -56,7 +56,7 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     // Time tracing - only available when std is enable, since no_std has no concept of time.
     if #[cfg(all(feature = "log", feature="std"))] {
-        use std::time::Instant;
+        use std::{time::Instant, format, string::String};
 
         /// Simple time measurement utility, based on the [measure_time](https://docs.rs/measure_time/) crate.
         /// Note that even though the macro lives inside the `logger` module, it needs to be imported by
@@ -111,6 +111,7 @@ cfg_if::cfg_if! {
         #[cfg(test)]
         mod trace_time_tests {
             use super::*;
+            use std::string::ToString;
 
             #[test]
             fn basic_trace_time() {

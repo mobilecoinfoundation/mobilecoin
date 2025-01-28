@@ -4,7 +4,7 @@
 
 use alloc::vec::Vec;
 
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};

@@ -486,18 +486,15 @@ fn match_tx_outs_into_utxos(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        monitor_store::MonitorData,
-        test_utils::{
-            self, add_block_to_ledger, add_txos_to_ledger, get_test_databases, BlockVersion,
-            DEFAULT_PER_RECIPIENT_AMOUNT,
-        },
+    use crate::test_utils::{
+        self, add_block_to_ledger, add_txos_to_ledger, get_test_databases, BlockVersion,
+        DEFAULT_PER_RECIPIENT_AMOUNT,
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
-    use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, Token};
+    use mc_transaction_core::{tokens::Mob, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use std::time::Instant;
 

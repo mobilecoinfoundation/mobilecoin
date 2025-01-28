@@ -191,7 +191,7 @@ mod tests {
     use mc_transaction_core_test_utils::AccountKey;
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{collections::HashMap, time::Duration};
+    use std::time::Duration;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server<L: Ledger + Clone + 'static>(

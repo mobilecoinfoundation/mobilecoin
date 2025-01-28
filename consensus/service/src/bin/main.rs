@@ -159,10 +159,6 @@ fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        fs::File,
-        io::{Read, Write},
-    };
     use tempfile::TempDir;
 
     #[test]

@@ -22,7 +22,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
-use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
+use mc_sgx_types::*;
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipProof},

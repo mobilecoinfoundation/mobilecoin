@@ -401,7 +401,7 @@ mod tests {
     use mc_blockchain_types::Block;
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_api::{
-        consensus_peer::{ConsensusMsg, ConsensusMsgResult},
+        consensus_peer::ConsensusMsg,
         consensus_peer_grpc::{create_consensus_peer_api, ConsensusPeerApiClient},
     };
     use mc_consensus_enclave_mock::MockConsensusEnclave;
@@ -411,7 +411,6 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_ledger_db::MockLedger;
-    use mc_peers::ConsensusValue;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

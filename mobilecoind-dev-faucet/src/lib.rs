@@ -370,7 +370,7 @@ impl State {
         let mut params = SlamParams::try_from(req)?;
         if params.consensus_client_uris.is_empty() {
             if let Some(uris) = self.consensus_uris.as_ref() {
-                params.consensus_client_uris = uris.clone();
+                params.consensus_client_uris.clone_from(uris);
             } else {
                 return Err("No consensus uris specified".to_owned());
             }

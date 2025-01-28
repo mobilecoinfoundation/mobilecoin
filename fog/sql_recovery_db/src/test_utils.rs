@@ -3,7 +3,7 @@
 //! Utilities for testing.
 
 use crate::{SqlRecoveryDb, SqlRecoveryDbConnectionConfig};
-use diesel::{prelude::*, PgConnection};
+use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use mc_common::logger::{log, Logger};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};

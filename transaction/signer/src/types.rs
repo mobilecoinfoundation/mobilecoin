@@ -349,6 +349,7 @@ impl<'de, const N: usize> serde::de::Visitor<'de> for ConstArrayVisitor<N> {
 }
 
 /// Serde visitor for hex encoded variable length byte arrays
+#[allow(dead_code)]
 pub(crate) struct VarArrayVisitor;
 
 /// Serde visitor implementation for variable length arrays of hex-encoded

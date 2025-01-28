@@ -268,7 +268,7 @@ mod test {
     use std::assert_matches::assert_matches;
 
     use super::*;
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
     use mc_rand::{CryptoRng, RngCore};
     use rand::{rngs::StdRng, SeedableRng};
     use tempfile::TempDir;

@@ -175,7 +175,7 @@ impl<'a, V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'a, V, 
 #[cfg(test)]
 mod predicates_tests {
     use super::*;
-    use crate::{msg::*, test_utils::test_node_id, QuorumSet, QuorumSetExt, Topic};
+    use crate::{msg::*, test_utils::test_node_id, QuorumSet, QuorumSetExt};
 
     #[test]
     // BallotSetPredicate can be used to pick a quorum that intersects with a given

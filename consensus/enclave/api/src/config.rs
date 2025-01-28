@@ -131,7 +131,7 @@ mod test {
     use super::*;
     use crate::governors_sig::Signer;
     use alloc::{string::ToString, vec};
-    use mc_crypto_keys::{Ed25519Pair, Ed25519Private, Ed25519Public};
+    use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_crypto_multisig::SignerSet;
     use mc_transaction_core::{tokens::Mob, FeeMapError, Token, TokenId};
 

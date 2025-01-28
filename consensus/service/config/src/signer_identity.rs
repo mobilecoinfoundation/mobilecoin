@@ -147,7 +147,6 @@ pub type SignerIdentityMap = HashMap<String, SignerIdentity>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_crypto_keys::Ed25519Public;
 
     #[test]
     fn test_happy_path() {

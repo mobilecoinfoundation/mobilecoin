@@ -34,10 +34,7 @@ use aes::{
     cipher::{KeyIvInit, StreamCipher},
     Aes256,
 };
-use core::{
-    convert::{TryFrom, TryInto},
-    str::Utf8Error,
-};
+use core::str::Utf8Error;
 use ctr::Ctr64BE;
 use displaydoc::Display;
 use generic_array::{

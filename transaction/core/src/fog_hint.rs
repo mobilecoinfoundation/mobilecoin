@@ -3,7 +3,6 @@
 //! Code for computing and decrypting fog hints
 
 use crate::encrypted_fog_hint::{EncryptedFogHint, EncryptedFogHintSize};
-use core::convert::TryFrom;
 use mc_account_keys::PublicAddress;
 use mc_crypto_box::{
     generic_array::{

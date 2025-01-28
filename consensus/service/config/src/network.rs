@@ -154,7 +154,6 @@ impl NetworkConfig {
 mod tests {
     use super::*;
     use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
-    use mc_consensus_scp::QuorumSetMember;
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
     use std::str::FromStr;
 

@@ -933,19 +933,15 @@ mod tests {
         },
         MockLedger,
     };
-    use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
+    use mc_ledger_sync::{LedgerSyncError, MockLedgerSync};
     use mc_peers::MockBroadcast;
     use mc_peers_test_utils::MockPeerConnection;
     use mc_sgx_report_cache_api::ReportableEnclave;
-    use mc_transaction_core::{
-        tx::{Tx, TxHash},
-        validation::TransactionValidationError,
-        TokenId,
-    };
+    use mc_transaction_core::{tx::Tx, validation::TransactionValidationError, TokenId};
     use mc_transaction_core_test_utils::{
         create_mint_config_tx_and_signers, create_mint_tx_to_recipient, mint_config_tx_to_validated,
     };
-    use mc_util_metered_channel::{Receiver, Sender};
+    use mc_util_metered_channel::Sender;
     use mc_util_metrics::OpMetrics;
     use mockall::predicate::eq;
     use rand::{rngs::StdRng, SeedableRng};

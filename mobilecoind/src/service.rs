@@ -2716,16 +2716,11 @@ mod test {
             self, add_block_to_ledger, add_txos_to_ledger, get_test_fee_map,
             get_testing_environment, wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
         },
-        utxo_store::UnspentTxOut,
     };
     use grpcio::Error as GrpcError;
-    use mc_account_keys::{
-        burn_address_view_private, AccountKey, PublicAddress, ShortAddressHash,
-        DEFAULT_SUBADDRESS_INDEX,
-    };
+    use mc_account_keys::burn_address_view_private;
     use mc_blockchain_types::{Block, BlockVersion};
     use mc_common::{logger::test_with_logger, HashSet};
-    use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
@@ -2737,13 +2732,12 @@ mod test {
         constants::{MAX_INPUTS, RING_SIZE},
         encrypted_fog_hint::EncryptedFogHint,
         fog_hint::FogHint,
-        get_tx_out_shared_secret,
-        onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
+        onetime_keys::recover_public_subaddress_spend_key,
         tokens::Mob,
-        tx::{Tx, TxOut},
-        Amount, CompressedCommitment, EncryptedMemo, MaskedAmount, MaskedAmountV2, Token,
+        tx::Tx,
+        CompressedCommitment, EncryptedMemo, MaskedAmount, MaskedAmountV2, Token,
     };
-    use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
+    use mc_transaction_extra::{SenderMemoCredential, SignedContingentInput};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};

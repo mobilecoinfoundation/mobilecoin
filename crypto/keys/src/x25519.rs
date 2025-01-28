@@ -28,7 +28,7 @@ use serde::{
     ser::{Serialize, Serializer},
 };
 
-use sha2::{self, Sha256};
+use sha2::Sha256;
 use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 
@@ -123,11 +123,11 @@ impl DistinguishedEncoding for X25519Public {
     /// ";
     ///
     /// let parsed = parse(PUBKEY).expect("Could not parse public key PEM");
-    /// let pubkey = X25519Public::try_from_der(&parsed.contents).expect("Could not parse DER into X25519Public");
+    /// let pubkey = X25519Public::try_from_der(&parsed.contents()).expect("Could not parse DER into X25519Public");
     /// let der = pubkey.to_der();
     /// let pubkey2 = X25519Public::try_from_der(der.as_slice()).expect("Could not parse generated DER into X25519Public");
     /// assert_eq!(pubkey, pubkey2);
-    /// assert_eq!(&parsed.contents, &der);
+    /// assert_eq!(&parsed.contents(), &der);
     /// ```
     fn try_from_der(src: &[u8]) -> Result<Self, KeyError> {
         if src.len() != X25519_SPKI_DER_LEN {
@@ -245,7 +245,7 @@ impl Debug for X25519Public {
     /// ";
     ///
     /// let parsed = parse(PUBKEY).expect("Could not parse public key PEM");
-    /// let pubkey = X25519Public::try_from_der(&parsed.contents).expect("Could not parse DER into X25519Public");
+    /// let pubkey = X25519Public::try_from_der(&parsed.contents()).expect("Could not parse DER into X25519Public");
     /// assert_eq!(format!("{:?}", pubkey), PUBKEY);
     /// ```
     fn fmt(&self, f: &mut Formatter) -> FmtResult {

@@ -379,10 +379,10 @@ impl Database {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{error::Error, test_utils::get_test_databases};
+    use crate::test_utils::get_test_databases;
     use mc_account_keys::AccountKey;
     use mc_blockchain_types::BlockVersion;
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
     use rand::{rngs::StdRng, SeedableRng};
     use tempfile::TempDir;
 

@@ -8,8 +8,8 @@
 
 extern crate alloc;
 
-#[cfg(test)]
 #[macro_use]
+#[cfg(test)]
 extern crate std;
 
 #[macro_use]

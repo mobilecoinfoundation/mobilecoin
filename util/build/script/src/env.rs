@@ -5,7 +5,6 @@
 use crate::vars::*;
 use displaydoc::Display;
 use std::{
-    borrow::ToOwned,
     collections::{hash_map::Iter as HashMapIter, hash_set::Iter as HashSetIter, HashMap, HashSet},
     env::{split_paths, var, var_os, vars, VarError},
     num::ParseIntError,

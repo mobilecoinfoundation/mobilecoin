@@ -1,13 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+#![no_std]
 #![doc = include_str!("../../README.md")]
-#![cfg_attr(not(any(test, feature = "std", feature = "test_utils")), no_std)]
 #![warn(unused_extern_crates)]
 #![allow(non_snake_case)]
 
-// FIXME: Re-enable when prost-generated for `derive(Oneof)` has the necessary
-// doc comments: https://github.com/tokio-rs/prost/issues/237
-//#![deny(missing_docs)]
+#[cfg(any(test, feature = "test_utils", feature = "std"))]
+extern crate std;
 
 extern crate alloc;
 

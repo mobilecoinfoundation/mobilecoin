@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{io, net};
+use std::{io, net, string::String, vec::Vec};
 
 pub struct UdpWriter {
     destination: net::SocketAddr,

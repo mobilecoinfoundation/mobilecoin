@@ -152,9 +152,8 @@ mod tests {
     use super::*;
     use crate::trusted_validator_set::tests::*;
     use core::assert_matches::assert_matches;
-    use mc_blockchain_types::{Block, BlockID};
     use mc_consensus_scp_types::{test_utils::test_node_id, QuorumSet, QuorumSetMember};
-    use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx::TxOut, Amount};
+    use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, Amount};
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::get_seeded_rng;
 
