@@ -16,5 +16,5 @@ mc-fog-report-types = { path = "../../../fog/report/types", default-features = f
 mc-util-encodings = { path = "../../../util/encodings" }
 
 der = { version = "0.7.8", default-features = false, features = ["std"] }
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

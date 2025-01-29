@@ -27,7 +27,7 @@ mc-watcher-api = { path = "../watcher/api" }
 
 bs58 = "0.4.0"
 crc = "3.0.0"
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 mc-sgx-core-types = "0.11.0"
 mc-sgx-dcap-types = "0.11.0"
 protobuf = "2.27.1"

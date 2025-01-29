@@ -12,6 +12,6 @@ rust-version = { workspace = true }
 mc-util-build-script = { path = "../script" }
 
 cargo-emit = "0.2.1"
-cc = "1.0"
-displaydoc = { version = "0.2", default-features = false }
+cc = "1.2.10"
+displaydoc = { version = "0.2.5", default-features = false }
 pkg-config = "0.3"

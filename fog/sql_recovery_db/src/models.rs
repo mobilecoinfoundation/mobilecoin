@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+// Some of these fields are detected as "dead_code" because they are not used in
+// the codebase.
+#![allow(dead_code)]
+
 use super::schema::*;
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
 use mc_fog_types::common::BlockRange;

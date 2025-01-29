@@ -31,7 +31,7 @@ mc-fog-uri = { path = "../../uri" }
 # third-party
 aes-gcm = "0.10.3"
 der = "0.7.8"
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 futures = "0.3"
 grpcio = "0.13"
 mc-attestation-verifier = "0.4.3"

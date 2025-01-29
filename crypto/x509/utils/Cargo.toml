@@ -14,6 +14,6 @@ mc-crypto-x509-test-vectors = { path = "../test-vectors" }
 [dependencies]
 mc-crypto-keys = { path = "../../keys" }
 
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 pem = "3.0"
 x509-signature = "0.5"

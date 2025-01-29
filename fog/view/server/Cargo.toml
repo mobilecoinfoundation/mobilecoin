@@ -22,7 +22,7 @@ path = "src/bin/router.rs"
 [dependencies]
 # third party
 clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 futures = "0.3"
 grpcio = "0.13"
 lazy_static = "1.4"

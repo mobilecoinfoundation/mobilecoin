@@ -49,7 +49,7 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     /// This is the `REKEY(k)` cipher function from the specification, modified
     /// to support ciphers with alternate keys.
     fn rekey(&mut self) -> Result<Self, CipherError> {
-        let nonce = Self::nonce_to_arr(core::u64::MAX);
+        let nonce = Self::nonce_to_arr(u64::MAX);
         let msg = vec![0u8; Self::KeySize::to_usize()];
         let key = SecretVec::new(self.encrypt(
             &nonce,
@@ -183,7 +183,7 @@ impl<Cipher: NoiseCipher> CipherState<Cipher> {
     /// implementation returned an error.
     pub fn encrypt_with_ad(&mut self, aad: &[u8], msg: &[u8]) -> Result<Vec<u8>, CipherError> {
         let msg_len = msg.len() as u64;
-        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > MAX_BYTES_SENT {
+        if self.nonce == u64::MAX || self.bytes_sent + msg_len > MAX_BYTES_SENT {
             return Err(CipherError::ReKeyNeeded);
         }
 
@@ -213,7 +213,7 @@ impl<Cipher: NoiseCipher> CipherState<Cipher> {
     /// have been encrypted with the given cipher, or the underlying AEAD
     /// implementation returned an error.
     pub fn decrypt_with_ad(&mut self, aad: &[u8], msg: &[u8]) -> Result<Vec<u8>, CipherError> {
-        if self.nonce == core::u64::MAX {
+        if self.nonce == u64::MAX {
             return Err(CipherError::ReKeyNeeded);
         }
 

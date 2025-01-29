@@ -8,7 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 futures = "0.3"
 grpcio = "0.13"
 protobuf = "2.27.1"

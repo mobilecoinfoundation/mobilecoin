@@ -16,7 +16,7 @@ use crate::{
 use alloc::vec::Vec;
 use base64::Engine;
 use core::{
-    cmp::{max, min},
+    cmp::max,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     mem,
     ops::Range,
@@ -434,10 +434,8 @@ impl FromBase64 for Quote {
 
         // Clamp our length to at least QUOTE_MINSIZE, and no more than
         // MINSIZE + SIGLEN_MAX, and downcast to u32
-        let expected_len = max(
-            min(expected_len, QUOTE_MINSIZE + QUOTE_SIGLEN_MAX),
-            QUOTE_MINSIZE,
-        ) as u32;
+        let expected_len =
+            expected_len.clamp(QUOTE_MINSIZE, QUOTE_MINSIZE + QUOTE_SIGLEN_MAX) as u32;
 
         // Create an output buffer of at least MINSIZE bytes
         let mut retval = Quote::with_capacity(expected_len)?;

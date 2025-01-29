@@ -128,12 +128,12 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             block_version,
             input_credentials,
             required_outputs_and_secrets: Vec::new(),
-            tombstone_block: u64::max_value(),
+            tombstone_block: u64::MAX,
             partial_fill_outputs: Vec::new(),
             partial_fill_change: None,
             min_partial_fill_value: 0u64,
             fog_resolver,
-            fog_tombstone_block_limit: u64::max_value(),
+            fog_tombstone_block_limit: u64::MAX,
             memo_builder: Some(memo_builder),
         })
     }
@@ -485,7 +485,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 
         let input_rules = InputRules {
             required_outputs: outputs,
-            max_tombstone_block: if self.tombstone_block == u64::max_value() {
+            max_tombstone_block: if self.tombstone_block == u64::MAX {
                 0
             } else {
                 self.tombstone_block

@@ -13,6 +13,8 @@ enum QueueMsg<T> {
     StopRequested,
 }
 
+// ThreadSpawnFailed is never read.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum BackgroundWorkQueueError {
     ThreadSpawnFailed(io::Error),

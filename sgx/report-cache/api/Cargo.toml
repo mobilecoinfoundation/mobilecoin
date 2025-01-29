@@ -8,7 +8,7 @@ license = "GPL-3.0"
 rust-version = "1.76.0"
 
 [dependencies]
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 
 mc-attest-core = { path = "../../../attest/core", default-features = false }

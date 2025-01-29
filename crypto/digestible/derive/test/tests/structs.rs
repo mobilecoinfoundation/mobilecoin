@@ -288,7 +288,7 @@ fn blob2() {
 fn bar1() {
     let arg = Bar {
         d: Blob(b"Koala".to_vec()),
-        e: u32::max_value(),
+        e: u32::MAX,
         f: ExampleStruct { a: 5, b: 6, c: 7 },
     };
     let expected_ast = ASTNode::from(ASTAggregate {
@@ -351,7 +351,7 @@ fn bar1() {
 fn bar2() {
     let arg = BarWithTransparent {
         d: TransBlob(b"Koala".to_vec()),
-        e: u32::max_value(),
+        e: u32::MAX,
         f: ExampleStruct { a: 5, b: 6, c: 7 },
     };
     let expected_ast = ASTNode::Aggregate(ASTAggregate {

@@ -9,4 +9,4 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-rand_core = { version = "0.6", default_features = false }
+rand_core = { version = "0.6", default-features = false }

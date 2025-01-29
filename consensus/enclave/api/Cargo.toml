@@ -35,7 +35,7 @@ mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
 
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { version = "0.2.5", default-features = false }
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 

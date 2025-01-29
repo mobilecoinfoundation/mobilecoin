@@ -172,6 +172,8 @@ impl From<DecodeError> for TxOutRecoveryError {
     }
 }
 
+// Is this error type ever used?
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum RngSetError {
     Decode(DecodeError),

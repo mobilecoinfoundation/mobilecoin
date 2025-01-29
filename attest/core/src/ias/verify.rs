@@ -22,7 +22,7 @@ use alloc::{
     vec::Vec,
 };
 use base64::Engine;
-use core::{f64::EPSILON, fmt::Debug, intrinsics::fabsf64, str};
+use core::{fmt::Debug, intrinsics::fabsf64, str};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use serde::{Deserialize, Serialize};
 
@@ -144,7 +144,7 @@ impl VerificationReportData {
         expected_pse_manifest_hash: Option<&[u8]>,
     ) -> Result<(), VerifyError> {
         // Dumbest. Possible. Timeline.
-        if unsafe { fabsf64(expected_version - self.version) } > EPSILON {
+        if unsafe { fabsf64(expected_version - self.version) } > f64::EPSILON {
             return Err(VerifyError::VersionMismatch(expected_version, self.version));
         }
 

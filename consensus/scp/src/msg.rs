@@ -14,7 +14,7 @@ use std::{
 };
 
 /// The highest possible ballot counter.
-pub const INFINITY: u32 = <u32>::max_value();
+pub const INFINITY: u32 = <u32>::MAX;
 
 /// The contents of a Nominate Message.
 #[derive(Clone, Debug, Eq, Hash, Serialize, Deserialize, PartialEq, Digestible)]

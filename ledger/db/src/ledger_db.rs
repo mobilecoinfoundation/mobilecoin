@@ -2396,7 +2396,11 @@ mod ledger_db_test {
             // Note: unsafe transmute is being used to skirt the invariant that BlockVersion
             // does not exceed MAX_BLOCK_VERSION
             let invalid_block = Block::new_with_parent(
-                unsafe { core::mem::transmute(last_block.version + 1) },
+                unsafe {
+                    core::mem::transmute::<u32, mc_blockchain_types::BlockVersion>(
+                        last_block.version + 1,
+                    )
+                },
                 &last_block,
                 &Default::default(),
                 &block_contents,

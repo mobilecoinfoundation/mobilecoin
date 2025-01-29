@@ -37,7 +37,7 @@ fn primitives_test_vectors() {
         ]
     );
     assert_eq!(
-        u64::max_value().digest32::<MerlinTranscript>(b"test"),
+        u64::MAX.digest32::<MerlinTranscript>(b"test"),
         [
             199, 212, 113, 79, 91, 56, 22, 48, 131, 244, 165, 157, 170, 131, 255, 29, 59, 249, 175,
             89, 255, 57, 43, 50, 76, 217, 9, 219, 85, 103, 113, 88
@@ -236,10 +236,10 @@ fn test_digest_option() {
             194, 247, 84, 216, 45, 122, 19, 75, 140, 159, 233, 85, 6
         ]
     );
-    let temp: Option<u64> = Some(u64::max_value());
+    let temp: Option<u64> = Some(u64::MAX);
     assert_eq!(
         temp.digest32::<MerlinTranscript>(b"test"),
-        u64::max_value().digest32::<MerlinTranscript>(b"test")
+        u64::MAX.digest32::<MerlinTranscript>(b"test")
     );
 }
 
