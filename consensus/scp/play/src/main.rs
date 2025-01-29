@@ -14,8 +14,7 @@ use mc_consensus_scp::{
 use mc_transaction_core::{constants::MAX_TRANSACTIONS_PER_BLOCK, tx::TxHash};
 use mc_util_uri::ConsensusPeerUri as PeerUri;
 use std::{
-    collections::VecDeque, fmt, path::PathBuf, str::FromStr, sync::Arc, thread::sleep,
-    time::Duration,
+    collections::VecDeque, path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration,
 };
 
 /// Configurable options.
@@ -56,14 +55,6 @@ fn parse_node_id_from_uri(src: &str) -> Result<NodeID, String> {
     let uri = PeerUri::from_str(src)
         .map_err(|err| format!("Could not get URI from param {src}: {err:?}"))?;
     Ok(NodeID::from(&uri))
-}
-
-#[allow(dead_code)]
-struct TransactionValidationError;
-impl fmt::Display for TransactionValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("TransactionValidationError")
-    }
 }
 
 fn main() {

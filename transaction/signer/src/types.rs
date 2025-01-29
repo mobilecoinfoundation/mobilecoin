@@ -347,23 +347,3 @@ impl<'de, const N: usize> serde::de::Visitor<'de> for ConstArrayVisitor<N> {
         Ok(b)
     }
 }
-
-/// Serde visitor for hex encoded variable length byte arrays
-#[allow(dead_code)]
-pub(crate) struct VarArrayVisitor;
-
-/// Serde visitor implementation for variable length arrays of hex-encoded
-/// protobufs
-impl<'de> serde::de::Visitor<'de> for VarArrayVisitor {
-    type Value = Vec<u8>;
-
-    fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        write!(formatter, concat!("A hex encoded array of bytes"))
-    }
-
-    fn visit_str<E: serde::de::Error>(self, s: &str) -> Result<Self::Value, E> {
-        let b = hex::decode(s).map_err(|e| E::custom(e))?;
-
-        Ok(b)
-    }
-}
