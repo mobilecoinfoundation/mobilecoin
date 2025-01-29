@@ -296,7 +296,7 @@ impl BlockDataStore {
 mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
 
     #[test_with_logger]
     fn block_data_store_happy_path(logger: Logger) {

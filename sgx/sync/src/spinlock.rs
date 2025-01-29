@@ -4,15 +4,14 @@
 // modification, are permitted provided that the following conditions
 // are met:
 //
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in
-//    the documentation and/or other materials provided with the
-//    distribution.
-//  * Neither the name of Baidu, Inc., nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
+//  * Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//  * Neither the name of Baidu, Inc., nor the names of its contributors may be
+//    used to endorse or promote products derived from this software without
+//    specific prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -27,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use core::{cell::UnsafeCell, marker};
-use mc_sgx_types::{self, sgx_spinlock_t};
+use mc_sgx_types::sgx_spinlock_t;
 
 unsafe fn raw_lock(lock: &mut sgx_spinlock_t) -> *mut sgx_spinlock_t {
     lock as *mut _
@@ -39,8 +38,8 @@ unsafe fn raw_lock(lock: &mut sgx_spinlock_t) -> *mut sgx_spinlock_t {
 /// # Description
 ///
 /// rsgx_spin_lock modifies the value of the spin lock by using compiler atomic
-/// operations. If the lock is not available to be acquired, the thread will always
-/// wait on the lock until it can be acquired successfully.
+/// operations. If the lock is not available to be acquired, the thread will
+/// always wait on the lock until it can be acquired successfully.
 ///
 /// # Parameters
 ///
@@ -51,7 +50,6 @@ unsafe fn raw_lock(lock: &mut sgx_spinlock_t) -> *mut sgx_spinlock_t {
 /// # Requirements
 ///
 /// Library: libsgx_tstdc.a
-///
 unsafe fn rsgx_spin_lock(lock: &mut sgx_spinlock_t) {
     mc_sgx_types::sgx_spin_lock(raw_lock(lock));
 }
@@ -61,9 +59,9 @@ unsafe fn rsgx_spin_lock(lock: &mut sgx_spinlock_t) {
 ///
 /// # Description
 ///
-/// rsgx_spin_unlock resets the value of the spin lock, regardless of its current
-/// state. This function simply assigns a value of zero to the lock, which indicates
-/// the lock is released.
+/// rsgx_spin_unlock resets the value of the spin lock, regardless of its
+/// current state. This function simply assigns a value of zero to the lock,
+/// which indicates the lock is released.
 ///
 /// # Parameters
 ///
@@ -74,7 +72,6 @@ unsafe fn rsgx_spin_lock(lock: &mut sgx_spinlock_t) {
 /// # Requirements
 ///
 /// Library: libsgx_tstdc.a
-///
 unsafe fn rsgx_spin_unlock(lock: &mut sgx_spinlock_t) {
     mc_sgx_types::sgx_spin_unlock(raw_lock(lock));
 }

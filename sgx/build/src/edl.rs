@@ -8,7 +8,6 @@ use std::{
     ffi::OsString,
     path::{Path, PathBuf},
     process::Command,
-    string::String,
 };
 
 // Builder pattern for edger8r tool

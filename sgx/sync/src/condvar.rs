@@ -46,7 +46,7 @@ use core::{
     fmt,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use mc_sgx_types::{self, libc, sgx_thread_cond_t, sgx_thread_mutex_t, SysError};
+use mc_sgx_types::{libc, sgx_thread_cond_t, sgx_thread_mutex_t, SysError};
 
 pub unsafe fn raw_cond(lock: &mut sgx_thread_cond_t) -> *mut sgx_thread_cond_t {
     lock as *mut _

@@ -140,7 +140,7 @@ fn version_3_1_empty_collateral() -> sgx_ql_qve_collateral_t {
 
 #[cfg(test)]
 mod test {
-    use super::{prost, *};
+    use super::*;
     use ::prost::Message;
     use alloc::vec;
     use assert_matches::assert_matches;

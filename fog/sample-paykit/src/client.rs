@@ -1163,14 +1163,14 @@ fn input_credentials_helper(
 mod test_build_transaction_helper {
     use super::*;
     use core::result::Result as StdResult;
-    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
+    use mc_common::logger::test_with_logger;
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB, onetime_keys::recover_public_subaddress_spend_key,
-        tokens::Mob, tx::TxOut, Amount, Token,
+        tokens::Mob, Token,
     };
     use mc_transaction_core_test_utils::get_outputs;
     use mc_util_test_helper::get_seeded_rng;

@@ -1,6 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use slog::{o, Drain, Key, Level, Logger, Never, OwnedKVList, Record, Serializer, KV};
+use std::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 pub(crate) struct SentryLogger {
     inner: Logger,

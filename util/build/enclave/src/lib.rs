@@ -279,7 +279,7 @@ impl Builder {
 
     /// Set a new "base" target dir to use when building an enclave
     pub fn target_dir(&mut self, target_dir: &Path) -> &mut Self {
-        self.target_dir = target_dir.to_owned();
+        target_dir.clone_into(&mut self.target_dir);
         self.cargo_builder.target_dir(target_dir);
         self
     }

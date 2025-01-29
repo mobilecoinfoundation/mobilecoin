@@ -4,7 +4,7 @@
 
 use alloc::vec::Vec;
 
-use core::{convert::TryFrom, fmt};
+use core::fmt;
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -654,6 +654,7 @@ mod tests {
         tx::{Tx, TxIn, TxOut, TxPrefix},
         Amount, BlockVersion, Token,
     };
+    use alloc::vec;
     use mc_account_keys::{
         AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
     };

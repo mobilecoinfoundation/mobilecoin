@@ -3,7 +3,7 @@
 //! Utilities for SCP tests.
 
 use crate::QuorumSet;
-use alloc::vec;
+use alloc::{format, vec};
 use core::str::FromStr;
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_keys::Ed25519Pair;

@@ -2,9 +2,11 @@
 
 //! Utilities for creating MobileCoin transactions, intended for client-side
 //! use and not intended to be used inside of enclaves.
-
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 #![deny(missing_docs)]
+
+#[cfg(test)]
+extern crate std;
 
 extern crate alloc;
 

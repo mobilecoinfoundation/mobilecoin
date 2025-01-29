@@ -335,11 +335,8 @@ mod tests {
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{ballot::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
-    use mc_ledger_db::{
-        test_utils::{
-            add_block_contents_to_ledger, create_ledger, create_transaction, initialize_ledger,
-        },
-        Ledger,
+    use mc_ledger_db::test_utils::{
+        add_block_contents_to_ledger, create_ledger, create_transaction, initialize_ledger,
     };
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::{test_peer_uri_with_key, MockPeerConnection};
@@ -351,11 +348,7 @@ mod tests {
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
     use serial_test::serial;
-    use std::{
-        collections::BTreeSet,
-        sync::{Arc, Mutex},
-        time::Instant,
-    };
+    use std::collections::BTreeSet;
 
     // Run these tests with a particular block version
     const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;

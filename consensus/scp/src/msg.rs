@@ -656,7 +656,6 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
 mod msg_tests {
     use super::*;
     use crate::test_utils::test_node_id;
-    use core::iter::FromIterator;
     use rand::seq::SliceRandom;
 
     #[test]

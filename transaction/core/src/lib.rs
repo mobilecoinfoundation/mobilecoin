@@ -8,10 +8,6 @@
 
 extern crate alloc;
 
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-
 #[macro_use]
 extern crate lazy_static;
 

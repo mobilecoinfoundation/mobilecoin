@@ -284,7 +284,7 @@ mod tests {
         let mut pending_values =
             PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
 
-        pending_values.pending_values = values.clone();
+        pending_values.pending_values.clone_from(&values);
         pending_values.pending_values_map = values
             .iter()
             .cloned()

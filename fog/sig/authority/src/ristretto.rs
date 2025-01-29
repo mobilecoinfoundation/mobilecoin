@@ -29,13 +29,12 @@ impl Verifier for RistrettoPublic {
     }
 }
 
+/// Unit tests.
+///
+/// We assume signing, context changes, mutability, etc. is tested at lower
+/// level, and just do a round-trip.
 #[cfg(test)]
 mod test {
-    //! Unit tests.
-    //!
-    //! We assume signing, context changes, mutability, etc. is tested at lower
-    //! level, and just do a round-trip.
-
     use super::*;
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;

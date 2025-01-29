@@ -462,7 +462,7 @@ pub mod tests {
     use crate::tx_out_store::tx_out_store_tests::get_env;
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
-    use mc_transaction_core::mint::{MintConfigTx, MintConfigTxPrefix};
+    use mc_transaction_core::mint::MintConfigTxPrefix;
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
         mint_config_tx_to_validated as to_validated,
@@ -584,7 +584,7 @@ pub mod tests {
             db_transaction.commit().unwrap();
         }
         // Retrying with the same nonce for the same token_id should fail.
-        test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
+        test_tx_2.prefix.nonce.clone_from(&test_tx_1.prefix.nonce);
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
@@ -1377,7 +1377,7 @@ pub mod tests {
         let test_tx_1 = create_mint_config_tx(token_id1, &mut rng);
         let mut test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
         let test_tx_3 = create_mint_config_tx(token_id2, &mut rng);
-        test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
+        test_tx_2.prefix.nonce.clone_from(&test_tx_1.prefix.nonce);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();

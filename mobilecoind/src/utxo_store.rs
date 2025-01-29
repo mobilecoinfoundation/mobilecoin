@@ -487,10 +487,7 @@ impl UtxoStore {
 mod test {
     use super::*;
     use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion};
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        HashSet,
-    };
+    use mc_common::{logger::test_with_logger, HashSet};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_rand::{CryptoRng, RngCore};
     use mc_transaction_core::{tokens::Mob, Token};

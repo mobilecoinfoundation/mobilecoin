@@ -11,7 +11,7 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
 use mc_common::logger::{log, Logger};
-use prometheus::{self, Encoder};
+use prometheus::Encoder;
 use std::{env, sync::Arc};
 
 /// A callback for getting service-specific configuration data.

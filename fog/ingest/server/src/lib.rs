@@ -30,22 +30,9 @@ mod controller_state;
 mod counters;
 mod worker;
 
-use core::fmt::Display;
-use itertools::Itertools;
 use mc_util_metrics::ServiceMetrics;
 
 lazy_static::lazy_static! {
     /// Generates service metrics for tracking
     pub static ref SVC_COUNTERS: ServiceMetrics = ServiceMetrics::new_and_registered("fog_ingest_service");
-}
-
-// Helper to format a sequence as a comma-separated list
-// (This is used with lists of Ingest peer uris in logs,
-// because the debug logging of that object is harder to read)
-struct SeqDisplay<T: Display, I: Iterator<Item = T> + Clone>(I);
-
-impl<T: Display, I: Iterator<Item = T> + Clone> Display for SeqDisplay<T, I> {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(fmt, "[{}]", self.0.clone().format(", "))
-    }
 }

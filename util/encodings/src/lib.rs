@@ -2,8 +2,11 @@
 
 //! Traits and support for common encoding types
 
+#![no_std]
 #![deny(missing_docs)]
-#![cfg_attr(not(any(test, doctest, feature = "std")), no_std)]
+
+#[cfg(feature = "std")]
+extern crate std;
 
 extern crate alloc;
 

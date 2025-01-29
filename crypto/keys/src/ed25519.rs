@@ -35,7 +35,7 @@ use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
 use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 #[cfg(feature = "serde")]
-use serde::{self as serde, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "serde")]
 use mc_util_serial::BigArray;

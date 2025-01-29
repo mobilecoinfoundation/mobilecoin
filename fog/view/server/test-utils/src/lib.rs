@@ -209,7 +209,7 @@ impl RouterTestEnvironment {
                 let uri = FogViewStoreUri::from_str(&format!(
                     "insecure-fog-view-store://127.0.0.1:{port}?responder-id={}&sharding_strategy={}",
                     responder_id,
-                    epoch_sharding_strategy.to_string()
+                    epoch_sharding_strategy
                 ))
                 .unwrap();
 

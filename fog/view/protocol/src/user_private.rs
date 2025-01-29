@@ -107,7 +107,6 @@ impl From<&AccountKey> for UserPrivate {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata};
     use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, BlockVersion, Token};

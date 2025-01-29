@@ -10,7 +10,6 @@ extern crate alloc;
 
 use alloc::{collections::BTreeSet, vec, vec::Vec};
 use bulletproofs_og::RangeProof;
-use core::convert::TryFrom;
 use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     traits::Identity,
@@ -958,23 +957,15 @@ impl From<&SignableInputRing> for SignedInputRing {
 mod rct_bulletproofs_tests {
     use super::*;
     use crate::{
-        range_proofs::generate_range_proofs,
-        ring_signature::{
-            generators, Error as RingSignatureError, KeyImage, PedersenGens, ReducedTxOut,
-        },
-        tx::{TxIn, TxPrefix},
-        CompressedCommitment, TokenId,
+        ring_signature::{generators, Error as RingSignatureError, PedersenGens},
+        tx::TxIn,
+        TokenId,
     };
-    use alloc::vec::Vec;
     use assert_matches::assert_matches;
-    use core::convert::TryInto;
-    use curve25519_dalek::scalar::Scalar;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-    use mc_crypto_ring_signature_signer::{
-        InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing,
-    };
+    use mc_crypto_ring_signature_signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData};
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
+    use mc_util_test_helper::{RngType, SeedableRng};
     use proptest::prelude::*;
 
     extern crate std;

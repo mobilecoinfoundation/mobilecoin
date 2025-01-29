@@ -63,6 +63,7 @@ fi
 
 for toml in $(find . -type f -not -path '*/cargo/*' -name Cargo.toml); do
   pushd $(dirname $toml) >/dev/null
+  echo "Checking $toml"
   eval $SORT_COMMAND
   popd >/dev/null
 done

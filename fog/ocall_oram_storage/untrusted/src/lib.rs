@@ -38,7 +38,6 @@
 use mc_common::logger::global_log;
 use std::{
     alloc::{alloc, alloc_zeroed, dealloc, Layout},
-    boxed::Box,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
 };
 

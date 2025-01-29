@@ -11,7 +11,6 @@ use crate::util::{
     create_test_tx, create_test_tx_with_amount,
     create_test_tx_with_amount_and_comparer_and_recipients,
 };
-use alloc::vec::Vec;
 use mc_account_keys::AccountKey;
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
 use mc_ledger_db::{

@@ -959,7 +959,7 @@ mod ledger_db_test {
     use crate::test_utils::{add_block_contents_to_ledger, add_txos_and_key_images_to_ledger};
     use mc_blockchain_test_utils::{get_blocks, make_block_metadata};
     use mc_crypto_keys::Ed25519Pair;
-    use mc_transaction_core::{membership_proofs::compute_implied_merkle_root, BlockVersion};
+    use mc_transaction_core::membership_proofs::compute_implied_merkle_root;
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
         create_test_tx_out, mint_config_tx_to_validated as to_validated,

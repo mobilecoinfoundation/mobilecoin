@@ -77,11 +77,11 @@ impl Default for EpochShardingStrategy {
     }
 }
 
-impl ToString for EpochShardingStrategy {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for EpochShardingStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let start_block = self.epoch_block_range.start_block;
         let end_block = self.epoch_block_range.end_block;
-        format!("{start_block}{BLOCK_RANGE_DELIMITER}{end_block}")
+        write!(f, "{start_block}{BLOCK_RANGE_DELIMITER}{end_block}")
     }
 }
 

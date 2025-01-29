@@ -1044,10 +1044,9 @@ mod tests {
     };
     use mc_transaction_core::{
         mint::{constants::NONCE_LENGTH, MintConfigTxPrefix},
-        tokens::Mob,
         tx::TxOutMembershipHash,
-        validation::{validate_tx_out, TransactionValidationError},
-        BlockVersion, FeeMap, Token,
+        validation::validate_tx_out,
+        FeeMap,
     };
     use mc_transaction_core_test_utils::{
         create_mint_config_tx_and_signers, create_mint_tx_to_recipient, sign_mint_config_tx_prefix,
@@ -3428,7 +3427,10 @@ mod tests {
 
         // Changing the nonce of the second mint config to match the first
         // should cause a failure.
-        mint_config_tx2.prefix.nonce = mint_config_tx1.prefix.nonce.clone();
+        mint_config_tx2
+            .prefix
+            .nonce
+            .clone_from(&mint_config_tx1.prefix.nonce);
         match SgxConsensusEnclave::validate_mint_config_txs(
             vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
             None,
@@ -3518,7 +3520,7 @@ mod tests {
 
         // Changing the nonce of the second mint tx to match the first
         // should cause a failure.
-        mint_tx2.prefix.nonce = mint_tx1.prefix.nonce.clone();
+        mint_tx2.prefix.nonce.clone_from(&mint_tx1.prefix.nonce);
         match SgxConsensusEnclave::validate_mint_txs(
             vec![
                 (

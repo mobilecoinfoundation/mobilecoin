@@ -264,9 +264,7 @@ pub mod well_formed_tests {
 mod is_valid_tests {
     use super::*;
     use mc_ledger_db::{Error as LedgerError, MockLedger};
-    use mc_transaction_core::{
-        constants::MAX_TOMBSTONE_BLOCKS, validation::TransactionValidationError,
-    };
+    use mc_transaction_core::constants::MAX_TOMBSTONE_BLOCKS;
 
     #[test]
     /// `is_valid` should accept a valid transaction.
@@ -500,10 +498,8 @@ mod combine_tests {
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_builder::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
     use mc_transaction_core::{
-        onetime_keys::recover_onetime_private_key,
-        tokens::Mob,
-        tx::{TxOut, TxOutMembershipProof},
-        Amount, BlockVersion, Token,
+        onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Amount, BlockVersion,
+        Token,
     };
     use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
     use mc_util_from_random::FromRandom;

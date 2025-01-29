@@ -157,8 +157,7 @@ mod tests {
     use mc_account_keys::PublicAddress;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_transaction_core::{
-        onetime_keys::create_shared_secret, tokens::Mob, tx, Amount, BlockVersion, MaskedAmount,
-        RevealedTxOut, Token,
+        onetime_keys::create_shared_secret, tokens::Mob, Amount, BlockVersion, MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};

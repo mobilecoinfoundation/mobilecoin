@@ -172,7 +172,7 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_scp::{ballot::Ballot, msg::*};
+    use mc_consensus_scp::msg::*;
     use mc_peers_test_utils::test_node_id;
     use std::collections::BTreeSet;
 

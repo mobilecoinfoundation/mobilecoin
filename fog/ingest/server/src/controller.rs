@@ -967,10 +967,7 @@ where
             )
             .collect::<Result<BTreeMap<ResponderId, IngestPeerUri>, SetPeersError>>()?;
         // Our own responder id should correspond to one of the peers
-        if new_peers_by_responder_id
-            .get(&self.config.local_node_id)
-            .is_none()
-        {
+        if !new_peers_by_responder_id.contains_key(&self.config.local_node_id) {
             return Err(SetPeersError::MissingOurResponderId(
                 self.config.local_node_id.clone(),
                 new_peers_by_responder_id,

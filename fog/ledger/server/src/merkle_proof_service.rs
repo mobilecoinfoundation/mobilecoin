@@ -220,19 +220,14 @@ impl<E: LedgerEnclaveProxy> FogMerkleProofApi for MerkleProofService<E> {
 mod test {
     use super::*;
     use mc_account_keys::AccountKey;
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        HashSet,
-    };
+    use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_block_provider::LocalBlockProvider;
     use mc_fog_ledger_test_infra::{MockEnclave, MockLedger};
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        membership_proofs::Range,
-        tokens::Mob,
-        tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-        Amount, BlockVersion, Token,
+        membership_proofs::Range, tokens::Mob, tx::TxOutMembershipElement, Amount, BlockVersion,
+        Token,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_grpc::AnonymousAuthenticator;

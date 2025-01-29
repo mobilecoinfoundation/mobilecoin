@@ -1,5 +1,4 @@
 use mc_crypto_digestible::DigestTranscript;
-use std::vec::Vec;
 
 // This is a mock of merlin, which doesn't hash anything, but captures
 // the inputs to calls to "append_bytes", so that we can inspect them,

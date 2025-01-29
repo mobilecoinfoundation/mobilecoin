@@ -9,7 +9,7 @@ use displaydoc::Display;
 use hmac::{Hmac, Mac};
 use mc_common::time::TimeProvider;
 use sha2::Sha256;
-use std::{str, time::Duration};
+use std::time::Duration;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 

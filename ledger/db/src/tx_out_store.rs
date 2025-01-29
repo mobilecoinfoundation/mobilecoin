@@ -419,8 +419,7 @@ mod membership_proof_tests {
         tx_out_store_tests::{get_tx_outs, init_tx_out_store},
         *,
     };
-    use lmdb::Transaction;
-    use mc_transaction_core::tx::{TxOutMembershipElement, TxOutMembershipHash};
+    use mc_transaction_core::tx::TxOutMembershipHash;
 
     #[test]
     // A valid proof-of-membership for the only TxOut in a set.
@@ -1047,7 +1046,7 @@ pub mod tx_out_store_tests {
         for (i, tx_out) in tx_outs.iter().enumerate() {
             let index = tx_out_store.push(tx_out, &mut rw_transaction).unwrap();
             assert_eq!(i as u64, index);
-            let expected_count = (i + 1) as u64;
+            let expected_count = i as u64 + 1;
             assert_eq!(
                 expected_count,
                 tx_out_store.num_tx_outs(&rw_transaction).unwrap()

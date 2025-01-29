@@ -13,7 +13,7 @@ use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ingest_common::IngestSummary;
 use mc_fog_uri::FogIngestUri;
-use prometheus::{self, Encoder};
+use prometheus::Encoder;
 use std::{
     collections::HashMap,
     sync::{

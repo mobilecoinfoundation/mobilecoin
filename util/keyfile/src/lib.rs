@@ -152,7 +152,6 @@ mod testing {
 
     use super::*;
     use bip39::{Language, MnemonicType};
-    use mc_account_keys::AccountKey;
     use mc_core::slip10::Slip10KeyGenerator;
 
     /// Test that round-tripping through a keyfile without fog gets the same

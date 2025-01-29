@@ -3,7 +3,7 @@
 //! A helper utility for running migrations on a database configured via
 //! DATABASE_URL.
 
-use diesel::{prelude::*, PgConnection};
+use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::env;
 

@@ -11,7 +11,6 @@ use mc_fog_report_validation::{FogPubkeyError, FogPubkeyResolver, FullyValidated
 
 use mc_fog_ingest_report::IngestAttestationEvidenceVerifier;
 
-use alloc::string::{String, ToString};
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attestation_verifier::TrustedIdentity;

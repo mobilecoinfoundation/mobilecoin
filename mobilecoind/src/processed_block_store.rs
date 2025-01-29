@@ -250,10 +250,7 @@ mod test {
         test_utils::{get_test_databases, BlockVersion, DEFAULT_PER_RECIPIENT_AMOUNT},
     };
     use mc_account_keys::AccountKey;
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        HashSet,
-    };
+    use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPublic;
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_rand::{CryptoRng, RngCore};

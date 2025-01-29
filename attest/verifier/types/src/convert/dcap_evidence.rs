@@ -43,7 +43,7 @@ impl TryFrom<&DcapEvidence> for prost::DcapEvidence {
 
 #[cfg(test)]
 mod test {
-    use super::{prost, *};
+    use super::*;
     use crate::EnclaveReportDataContents;
     use ::prost::Message;
     use assert_matches::assert_matches;

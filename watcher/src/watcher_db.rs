@@ -1092,7 +1092,7 @@ pub mod tests {
     use mc_attest_verifier_types::prost;
     use mc_blockchain_test_utils::get_blocks;
     use mc_blockchain_types::{BlockVersion, VerificationReport};
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{get_seeded_rng, run_with_one_seed};

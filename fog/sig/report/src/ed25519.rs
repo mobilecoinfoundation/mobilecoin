@@ -26,13 +26,12 @@ impl Verifier for Ed25519Public {
     }
 }
 
+/// Unit tests.
+///
+/// We assume signing, context changes, mutability, etc. is tested at lower
+/// level, and just do a round-trip.
 #[cfg(test)]
 mod test {
-    //! Unit tests.
-    //!
-    //! We assume signing, context changes, mutability, etc. is tested at lower
-    //! level, and just do a round-trip.
-
     extern crate alloc;
 
     use super::*;

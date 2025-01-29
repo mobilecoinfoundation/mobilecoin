@@ -4,7 +4,7 @@
 #![no_std]
 #![deny(missing_docs)]
 
-use core::cmp::{Ordering, PartialEq, PartialOrd};
+use core::cmp::Ordering;
 
 /// A simple type which represents a ratio of two u64 numbers.
 ///

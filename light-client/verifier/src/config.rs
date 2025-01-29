@@ -151,7 +151,7 @@ impl fmt::Display for HexKeyNodeID {
 mod der_base64_encoding {
     use base64::{engine::general_purpose::STANDARD as BASE64_ENGINE, Engine};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
-    use serde::{self, Deserialize, Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(key: &Ed25519Public, serializer: S) -> Result<S::Ok, S::Error>
     where

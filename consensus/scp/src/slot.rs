@@ -2831,7 +2831,7 @@ mod ballot_protocol_tests {
             slot.Y = HashSet::from_iter([1234, 5678]);
             slot.B = Ballot::new(3, &[1234, 5678]);
             slot.P = Some(Ballot::new(2, &[1234, 5678]));
-            slot.H = slot.P.clone();
+            slot.H.clone_from(&slot.P);
             slot.last_sent_msg = slot.out_msg();
             slot.M.insert(
                 node_2.0.clone(),

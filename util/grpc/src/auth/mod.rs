@@ -190,11 +190,8 @@ impl BasicCredentials {
 #[cfg(test)]
 mod test {
     use super::*;
-    use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
-    use grpcio::MetadataBuilder;
     use mc_common::time::SystemTimeProvider;
     use std::time::Duration;
-    use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
 
     const TOKEN_MAX_LIFETIME: Duration = Duration::from_secs(60);
 

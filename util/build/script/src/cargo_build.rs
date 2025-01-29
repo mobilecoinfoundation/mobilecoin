@@ -380,7 +380,7 @@ impl CargoBuilder {
 
     /// Set the path to the cargo executable
     pub fn cargo_path(&mut self, cargo: &Path) -> &mut Self {
-        self.cargo_path = cargo.to_owned();
+        cargo.clone_into(&mut self.cargo_path);
         self
     }
 

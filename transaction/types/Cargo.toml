@@ -35,4 +35,5 @@ mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
 
 [dev-dependencies]
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", features = ["proptest"] }
 proptest = { version = "1.4", default-features = false, features = ["default-code-coverage"] }

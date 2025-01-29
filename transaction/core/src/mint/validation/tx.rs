@@ -104,6 +104,7 @@ mod tests {
         encrypted_fog_hint::EncryptedFogHint,
         mint::{constants::NONCE_LENGTH, MintTxPrefix},
     };
+    use alloc::vec;
     use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;

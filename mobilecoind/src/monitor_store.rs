@@ -330,12 +330,9 @@ impl MonitorStore {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        error::Error,
-        test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion},
-    };
+    use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion};
     use mc_account_keys::RootIdentity;
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_common::logger::test_with_logger;
     use mc_util_from_random::FromRandom;
     use rand_chacha::ChaChaRng;
     use rand_core::SeedableRng;
@@ -425,7 +422,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
         let (monitor_data1, monitor_id1) = get_test_monitor_data_and_id(&mut rng);
         let (_monitor_data, monitor_id2) = get_test_monitor_data_and_id(&mut rng);
 
-        monitor_data0.name = "test name".to_owned();
+        "test name".clone_into(&mut monitor_data0.name);
 
         let _ = mobilecoind_db
             .add_monitor(&monitor_data0)

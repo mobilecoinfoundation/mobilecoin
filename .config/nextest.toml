@@ -7,8 +7,6 @@ failure-output = "immediate-final"
 status-level = "slow"
 # Add retires for flaky tests
 retries = { backoff = "exponential", count = 3, delay = "5s" }
-# Limit threads to a "large" gha container max
-test-threads = 22
 
 [profile.ci.junit]
 # Output a JUnit report under `target/nextest/ci/junit.xml`.

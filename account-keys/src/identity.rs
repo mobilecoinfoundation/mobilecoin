@@ -116,9 +116,9 @@ impl RootIdentity {
         let mut result = Self::from_random(rng);
 
         if !fog_report_url.is_empty() {
-            result.fog_report_url = fog_report_url.to_owned();
-            result.fog_report_id = fog_report_id.to_owned();
-            result.fog_authority_spki = fog_authority_spki.to_owned();
+            fog_report_url.clone_into(&mut result.fog_report_url);
+            fog_report_id.clone_into(&mut result.fog_report_id);
+            fog_authority_spki.clone_into(&mut result.fog_authority_spki);
         }
 
         result
