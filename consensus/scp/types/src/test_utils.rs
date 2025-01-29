@@ -3,14 +3,13 @@
 //! Utilities for SCP tests.
 
 use crate::QuorumSet;
-use alloc::vec;
+use alloc::{format, vec};
 use core::str::FromStr;
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_keys::Ed25519Pair;
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use std::format;
 
 /// Creates NodeID from integer for testing.
 pub fn test_node_id(node_id: u32) -> NodeID {

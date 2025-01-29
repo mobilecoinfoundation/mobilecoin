@@ -5,9 +5,6 @@
 #![warn(unused_extern_crates)]
 #![allow(non_snake_case)]
 
-#[cfg(any(test, feature = "test_utils", feature = "std"))]
-extern crate std;
-
 extern crate alloc;
 
 pub mod core_types;
