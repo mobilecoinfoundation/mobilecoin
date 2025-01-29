@@ -79,6 +79,7 @@ impl PartialOrd for Range {
 #[cfg(test)]
 mod range_tests {
     use super::Range;
+    use alloc::vec;
 
     #[test]
     // `len` should return the number of indices in a range.

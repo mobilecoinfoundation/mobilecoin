@@ -654,6 +654,7 @@ mod tests {
         tx::{Tx, TxIn, TxOut, TxPrefix},
         Amount, BlockVersion, Token,
     };
+    use alloc::vec;
     use mc_account_keys::{
         AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
     };

@@ -109,6 +109,7 @@ fn validate_signature(
 mod tests {
     use super::*;
     use crate::mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH};
+    use alloc::vec;
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;

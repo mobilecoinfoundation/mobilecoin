@@ -9,10 +9,6 @@
 extern crate alloc;
 
 #[macro_use]
-#[cfg(test)]
-extern crate std;
-
-#[macro_use]
 extern crate lazy_static;
 
 mod fee_map;
