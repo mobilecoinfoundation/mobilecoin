@@ -41,8 +41,8 @@ impl T3Connection {
     pub fn new(uri: &T3Uri, api_key: String, logger: Logger) -> Self {
         let env = Arc::new(EnvBuilder::new().name_prefix("T3RPC").build());
         let ch = ChannelBuilder::new(env)
-            .max_receive_message_len(std::i32::MAX)
-            .max_send_message_len(std::i32::MAX)
+            .max_receive_message_len(i32::MAX)
+            .max_send_message_len(i32::MAX)
             .connect_to_uri(uri, &logger);
 
         let transaction_service_client = TransactionServiceClient::new(ch);

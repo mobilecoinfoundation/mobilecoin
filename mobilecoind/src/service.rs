@@ -2309,7 +2309,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .sum::<u128>();
 
         // It's possible the balance does not fit into a u64.
-        if balance > u64::max_value().into() {
+        if balance > u64::MAX.into() {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
                 format!("balance of {balance} won't fit in u64, fetch utxo list instead"),

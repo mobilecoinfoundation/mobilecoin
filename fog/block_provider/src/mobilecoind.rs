@@ -33,8 +33,8 @@ impl MobilecoindBlockProvider {
     pub fn new(mobilecoind_uri: &MobilecoindUri, logger: &Logger) -> Box<Self> {
         let env = Arc::new(EnvBuilder::new().name_prefix("Mobilecoind-GRPC").build());
         let ch = ChannelBuilder::new(env)
-            .max_receive_message_len(std::i32::MAX)
-            .max_send_message_len(std::i32::MAX)
+            .max_receive_message_len(i32::MAX)
+            .max_send_message_len(i32::MAX)
             .connect_to_uri(mobilecoind_uri, logger);
 
         let client = MobilecoindApiClient::new(ch);

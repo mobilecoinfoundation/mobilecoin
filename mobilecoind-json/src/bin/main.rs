@@ -795,8 +795,8 @@ async fn main() -> Result<(), rocket::Error> {
     // Set up the gRPC connection to the mobilecoind client
     let env = Arc::new(grpcio::EnvBuilder::new().cq_count(1).build());
     let ch = ChannelBuilder::new(env)
-        .max_receive_message_len(std::i32::MAX)
-        .max_send_message_len(std::i32::MAX)
+        .max_receive_message_len(i32::MAX)
+        .max_send_message_len(i32::MAX)
         .connect_to_uri(&config.mobilecoind_uri, &logger);
 
     let mobilecoind_api_client = MobilecoindApiClient::new(ch);

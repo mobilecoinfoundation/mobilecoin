@@ -132,7 +132,10 @@ impl From<NonceError> for Error {
 
 impl From<IntelSealingError> for Error {
     fn from(src: IntelSealingError) -> Error {
-        src.into()
+        match src {
+            IntelSealingError::Sgx(e) => e.into(),
+            IntelSealingError::SealFormat(e) => e.into(),
+        }
     }
 }
 
