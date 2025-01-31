@@ -9,7 +9,7 @@ use mc_fog_types::common::BlockRange;
 
 #[derive(Debug, Queryable)]
 pub struct IngressKey {
-    pub _ingress_public_key: SqlCompressedRistrettoPublic,
+    pub ingress_public_key: SqlCompressedRistrettoPublic,
     pub start_block: i64,
     pub pubkey_expiry: i64,
     pub retired: bool,
