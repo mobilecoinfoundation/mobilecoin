@@ -1282,7 +1282,7 @@ mod test_build_transaction_helper {
                 amount_to_send,
                 &sender_account_key,
                 &recipient_account_key.default_subaddress(),
-                super::BlockIndex::max_value(),
+                super::BlockIndex::MAX,
                 fake_acct_resolver,
                 &LocalRingSigner::from(&sender_account_key),
                 &mut rng,

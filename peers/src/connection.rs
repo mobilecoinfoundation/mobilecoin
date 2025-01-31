@@ -92,8 +92,8 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> PeerConnection<Enclave> {
         let logger = logger.new(o!("mc.peers.addr" => host_port));
 
         let ch = ChannelBuilder::default_channel_builder(env)
-            .max_receive_message_len(std::i32::MAX)
-            .max_send_message_len(std::i32::MAX)
+            .max_receive_message_len(i32::MAX)
+            .max_send_message_len(i32::MAX)
             .connect_to_uri(&uri, &logger);
 
         let attested_api_client = AttestedApiClient::new(ch.clone());

@@ -1,5 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+// clippy/rust-analyzer is unable to detect struct fields used in tests?
+#![allow(dead_code)]
+
 use super::schema::*;
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
 use mc_fog_types::common::BlockRange;

@@ -171,21 +171,3 @@ impl From<DecodeError> for TxOutRecoveryError {
         Self::ProstDeserializationFailed
     }
 }
-
-#[derive(Debug)]
-pub enum RngSetError {
-    Decode(DecodeError),
-    KexRng(KexRngError),
-}
-
-impl From<DecodeError> for RngSetError {
-    fn from(err: DecodeError) -> Self {
-        Self::Decode(err)
-    }
-}
-
-impl From<KexRngError> for RngSetError {
-    fn from(err: KexRngError) -> Self {
-        Self::KexRng(err)
-    }
-}

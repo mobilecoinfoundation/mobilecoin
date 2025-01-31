@@ -39,7 +39,7 @@ signature = { version = "2.1.0", default-features = false, features = ["digest"]
 static_assertions = "1.1.0"
 subtle = { version = "2", default-features = false }
 x25519-dalek = { version = "2.0.1", default-features = false, features = ["static_secrets"] }
-zeroize = { version = "1", default-features = false }
+zeroize = { version = "1.8", default-features = false }
 
 [dev-dependencies]
 mc-crypto-hashes = { path = "../hashes" }

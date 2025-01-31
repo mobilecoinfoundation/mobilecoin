@@ -130,7 +130,7 @@ impl<L: ArrayLength<u8>> Nonce<L> {
 
     pub fn is_max(&self) -> bool {
         for byte in self.bytes.iter() {
-            if *byte != u8::max_value() {
+            if *byte != u8::MAX {
                 return false;
             }
         }

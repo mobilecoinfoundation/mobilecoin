@@ -57,7 +57,6 @@ pub struct UtxoRecord {
 
 /// A tracker the worker keeps for UTXO records it hands to faucet threads.
 pub struct UtxoTracker {
-    pub utxo: UnspentTxOut,
     receiver: oneshot::Receiver<SubmitTxResponse>,
     received: Option<SubmitTxResponse>,
 }
@@ -73,7 +72,6 @@ impl UtxoTracker {
         };
 
         let tracker = Self {
-            utxo,
             receiver,
             received: None,
         };

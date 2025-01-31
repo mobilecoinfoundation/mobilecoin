@@ -13,12 +13,17 @@ enum QueueMsg<T> {
     StopRequested,
 }
 
-#[derive(Debug)]
+#[derive(Debug, displaydoc::Display)]
 pub enum BackgroundWorkQueueError {
+    /// Failed to spawn a thread {0}
     ThreadSpawnFailed(io::Error),
+    /// Failed to send a message to the queue
     SendFailed,
+    /// Failed to receive a message from the queue
     RecvFailed,
+    /// Trying to start a queue that is already started
     AlreadyStarted,
+    /// Error joining the threads {0}
     JoinFailed(String),
 }
 

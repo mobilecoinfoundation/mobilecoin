@@ -70,7 +70,7 @@ fn create_json_logger<W: io::Write + Send + 'static>(
     new_lines: bool,
     cap_message_length: Option<usize>,
 ) -> slog::Fuse<slog_async::Async> {
-    let cap_message_length = cap_message_length.unwrap_or(usize::max_value());
+    let cap_message_length = cap_message_length.unwrap_or(usize::MAX);
 
     let drain = slog_envlogger::new(
         Json::new(writer)

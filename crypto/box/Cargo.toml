@@ -18,6 +18,6 @@ hkdf = "0.12.4"
 mc-oblivious-aes-gcm = { version = "0.10.1", default-features = false, features = ["aes", "alloc", "zeroize"] }
 rand_core = { version = "0.6", default-features = false }
 
-[dev_dependencies]
+[dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-test-helper = { path = "../../util/test-helper" }

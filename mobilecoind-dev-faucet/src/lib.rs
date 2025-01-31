@@ -129,8 +129,8 @@ impl State {
         // Note: choice of 2 completion queues here is not very deliberate
         let grpc_env = Arc::new(grpcio::EnvBuilder::new().cq_count(2).build());
         let ch = ChannelBuilder::new(grpc_env.clone())
-            .max_receive_message_len(std::i32::MAX)
-            .max_send_message_len(std::i32::MAX)
+            .max_receive_message_len(i32::MAX)
+            .max_send_message_len(i32::MAX)
             .connect_to_uri(&config.mobilecoind_uri, logger);
 
         let mobilecoind_api_client = MobilecoindApiClient::new(ch);
