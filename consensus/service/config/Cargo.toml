@@ -22,7 +22,7 @@ mc-util-uri = { path = "../../../util/uri" }
 
 base64 = "0.21"
 clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 hex = "0.4"
 pem = "3.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

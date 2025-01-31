@@ -23,10 +23,10 @@ mc-fog-kex-rng = { path = "../../kex_rng" }
 mc-fog-types = { path = "../../types" }
 
 # third-party
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-zeroize = "1.8.1"
+zeroize = "1.8"
 
 [dev-dependencies]
 mc-util-test-helper = { path = "../../../util/test-helper" }

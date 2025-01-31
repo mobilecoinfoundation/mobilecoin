@@ -18,7 +18,7 @@ mc-util-uri = { path = "../uri" }
 base64 = "0.21"
 clap = { version = "4.5", features = ["derive", "env"] }
 cookie = "0.18"
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.13"
 hex = "0.4"
@@ -33,7 +33,7 @@ serde = "1"
 sha2 = { version = "0.10", default-features = false }
 signal-hook = "0.3"
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = { version = "1.8.1", default-features = false }
+zeroize = { version = "1.8", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../build/grpc" }

@@ -13,7 +13,7 @@ rust-version = { workspace = true }
 # External dependencies
 anyhow = "1.0.80"
 clap = { version = "4.5", features = [ "derive" ] }
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4.2", default-features = false }
 log = "0.4.21"
 rand_core = "0.6.4"
@@ -21,7 +21,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "*"
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 tiny-bip39 = "1.0"
-zeroize = { version = "1.8.1", default-features = false }
+zeroize = { version = "1.8", default-features = false }
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }

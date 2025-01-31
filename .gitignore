@@ -98,4 +98,6 @@ minting-trust-root*
 # new cache dir for mob prompt with user sccache
 .mob/
 
+# ignore devcontainer files until we update rust versions and runtime containers.
 .devcontainer/
+.devcontainer.json

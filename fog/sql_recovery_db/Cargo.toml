@@ -38,7 +38,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 diesel = { version = "2.1.4", features = ["chrono", "postgres", "r2d2"] }
 diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 diesel_migrations = { version = "2.1.0", features = ["postgres"] }
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 prost = "0.12"
 r2d2 = "0.8.10"
 rand = "0.8"

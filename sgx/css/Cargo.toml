@@ -9,6 +9,6 @@ readme = "README.md"
 rust-version = "1.76.0"
 
 [dependencies]
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 mc-sgx-core-types = "0.11.0"
 sha2 = { version = "0.10", default-features = false }

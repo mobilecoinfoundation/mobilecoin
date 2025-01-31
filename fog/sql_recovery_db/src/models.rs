@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// Some of these fields are detected as "dead_code" because they are not used in
-// the codebase.
+// clippy/rust-analyzer is unable to detect struct fields used in tests?
 #![allow(dead_code)]
 
 use super::schema::*;
@@ -10,7 +9,7 @@ use mc_fog_types::common::BlockRange;
 
 #[derive(Debug, Queryable)]
 pub struct IngressKey {
-    pub ingress_public_key: SqlCompressedRistrettoPublic,
+    pub _ingress_public_key: SqlCompressedRistrettoPublic,
     pub start_block: i64,
     pub pubkey_expiry: i64,
     pub retired: bool,

@@ -20,5 +20,5 @@ mc-util-serial = { path = "../../../../util/serial", default-features = false }
 mc-fog-kex-rng = { path = "../../../kex_rng" }
 mc-fog-types = { path = "../../../types", default-features = false }
 
-displaydoc = { version = "0.2.5", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
