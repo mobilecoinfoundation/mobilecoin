@@ -117,26 +117,5 @@ pub fn verify_tx_summary(
         &mut digest,
         &mut report,
     );
-
-    // In a debug build, confirm the digest by computing it in a non-streaming way
-    //
-    // Note: this needs to be kept in sync with the compute_mlsag_signing_digest
-    // function in transaction_core::ring_ct::rct_bulletproofs
-    #[cfg(debug)]
-    {
-        let mut transcript =
-            MerlinTranscript::new(EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG.as_bytes());
-        extended_message.append_to_transcript(b"extended_message", &mut transcript);
-        tx_summary.append_to_transcript(b"tx_summary", &mut transcript);
-
-        // Extract digest
-        let mut output = [0u8; 32];
-        transcript.extract_digest(&mut output);
-
-        assert_eq!(
-            output, digest,
-            "streaming verifier did not compute correct digest"
-        );
-    }
     Ok((digest, report))
 }

@@ -1073,8 +1073,8 @@ impl TestClient {
     ///
     /// Arguments:
     /// * period: The amount of time we allot for a transfer to take place. This
-    /// allows us to dictate how many transfers should be completed by the test
-    /// client per day.
+    ///   allows us to dictate how many transfers should be completed by the
+    ///   test client per day.
     ///
     /// E.g. If period is 60 seconds, then the test client *should* make 1440
     /// transfers per day.
@@ -1497,7 +1497,7 @@ impl HealthTracker {
     /// Sets LAST_POLLING_SUCCESSFUL to true initially.
     ///
     /// * `healing_time` - number of successful transfers before we consider
-    /// ourselves healthy again
+    ///   ourselves healthy again
     pub fn new(healing_time: usize) -> Self {
         counters::LAST_POLLING_SUCCESSFUL.set(1);
         Self {
@@ -1511,8 +1511,8 @@ impl HealthTracker {
         self.counter.store(counter, Ordering::SeqCst);
         // If:
         // * there is a failure
-        // * the failure happened at least healing_time ago
-        // then set ourselves healthy again
+        // * the failure happened at least healing_time ago then set ourselves healthy
+        //   again
         if self.have_failure.load(Ordering::SeqCst)
             && self.last_failure.load(Ordering::SeqCst) + self.healing_time <= counter
         {

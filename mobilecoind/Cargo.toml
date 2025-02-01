@@ -15,6 +15,7 @@ path = "src/bin/main.rs"
 default = ["ip-check"]
 ip-check = []
 bypass-ip-check = []
+test_utils = []
 
 [dependencies]
 mc-account-keys = { path = "../account-keys" }

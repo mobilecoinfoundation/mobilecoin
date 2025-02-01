@@ -928,11 +928,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// if we maintain it as the biggest, we're less likely to need multiple
     /// UTXOs in future transactions.
     /// 1) Filter out UTXOs which we believe are currently still pending/at an
-    /// unknown state. 2) Sort remaining UTXOs in ascending order (by their
-    /// value). 3) Grab the largest available UTXO, and MAX_INPUTS-1
-    /// smallest available UTXOs. 4) If the sum of the smallest available
-    /// UTXOs > fee, we would be able to increase our largest    UTXO and
-    /// we're done. If not, try again without the smallest UTXO.
+    ///    unknown state.
+    /// 2) Sort remaining UTXOs in ascending order (by their value).
+    /// 3) Grab the largest available UTXO, and MAX_INPUTS-1 smallest available
+    ///    UTXOs. 4) If the sum of the smallest available UTXOs > fee, we would
+    ///    be able to increase our largest UTXO and we're done. If not, try
+    ///    again without the smallest UTXO.
     ///
     /// Returns selected UTXOs
     fn select_utxos_for_optimization(

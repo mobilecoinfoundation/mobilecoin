@@ -23,5 +23,5 @@ mod transaction_memo;
 mod utxo_store;
 pub use utxo_store::UnspentTxOut;
 
-#[cfg(any(test, feature = "test_utils"))]
+#[cfg(test)]
 mod test_utils;

@@ -23,17 +23,15 @@ pub struct Receiver<T> {
 impl<T> Sender<T> {
     pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
         self.gauge.inc();
-        self.inner.try_send(msg).map_err(|e| {
+        self.inner.try_send(msg).inspect_err(|_e| {
             self.gauge.dec();
-            e
         })
     }
 
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
         self.gauge.inc();
-        self.inner.send(msg).map_err(|e| {
+        self.inner.send(msg).inspect_err(|_e| {
             self.gauge.dec();
-            e
         })
     }
 }
@@ -53,23 +51,20 @@ impl<T> Clone for Sender<T> {
 /// Receiver API implementation.
 impl<T> Receiver<T> {
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
-        self.inner.try_recv().map(|msg| {
+        self.inner.try_recv().inspect(|_msg| {
             self.gauge.dec();
-            msg
         })
     }
 
     pub fn recv(&self) -> Result<T, RecvError> {
-        self.inner.recv().map(|msg| {
+        self.inner.recv().inspect(|_msg| {
             self.gauge.dec();
-            msg
         })
     }
 
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
-        self.inner.recv_timeout(timeout).map(|msg| {
+        self.inner.recv_timeout(timeout).inspect(|_msg| {
             self.gauge.dec();
-            msg
         })
     }
 

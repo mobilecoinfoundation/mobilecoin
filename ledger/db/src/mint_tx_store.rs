@@ -4,7 +4,7 @@
 //!
 //! This store maintains two LMDB databases:
 //! 1) A mapping of block index -> list of mint transactions included in the
-//! block.    This is used to provide the mint_txs inside BlockContents.
+//!    block. This is used to provide the mint_txs inside BlockContents.
 //! 2) A mapping of hash -> MintTx. This is used to prevent replay attacks.
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error, MintConfigStore};

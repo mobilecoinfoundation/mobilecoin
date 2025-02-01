@@ -5,18 +5,18 @@
 //!
 //! Validation is broken into two parts:
 //! 1) "Well formed"-ness - A transaction is considered "well formed" if all the
-//! data in it that is    not affected by future changes to the ledger is
-//! correct. This includes checks like    inputs/outputs counts, range proofs,
-//! signature validation, membership proofs, etc.    A transaction that is
-//! well-formed remains well-formed if additional transactions are    appended
-//! to the ledger. However, a transaction could transition from not well-formed
-//! to well-formed:    for example, the transaction may include inputs that are
-//! not yet in the local ledger because    the local ledger is out of sync with
-//! the consensus ledger.
+//!    data in it that is not affected by future changes to the ledger is
+//!    correct. This includes checks like inputs/outputs counts, range proofs,
+//!    signature validation, membership proofs, etc. A transaction that is
+//!    well-formed remains well-formed if additional transactions are appended
+//!    to the ledger. However, a transaction could transition from not
+//!    well-formed to well-formed: for example, the transaction may include
+//!    inputs that are not yet in the local ledger because the local ledger is
+//!    out of sync with the consensus ledger.
 //!
 //! 2) "Is valid [to add to the ledger]" - This checks whether a **single**
-//! transaction can be safely  appended to a ledger in it's current state. A
-//! valid transaction must also be well-formed.
+//!    transaction can be safely appended to a ledger in it's current state. A
+//!    valid transaction must also be well-formed.
 //!
 //! This definition differs from what the `mc_transaction_core::validation`
 //! module - the check provided by it is actually the "Is well formed" check,

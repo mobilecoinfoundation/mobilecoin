@@ -431,6 +431,7 @@ impl TxOut {
     /// Returns:
     /// * An (unmasked) Amount
     /// * The shared secret
+    ///
     /// Or, an error if recovery failed.
     pub fn view_key_match(
         &self,

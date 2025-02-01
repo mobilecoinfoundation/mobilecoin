@@ -103,9 +103,8 @@ fn worker_thread(
 
     let resp = fog_view_client
         .request(0, 0, Default::default())
-        .map_err(|err| {
+        .inspect_err(|_err| {
             stop_requested.store(true, Ordering::SeqCst);
-            err
         })
         .expect("request");
     let rng_record = &(resp.rng_records[0]);

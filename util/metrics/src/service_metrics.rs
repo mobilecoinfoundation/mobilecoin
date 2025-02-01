@@ -11,7 +11,7 @@ For each method, the counters that are captured are:
 - num_req: number of requests
 - num_error: number of errors (can be used to calculate error rate)
 - num_status_code: number of gRPC status codes (to establish statistics on
-gRPC status codes, similar to how HTTP 2XX/4XX/5XX codes are profiled)
+  gRPC status codes, similar to how HTTP 2XX/4XX/5XX codes are profiled)
 - duration: duration (in units determined by the exporter) the request took, bucketed
 
 Example use:

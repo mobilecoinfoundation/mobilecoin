@@ -13,5 +13,6 @@ alloc = []
 # Note: If alternate modes besides `panic_abort` are implemented they should go here,
 # similar as std lib
 panic_abort = []
+sgx_backtrace = []
 
 [dependencies]

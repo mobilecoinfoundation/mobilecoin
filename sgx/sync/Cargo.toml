@@ -13,3 +13,4 @@ mc-sgx-types = { path = "../types" }
 
 [features]
 default = ["mc-sgx-panic"]
+sgx_panic = []

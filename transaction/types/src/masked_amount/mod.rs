@@ -201,7 +201,9 @@ impl MaskedAmount {
     /// Returns:
     /// * MaskedAmount
     /// * Amount (token id and value)
+    ///
     /// or
+    ///
     /// * An amount error
     pub fn reconstruct_v1(
         masked_value: u64,
@@ -229,7 +231,9 @@ impl MaskedAmount {
     /// Returns:
     /// * MaskedAmount
     /// * Amount (token id and value)
+    ///
     /// or
+    ///
     /// * An amount error
     pub fn reconstruct_v2(
         masked_value: u64,

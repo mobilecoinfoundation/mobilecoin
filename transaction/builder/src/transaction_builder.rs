@@ -600,10 +600,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// # Arguments
     /// * `amount` - The amount of the "gift code"
-    /// * `reserved_subaddreses` - A ReservedSubaddresses object which
-    /// provides all standard reserved addresses for the caller. This is
-    /// used to set the caller's primary address as the Fog hint address
-    /// and set their gift code subaddresses as the TxOut recipient.
+    /// * `reserved_subaddreses` - A ReservedSubaddresses object which provides
+    ///   all standard reserved addresses for the caller. This is used to set
+    ///   the caller's primary address as the Fog hint address and set their
+    ///   gift code subaddresses as the TxOut recipient.
     /// * `rng` - RNG used to generate blinding for commitment
     pub fn add_gift_code_output<RNG: CryptoRng + RngCore>(
         &mut self,

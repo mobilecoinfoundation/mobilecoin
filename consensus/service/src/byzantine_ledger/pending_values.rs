@@ -23,7 +23,8 @@ pub struct PendingValues<TXM: TxManager, MTXM: MintTxManager> {
     /// We need to store pending values vec so we can process values
     /// on a first-come first-served basis. However, we want to be able to:
     /// 1) Efficiently see if we already have a given transaction and ignore
-    /// duplicates 2) Track how long each transaction took to externalize.
+    ///    duplicates
+    /// 2) Track how long each transaction took to externalize.
     ///
     /// To accomplish these goals we store, in addition to the queue of pending
     /// values, a map that maps a value to when we first encountered it.

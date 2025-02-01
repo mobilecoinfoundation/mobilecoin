@@ -278,13 +278,11 @@ async fn query_shard(
     let client_unary_receiver = shard
         .grpc_client
         .multi_view_store_query_async(request)
-        .map_err(|err| {
+        .inspect_err(|err| {
             histogram_observe(&err.to_string());
-            err
         })?;
-    let response = client_unary_receiver.await.map_err(|err| {
+    let response = client_unary_receiver.await.inspect_err(|err| {
         histogram_observe(&err.to_string());
-        err
     })?;
     histogram_observe("ok");
     Ok((shard, response.try_into()?))

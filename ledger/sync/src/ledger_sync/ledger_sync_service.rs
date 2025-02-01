@@ -299,14 +299,15 @@ impl<
     ///
     /// 1. Get blocks from peers.
     /// 2. Identify blocks that are “potentially safe”, and the peers who have
-    /// them. 3. Download transactions for “potentially safe” blocks.
+    ///    them.
+    /// 3. Download transactions for “potentially safe” blocks.
     /// 4. Identify “safe” blocks (and their transactions). Each block
-    /// satisfies:
-    ///     * A sufficient set of peers have externalized the block,
-    ///     * The block is part of a blockchain of safe blocks, rooted at the
-    ///       highest block in the local node’s ledger,
-    ///     * The block’s ID agrees with the merkle hash of its transactions,
-    ///     * None of the key images in the block have appeared before.
+    ///    satisfies:
+    ///      * A sufficient set of peers have externalized the block,
+    ///      * The block is part of a blockchain of safe blocks, rooted at the
+    ///        highest block in the local node’s ledger,
+    ///      * The block’s ID agrees with the merkle hash of its transactions,
+    ///      * None of the key images in the block have appeared before.
     /// 5. Append safe blocks to the ledger.
     ///
     /// # Arguments
@@ -784,11 +785,12 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
 /// ledger.
 ///
 /// A "safe" block satisfies:
-///     1. A sufficient set of peers have externalized the block (aka
-/// "potentially safe"),     2. The block is part of a chain of safe blocks,
-/// rooted at the highest block in the local node’s ledger,     3. The block’s
-/// ID agrees with the merkle hash of its transactions,     4. None of the key
-/// images in the block have appeared before.
+/// 1. A sufficient set of peers have externalized the block (aka "potentially
+///    safe"),
+/// 2. The block is part of a chain of safe blocks, rooted at the highest block
+///    in the local node’s ledger,
+/// 3. The block’s ID agrees with the merkle hash of its transactions,
+/// 4. None of the key images in the block have appeared before.
 ///
 /// # Arguments
 /// * `ledger` - The local node's ledger.
