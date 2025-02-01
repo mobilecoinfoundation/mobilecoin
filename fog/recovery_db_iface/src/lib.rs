@@ -209,8 +209,7 @@ pub trait RecoveryDb {
     ///
     /// Returns:
     /// * List of found events, and higehst event id in the database (to be used
-    ///   as
-    /// start_after_event_id in the next query).
+    ///   as start_after_event_id in the next query).
     fn search_user_events(
         &self,
         start_from_user_event_id: i64,
@@ -301,8 +300,7 @@ pub trait RecoveryDb {
     ///
     /// Returns:
     /// * Some(cumulative_txo_count) if the block was found in the database,
-    ///   None if it wasn't, or
-    /// an error if the query failed.
+    ///   None if it wasn't, or an error if the query failed.
     fn get_cumulative_txo_count_for_block(
         &self,
         block_index: u64,
@@ -316,8 +314,7 @@ pub trait RecoveryDb {
     ///
     /// Returns:
     /// * Some(timestamp) if the block was found in the database, None if it
-    ///   wasn't, or
-    /// an error if the query failed.
+    ///   wasn't, or an error if the query failed.
     ///
     /// Note: It is unspecified which invocation id we use when giving the
     /// timestamp

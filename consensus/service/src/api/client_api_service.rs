@@ -63,11 +63,11 @@ impl ClientSessionTracking {
     /// # Arguments
     ///
     /// * `now` - Used as both the instant to record as a new tx proposal
-    /// failure, and as the "present" time to check for stale records.
+    ///   failure, and as the "present" time to check for stale records.
     /// * `tracking_window` - How long of a period of time should we keep track
-    /// of an individual tx proposal failure incident for? Any records which
-    /// have existed for longer than this value will be dropped when this
-    /// method is called.
+    ///   of an individual tx proposal failure incident for? Any records which
+    ///   have existed for longer than this value will be dropped when this
+    ///   method is called.
     pub fn fail_tx_proposal(&mut self, now: Instant, tracking_window: Duration) -> usize {
         self.tx_proposal_failures
             .retain(|past_failure| now.saturating_duration_since(*past_failure) <= tracking_window);
@@ -135,7 +135,7 @@ impl ClientApiService {
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
         // Cache the transaction. This performs the well-formedness checks.
-        let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
+        let tx_hash = self.tx_manager.insert(tx_context).inspect_err(|err| {
             if let TxManagerError::TransactionValidation(cause) = &err {
                 counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{cause:?}"));
 
@@ -155,7 +155,6 @@ impl ClientApiService {
                 // Dropping the client after a limit has been reached will be
                 // implemented in a future pull request.
             }
-            err
         })?;
 
         // Validate the transaction.

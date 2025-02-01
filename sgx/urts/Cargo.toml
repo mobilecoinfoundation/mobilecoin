@@ -7,6 +7,9 @@ readme = "README.md"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
 rust-version = "1.76.0"
 
+[features]
+backtrace = []
+
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }
 mc-sgx-slog = { path = "../slog" }

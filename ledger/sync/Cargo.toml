@@ -12,6 +12,9 @@ name = "ledger-sync-test-app"
 path = "src/test_app/main.rs"
 required-features = ["mc-consensus-enclave-measurement"]
 
+[features]
+test_utils = []
+
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }

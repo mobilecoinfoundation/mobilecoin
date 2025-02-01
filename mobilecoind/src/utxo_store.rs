@@ -278,7 +278,7 @@ impl UtxoStore {
             // data and return them to the caller.
             let mut cursor = db_txn.open_rw_cursor(self.subaddress_id_to_utxo_id)?;
             let _ = cursor
-                .iter_dup_of(&subaddress_id.to_vec())
+                .iter_dup_of(subaddress_id.to_vec())
                 .map(|result| {
                     result
                         .map_err(Error::from)

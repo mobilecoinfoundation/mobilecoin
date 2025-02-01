@@ -138,7 +138,9 @@ impl MaskedAmountV1 {
     /// Returns:
     /// * MaskedAmount
     /// * Amount (token id and value)
+    ///
     /// or
+    ///
     /// * An amount error
     pub fn reconstruct(
         masked_value: u64,

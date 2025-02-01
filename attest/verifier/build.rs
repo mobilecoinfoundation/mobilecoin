@@ -306,7 +306,7 @@ fn dcap_extensions() -> (Vec<u8>, Vec<u8>) {
     let mut tcb_sequence = SequenceOf::<_, 18>::new();
     for i in 1..=16 {
         let comp_svn = sequence_of_2(
-            &format!("1.2.840.113741.1.13.1.2.{i}"),
+            format!("1.2.840.113741.1.13.1.2.{i}"),
             Int::new(&[0]).expect("failed to create integer"),
         );
         tcb_sequence
