@@ -289,13 +289,14 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Performs the first steps in accepting transactions from a remote client:
     /// 1) Re-encrypt all txs for the local enclave
     /// 2) Extract context data to be handed back to untrusted so that it could
-    /// collect the    information required by `tx_is_well_formed`.
+    ///    collect the information required by `tx_is_well_formed`.
     fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
 
     /// Performs the first steps in accepting transactions from a remote peer:
     /// 1) Re-encrypt all txs for the local enclave
     /// 2) Extract context data to be handed back to untrusted so that it could
-    /// collect the    information required by `tx_is_well_formed`.
+    ///    collect the information required by `tx_is_well_formed`.
+    ///
     /// TODO: rename to txs_propose since this operates on multiple txs?
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>>;
 

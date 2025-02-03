@@ -18,8 +18,7 @@ pub trait TransactionsFetcher: Sized + Sync + Send {
     ///
     /// # Arguments
     /// * `safe_responder_ids` - List of responder IDs that have been identified
-    ///   as being able to provide a
-    /// consistent copy of the blockchain.
+    ///   as being able to provide a consistent copy of the blockchain.
     /// * `block` - The block we want to fetch contents for.
     fn get_block_data(
         &self,

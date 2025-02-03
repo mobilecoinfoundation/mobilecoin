@@ -8,6 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
+serde = []
 
 [dependencies]
 # External dependencies

@@ -6,14 +6,15 @@
 //! 1) A mapping of token id -> currently active mint configurations. This
 //!    database is used for two things:
 //!      1) It allows transaction validation code to figure out if a mint
-//! transaction is allowed to mint.
+//!         transaction is allowed to mint.
 //!      2) It enables keeping track of how much was minted using a given
-//! configuration. This is used to enforce the per-configuration mint limit.
+//!         configuration. This is used to enforce the per-configuration mint
+//!         limit.
 //! 2) A mapping of nonce -> block index of the block containing the
-//! MintConfigTx with that nonce. This is mainly used to prevent replay
-//! attacks.
+//!    MintConfigTx with that nonce. This is mainly used to prevent replay
+//!    attacks.
 //! 3) A mapping of block index -> list of ValidatedMintConfigTx objects
-//! included in the block.
+//!    included in the block.
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};

@@ -860,8 +860,8 @@ where
     /// 2. We retire the old cluster and activate the new cluster
     /// 3. Something goes wrong and the new cluster goes up in flames
     /// 4. We want to unretire the old cluster key so that the old cluster
-    /// starts publishing fog reports    again and continues life as usual,
-    /// and then continue debugging the new cluster and try again later.
+    ///    starts publishing fog reports again and continues life as usual, and
+    ///    then continue debugging the new cluster and try again later.
     pub fn unretire(&self) -> Result<IngestSummary, Error> {
         log::info!(self.logger, "unretire");
 
@@ -1247,9 +1247,8 @@ where
         log::info!(self.logger, "publishing report to DB");
         self.recovery_db
             .set_report(ingress_public_key, report_id, &report_data)
-            .map(|x| {
+            .inspect(|_x| {
                 counters::LAST_PUBLISHED_PUBKEY_EXPIRY.set(report_data.pubkey_expiry as i64);
-                x
             })
             .map_err(|err| {
                 // This is a warning because transient report DB write errors are not a cause

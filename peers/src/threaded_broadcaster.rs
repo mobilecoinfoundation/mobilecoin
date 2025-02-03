@@ -107,14 +107,13 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
     ///   by a client.
     ///
     /// * `from_node` - The node the transaction was received from. This allows
-    ///   us to not echo the
-    /// message back to the node that handed it to us. Note that due to message
-    /// relaying, this can be a different node than the one that created the
-    /// message (`origin_node`).
+    ///   us to not echo the message back to the node that handed it to us. Note
+    ///   that due to message relaying, this can be a different node than the
+    ///   one that created the message (`origin_node`).
     ///
     /// * `msgs` - A map of peer id -> message to broadcast. We need a map since
-    ///   messages are
-    /// encrypted for each peer using a peer-specific session key.
+    ///   messages are encrypted for each peer using a peer-specific session
+    ///   key.
     pub fn broadcast_propose_tx_msg(
         &mut self,
         tx_hash: &TxHash,

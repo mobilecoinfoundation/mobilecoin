@@ -40,8 +40,7 @@ pub trait FogViewConnection {
     /// - start_from_user_event_id: Limit user events search to only event ids
     ///   higher than this
     /// - start_from_block_index: Limit ETxOutRecord search for only tx outs
-    ///   that appeared in or
-    /// after start_from_block_index
+    ///   that appeared in or after start_from_block_index
     /// - search_keys: ETxOutRecord search keys
     fn request(
         &mut self,

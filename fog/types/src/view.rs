@@ -539,7 +539,9 @@ impl FogTxOut {
     ///
     /// Returns:
     /// * TxOut,
+    ///
     /// Or
+    ///
     /// * An error if recovery failed
     pub fn try_recover_tx_out(&self, view_key: &RistrettoPrivate) -> Result<TxOut, FogTxOutError> {
         // Reconstruct compressed commitment based on our view key.

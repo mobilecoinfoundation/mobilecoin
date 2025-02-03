@@ -790,15 +790,16 @@ impl WatcherDB {
     /// Returns a map of tx source url to all attestation evidence instances
     /// seen for the given signer. Notes:
     /// 1) In general there should only be one attestation evidence instance per
-    /// given block signer since the key is unique to an enclave. However,
-    /// the database is structured in such a way that if something funky is
-    /// happening, and somehow different attestation evidence instances are
-    /// seen in the wild for a given signer, they will all get logged.
+    ///    given block signer since the key is unique to an enclave. However,
+    ///    the database is structured in such a way that if something funky is
+    ///    happening, and somehow different attestation evidence instances are
+    ///    seen in the wild for a given signer, they will all get logged.
     /// 2) The attestation evidence is wrapped in an Option to indicate that at
-    /// some point we tried getting attestation evidence for the given Url, but
-    /// failed since the attestation evidence we got referenced a different
-    /// signer. This could happen if we're trying to get attestation
-    /// evidence for old block signers whose enclaves are no longer alive.
+    ///    some point we tried getting attestation evidence for the given Url,
+    ///    but failed since the attestation evidence we got referenced a
+    ///    different signer. This could happen if we're trying to get
+    ///    attestation evidence for old block signers whose enclaves are no
+    ///    longer alive.
     pub fn attestation_evidence_for_signer(
         &self,
         block_signer: &Ed25519Public,
@@ -983,7 +984,7 @@ impl WatcherDB {
         match db_txn.del(
             self.attestation_evidence_poll_queue,
             &key_bytes,
-            Some(&value_bytes),
+            Some(value_bytes.as_slice()),
         ) {
             Ok(()) | Err(lmdb::Error::NotFound) => Ok(()),
             Err(err) => Err(err)?,

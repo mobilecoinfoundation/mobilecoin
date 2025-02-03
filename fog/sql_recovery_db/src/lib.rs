@@ -1069,8 +1069,7 @@ impl SqlRecoveryDb {
     ///
     /// Returns:
     /// * Some(cumulative_txo_count) if the block was found in the database,
-    ///   None if it wasn't, or
-    /// an error if the query failed.
+    ///   None if it wasn't, or an error if the query failed.
     fn get_cumulative_txo_count_for_block_retriable(
         &self,
         block_index: u64,
@@ -1105,8 +1104,7 @@ impl SqlRecoveryDb {
     ///
     /// Returns:
     /// * Some(cumulative_txo_count) if the block was found in the database,
-    ///   None if it wasn't, or
-    /// an error if the query failed.
+    ///   None if it wasn't, or an error if the query failed.
     fn get_block_signature_timestamp_for_block_retriable(
         &self,
         block_index: u64,
@@ -1496,8 +1494,7 @@ impl RecoveryDb for SqlRecoveryDb {
     ///
     /// Returns:
     /// * Some(cumulative_txo_count) if the block was found in the database,
-    ///   None if it wasn't, or
-    /// an error if the query failed.
+    ///   None if it wasn't, or an error if the query failed.
     fn get_cumulative_txo_count_for_block(
         &self,
         block_index: u64,
@@ -1516,8 +1513,7 @@ impl RecoveryDb for SqlRecoveryDb {
     ///
     /// Returns:
     /// * Some(cumulative_txo_count) if the block was found in the database,
-    ///   None if it wasn't, or
-    /// an error if the query failed.
+    ///   None if it wasn't, or an error if the query failed.
     fn get_block_signature_timestamp_for_block(
         &self,
         block_index: u64,
