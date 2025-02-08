@@ -242,7 +242,7 @@ it is suitable for this purpose.
 
 This AEAD-based ORAM memory interface idea seems novel and elegant, somewhat reducing the number of cryptographic components in the described design.
 
-The two major implementation difficulties with the AEAD approach are are:
+The two major implementation difficulties with the AEAD approach are:
 - While the AES IV is 16 bytes, the AES-GCM IV is only 12 bytes. Neither of the values `block_idx` and `block_ctr` can be comfortably restricted to 4 bytes.
   - An implementation might split the difference and truncate to 6 bytes, which might be okay.
   - Alternatively, the implementation might hash `block_idx || block_ctr` down from 16 bytes to 12 bytes.
