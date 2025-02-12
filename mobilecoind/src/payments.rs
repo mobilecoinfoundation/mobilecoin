@@ -578,8 +578,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             }
             // Note: This matches `fn calc_fee_amount` in dex sources
             // at revision 55e0d4f121d7cb5c03e017c5027712dbe84feec7
-            let fee_amount = (((counter_amount as u128 * fee_basis_points as u128) + 9999u128)
+            let fee_value = (((counter_amount.value as u128 * fee_basis_points as u128) + 9999u128)
                 / 10000u128) as u64;
+            let fee_amount = Amount::new(fee_value, counter_amount.token_id);
+
             if is_partial_fill {
                 fractional_outputs.push((fee_amount, fee_address));
             } else {
