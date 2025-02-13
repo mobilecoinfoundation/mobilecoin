@@ -36,7 +36,9 @@ pub trait FogPubkeyResolver {
 }
 
 /// Represents a fog public key validated to use for creating encrypted fog
-/// hints. This object should be constructed only when the attestation evidence
+/// hints.
+///
+/// This object should be constructed only when the attestation evidence
 /// has been validated, and the chain of trust from the connection has been
 /// validated, and the the fog user's fog_authority_sig over the root
 /// subjectPublicKeyInfo in the signature chain has been validated.

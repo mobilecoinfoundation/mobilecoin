@@ -125,7 +125,7 @@ impl Nonce for IasNonce {
     }
 }
 
-impl<'bytes> TryFrom<&'bytes [u8]> for IasNonce {
+impl TryFrom<&[u8]> for IasNonce {
     type Error = EncodingError;
 
     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {

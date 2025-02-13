@@ -164,7 +164,9 @@ pub enum FogUserEvent {
 }
 
 /// An ingest invocation begins consuming the blockchain at some particular
-/// block index, and eventually stops. The IngestableRange tracks the start
+/// block index, and eventually stops.
+///
+/// The IngestableRange tracks the start
 /// block, what the last scanned block is, and whether it has stopped.
 /// Clients use this information, for example, to avoid making unnecessary
 /// fog-view queries.

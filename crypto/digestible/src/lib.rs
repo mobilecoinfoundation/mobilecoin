@@ -85,6 +85,7 @@ pub trait Digestible {
 }
 
 /// A trait implemented by protocol transcript objects.
+///
 /// This represents the functions of merlin::Transcript that we need for
 /// digestible to function. By having a trait, we can easily substitute mock
 /// objects for tests, etc.,
@@ -95,7 +96,7 @@ pub trait DigestTranscript {
     fn append_bytes(&mut self, context: &'static [u8], data: impl AsRef<[u8]>);
     fn extract_digest(self, output: &mut [u8; 32]);
 
-    // These high-level calls should be used exclusivley when implementing
+    // These high-level calls should be used exclusively when implementing
     // digestible. These four calls correspond to the four types of nodes in the
     // AST that is being encoded into the digest.
     //
@@ -144,7 +145,7 @@ pub trait DigestTranscript {
     ///
     /// The context string comes from the caller context, the type_name should
     /// normally be the identifier of the struct.
-    /// You should then append any elements correpsonding to members of the
+    /// You should then append any elements corresponding to members of the
     /// struct, with appropriate context strings, then append a matching
     /// aggregate closer.
     #[inline]
@@ -213,8 +214,8 @@ pub mod ast_domain_separators {
     pub const NONE: &[u8] = b"";
 }
 
-/// Builtin types
-
+// Builtin types
+//
 // Unfortunately, there is a tension between the following things:
 //
 // - Vec<Digestible> should have a generic implementation that inserts length
@@ -223,8 +224,8 @@ pub mod ast_domain_separators {
 //   the entire slice.
 // - u8 should be digestible because it is a builtin primitive.
 //
-// Because rust does not allow Specialization yet, these three things cannot all
-// implement Digestible.
+// Because rust does not allow Specialization yet, these three things cannot
+// all implement Digestible.
 //
 // We have almost no use-cases for putting raw u8's in our structs, and we have
 // lots of use cases for Vec<Digestible> and Vec<u8> in our structs, so the

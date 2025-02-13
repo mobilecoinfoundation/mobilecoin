@@ -518,7 +518,7 @@ impl<'a> SlamStateGuard<'a> {
     }
 }
 
-impl<'a> Drop for SlamStateGuard<'a> {
+impl Drop for SlamStateGuard<'_> {
     fn drop(&mut self) {
         self.state.num_prepared_utxos.store(0, Ordering::SeqCst);
         self.state.num_submitted_txs.store(0, Ordering::SeqCst);

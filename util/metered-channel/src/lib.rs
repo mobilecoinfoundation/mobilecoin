@@ -95,9 +95,9 @@ pub struct Iter<'a, T: 'a> {
     receiver: &'a Receiver<T>,
 }
 
-impl<'a, T> FusedIterator for Iter<'a, T> {}
+impl<T> FusedIterator for Iter<'_, T> {}
 
-impl<'a, T> Iterator for Iter<'a, T> {
+impl<T> Iterator for Iter<'_, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -105,7 +105,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-impl<'a, T> fmt::Debug for Iter<'a, T> {
+impl<T> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Iter { .. }")
     }
@@ -117,7 +117,7 @@ pub struct TryIter<'a, T: 'a> {
     receiver: &'a Receiver<T>,
 }
 
-impl<'a, T> Iterator for TryIter<'a, T> {
+impl<T> Iterator for TryIter<'_, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -125,7 +125,7 @@ impl<'a, T> Iterator for TryIter<'a, T> {
     }
 }
 
-impl<'a, T> fmt::Debug for TryIter<'a, T> {
+impl<T> fmt::Debug for TryIter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("TryIter { .. }")
     }

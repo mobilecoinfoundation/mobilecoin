@@ -174,7 +174,7 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     ) -> Result<EnclaveMessage<NonceSession>>;
 
     /// SERVER-FACING
-
+    ///
     /// Add encrypted tx out records from the fog recovery db to the view
     /// enclave's ORAM
     fn add_records(&self, records: Vec<ETxOutRecord>) -> Result<()>;
@@ -205,7 +205,8 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
-/// Helper trait which reduces boiler-plate in untrusted side
+/// Helper trait which reduces boiler-plate in untrusted side.
+///
 /// The trusted object which implements the above api usually cannot implement
 /// Clone, Send, Sync, etc., but the untrusted side can and usually having a
 /// "handle to an enclave" is what is most useful for a webserver.

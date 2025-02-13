@@ -90,7 +90,8 @@ pub struct ReportResponse {
     pub signature: Vec<u8>,
 }
 
-/// Represents a set of unvalidated responses from Fog report servers
+/// Represents a set of unvalidated responses from Fog report servers.
+///
 /// Key = Fog-url that was contacted, must match the string in user's public
 /// address Value = The complete response from the fog report server
 ///

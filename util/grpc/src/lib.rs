@@ -148,6 +148,7 @@ pub fn rpc_database_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
 }
 
 /// More general helpers which reduces boilerplate when reporting errors.
+///
 /// The type of the error doesn't always indicate what kind of error code to
 /// use. For instance deserialization might sometimes be
 /// invalid input and sometimes an internal or database error.
@@ -196,7 +197,9 @@ pub fn rpc_permissions_error<S: Display, E: Display>(
 }
 
 /// Out-of-range error occurs when a client makes a request that is out of
-/// bounds. This is a separate error from invalid arg because it may help them
+/// bounds.
+///
+/// This is a separate error from invalid arg because it may help them
 /// handle the error more easily.
 /// This is logged at debug level because it likely doesn't indicate an
 /// actionable issue with the servers.
@@ -216,8 +219,10 @@ pub fn rpc_out_of_range_error<S: Display, E: Display>(
 }
 
 /// Precondition error occurs when a client makes a request that can't be
-/// satisfied for the server's current state. For example, trying to activate an
-/// ingest server that is already activated might return this error.
+/// satisfied for the server's current state.
+///
+/// For example, trying to activate an ingest server that is already activated
+/// might return this error.
 ///
 /// This is logged at info level so that it is visible to the operator, but
 /// doesn't trigger an alert or indicate a problem that requires action to

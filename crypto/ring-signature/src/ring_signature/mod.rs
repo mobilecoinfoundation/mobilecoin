@@ -49,6 +49,7 @@ pub const B_BLINDING: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
 /// This is a structure which contains a pair of orthogonal generators for
 /// Pedersen commitments.
+///
 /// This tracks `bulletproofs::PedersenGens`, but we do not import it, to avoid
 /// creating a dependency on the `bulletproofs` crate.
 #[derive(Clone, Copy, Debug)]

@@ -1,8 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! The state held by a single slot. Currently this duplicates the state inside
-//! `Slot` and is only used for debug/serialization purposes but a future change
-//! might embed a `SlotIndex` directly inside a `Slot`.
+//! The state held by a single slot.
+//!
+//! Currently this duplicates the state inside `Slot` and is only used for
+//! debug/serialization purposes but a future change might embed a `SlotIndex`
+//! directly inside a `Slot`.
 
 use crate::{
     ballot::Ballot,

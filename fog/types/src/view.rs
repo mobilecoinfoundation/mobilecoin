@@ -169,7 +169,8 @@ pub struct DecommissionedIngestInvocation {
     pub last_ingested_block: u64,
 }
 
-/// An enum representing the possible outcomes of a TxOut search
+/// An enum representing the possible outcomes of a TxOut search.
+///
 /// 0 is not an option here because we want this to go in the protobuf as
 /// fixed32, but in proto3, the default value for fixed32 is 0 and cannot be
 /// changed. Default values are omitted in the on-the-wire representation,
@@ -334,7 +335,9 @@ impl From<FixedTxOutSearchResult> for TxOutSearchResult {
 }
 
 /// TxOutRecord is what information the fog service preserves for a user about
-/// their TxOut. These are created by the ingest server and then encrypted. The
+/// their TxOut.
+///
+/// These are created by the ingest server and then encrypted. The
 /// encrypted blobs are eventually returned to the user, who must deserialize
 /// them.
 ///

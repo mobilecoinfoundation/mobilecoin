@@ -50,6 +50,7 @@ use serde::Serialize;
 use std::{cmp::max, time::Duration};
 
 /// Maximum number of parameters PostgreSQL allows in a single query.
+///
 /// The actual limit is 65535. This value is more conservative, resulting on
 /// potentially issueing more queries to the server. This is not expected to be
 /// an issue.

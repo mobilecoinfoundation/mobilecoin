@@ -323,7 +323,9 @@ pub struct TxOut {
 }
 
 /// When creating a MemoPayload for a TxOut, sometimes it is important to be
-/// able to have access to the fields of this TxOut. For example, in some of
+/// able to have access to the fields of this TxOut.
+///
+/// For example, in some of
 /// the authenticated memos, the memo contains an HMAC, which includes the
 /// tx_out_public_key, in order to bind the memo to the TxOut.
 ///
@@ -515,7 +517,9 @@ impl TryFrom<&TxOut> for ReducedTxOut {
 }
 
 /// A Merkle proof-of-membership for the TxOut at the given index contains a set
-/// of hashes: it includes each hash between the leaf and the root, as well as
+/// of hashes:
+///
+/// It includes each hash between the leaf and the root, as well as
 /// each "other" child hash. It is assumed that the proof accompanies the leaf
 /// TxOut, so its leaf hash may be computed as part of checking the proof.
 ///

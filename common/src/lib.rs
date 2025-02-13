@@ -40,6 +40,7 @@ pub type HashSet<K> = hashbrown::HashSet<K, HasherBuilder>;
 pub type Hash = [u8; 32];
 
 /// Note: This is only used by servers, for logging (maybe to anonymize logs?)
+///
 /// Please don't use it in e.g. transaction validation math, or actual hashing
 /// of the blocks in the blockchain, where you should be specific about what
 /// hash you are using.

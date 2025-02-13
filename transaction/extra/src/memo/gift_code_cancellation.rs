@@ -7,9 +7,10 @@
 use crate::{impl_memo_type_conversions, RegisteredMemoType};
 use mc_transaction_core::MemoError;
 
-/// Memo representing the cancellation of a gift code. If a gift code is
-/// never redeemed, the sender may cancel it by sending the TxOut back
-/// to their primary address. This memo will be written to the
+/// Memo representing the cancellation of a gift code.
+///
+/// If a gift code is never redeemed, the sender may cancel it by sending the
+/// TxOut back to their primary address. This memo will be written to the
 /// reserved change address with 8 big endian bytes reserved for a u64
 /// that represents the index of the cancelled gift code TxOut and 7 big
 /// endian bytes reserved for recording the fee paid to cancel the gift

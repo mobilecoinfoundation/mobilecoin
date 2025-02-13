@@ -30,8 +30,9 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
     InnerSet(QuorumSet<ID>),
 }
 
-/// This wrapper struct is required because of a peculiarity of `prost`: you
-/// cannot have repeated oneof fields (like a `Vec<QuorumSetMember>`), so we
+/// This wrapper struct is required because of a peculiarity of `prost`:
+///
+/// You cannot have repeated oneof fields (like a `Vec<QuorumSetMember>`), so we
 /// wrap [QuorumSetMember] in a struct which implements [prost::Message].
 /// Unfortunately protobuf also doesn't allow for required oneof fields, so the
 /// inner value has to be optional. In practice we expect it to always be

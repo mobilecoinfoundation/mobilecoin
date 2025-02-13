@@ -8,6 +8,8 @@ use crate::{impl_memo_type_conversions, RegisteredMemoType};
 use core::str;
 use mc_transaction_core::MemoError;
 
+/// Gift Code Sender Memo
+///
 /// A gift code is considered "redeemed" when the receiver of
 /// a gift code message uses the private spend key of the gift
 /// code TxOut (originally sent to the sender's reserved gift

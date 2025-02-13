@@ -178,7 +178,9 @@ impl PartialOrd for WellFormedTxContext {
 }
 
 /// An intermediate struct for holding data required to perform the two-step
-/// is-well-formed test. This is returned by `txs_propose` and allows untrusted
+/// is-well-formed test.
+///
+/// This is returned by `txs_propose` and allows untrusted
 /// to gather data required for the in-enclave well-formedness test that takes
 /// place in `tx_is_well_formed`.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -329,7 +331,8 @@ pub trait ConsensusEnclave: ReportableEnclave {
     ) -> Result<(Block, BlockContents, BlockSignature)>;
 }
 
-/// Helper trait which reduces boiler-plate in untrusted side
+/// Helper trait which reduces boiler-plate in untrusted side.
+///
 /// The trusted object which implements consensus_enclave usually cannot
 /// implement Clone, Send, Sync, etc., but the untrusted side can and usually
 /// having a "handle to an enclave" is what is most useful for a webserver.

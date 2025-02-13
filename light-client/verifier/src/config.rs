@@ -13,7 +13,9 @@ use serde_with::{hex::Hex, serde_as};
 use std::{collections::BTreeSet, fmt, ops::Range};
 
 /// A version of `[QuorumSetMember]` that does not use an internally-tagged
-/// enum. The only reason this is needed is because we want to be able to use
+/// enum.
+///
+/// The only reason this is needed is because we want to be able to use
 /// this configuration inside a cosmos wasm contract, and unfortunately the
 /// cosmwasm runtime does not support floating point operations. It turns out
 /// that serde generates some floating point code when using internally-tagged
@@ -68,7 +70,9 @@ impl From<QuorumSet> for mc_consensus_scp_types::QuorumSet<NodeID> {
 }
 
 /// A version of `[TrustedValidatorSet]` that uses a quorum set that encodes
-/// node keys as base64 strings. This makes it more pleasant to use in config
+/// node keys as base64 strings.
+///
+/// This makes it more pleasant to use in config
 /// files, as well as allowing the key format to match what consensus already
 /// uses.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -85,7 +89,9 @@ impl From<TrustedValidatorSetConfig> for TrustedValidatorSet {
 }
 
 /// A version of `[TrustedValidatorSet]` that uses a quorum set that encodes
-/// node keys as base64 strings. This makes it more pleasant to use in config
+/// node keys as base64 strings.
+///
+/// This makes it more pleasant to use in config
 /// files, as well as allowing the key format to match what consensus already
 /// uses.
 #[serde_as]

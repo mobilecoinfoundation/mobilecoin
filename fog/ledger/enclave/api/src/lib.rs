@@ -33,7 +33,9 @@ use serde::{Deserialize, Serialize};
 pub type Result<T> = StdResult<T, Error>;
 
 /// An intermediate struct for holding data required to get outputs for the
-/// client. This is returned by `client_get_outputs` and allows untrusted to
+/// client.
+///
+/// This is returned by `client_get_outputs` and allows untrusted to
 /// gather data that will be encrypted for the client in `outputs_for_client`.
 ///
 /// Key image check is now in ORAM, replacing untrusted
@@ -162,7 +164,8 @@ pub trait LedgerEnclave: ReportableEnclave {
     ) -> Result<EnclaveMessage<ClientSession>>;
 }
 
-/// Helper trait which reduces boiler-plate in untrusted side
+/// Helper trait which reduces boiler-plate in untrusted side.
+///
 /// The trusted object which implements the above api usually cannot implement
 /// Clone, Send, Sync, etc., but the untrusted side can and usually having a
 /// "handle to an enclave" is what is most useful for a webserver.

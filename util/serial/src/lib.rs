@@ -86,10 +86,11 @@ mod json_u64 {
     use super::*;
     use serde_with::{serde_as, DisplayFromStr};
 
-    /// Represents u64 using string, when serializing to Json
-    /// Javascript integers are not 64 bit, and so it is not really proper json.
-    /// Using string avoids issues with some json parsers not handling large
-    /// numbers well.
+    /// Represents u64 using string.
+    ///
+    /// When serializing to Json Javascript integers are not 64 bit, and so it
+    /// is not really proper json. Using string avoids issues with some json
+    /// parsers not handling large numbers well.
     ///
     /// This does not rely on the serde-json arbitrary precision feature, which
     /// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)

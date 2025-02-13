@@ -213,7 +213,7 @@ impl<'de, Scheme: UriScheme> serde::Deserialize<'de> for Uri<Scheme> {
             pub _scheme: PhantomData<Scheme>,
         }
 
-        impl<'de, S: UriScheme> Visitor<'de> for UriVisitor<S> {
+        impl<S: UriScheme> Visitor<'_> for UriVisitor<S> {
             type Value = Uri<S>;
 
             fn expecting(&self, formatter: &mut Formatter) -> FmtResult {

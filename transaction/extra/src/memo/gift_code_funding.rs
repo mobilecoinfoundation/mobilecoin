@@ -11,6 +11,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::MemoError;
 
 /// MobileCoin account owners can create a special TxOut called a "gift code".
+///
 /// This TxOut is sent to a special subaddress at index u64::MAX - 2 reserved
 /// for gift codes. After this is done, the onetime private key, shared secret
 /// and universal index of the TxOut is sent to the intended recipient.

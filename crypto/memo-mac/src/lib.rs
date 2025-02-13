@@ -13,7 +13,8 @@ use sha2::Sha512;
 
 type HmacSha512 = Hmac<Sha512>;
 
-/// Shared code for memo types in category 0x01, whose last 16 bytes is an HMAC
+/// Shared code for memo types in category 0x01, whose last 16 bytes is an HMAC.
+///
 /// This HMAC key is always first the 32 bytes of a shared secret, then the 32
 /// bytes of the TxOut public key, then all the bytes of the decrypted memo,
 /// omitting the last 16 which are the HMAC.

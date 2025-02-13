@@ -154,7 +154,7 @@ where
     /// Create a new oram storage object for count items, with particular RNG
     pub fn new<Rng: RngCore + CryptoRng>(count: u64, rng: &mut Rng) -> Self {
         assert!(count != 0);
-        assert!(count & (count - 1) == 0, "count must be a power of two");
+        assert!(count.is_power_of_two(), "count must be a power of two");
 
         let treetop_max_count: u64 = max(
             2u64,

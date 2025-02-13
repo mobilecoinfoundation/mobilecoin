@@ -44,6 +44,7 @@ use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 /// The constant chosen for the burn address view private key.
+///
 /// This is arbitrary but we decided to make it nonzero, because we are using
 /// this number to multiply, and multiplying by zero can lead to degeneracies.
 pub const BURN_ADDRESS_VIEW_PRIVATE_BYTES: [u8; 32] = [1u8; 32];

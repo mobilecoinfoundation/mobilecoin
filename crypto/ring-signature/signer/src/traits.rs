@@ -42,6 +42,7 @@ pub struct InputSecret {
 }
 
 /// To spend an input, we need to be able to derive the one-time private key.
+///
 /// For off-line signing, we can't have this on the online machine. So in that
 /// case, we provide only the subaddress index, and the RingSigner (off-line
 /// machine) must use the account private keys to derive the one-time private

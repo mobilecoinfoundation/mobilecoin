@@ -9,7 +9,9 @@ use crate::impl_memo_type_conversions;
 
 /// A memo that the sender writes to associate a burn of an assert on the
 /// MobileCoin blockchain with a redemption of another asset on a different
-/// blockchain. The main intended use-case for this is burning of tokens that
+/// blockchain.
+///
+/// The main intended use-case for this is burning of tokens that
 /// are correlated with redemption of some other asset on a different
 /// blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]

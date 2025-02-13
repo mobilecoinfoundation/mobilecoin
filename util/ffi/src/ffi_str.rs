@@ -8,7 +8,9 @@ use std::{
 };
 
 /// A wrapper struct with a memory layout equivalent to a raw `*mut c_char`
-/// pointer, meant to be used as the return type of C-compatible FFI Rust
+/// pointer.
+///
+/// Meant to be used as the return type of C-compatible FFI Rust
 /// function, signaling a transfer of ownership of the underlying memory of a
 /// raw `CString` from Rust to the caller.
 ///
@@ -239,7 +241,7 @@ impl<'a> From<&'a CStr> for FfiStr<'a> {
     }
 }
 
-impl<'a> fmt::Display for FfiStr<'a> {
+impl fmt::Display for FfiStr<'_> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_string_lossy().fmt(f)

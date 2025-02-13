@@ -58,6 +58,7 @@ cfg_if::cfg_if! {
         use std::{time::Instant, format, string::String};
 
         /// Simple time measurement utility, based on the [measure_time](https://docs.rs/measure_time/) crate.
+        ///
         /// Note that even though the macro lives inside the `logger` module, it needs to be imported by
         /// `use mc_common::trace_time`, since Rust exports all macros at the crate level :/
         #[macro_export]
@@ -88,7 +89,7 @@ cfg_if::cfg_if! {
             }
         }
 
-        impl<'a> Drop for TraceTime<'a> {
+        impl Drop for TraceTime<'_> {
             fn drop(&mut self) {
                 let time_in_ms = (self.start.elapsed().as_secs() as f64 * 1_000.0)
                     + (self.start.elapsed().subsec_nanos() as f64 / 1_000_000.0);

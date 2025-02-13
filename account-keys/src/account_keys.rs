@@ -247,7 +247,9 @@ impl FromRandom for PublicAddress {
     }
 }
 
-/// Complete AccountKey, containing the pair of secret keys, which can be used
+/// Complete AccountKey.
+///
+/// Containing the pair of secret keys, which can be used
 /// for spending, and optionally some fog-related info,
 /// can be used for spending. This should only ever be present in client code.
 #[derive(Clone, Zeroize)]

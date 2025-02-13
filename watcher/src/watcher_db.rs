@@ -86,12 +86,14 @@ pub const CONFIG_DB_KEY_TX_SOURCE_URLS: &str = "tx_source_urls";
 /// Poll block timestamp polling frequency for new data every 10 ms
 pub const POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY: Duration = Duration::from_millis(10);
 
-/// Poll block timestamp error retry frequency. The reason we have an error
-/// retry frequency is because when  a database invariant is violated, e.g. we
-/// get block but not block contents, it typically will not be fixed and so we
-/// won't be able to proceed. Generally when an invariant is violated we would
-/// panic, but this code is used in services that are expensive to restart (such
-/// as the ingest enclave and ledger enclave)
+/// Poll block timestamp error retry frequency.
+///
+/// The reason we have an error retry frequency is because when  a database
+/// invariant is violated, e.g. we get block but not block contents, it
+/// typically will not be fixed and so we won't be able to proceed. Generally
+/// when an invariant is violated we would panic, but this code is used in
+/// services that are expensive to restart (such as the ingest enclave and
+/// ledger enclave)
 ///
 /// So instead, if this happens, we log an error, and retry in 1s.
 /// This avoids logging at > 1hz when there is this error, which would be
@@ -1087,6 +1089,7 @@ fn bytes_to_url(bytes: &[u8]) -> Result<Url, WatcherDBError> {
     Ok(Url::parse(str::from_utf8(bytes)?)?)
 }
 
+/// Watcher DB Tests
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -1101,12 +1104,14 @@ pub mod tests {
     use rand_hc::Hc128Rng;
     use tempfile::TempDir;
 
+    /// Setup a WatcherDB.
     pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new().expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path()).expect("Failed to create WatcherDB");
         WatcherDB::open_rw(db_tmp.path(), src_urls, logger).unwrap()
     }
 
+    /// Setup a set of blocks.
     pub fn setup_blocks() -> Vec<BlockData> {
         get_blocks(
             BlockVersion::ZERO,

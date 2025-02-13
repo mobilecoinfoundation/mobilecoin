@@ -41,9 +41,9 @@ impl EnclaveReport for Report {
     }
 }
 
-/// High level API for sealing and unsealing objects based on Sealed trait
-/// and sealed blob
-
+/// High level API for sealing and unsealing objects based on Sealed trait and
+/// sealed blob.
+///
 /// Seal a Sealed::Source object and return a Sealed
 pub fn seal<S: Sealed>(obj: &S::Source) -> Result<S, S::Error> {
     let mut buf = Vec::new();
