@@ -55,7 +55,6 @@ const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
 /// order is defined by the field definition order, which is prone to error. I.e
 /// simply reordering the fields would cause the test to fail without a clear
 /// explanation as to why.
-
 type TestViewServer = ViewServer<SgxViewEnclave, SqlRecoveryDb, EpochShardingStrategy>;
 
 pub struct RouterTestEnvironment {

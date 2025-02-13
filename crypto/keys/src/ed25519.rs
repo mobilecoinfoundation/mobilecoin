@@ -315,7 +315,7 @@ impl FromRandom for Ed25519Private {
     }
 }
 
-impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Private {
+impl TryFrom<&[u8]> for Ed25519Private {
     type Error = SignatureError;
 
     fn try_from(src: &[u8]) -> Result<Ed25519Private, Self::Error> {
@@ -387,7 +387,7 @@ impl Signer<Ed25519Signature> for Ed25519Pair {
     }
 }
 
-impl<'bytes> TryFrom<&'bytes [u8]> for Ed25519Pair {
+impl TryFrom<&[u8]> for Ed25519Pair {
     type Error = SignatureError;
 
     fn try_from(src: &[u8]) -> Result<Self, SignatureError> {

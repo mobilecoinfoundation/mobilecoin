@@ -83,10 +83,11 @@ impl From<ConsensusEnclaveError> for ConsensusServiceError {
     }
 }
 
-/// A consensus message relayed by the broadcast layer. In addition to the
-/// consensus message itself, it includes the node ID the message was received
-/// from. Note that this could be different from the node ID that initiated the
-/// message due to relaying.
+/// A consensus message relayed by the broadcast layer.
+///
+/// In addition to the consensus message itself, it includes the node ID the
+/// message was received from. Note that this could be different from the node
+/// ID that initiated the message due to relaying.
 pub struct IncomingConsensusMsg {
     /// The broadcast-layer sender.
     pub from_responder_id: ResponderId,

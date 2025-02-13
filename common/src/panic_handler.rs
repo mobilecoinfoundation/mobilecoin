@@ -5,7 +5,7 @@ use backtrace::Backtrace;
 use std::{
     boxed::Box,
     env, format,
-    panic::{self, PanicInfo},
+    panic::{self, PanicHookInfo},
     println, process,
     string::ToString,
     thread, time,
@@ -13,12 +13,12 @@ use std::{
 
 /// Call this to ensure a process exits if a threads panics.
 pub fn setup_panic_handler() {
-    panic::set_hook(Box::new(move |pi: &PanicInfo<'_>| {
+    panic::set_hook(Box::new(move |pi: &PanicHookInfo<'_>| {
         handle_panic(pi);
     }));
 }
 
-fn handle_panic(panic_info: &PanicInfo<'_>) {
+fn handle_panic(panic_info: &PanicHookInfo<'_>) {
     let details = format!("{panic_info}");
     let backtrace = format!("{:#?}", Backtrace::new());
     let thread_name = thread::current().name().unwrap_or("?").to_string();

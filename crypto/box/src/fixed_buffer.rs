@@ -32,19 +32,19 @@ pub struct FixedBuffer<'a> {
     length: usize,
 }
 
-impl<'a> AsRef<[u8]> for FixedBuffer<'a> {
+impl AsRef<[u8]> for FixedBuffer<'_> {
     fn as_ref(&self) -> &[u8] {
         &self.buf[..self.length]
     }
 }
 
-impl<'a> AsMut<[u8]> for FixedBuffer<'a> {
+impl AsMut<[u8]> for FixedBuffer<'_> {
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.buf[..self.length]
     }
 }
 
-impl<'a> Buffer for FixedBuffer<'a> {
+impl Buffer for FixedBuffer<'_> {
     fn len(&self) -> usize {
         self.length
     }

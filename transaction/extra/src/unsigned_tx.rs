@@ -15,8 +15,9 @@ use mc_transaction_types::{Amount, BlockVersion, TokenId, TxSummary, UnmaskedAmo
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-/// A structure containing an unsigned transaction, together with the data
+/// A structure containing an unsigned transaction together with the data
 /// required to sign it that does not involve the spend private key.
+///
 /// The idea is that this can be generated without having the spend private key,
 /// and then transferred to an offline/hardware service that does have the spend
 /// private key, which can then be used together with the data here to produce a

@@ -9,10 +9,12 @@ use mc_transaction_core::{
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-/// Parameters for a output request. This is the contents of the encrypted
-/// payload sent by the client. We need to define this since the client will use
-/// the external type to send this.  Eventually we want to use prost to generate
-/// this from the external proto, but for now this works.
+/// Parameters for a output request.
+///
+/// This is the contents of the encrypted payload sent by the client. We need to
+/// define this since the client will use the external type to send this.
+/// Eventually we want to use prost to generate this from the external proto,
+/// but for now this works.
 #[derive(Message, Eq, PartialEq)]
 pub struct GetOutputsRequest {
     /// Indices for outputs requested.
@@ -24,7 +26,9 @@ pub struct GetOutputsRequest {
     pub merkle_root_block: u64,
 }
 
-/// A list of outputs and proofs. This is the contents of the encrypted payload
+/// A list of outputs and proofs.
+///
+/// This is the contents of the encrypted payload
 /// sent to the client. We need to define this since the client will use the
 /// external type to read this. We test in the `fog_api` integration tests that
 /// this round-trips with the protobuf generated type
@@ -89,7 +93,9 @@ pub struct OutputResult {
     pub proof: TxOutMembershipProof,
 }
 
-/// A list of key images. This is the contents of the encrypted payload sent by
+/// A list of key images.
+///
+/// This is the contents of the encrypted payload sent by
 /// the client. We need to define this since the client will use the external
 /// type to send this.  Eventually we want to use prost to generate this from
 /// the external proto, but for now this works.
@@ -114,6 +120,7 @@ pub struct KeyImageQuery {
 
 /// A list that says whether in request key images have been spent. This is the
 /// contents of the encrypted payload sent to the client.
+///
 /// We need to define this since the client will use the external type to send
 /// this.  Eventually we want to use prost to generate this from the external
 /// proto, but for now this works.

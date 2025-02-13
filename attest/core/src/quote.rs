@@ -493,7 +493,7 @@ impl ToX64 for Quote {
     }
 }
 
-impl<'bytes> TryFrom<&'bytes [u8]> for Quote {
+impl TryFrom<&[u8]> for Quote {
     type Error = QuoteError;
 
     fn try_from(src: &[u8]) -> Result<Self, QuoteError> {

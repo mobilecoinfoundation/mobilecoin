@@ -3,7 +3,9 @@
 use clap::{CommandFactory, FromArgMatches, Parser};
 
 /// Command line parser trait that provides build information into the version
-/// string. In order to use this, one must pass in the `version` argument to the
+/// string.
+///
+/// In order to use this, one must pass in the `version` argument to the
 /// `clap` attribute.  When the `version` flag is present it will be extended to
 /// include the git commit of the crate.
 pub trait ParserWithBuildInfo: Parser {

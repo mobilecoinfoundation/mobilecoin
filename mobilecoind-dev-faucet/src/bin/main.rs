@@ -49,7 +49,7 @@ async fn post_cancel_slam(state: &rocket::State<State>) {
 }
 
 /// Request status of the faucet, and map the rust result onto json for rocket
-/// apporpriately
+/// appropriately
 #[get("/status")]
 async fn status(state: &rocket::State<State>) -> Json<JsonFaucetStatus> {
     Json(state.handle_status().await.into())

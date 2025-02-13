@@ -27,7 +27,7 @@ impl ReportDataMask {
     }
 }
 
-impl<'src> TryFrom<&'src [u8]> for ReportDataMask {
+impl TryFrom<&[u8]> for ReportDataMask {
     type Error = EncodingError;
 
     fn try_from(src: &[u8]) -> Result<Self, EncodingError> {

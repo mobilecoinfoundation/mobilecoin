@@ -20,8 +20,9 @@ pub type Result<T> = StdResult<T, Error>;
 
 /// A convenience wrapper for an [std::result::Result] which contains a
 /// [RetryError] for a peer [Error].
-//pub type RetryResult<T> = StdResult<T, RetryError<Error>>;
-
+///
+///pub type RetryResult<T> = StdResult<T, RetryError<Error>>;
+///
 /// An enumeration of errors which can occur as the result of a peer connection
 /// issue
 #[derive(Debug, Display)]

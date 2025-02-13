@@ -105,7 +105,9 @@ impl From<Tx> for WellFormedTx {
     }
 }
 
-/// A list of transactions. This is the contents of the encrypted payload
+/// A list of transactions.
+///
+/// This is the contents of the encrypted payload
 /// returned by `txs_for_peer` and fed into `peer_tx_propose`.
 /// We need to define this since that's the only way to get Prost to serialize a
 /// list of transactions. Prost is used for the sake of uniformity - all other
@@ -481,15 +483,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         self.ake.init(peer_self_id, client_self_id.clone())?;
 
         // If we were passed a sealed key, unseal it and overwrite the private key.
-        match sealed_key {
-            Some(sealed) => {
-                log::trace!(self.logger, "trying to unseal key");
-                let cached = IntelSealed::try_from(sealed.clone())?;
-                let (key, _mac) = cached.unseal_raw()?;
-                let mut lock = self.ake.get_identity().signing_keypair.lock().unwrap();
-                *lock = Ed25519Pair::try_from(&key[..])?;
-            }
-            None => (),
+        if let Some(sealed) = sealed_key {
+            log::trace!(self.logger, "trying to unseal key");
+            let cached = IntelSealed::try_from(sealed.clone())?;
+            let (key, _mac) = cached.unseal_raw()?;
+            let mut lock = self.ake.get_identity().signing_keypair.lock().unwrap();
+            *lock = Ed25519Pair::try_from(&key[..])?;
         }
 
         // Either way seal the private key and return it.

@@ -79,6 +79,7 @@ pub fn block_num_to_s3block_path(block_index: BlockIndex) -> PathBuf {
 }
 
 /// Helper method for getting the suggested path/filename of a "merged block".
+///
 /// A "merged block" is a consecutive collection of blocks that were joined
 /// together to speed up ledger syncing.
 /// `bucket_size` specifies how many blocks are expected to be joined together.

@@ -9,9 +9,10 @@ use crate::impl_memo_type_conversions;
 use displaydoc::Display;
 use mc_transaction_core::NewMemoError;
 
-/// Memo denoting a defragmentation transaction. This memo contains
-/// the amount and fee of a defragmentation transaction as well as
-/// an optional defragmentation ID number. The defragmentation ID number
+/// Memo denoting a defragmentation transaction.
+///
+/// This memo contains the amount and fee of a defragmentation transaction as
+/// well as an optional defragmentation ID number. The defragmentation ID number
 /// can be used to group multiple defragmentation transactions together.
 /// If, for example, 3 defragmentation transactions are needed in order to
 /// send the desired amount, the same ID should be used all 3 times. Then,

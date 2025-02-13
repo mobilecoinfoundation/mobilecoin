@@ -115,7 +115,8 @@ pub trait IngestEnclave: ReportableEnclave {
     fn peer_close(&self, session_id: &PeerSession) -> Result<()>;
 }
 
-/// Helper trait which reduces boiler-plate in untrusted side
+/// Helper trait which reduces boiler-plate in untrusted side.
+///
 /// The trusted object which implements the above api usually cannot implement
 /// Clone, Send, Sync, etc., but the untrusted side can and usually having a
 /// "handle to an enclave" is what is most useful for a webserver.

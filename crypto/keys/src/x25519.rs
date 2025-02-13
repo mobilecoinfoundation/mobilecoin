@@ -273,7 +273,7 @@ impl<'de> Deserialize<'de> for X25519Public {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<X25519Public, D::Error> {
         struct KeyVisitor;
 
-        impl<'de> Visitor<'de> for KeyVisitor {
+        impl Visitor<'_> for KeyVisitor {
             type Value = X25519Public;
 
             fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
@@ -504,7 +504,7 @@ impl<'de> Deserialize<'de> for X25519Private {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<X25519Private, D::Error> {
         struct KeyVisitor;
 
-        impl<'de> Visitor<'de> for KeyVisitor {
+        impl Visitor<'_> for KeyVisitor {
             type Value = X25519Private;
 
             fn expecting(&self, formatter: &mut Formatter) -> FmtResult {

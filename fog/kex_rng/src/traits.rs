@@ -60,7 +60,9 @@ pub trait KexRngCore<KexAlgo: Kex> {
     ) -> GenericArray<u8, Self::OutputSize>;
 }
 
-/// Trait representing a type-erased KexRngCore with attached counter and buffer
+/// Trait representing a type-erased KexRngCore with attached counter and
+/// buffer.
+///
 /// It may support one or several versions, but must have a notion of a version
 /// tag. The multiple versions might have different state or output sizes.
 /// This is ultimately implemented by both the buffered wrapper of KexRngCore,
@@ -76,7 +78,8 @@ pub trait BufferedRng: Clone + Into<StoredRng> + TryFrom<StoredRng> {
     fn version_id(&self) -> u32;
 }
 
-/// Trait representing a buffered Rng initializable by key exchange
+/// Trait representing a buffered Rng initializable by key exchange.
+///
 /// We cannot hope to derive NewFromKex here, because versioning strategy is
 /// involved, and the VersionedKexRng could dynamically have different versions.
 pub trait KexRng<KexAlgo: Kex>: BufferedRng + NewFromKex<KexAlgo> {}

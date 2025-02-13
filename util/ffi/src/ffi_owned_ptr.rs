@@ -3,7 +3,9 @@
 use core::{mem, ops, ptr};
 
 /// `FfiOwnedPtr` is a wrapper around an "owned" pointer which allows
-/// manipulation in safe Rust. This type has a memory layout exactly equivalent
+/// manipulation in safe Rust.
+///
+/// This type has a memory layout exactly equivalent
 /// to `*mut T` and is intended for use in C FFI Rust functions for both return
 /// types and parameter types.
 ///

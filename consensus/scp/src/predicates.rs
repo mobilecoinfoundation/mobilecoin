@@ -158,7 +158,7 @@ pub struct FuncPredicate<'a, V: Value, ID: GenericNodeId = NodeID> {
     pub test_fn: &'a dyn Fn(&Msg<V, ID>) -> bool,
 }
 
-impl<'a, V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'a, V, ID> {
+impl<V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'_, V, ID> {
     type Result = ();
 
     fn test(&self, msg: &Msg<V, ID>) -> Option<Self> {

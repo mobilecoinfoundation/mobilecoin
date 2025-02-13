@@ -40,7 +40,7 @@ impl<DigestAlgo: Digest> AsRef<[u8]> for HandshakeHash<DigestAlgo> {
 }
 
 /// New data can be mixed with the handshake hash via addition.
-impl<'data, DigestAlgo: Digest> Add<&'data [u8]> for HandshakeHash<DigestAlgo> {
+impl<DigestAlgo: Digest> Add<&[u8]> for HandshakeHash<DigestAlgo> {
     type Output = Self;
 
     fn add(self, data: &[u8]) -> Self {
@@ -51,7 +51,7 @@ impl<'data, DigestAlgo: Digest> Add<&'data [u8]> for HandshakeHash<DigestAlgo> {
 }
 
 /// New data can be mixed with the handshake hash via add-assignment.
-impl<'data, DigestAlgo: Digest> AddAssign<&'data [u8]> for HandshakeHash<DigestAlgo> {
+impl<DigestAlgo: Digest> AddAssign<&[u8]> for HandshakeHash<DigestAlgo> {
     fn add_assign(&mut self, data: &[u8]) {
         let mut hasher = DigestAlgo::new();
         hasher.update(self.as_ref());

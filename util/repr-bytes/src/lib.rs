@@ -113,7 +113,9 @@ impl Display for LengthMismatch {
 // - Impls of ReprBytes in terms of other traits
 
 /// Derive [ReprBytes] from [AsRef<[u8]>], [TryFrom<&[u8]>], and Size as a
-/// typenum. This is expected to be the right implementation for almost all
+/// typenum.
+///
+/// This is expected to be the right implementation for almost all
 /// cryptographic primitives, e.g. X25519, CompressedRistretto, etc.
 /// It can't work for e.g. `RistrettoPoint`, which doesn't have AsRef<[u8]>.
 ///
@@ -269,7 +271,9 @@ macro_rules! derive_prost_message_from_repr_bytes {
 }
 
 /// Derive [serde::Serialize] and [serde::Deserialize] from a [ReprBytes]
-/// implementation This is represented within serde as a bytes primitive. During
+/// implementation.
+///
+/// This is represented within serde as a bytes primitive. During
 /// deserialization, a sequence of individual bytes also works, which helps
 /// `serde_json`.
 #[cfg(feature = "serde")]

@@ -27,7 +27,7 @@ pub struct MlsagVerify<'a, R: Ring> {
     pub output_commitment: &'a CompressedCommitment,
 }
 
-impl<'a, R: Ring> MlsagVerify<'a, R> {
+impl<R: Ring> MlsagVerify<'_, R> {
     /// mlsag verification logic, buffer based for no_std compatibility
     pub fn verify(&self, recomputed_c: &mut [Scalar]) -> Result<(), Error> {
         let ring_size = self.ring.size();

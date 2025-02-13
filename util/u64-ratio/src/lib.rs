@@ -46,7 +46,8 @@ impl U64Ratio {
     /// Multiply a u64 number by the ratio, rounding up.
     /// Note that this cannot fail if the ratio is <= 1.
     pub fn checked_mul_round_up(&self, val: u64) -> Option<u64> {
-        (((val as u128 * self.num) + (self.denom - 1)) / self.denom)
+        (val as u128 * self.num)
+            .div_ceil(self.denom)
             .try_into()
             .ok()
     }

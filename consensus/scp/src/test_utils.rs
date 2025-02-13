@@ -37,7 +37,6 @@ pub fn trivial_combine_fn<V: Value>(values: &[V]) -> Result<Vec<V>, TransactionV
 }
 
 /// Returns at most the first `n` values.
-
 pub fn get_bounded_combine_fn<V: Value>(
     max_elements: usize,
 ) -> impl Fn(&[V]) -> Result<Vec<V>, TransactionValidationError> {

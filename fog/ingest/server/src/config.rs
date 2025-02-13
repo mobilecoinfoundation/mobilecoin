@@ -34,7 +34,6 @@ pub struct IngestConfig {
     ///     --peers mc://foo:123 --peers mc://bar:456
     ///     --peers mc://foo:123,mc://bar:456
     ///     env MC_PEERS=mc://foo:123,mc://bar:456
-
     #[clap(long, use_value_delimiter = true, env = "MC_PEERS")]
     pub peers: Vec<IngestPeerUri>,
 

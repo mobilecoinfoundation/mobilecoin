@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// Protos to be used for displaying encoded strings to users
+// Protos to be used for displaying encoded strings to users
 
 syntax = "proto3";
 import "external.proto";
@@ -9,48 +9,48 @@ package printable;
 
 option java_package = "com.mobilecoin.api";
 
-/// Message for a payment request, which combines a public address
-/// with an a requested payment amount and memo field
+// Message for a payment request, which combines a public address
+// with an a requested payment amount and memo field
 message PaymentRequest {
-    /// The public address of the user requesting a payment
+    // The public address of the user requesting a payment
     external.PublicAddress public_address = 1;
 
-    /// The requested value of the payment
+    // The requested value of the payment
     uint64 value = 2;
 
-    /// Any additional text explaining the request
+    // Any additional text explaining the request
     string memo = 3;
 
-    /// Token id to transact in.
+    // Token id to transact in.
     uint64 token_id = 4;
 
-    /// Payment Id
+    // Payment Id
     uint64 payment_id = 5;
 }
 
-/// Message encoding a private key and a UTXO, for the purpose of
-/// giving someone access to an output. This would most likely be
-/// used for gift cards.
+// Message encoding a private key and a UTXO, for the purpose of
+// giving someone access to an output. This would most likely be
+// used for gift cards.
 message TransferPayload {
-    /// [Deprecated] The root entropy, allowing the recipient to spend the money.
-    /// This has been replaced by a BIP39 entropy.
+    // [Deprecated] The root entropy, allowing the recipient to spend the money.
+    // This has been replaced by a BIP39 entropy.
     bytes root_entropy = 1 [deprecated=true];
 
-    /// The public key of the UTXO to spend. This is an optimization, meaning
-    /// the recipient does not need to scan the entire ledger.
+    // The public key of the UTXO to spend. This is an optimization, meaning
+    // the recipient does not need to scan the entire ledger.
     external.CompressedRistretto tx_out_public_key = 2;
 
-    /// Any additional text explaining the gift
+    // Any additional text explaining the gift
     string memo = 3;
 
-    /// BIP39 entropy, allowing the recipient to spend the money.
-    /// When deriving an AccountKey from this entropy, account_index is always 0.
+    // BIP39 entropy, allowing the recipient to spend the money.
+    // When deriving an AccountKey from this entropy, account_index is always 0.
     bytes bip39_entropy = 4;
 }
 
-/// Message encoding information required to locate a TxOut,
-/// un-blind the amount, and spend the TxOut. This can be used to give
-/// MobileCoin to both FOG & non-FOG users who may not yet have
+// Message encoding information required to locate a TxOut,
+// un-blind the amount, and spend the TxOut. This can be used to give
+// MobileCoin to both FOG & non-FOG users who may not yet have
 // a MobileCoin account enabled
 message TxOutGiftCode {
   // The global index of the TxOut that has been gifted. This allows
@@ -63,9 +63,9 @@ message TxOutGiftCode {
 
 }
 
-/// This wraps all of the above messages using "oneof", allowing us to
-/// have a single encoding scheme and extend as necessary simply by adding
-/// new messages without breaking backwards compatibility
+// This wraps all of the above messages using "oneof", allowing us to
+// have a single encoding scheme and extend as necessary simply by adding
+// new messages without breaking backwards compatibility
 message PrintableWrapper { oneof wrapper {
     external.PublicAddress public_address = 1;
     PaymentRequest payment_request = 2;

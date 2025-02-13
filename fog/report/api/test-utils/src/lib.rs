@@ -3,9 +3,10 @@
 use prost::Message as ProstMessage;
 use protobuf::Message as ProtobufMessage;
 
-/// Take a ProstMessage value, and a ProtobufMessage type. Try to encode the
-/// prost message, decode as protobuf, re-encode that, and decode as prost
-/// again, and check that you got the original value back.
+/// Take a ProstMessage value, and a ProtobufMessage type.
+///
+/// Try to encode the prost message, decode as protobuf, re-encode that, and
+/// decode as prost again, and check that you got the original value back.
 /// This ensures that the fields in the manually written, prosty rust structure,
 /// are at least a subset of the fields in the .proto file, so no data loss
 /// occurs if the client decodes using that .proto file.

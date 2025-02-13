@@ -65,6 +65,7 @@ pub use identity::{EnclaveIdentity, NullIdentity};
 
 /// State associated to Attested Authenticated Key Exchange held by an enclave,
 /// including for peers and for clients.
+///
 /// This also includes cached attestation evidence, and data that goes in the
 /// attestation evidence
 pub struct AkeEnclaveState<EI: EnclaveIdentity> {

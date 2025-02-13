@@ -19,7 +19,7 @@ use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 
 /// Constructs for the test
-
+///
 /// Data that we are tracking of the user during the test
 /// This is essentially mocking the SDK
 #[derive(Default)]

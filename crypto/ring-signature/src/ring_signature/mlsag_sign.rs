@@ -41,7 +41,7 @@ pub struct MlsagSignParams<'a> {
     pub check_value_is_preserved: bool,
 }
 
-impl<'a> MlsagSignParams<'a> {
+impl MlsagSignParams<'_> {
     /// Sign a ring of input addresses and amount commitments using a modified
     /// MLSAG
     ///

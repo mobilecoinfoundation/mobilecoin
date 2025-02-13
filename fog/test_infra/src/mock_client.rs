@@ -8,6 +8,7 @@ use mc_fog_view_protocol::FogViewConnection;
 
 /// A structure that wraps recovery db reader and implements FogViewConnection,
 /// bypassing view node grpc and view enclave entirely.
+///
 /// This is useful for integration tests.
 /// This allows to validate acct_crypto::polling module against fog ingest
 /// directly.

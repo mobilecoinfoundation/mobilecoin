@@ -39,15 +39,14 @@ use prometheus::{
 use protobuf::Message;
 use std::{path::Path, str};
 
-/// Helper that encapsulates boilerplate for tracking
-/// prometheus metrics about gRPC services. This struct
-/// defines several common metrics (with a distinct
-/// MetricFamily per method) with the method path as a
-/// primary dimension/label. Method paths are derived
-/// from GRPC context.
-/// e.g., calc_service.req{method = "add"} = +1
+/// Helper that encapsulates boilerplate for tracking prometheus metrics about
+/// gRPC services.
+///
+/// This struct defines several common metrics (with a distinct MetricFamily per
+/// method) with the method path as a primary dimension/label. Method paths are
+/// derived from GRPC context. e.g., calc_service.req{method = "add"} = +1
 /// e.g., calc_service.duration_sum{method="add"} = 6
-
+///
 /// Corresponds to which gRPC method is being called.
 pub type GrpcMethodName = String;
 

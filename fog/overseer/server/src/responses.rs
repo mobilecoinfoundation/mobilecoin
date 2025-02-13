@@ -7,8 +7,10 @@ use mc_fog_uri::FogIngestUri;
 use serde::Serialize;
 use std::collections::HashMap;
 
-/// The ingest summaries for the Fog Ingest cluster that Fog Overser is
-/// monitoring. If an ingest summary can't be retrieved for a given node, then
+/// The ingest summaries for the Fog Ingest cluster that Fog Overseer is
+/// monitoring.
+///
+/// If an ingest summary can't be retrieved for a given node, then
 /// an error message, rather than an ingest summary, is returned for that node.
 #[derive(Serialize)]
 pub struct GetIngestSummariesResponse {

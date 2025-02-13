@@ -483,7 +483,7 @@ mod sgx_status_t_serde {
     ) -> Result<sgx_status_t, D::Error> {
         struct StatusVisitor;
 
-        impl<'de> Visitor<'de> for StatusVisitor {
+        impl Visitor<'_> for StatusVisitor {
             type Value = sgx_status_t;
 
             fn expecting(&self, formatter: &mut Formatter) -> FmtResult {

@@ -128,6 +128,7 @@ fn convert_gens(src: &PedersenGens) -> BPPedersenGens {
     }
 }
 
+/// Tests for the range_proofs module.
 #[cfg(test)]
 pub mod tests {
     use super::*;

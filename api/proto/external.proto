@@ -14,22 +14,22 @@ option go_package = "mobilecoin/api";
 // `keys` crate
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A Ristretto private key.
+// A Ristretto private key.
 message RistrettoPrivate {
     bytes data = 1;
 }
 
-/// A 32-byte compressed Ristretto curve point (public key)
+// A 32-byte compressed Ristretto curve point (public key)
 message CompressedRistretto {
     bytes data = 1;
 }
 
-/// An Ed25519 public key, for validating signatures.
+// An Ed25519 public key, for validating signatures.
 message Ed25519Public {
     bytes data = 1;
 }
 
-/// An Ed25519 signature object
+// An Ed25519 signature object
 message Ed25519Signature {
     bytes data = 1;
 }
@@ -53,72 +53,75 @@ message Ed25519SignerSet {
 // `account-keys` crate
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Complete AccountKey, containing the pair of secret keys, which can be used
-/// for spending, and optionally some Fog related info that is used to form
-/// public addresses for accounts that sign up with Fog service.
-///
-/// This matches the Rust `transaction::AccountKey` struct.
+// Complete AccountKey
+//
+// containing the pair of secret keys, which can be used for spending,
+// and optionally some Fog related info that is used to form
+// public addresses for accounts that sign up with Fog service.
+//
+// This matches the Rust `transaction::AccountKey` struct.
 message AccountKey {
-    /// Private key 'a' used for view-key matching.
+    // Private key 'a' used for view-key matching.
     RistrettoPrivate view_private_key = 1;
 
-    /// Private key `b` used for spending.
+    // Private key `b` used for spending.
     RistrettoPrivate spend_private_key = 2;
 
-    /// Optional url of fog report server.
-    /// Empty string when not in use, i.e. for accounts that don't have fog service.
+    // Optional url of fog report server.
+    // Empty string when not in use, i.e. for accounts that don't have fog service.
     string fog_report_url = 3;
 
-    /// Optional fog report id.
-    /// The fog report server may serve multiple reports, this id disambiguates
-    /// which one to use when sending to this account.
+    // Optional fog report id.
+    // The fog report server may serve multiple reports, this id disambiguates
+    // which one to use when sending to this account.
     string fog_report_id = 4;
 
-    /// Optional fog authority subjectPublicKeyInfo.
-    /// Empty when not in use.
+    // Optional fog authority subjectPublicKeyInfo.
+    // Empty when not in use.
     bytes fog_authority_spki = 5;
 }
 
-/// A public address, used to identify recipients.
+// A public address, used to identify recipients.
 message PublicAddress {
-    /// View public key
+    // View public key
     CompressedRistretto view_public_key = 1;
 
-    /// Spend public key
+    // Spend public key
     CompressedRistretto spend_public_key = 2;
 
-    /// Optional url of fog report server.
-    /// Empty string when not in use, i.e. for accounts that don't have fog service.
-    /// Indicates the place at which the fog report server should be contacted.
+    // Optional url of fog report server.
+    // Empty string when not in use, i.e. for accounts that don't have fog service.
+    // Indicates the place at which the fog report server should be contacted.
     string fog_report_url = 3;
 
-    /// Optional fog report id.
-    /// The fog report server may serve multiple reports, this id disambiguates
-    /// which one to use when sending to this account.
+    // Optional fog report id.
+    // The fog report server may serve multiple reports, this id disambiguates
+    // which one to use when sending to this account.
     string fog_report_id = 4;
 
-    /// View key signature over the fog authority subjectPublicKeyInfo.
-    ///
-    /// This must be parseable as a RistrettoSignature.
+    // View key signature over the fog authority subjectPublicKeyInfo.
+    //
+    // This must be parseable as a RistrettoSignature.
     bytes fog_authority_sig = 5;
 }
 
-/// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
-/// The RootIdentity is a compact form of a user's account key, if it has been
-/// derived in this way. This may be useful for e.g. paper wallets.
+// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
+//
+// The RootIdentity is a compact form of a user's account key, if it has been
+// derived in this way. This may be useful for e.g. paper wallets.
 message RootIdentity {
-    /// The root entropy used to derive cryptonote private keys for this account
+    // The root entropy used to derive cryptonote private keys for this account
     RootEntropy root_entropy = 1;
-    /// Optional url of fog report server, same as in AccountKey
+    // Optional url of fog report server, same as in AccountKey
     string fog_report_url = 2;
-    /// Optional fog report id, same as in AccountKey
+    // Optional fog report id, same as in AccountKey
     string fog_report_id = 3;
-    /// Optional fog authority subjectPublicKeyInfo.
-    /// Empty when not in use.
+    // Optional fog authority subjectPublicKeyInfo.
+    // Empty when not in use.
     bytes fog_authority_spki = 5;
 }
 
-/// A 32 byte secret used as input key material to derive private keys
+// A 32 byte secret used as input key material to derive private keys
 message RootEntropy {
     bytes data = 1;
 }
@@ -127,25 +130,26 @@ message RootEntropy {
 // `trasaction/core` crate
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A list of "known" token id's and their names.
-///
-/// Note that this is not an exhaustive list and clients should gracefully handle
-/// the scenario that they receive a tx out with a token id they don't know about yet.
-///
-/// If changing this, please keep it in sync with the list defined in
-/// mc-transaction-core in the tokens module.
+// A list of "known" token id's and their names.
+//
+// Note that this is not an exhaustive list and clients should gracefully handle
+// the scenario that they receive a tx out with a token id they don't know about yet.
+//
+// If changing this, please keep it in sync with the list defined in
+// mc-transaction-core in the tokens module.
 enum KnownTokenId {
     MOB = 0;
 }
 
-/// A 32-byte scalar associated to the ristretto group.
-/// This is the same as RistrettoPrivate, but they are used in different places.
-/// TODO: MC-1605 Consider to factor out this type, or just this proto message.
+// A 32-byte scalar associated to the ristretto group.
+//
+// This is the same as RistrettoPrivate, but they are used in different places.
+// TODO: MC-1605 Consider to factor out this type, or just this proto message.
 message CurveScalar {
     bytes data = 1;
 }
 
-/// A 32-byte mobilecoin transaction key image.
+ // A 32-byte mobilecoin transaction key image.
 message KeyImage {
     bytes data = 1;
 }
@@ -204,6 +208,7 @@ message EncryptedMemo {
 // A Transaction Output.
 message TxOut {
     // Masked Amount.
+    //
     // The versioning indicates which shared secret derivation we are using.
     // For v1, the TxOut shared secret is used directly.
     // For v2, an intermediate secret called amount shared secret is used.
@@ -393,195 +398,198 @@ message Receipt {
     };
 }
 
-/// The signature over an IAS JSON reponse, created by Intel
+// The signature over an IAS JSON reponse, created by Intel
 message VerificationSignature {
     bytes contents = 1;
 }
 
-/// The IAS verification report response encoded as a protocol buffer
+// The IAS verification report response encoded as a protocol buffer
 message VerificationReport {
-    /// The IAS-generated signature over the response string
+    // The IAS-generated signature over the response string
     VerificationSignature sig = 1;
 
-    /// A list of byte strings representing the DER-encoded certificate
-    /// chain provided by IAS.
+    // A list of byte strings representing the DER-encoded certificate
+    // chain provided by IAS.
     repeated bytes chain = 2;
 
-    /// The raw report body JSON, as a byte sequence
+    // The raw report body JSON, as a byte sequence
     string http_body = 3;
 }
 
-/// SGX quote version 3 as specified in
-/// <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A73%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C375%2C0%5D>.
+// SGX quote version 3 as specified in
+//
+// <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A73%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C375%2C0%5D>.
 // This is type is used in block chain types and should not have fields removed.
 // New fields can be added, but will be assumed optional by consumers
 message Quote3 {
-    /// The raw bytestream of the quote. This will contain only the
-    /// bytes specified in <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A73%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C375%2C0%5D>
+     // The raw bytestream of the quote. This will contain only the
+     // bytes specified in <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A73%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C375%2C0%5D>
     bytes data = 1;
 }
 
-/// A representation of
-/// [`sgx_ql_qve_collateral_t`](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A70%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C230%2C0%5D)
-/// All certificate and CRL values are DER encoded.
-/// All fields should be present
+// A representation of
+//
+// [`sgx_ql_qve_collateral_t`](https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A70%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C52%2C230%2C0%5D)
+// All certificate and CRL values are DER encoded.
+// All fields should be present
 // This is type is used in block chain types and should not have fields removed.
 // New fields can be added, but will be assumed optional by consumers
 message Collateral {
-    /// The Provisioning Certification Key (PCK) certificate revocation list
-    /// (CRL) issuer chain. This is a sequence of DER formatted certificates.
-    ///
-    /// This chain is used to verify the `pck_crl`. The consumers should
-    /// have the root CA, which signed this issuer chain.
+    // The Provisioning Certification Key (PCK) certificate revocation list
+    // (CRL) issuer chain. This is a sequence of DER formatted certificates.
+    //
+    // This chain is used to verify the `pck_crl`. The consumers should
+    // have the root CA, which signed this issuer chain.
     repeated bytes pck_crl_issuer_chain = 1;
-    /// The root certificate authority (CA) certificate revocation list
-    /// (CRL) in DER format.
-    ///
-    /// This will be the "Intel® SGX Root CA CRL" described in
-    /// <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf>.
-    ///
-    /// It can manually be retrieved from
-    /// <https://certificates.trustedservices.intel.com/IntelSGXRootCA.der>
+    // The root certificate authority (CA) certificate revocation list
+    // (CRL) in DER format.
+    //
+    // This will be the "Intel® SGX Root CA CRL" described in
+    // <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf>.
+    //
+    // It can manually be retrieved from
+    // <https://certificates.trustedservices.intel.com/IntelSGXRootCA.der>
     bytes root_ca_crl = 2;
-    /// The the Provisioning Certification Key (PCK) certificate revocation
-    /// list (CRL) in DER format.
-    ///
-    /// This will be the "Intel® SGX PCK Processor CA CRL" described in
-    /// <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf>.
+    // The the Provisioning Certification Key (PCK) certificate revocation
+    // list (CRL) in DER format.
+    //
+    // This will be the "Intel® SGX PCK Processor CA CRL" described in
+    // <https://api.trustedservices.intel.com/documents/Intel_SGX_PCK_Certificate_CRL_Spec-1.5.pdf>.
     bytes pck_crl = 3;
-    /// The Trusted Computing Base (TCB) info issuer chain.
-    /// This is a sequence of DER formatted certificates.
-    ///
-    /// This is the x509 certificate chain that can verify the signature on
-    /// the `tcb_info`. Consumers should have the root CA which signed this
-    /// issuer chain.
+    // The Trusted Computing Base (TCB) info issuer chain.
+    // This is a sequence of DER formatted certificates.
+    //
+    // This is the x509 certificate chain that can verify the signature on
+    // the `tcb_info`. Consumers should have the root CA which signed this
+    // issuer chain.
     repeated bytes tcb_info_issuer_chain = 4;
-    /// The Trusted Computing Base (TCB) info.
-    ///
-    /// JSON formatted TCB info described at
-    /// <https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v4>
+    // The Trusted Computing Base (TCB) info.
+    //
+    // JSON formatted TCB info described at
+    // <https://api.portal.trustedservices.intel.com/documentation#pcs-tcb-info-v4>
     string tcb_info = 5;
-    /// The Quoting Enclave (QE) identity issuer chain.
-    ///
-    /// This is the x509 certificate chain that can verify the signature on
-    /// the `qe_identity`. Consumers should have the root CA which signed
-    /// this issuer chain.
+    // The Quoting Enclave (QE) identity issuer chain.
+    //
+    // This is the x509 certificate chain that can verify the signature on
+    // the `qe_identity`. Consumers should have the root CA which signed
+    // this issuer chain.
     repeated bytes qe_identity_issuer_chain = 6;
-    /// The Quoting Enclave (QE) identity.
-    ///
-    /// JSON formatted QE identity info described at
-    /// <https://api.portal.trustedservices.intel.com/documentation#pcs-enclave-identity-v4>
+    // The Quoting Enclave (QE) identity.
+    //
+    // JSON formatted QE identity info described at
+    // <https://api.portal.trustedservices.intel.com/documentation#pcs-enclave-identity-v4>
     string qe_identity = 7;
 }
 
-/// Structure for holding the contents of the Enclave's Report Data.
-/// The Enclave Quote's ReportData member contains a SHA256 hash of this
-/// structure's contents.
-/// The hash is generated via the raw bytes from the nonce || key || custom_identity.
-/// If `custom_identity` is not present it is omitted from the hash.
+// Structure for holding the contents of the Enclave's Report Data.
+//
+// The Enclave Quote's ReportData member contains a SHA256 hash of this
+// structure's contents.
+// The hash is generated via the raw bytes from the nonce || key || custom_identity.
+// If `custom_identity` is not present it is omitted from the hash.
 // This is type is used in block chain types and should not have fields removed.
 // New fields can be added, but will be assumed optional by consumers
 message EnclaveReportDataContents {
-    /// The nonce used for generating the quote.
-    /// Must be exactly 16 bytes long (see mc-sgx-core-types::QuoteNonce).
+    // The nonce used for generating the quote.
+    // Must be exactly 16 bytes long (see mc-sgx-core-types::QuoteNonce).
     bytes nonce = 1;
 
-    /// The public key of the enclave, it's an x25519 key.
-    /// Must be exactly 32 bytes long.
+    // The public key of the enclave, it's an x25519 key.
+    // Must be exactly 32 bytes long.
     bytes key = 2;
 
-    /// An optional custom identity of the enclave.
-    /// Must be exactly 32 bytes long.
+    // An optional custom identity of the enclave.
+    // Must be exactly 32 bytes long.
     bytes custom_identity = 3;
 }
 
-/// Attestation evidence for DCAP
+// Attestation evidence for DCAP
 // This is type is used in block chain types and should not have fields removed.
 // New fields can be added, but will be assumed optional by consumers
 message DcapEvidence {
-    /// The quote that was generated by the enclave and signed by the QE(Quoting Enclave).
+    // The quote that was generated by the enclave and signed by the QE(Quoting Enclave).
     Quote3 quote = 1;
-    /// The collateral that was used to generate the quote.
+    // The collateral that was used to generate the quote.
     Collateral collateral = 2;
-    /// The report data for the quote. The SHA256 hash of the contents of
-    /// this is included in the quote's ReportData member.
+    // The report data for the quote. The SHA256 hash of the contents of
+    // this is included in the quote's ReportData member.
     EnclaveReportDataContents report_data = 3;
 }
 
-/// The contents of a mint-tx, which is a transaction to mint new tokens.
+// The contents of a mint-tx, which is a transaction to mint new tokens.
 message MintTxPrefix {
-    /// Token ID we are minting.
+    // Token ID we are minting.
     uint64 token_id = 1;
 
-    /// Amount we are minting.
+    // Amount we are minting.
     uint64 amount = 2;
 
-    /// The destination's public subaddress view key 'C'.
+    // The destination's public subaddress view key 'C'.
     CompressedRistretto view_public_key = 3;
 
-    /// The destination's public subaddress spend key `D`.
+    // The destination's public subaddress spend key `D`.
     CompressedRistretto spend_public_key = 4;
 
-    /// Nonce, to prevent replay attacks.
-    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
+    // Nonce, to prevent replay attacks.
+    // Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
     bytes nonce = 5;
 
-    /// The block index at which this transaction is no longer valid.
+    // The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 6;
 
-    /// The (optional) encrypted fog hint of the minted TxOut.
+    // The (optional) encrypted fog hint of the minted TxOut.
     EncryptedFogHint e_fog_hint = 7;
 }
 
-/// A mint transaction coupled with a signature over it.
+// A mint transaction coupled with a signature over it.
 message MintTx {
     MintTxPrefix prefix = 1;
     Ed25519MultiSig signature = 2;
 }
 
-/// A minting configuration for a single token ID.
-/// The minting configuration specifies who is allowed to submit mint
-/// transactions, for which token and at what total limit.
+// A minting configuration for a single token ID.
+// The minting configuration specifies who is allowed to submit mint
+// transactions, for which token and at what total limit.
 message MintConfig {
-    /// Token ID this configuration applies to.
+    // Token ID this configuration applies to.
     uint64 token_id = 1;
 
-    /// The set of keys that can sign a minting transaction.
+    // The set of keys that can sign a minting transaction.
     Ed25519SignerSet signer_set = 2;
 
-    /// The maximal amount this configuration can mint from the moment it has
-    /// been applied.
+    // The maximal amount this configuration can mint from the moment it has
+    // been applied.
     uint64 mint_limit = 3;
 }
 
-/// The contents of a mint-config transaction. This transaction alters the
-/// minting configuration for a single token ID.
+// The contents of a mint-config transaction. This transaction alters the
+// minting configuration for a single token ID.
 message MintConfigTxPrefix {
-    /// Token ID we are replacing the configuration set for.
+    // Token ID we are replacing the configuration set for.
     uint64 token_id = 1;
 
-    /// The new configuration.
+    // The new configuration.
     repeated MintConfig configs = 2;
 
-    /// Nonce, to prevent replay attacks.
-    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
+    // Nonce, to prevent replay attacks.
+    // Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
     bytes nonce = 3;
 
-    /// The block index at which this transaction is no longer valid.
+    // The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 4;
 
-    /// The maximal amount that can be minted by configurations specified in
-    /// this tx. This amount is shared amongst all configs.
+    // The maximal amount that can be minted by configurations specified in
+    // this tx. This amount is shared amongst all configs.
     uint64 total_mint_limit = 5;
 }
 
-/// A mint-config transaction coupled with a signature over it.
+// A mint-config transaction coupled with a signature over it.
 message MintConfigTx {
     MintConfigTxPrefix prefix = 1;
     Ed25519MultiSig signature = 2;
 }
 
-/// A mint-config transaction coupled with the data used to validate it.
+// A mint-config transaction coupled with the data used to validate it.
 message ValidatedMintConfigTx {
     MintConfigTx mint_config_tx = 1;
     Ed25519SignerSet signer_set = 2;
@@ -613,11 +621,11 @@ message SignedContingentInput {
     // The amount and blinding of the pseudo-output of the MLSAG
     UnmaskedAmount pseudo_output_amount = 4;
 
-    /// The amount and blinding of any TxOut required by the input rules
+     // The amount and blinding of any TxOut required by the input rules
     repeated UnmaskedAmount required_output_amounts = 5;
 
-    /// The tx_out global index of each ring member
-    /// This helps the recipient of this payload construct proofs of membership for the ring
+     // The tx_out global index of each ring member
+     // This helps the recipient of this payload construct proofs of membership for the ring
     repeated fixed64 tx_out_global_indices = 6;
 }
 
@@ -630,70 +638,70 @@ message Amount {
     fixed64 token_id = 2;
 }
 
-/// The secrets corresponding to an output that we are trying to authorize
-/// creation of
+// The secrets corresponding to an output that we are trying to authorize
+// creation of
 message OutputSecret {
-    /// The amount of the output we are creating
+    // The amount of the output we are creating
     Amount amount = 1;
 
-    /// The blinding factor of the output we are creating
+    // The blinding factor of the output we are creating
     CurveScalar blinding = 2;
 }
 
-/// The secrets needed to create a signature that spends an existing output as
-/// an input
+// The secrets needed to create a signature that spends an existing output as
+// an input
 message InputSecret {
-    /// Represents either the one-time private key, or data to derive it
+    // Represents either the one-time private key, or data to derive it
     oneof onetime_key_derive_data {
         RistrettoPrivate onetime_private_key = 1;
         fixed64 subaddress_index = 2;
     }
 
-    /// The amount of the output we are spending
+    // The amount of the output we are spending
     Amount amount = 3;
 
-    /// The blinding factor of the output we are spending
+    // The blinding factor of the output we are spending
     CurveScalar blinding = 4;
 }
 
-/// A reduced representation of the TxOut's in the ring. For each ring
-/// member we have only:
-/// * The onetime-address (tx_out.target_key)
-/// * The compressed commitment (tx_out.amount.commitment)
+// A reduced representation of the TxOut's in the ring. For each ring
+// member we have only:
+// * The onetime-address (tx_out.target_key)
+// * The compressed commitment (tx_out.amount.commitment)
 message ReducedTxOut {
-    /// The tx_out.public_key field
+    // The tx_out.public_key field
     CompressedRistretto public_key = 1;
 
-    /// The tx_out.target_key field
+    // The tx_out.target_key field
     CompressedRistretto target_key = 2;
 
-    /// The tx_out.masked_amount.commitment field
+    // The tx_out.masked_amount.commitment field
     CompressedRistretto commitment = 3;
 }
 
-/// A representation of the part of the input ring needed to create an MLSAG
+// A representation of the part of the input ring needed to create an MLSAG
 message SignableInputRing {
-    /// A reduced representation of the TxOut's in the ring.
+    // A reduced representation of the TxOut's in the ring.
     repeated ReducedTxOut members = 1;
 
-    /// The index of the TxOut in the ring that we are spending
+    // The index of the TxOut in the ring that we are spending
     uint32 real_input_index = 2;
 
-    /// The secrets needed to sign that input
+    // The secrets needed to sign that input
     InputSecret input_secret = 3;
 }
 
-/// A presigned RingMLSAG and ancillary data needed to incorporate it into a
-/// signature
+// A presigned RingMLSAG and ancillary data needed to incorporate it into a
+// signature
 message PresignedInputRing {
-    /// The mlsag signature authorizing the spending of an input
+    // The mlsag signature authorizing the spending of an input
     RingMLSAG mlsag = 1;
 
-    /// The amount and blinding factor of the pseudo output
+    // The amount and blinding factor of the pseudo output
     OutputSecret pseudo_output_secret = 2;
 }
 
-/// An enum which is either a PresignedInputRing or a SignableInputRing
+// An enum which is either a PresignedInputRing or a SignableInputRing
 message InputRing {
     oneof ring {
         SignableInputRing signable = 1;
@@ -701,83 +709,83 @@ message InputRing {
     }
 }
 
-/// A structure containing an unsigned transaction, together with the data
-/// required to sign it that does not involve the spend private key.
+// A structure containing an unsigned transaction, together with the data
+// required to sign it that does not involve the spend private key.
 message UnsignedTx {
-    /// The fully constructed TxPrefix.
+    // The fully constructed TxPrefix.
     TxPrefix tx_prefix = 1;
 
-    /// A "ring" of transaction outputs.
+    // A "ring" of transaction outputs.
     repeated InputRing rings = 2;
 
-    /// The block version that this transaction is valid for.
+    // The block version that this transaction is valid for.
     uint32 block_version = 4;
 
-    /// The unblinding data for each of the outputs we are creating.
-    /// This also contains the output secrets needed for building the signature.
-    /// (Those were previously at tag value 3)
+    // The unblinding data for each of the outputs we are creating.
+    // This also contains the output secrets needed for building the signature.
+    // (Those were previously at tag value 3)
     repeated TxOutSummaryUnblindingData tx_out_unblinding_data = 5;
 }
 
 message TxOutSummaryUnblindingData {
-    /// An unmasked amount, corresponding to the MaskedAmount field
-    /// The block version appears in the TxSummaryUnblindingData.
+    // An unmasked amount, corresponding to the MaskedAmount field
+    // The block version appears in the TxSummaryUnblindingData.
     UnmaskedAmount unmasked_amount = 1;
 
-    /// The public address to which this TxOut is addressed.
-    /// If this output comes from an SCI then we may not know the public
-    /// address.
+    // The public address to which this TxOut is addressed.
+    // If this output comes from an SCI then we may not know the public
+    // address.
     PublicAddress address = 2;
 
-    /// The tx_private_key generated for this TxOut. This is an entropy source
-    /// which introduces randomness into the cryptonote stealth addresses
-    /// (tx_public_key and tx_target_key) of the TxOut.
-    ///
-    /// If this output comes from an SCI then we may not know this.
+    // The tx_private_key generated for this TxOut. This is an entropy source
+    // which introduces randomness into the cryptonote stealth addresses
+    // (tx_public_key and tx_target_key) of the TxOut.
+    //
+    // If this output comes from an SCI then we may not know this.
     RistrettoPrivate tx_private_key = 3;
 }
 
-/// A structure that contains all the data required to sign a transaction that
-/// does not rely on having the spend private key.
+// A structure that contains all the data required to sign a transaction that
+// does not rely on having the spend private key.
 message SigningData {
-    /// The bytes actually signed by MLSAG signatures.
-    /// This is different depending on what block version we are in.
-    /// * In the oldest block versions, this is a large number of bytes called the
-    ///   "extended message", which includes a tx prefix as well as the pseudo output commitments.
-    /// * In block version 2, this is instead 32 bytes called the "extended message digest".
-    /// * In block version 3, this is instead 32 bytes called the "extended-message-and-tx-summary digest".
-    ///
-    /// Note that SCI's are the exception to this, they sign the digest based on their TxIn instead,
-    /// see MCIP #31 for more on that. Everything that isn't an SCI signs this.
+    // The bytes actually signed by MLSAG signatures.
+    // This is different depending on what block version we are in.
+    // * In the oldest block versions, this is a large number of bytes called the
+    //   "extended message", which includes a tx prefix as well as the pseudo output commitments.
+    // * In block version 2, this is instead 32 bytes called the "extended message digest".
+    // * In block version 3, this is instead 32 bytes called the "extended-message-and-tx-summary digest".
+    //
+    // Note that SCI's are the exception to this, they sign the digest based on their TxIn instead,
+    // see MCIP #31 for more on that. Everything that isn't an SCI signs this.
     bytes mlsag_signing_digest = 1;
 
-    /// The actual pseudo output commitments use the blindings from
-    /// `pseudo_output_blinding` and not the original true input.
+    // The actual pseudo output commitments use the blindings from
+    // `pseudo_output_blinding` and not the original true input.
     repeated CurveScalar pseudo_output_blindings = 2;
 
-    /// Commitments of value equal to each real input.
+    // Commitments of value equal to each real input.
     repeated CompressedRistretto pseudo_output_commitments = 3;
 
-    /// Before mixed transactions feature, there is one range proof for all pseudo-output
-    /// and output commitments, whose serialized bytes appear here.
-    /// After mixed transactions feature, this field is empty.
+    // Before mixed transactions feature, there is one range proof for all pseudo-output
+    // and output commitments, whose serialized bytes appear here.
+    // After mixed transactions feature, this field is empty.
     bytes range_proof_bytes = 4;
 
-    /// Before mixed transactions feature, this field is empty.
-    /// After mixed transactions feature, this field contains one range proof for each
-    /// token id which appears in the transaction, in sorted order of token ids.
-    /// It range-proofs the pseudo-outputs and outputs with that token id, in the order
-    /// that they appear in the transaction.
+    // Before mixed transactions feature, this field is empty.
+    // After mixed transactions feature, this field contains one range proof for each
+    // token id which appears in the transaction, in sorted order of token ids.
+    // It range-proofs the pseudo-outputs and outputs with that token id, in the order
+    // that they appear in the transaction.
     repeated bytes range_proofs = 5;
 
-    /// The token ids of each pseudo ouptut. There must be one of these for each TxIn.
-    /// Before mixed transactions feature, this field is empty, and the token ids of
-    /// all pseudo-outputs are inferred from the tx.prefix.fee_token_id.
+    // The token ids of each pseudo ouptut. There must be one of these for each TxIn.
+    // Before mixed transactions feature, this field is empty, and the token ids of
+    // all pseudo-outputs are inferred from the tx.prefix.fee_token_id.
     repeated fixed64 pseudo_output_token_ids = 6;
 
-    /// The token ids of each output. There must be one of these for each output of the Tx.
-    /// (tx.prefix.outputs).
-    /// Before mixed transactions feature, this field is empty, and the token ids of
-    /// all outputs are inferred from the tx.prefix.fee_token_id.
+    // The token ids of each output. There must be one of these for each output of the Tx.
+    // (tx.prefix.outputs).
+    // Before mixed transactions feature, this field is empty, and the token ids of
+    // all outputs are inferred from the tx.prefix.fee_token_id.
     repeated fixed64 output_token_ids = 7;
 }

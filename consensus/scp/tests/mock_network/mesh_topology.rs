@@ -7,11 +7,9 @@ use mc_common::NodeID;
 use mc_consensus_scp::{test_utils, QuorumSet};
 use std::collections::HashSet;
 
-///////////////////////////////////////////////////////////////////////////////
 /// Mesh tests
+///
 /// (N nodes, each node has all other nodes as it's validators)
-///////////////////////////////////////////////////////////////////////////////
-
 /// Constructs a mesh network, where each node has all of it's peers as
 /// validators.
 pub fn dense_mesh(

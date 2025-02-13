@@ -79,7 +79,7 @@ impl SgxWrapperType<sgx_epid_group_id_t> for EpidGroupId {
     }
 }
 
-impl<'src> TryFrom<&'src [u8]> for EpidGroupId {
+impl TryFrom<&[u8]> for EpidGroupId {
     type Error = EncodingError;
 
     fn try_from(src: &[u8]) -> Result<Self, EncodingError> {

@@ -32,7 +32,9 @@ use std::{
 const HISTORY_SIZE: usize = 10000;
 
 /// `ThreadedBroadcaster` is used to broadcast consensus messages and
-/// transactions to a list of peers. It keeps track of the last `HISTORY_SIZE`
+/// transactions to a list of peers.
+///
+/// It keeps track of the last `HISTORY_SIZE`
 /// messages handed to it, preventing duplicate messages from being broadcasted.
 /// It can be used by `consensus_service` to deliver outgoing messages to the
 /// local node's peers, as well as to relay messages received from peers to

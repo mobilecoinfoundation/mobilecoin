@@ -332,7 +332,7 @@ pub(crate) mod const_array_hex {
 pub(crate) struct ConstArrayVisitor<const N: usize = 32>;
 
 /// Serde visitor implementation for fixed length arrays of hex-encoded bytes
-impl<'de, const N: usize> serde::de::Visitor<'de> for ConstArrayVisitor<N> {
+impl<const N: usize> serde::de::Visitor<'_> for ConstArrayVisitor<N> {
     type Value = [u8; N];
 
     fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {

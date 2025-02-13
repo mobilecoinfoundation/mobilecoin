@@ -210,7 +210,6 @@ pub fn setup_client(uri: &MobilecoindUri, logger: &Logger) -> MobilecoindApiClie
 /// * `monitors` - MonitorData objects specifying monitors to add
 /// * `logger`
 /// * `rng`
-
 pub fn get_testing_environment(
     block_version: BlockVersion,
     num_random_recipients: u32,

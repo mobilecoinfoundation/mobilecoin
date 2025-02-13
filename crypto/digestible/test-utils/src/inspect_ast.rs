@@ -68,7 +68,8 @@ pub struct ASTPrimitive {
     pub data: Vec<u8>,
 }
 
-/// Represents a call to DigestTranscript.append_none
+/// Represents a call to DigestTranscript.append_none.
+///
 /// This is used in some rare cases -- for Option value which is None,
 /// and for a rust enum value which has no associated value.
 /// When those values are fields in an agg, they can be omitted completely.

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// A *contiguous subset* of a block, which is passed from the ingest server
 /// to the enclave for processing.
+///
 /// This is necessary because MC-1080, the ingest enclave has bounded memory,
 /// but when doing slam, or complicated bootstrap, the blocks can be very large.
 /// This is part of the ingest enclave api

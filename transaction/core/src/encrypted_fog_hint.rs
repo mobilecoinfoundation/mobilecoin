@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// The length of the encrypted fog hint field in the ledger.
+///
 /// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
 /// Footersize = 50, + 32 for one curve point, + 2 bytes of magic / padding
 /// space for future needs

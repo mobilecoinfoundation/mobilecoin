@@ -112,9 +112,11 @@ impl EncryptedMemo {
 }
 
 /// A plaintext memo payload, with accessors to easily access the memo type
-/// bytes and memo data bytes. High-level memo objects should be convertible
-/// to MemoPayload. Deserialization, across all high-level memo types, is
-/// done in mc-transaction-std crate.
+/// bytes and memo data bytes.
+///
+/// High-level memo objects should be convertible to MemoPayload.
+/// Deserialization, across all high-level memo types, is done in
+/// mc-transaction-std crate.
 ///
 /// Note that a memo payload may be invalid / uninterpretable, or refer to new
 /// memo types that have been introduced at a later date.
