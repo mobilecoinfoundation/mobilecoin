@@ -22,7 +22,7 @@ message ActiveMintConfig {
 
 // Active minting configurations for a single token.
 message ActiveMintConfigs {
-    /// Active configs
+    // Active configs
     repeated ActiveMintConfig configs = 1;
 
     // The original MintConfigTx that this configuration resulted from.

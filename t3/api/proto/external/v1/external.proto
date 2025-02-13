@@ -22,131 +22,131 @@ option go_package = "mobilecoin/api";
 option java_outer_classname = "MobileCoinAPI";
 option java_package = "com.mobilecoin.api";
 
-///////////////////////////////////////////////////////////////////////////////
+//
 // `keys` crate
-///////////////////////////////////////////////////////////////////////////////
+//
 
-/// A Ristretto private key.
+// A Ristretto private key.
 message RistrettoPrivate {
   bytes data = 1;
 }
 
-/// A 32-byte compressed Ristretto curve point (public key)
+// A 32-byte compressed Ristretto curve point (public key)
 message CompressedRistretto {
   bytes data = 1;
 }
 
-/// An Ed25519 public key, for validating signatures.
+// An Ed25519 public key, for validating signatures.
 message Ed25519Public {
   bytes data = 1;
 }
 
-/// An Ed25519 signature object
+// An Ed25519 signature object
 message Ed25519Signature {
   bytes data = 1;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//
 // `account-keys` crate
-///////////////////////////////////////////////////////////////////////////////
+//
 
-/// Complete AccountKey, containing the pair of secret keys, which can be used
-/// for spending, and optionally some Fog related info that is used to form
-/// public addresses for accounts that sign up with Fog service.
-///
-/// This matches the Rust `transaction::AccountKey` struct.
+// Complete AccountKey, containing the pair of secret keys, which can be used
+// for spending, and optionally some Fog related info that is used to form
+// public addresses for accounts that sign up with Fog service.
+//
+// This matches the Rust `transaction::AccountKey` struct.
 message AccountKey {
-  /// Private key 'a' used for view-key matching.
+  // Private key 'a' used for view-key matching.
   RistrettoPrivate view_private_key = 1;
 
-  /// Private key `b` used for spending.
+  // Private key `b` used for spending.
   RistrettoPrivate spend_private_key = 2;
 
-  /// Optional url of fog report server.
-  /// Empty string when not in use, i.e. for accounts that don't have fog service.
+  // Optional url of fog report server.
+  // Empty string when not in use, i.e. for accounts that don't have fog service.
   string fog_report_url = 3;
 
-  /// Optional fog report id.
-  /// The fog report server may serve multiple reports, this id disambiguates
-  /// which one to use when sending to this account.
+  // Optional fog report id.
+  // The fog report server may serve multiple reports, this id disambiguates
+  // which one to use when sending to this account.
   string fog_report_id = 4;
 
-  /// Optional fog authority subjectPublicKeyInfo.
-  /// Empty when not in use.
+  // Optional fog authority subjectPublicKeyInfo.
+  // Empty when not in use.
   bytes fog_authority_spki = 5;
 }
 
-/// A public address, used to identify recipients.
+// A public address, used to identify recipients.
 message PublicAddress {
-  /// View public key
+  // View public key
   CompressedRistretto view_public_key = 1;
 
-  /// Spend public key
+  // Spend public key
   CompressedRistretto spend_public_key = 2;
 
-  /// Optional url of fog report server.
-  /// Empty string when not in use, i.e. for accounts that don't have fog service.
-  /// Indicates the place at which the fog report server should be contacted.
+  // Optional url of fog report server.
+  // Empty string when not in use, i.e. for accounts that don't have fog service.
+  // Indicates the place at which the fog report server should be contacted.
   string fog_report_url = 3;
 
-  /// Optional fog report id.
-  /// The fog report server may serve multiple reports, this id disambiguates
-  /// which one to use when sending to this account.
+  // Optional fog report id.
+  // The fog report server may serve multiple reports, this id disambiguates
+  // which one to use when sending to this account.
   string fog_report_id = 4;
 
-  /// View key signature over the fog authority subjectPublicKeyInfo.
-  ///
-  /// This must be parseable as a RistrettoSignature.
+  // View key signature over the fog authority subjectPublicKeyInfo.
+  //
+  // This must be parseable as a RistrettoSignature.
   bytes fog_authority_sig = 5;
 }
 
-/// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
-/// The RootIdentity is a compact form of a user's account key, if it has been
-/// derived in this way. This may be useful for e.g. paper wallets.
+// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
+// The RootIdentity is a compact form of a user's account key, if it has been
+// derived in this way. This may be useful for e.g. paper wallets.
 message RootIdentity {
-  /// The root entropy used to derive cryptonote private keys for this account
+  // The root entropy used to derive cryptonote private keys for this account
   RootEntropy root_entropy = 1;
-  /// Optional url of fog report server, same as in AccountKey
+  // Optional url of fog report server, same as in AccountKey
   string fog_report_url = 2;
-  /// Optional fog report id, same as in AccountKey
+  // Optional fog report id, same as in AccountKey
   string fog_report_id = 3;
-  /// Optional fog authority subjectPublicKeyInfo.
-  /// Empty when not in use.
+  // Optional fog authority subjectPublicKeyInfo.
+  // Empty when not in use.
   bytes fog_authority_spki = 5;
 }
 
-/// A 32 byte secret used as input key material to derive private keys
+// A 32 byte secret used as input key material to derive private keys
 message RootEntropy {
   bytes data = 1;
 }
 
-/// A ViewKey is a reduced AccountKey -- it contains the private key necessary to
-/// view your transactions and see the amounts, but not to send new transactions.
-/// This concept is part of Cryptonote.
-/// In Mobilecoin, all public addresses correspond to subaddresses, and often
-/// the "default subaddress" is used.
-/// The ViewKey similarly corresponds to a particular subaddress.
+// A ViewKey is a reduced AccountKey -- it contains the private key necessary to
+// view your transactions and see the amounts, but not to send new transactions.
+// This concept is part of Cryptonote.
+// In Mobilecoin, all public addresses correspond to subaddresses, and often
+// the "default subaddress" is used.
+// The ViewKey similarly corresponds to a particular subaddress.
 message ViewKey {
-  /// The view-private-key of the account. This enables to check if a transaction
-  /// corresponds to this subaddress, and to interact with fog.
+  // The view-private-key of the account. This enables to check if a transaction
+  // corresponds to this subaddress, and to interact with fog.
   RistrettoPrivate view_private_key = 1;
-  /// The spend public key of the account.
-  /// This value also appears in the public address.
+  // The spend public key of the account.
+  // This value also appears in the public address.
   CompressedRistretto spend_public_key = 2;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//
 // `trasaction/core` crate
-///////////////////////////////////////////////////////////////////////////////
+//
 
-/// A 32-byte scalar associated to the ristretto group.
-/// This is the same as RistrettoPrivate, but they are used in different places.
-/// TODO: MC-1605 Consider to factor out this type, or just this proto message.
+// A 32-byte scalar associated to the ristretto group.
+// This is the same as RistrettoPrivate, but they are used in different places.
+// TODO: MC-1605 Consider to factor out this type, or just this proto message.
 message CurveScalar {
   bytes data = 1;
 }
 
-/// A 32-byte mobilecoin transaction key image.
+// A 32-byte mobilecoin transaction key image.
 message KeyImage {
   bytes data = 1;
 }
@@ -290,20 +290,20 @@ message Receipt {
   Amount amount = 4;
 }
 
-/// The signature over an IAS JSON reponse, created by Intel
+// The signature over an IAS JSON reponse, created by Intel
 message VerificationSignature {
   bytes contents = 1;
 }
 
-/// The IAS verification report response encoded as a protocol buffer
+// The IAS verification report response encoded as a protocol buffer
 message VerificationReport {
-  /// The IAS-generated signature over the response string
+  // The IAS-generated signature over the response string
   VerificationSignature sig = 1;
 
-  /// A list of byte strings representing the DER-encoded certificate
-  /// chain provided by IAS.
+  // A list of byte strings representing the DER-encoded certificate
+  // chain provided by IAS.
   repeated bytes chain = 2;
 
-  /// The raw report body JSON, as a byte sequence
+  // The raw report body JSON, as a byte sequence
   string http_body = 3;
 }

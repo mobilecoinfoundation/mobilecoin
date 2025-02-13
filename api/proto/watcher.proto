@@ -7,9 +7,9 @@ syntax = "proto3";
 package watcher;
 
 
-///////////////////////////////////////////////////////////////////////////////
+//
 // `watcher/api` crate
-///////////////////////////////////////////////////////////////////////////////
+//
 
 // The result code indicating whether the timestamp was found, can be tried again later, or will
 // never be found with the current configuration of the service offering timestamps via the watcher.

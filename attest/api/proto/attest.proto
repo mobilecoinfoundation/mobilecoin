@@ -1,67 +1,67 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-/// This file defines the API to allow for a client to conduct an authenticated
-/// key exchange using a derivative of the noise protocol
+// This file defines the API to allow for a client to conduct an authenticated
+// key exchange using a derivative of the noise protocol
 syntax = "proto3";
 
 package attest;
 
 option go_package = "mobilecoin/api";
 
-/// A server-authenticated service for SGX enclaves. The responder is the
-/// attesting enclave, and the client is unauthenticated. When described
-/// within the noise protocol, this is similar to the "IX" style key exchange:
-///
-/// ```txt
-/// IX:
-///   -> e, s
-///   <- e, ee, se, s, es
-///   ->
-///   <-
-/// ```
-///
-/// The first two messages are contained within the Auth and AuthResponse
+// A server-authenticated service for SGX enclaves. The responder is the
+// attesting enclave, and the client is unauthenticated. When described
+// within the noise protocol, this is similar to the "IX" style key exchange:
+//
+// ```txt
+// IX:
+//   -> e, s
+//   <- e, ee, se, s, es
+//   ->
+//   <-
+// ```
+//
+// The first two messages are contained within the Auth and AuthResponse
 service AttestedApi {
-    /// This API call is made when one enclave wants to start a mutually-
-    /// authenticated key-exchange session with an enclave.
+    // This API call is made when one enclave wants to start a mutually-
+    // authenticated key-exchange session with an enclave.
     rpc Auth(AuthMessage) returns (AuthMessage);
 }
 
-/// The first message of an exchange, sent by a client.
-///
-/// This contains the client's one-time ephemeral public key, and the
-/// cryptographic parameters which will be used in future messages.
+// The first message of an exchange, sent by a client.
+//
+// This contains the client's one-time ephemeral public key, and the
+// cryptographic parameters which will be used in future messages.
 message AuthMessage {
-        /// A potentially encrypted bytestream containing opaque data intended
-        /// for use in the enclave.
+        // A potentially encrypted bytestream containing opaque data intended
+        // for use in the enclave.
         bytes data = 1;
 }
 
-/// AEAD messages sent to and from authenticated clients.
+// AEAD messages sent to and from authenticated clients.
 message Message {
-        /// A byte array containing plaintext authenticated data.
+        // A byte array containing plaintext authenticated data.
         bytes aad = 1;
-        /// An byte array containing the channel ID this message is
-        /// associated with. A zero-length channel ID is not valid.
+        // An byte array containing the channel ID this message is
+        // associated with. A zero-length channel ID is not valid.
         bytes channel_id = 2;
-        /// A potentially encrypted bytestream containing opaque data intended
-        /// for use in the enclave.
+        // A potentially encrypted bytestream containing opaque data intended
+        // for use in the enclave.
         bytes data = 3;
 }
 
-/// An AEAD message with an explicit nonce.
-///
-/// This message is technically compatible with [`Message`], but exists to
-/// ensure generated code doesn't use Message.
+// An AEAD message with an explicit nonce.
+//
+// This message is technically compatible with [`Message`], but exists to
+// ensure generated code doesn't use Message.
 message NonceMessage {
-        /// A byte array containing plaintext authenticated data.
+        // A byte array containing plaintext authenticated data.
         bytes aad = 1;
-        /// An byte array containing the channel ID this message is
-        /// associated with. A zero-length channel ID is not valid.
+        // An byte array containing the channel ID this message is
+        // associated with. A zero-length channel ID is not valid.
         bytes channel_id = 2;
-        /// A potentially encrypted bytestream containing opaque data intended
-        /// for use in the enclave.
+        // A potentially encrypted bytestream containing opaque data intended
+        // for use in the enclave.
         bytes data = 3;
-        /// The explicit nonce.
+        // The explicit nonce.
         fixed64 nonce = 4;
 }

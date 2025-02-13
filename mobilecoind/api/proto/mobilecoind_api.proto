@@ -185,7 +185,7 @@ message DecodedMemo {
 // Note that the sender can write whatever they want in a memo, and to rely on the data.
 // You must validate the memo by checking the hmac, see the ValidateAuthenticatedSenderMemo rpc call.
 message AuthenticatedSenderMemo {
-    /// The standard short address hash (MCIP #4)
+    // The standard short address hash (MCIP #4)
     bytes sender_hash = 1;
     // Payment request ID if present
     optional uint64 payment_request_id = 2;
@@ -202,18 +202,18 @@ message UnknownMemo {
 // Structure used to refer to an SCI that we want to add to a transaction.
 // The structure has additional information -- if it's a partial fill SCI, we need to know the partial fill amount.
 message SciForTx {
-    /// The signed input we want to add
+    // The signed input we want to add
     external.SignedContingentInput sci = 1;
 
-    /// If it's a partial fill SCI, the value we wish to fill it for
-    /// This is the amount that, we, the counter-party, take from the SCI originator,
-    /// in exchange for a corresponding fraction of the partial fill outputs in the SCI.
-    ///
-    /// This is a u64 value corresponding to an amount less or equal to the partial_fill_change amount
-    /// in the SCI.
-    ///
-    /// In case of a non partial fill SCI (without partial_fill_change output),
-    /// this must be zero.
+    // If it's a partial fill SCI, the value we wish to fill it for
+    // This is the amount that, we, the counter-party, take from the SCI originator,
+    // in exchange for a corresponding fraction of the partial fill outputs in the SCI.
+    //
+    // This is a u64 value corresponding to an amount less or equal to the partial_fill_change amount
+    // in the SCI.
+    //
+    // In case of a non partial fill SCI (without partial_fill_change output),
+    // this must be zero.
     uint64 partial_fill_value = 2;
 }
 
@@ -235,15 +235,15 @@ message TxProposal {
     // inside `tx` will invalidate the ring signature.
     uint64 fee = 4;
 
-    /// A map of outlay index -> TxOut index in the Tx object.
-    /// This is needed to map recipients to their respective TxOuts.
+    // A map of outlay index -> TxOut index in the Tx object.
+    // This is needed to map recipients to their respective TxOuts.
     map<uint64, uint64> outlay_index_to_tx_out_index = 5;
 
-    /// A list of the confirmation numbers, in the same order
-    /// as the outlays.
+    // A list of the confirmation numbers, in the same order
+    // as the outlays.
     repeated bytes outlay_confirmation_numbers = 6;
 
-    /// A list of the scis that were incorporated into this transaction, if any
+    // A list of the scis that were incorporated into this transaction, if any
     repeated SciForTx scis = 7;
 }
 
@@ -954,13 +954,13 @@ message GetBlocksDataRequest {
 }
 
 message BlockDataWithTimestamp {
-    /// The block index that was requested.
+    // The block index that was requested.
     uint64 block_index = 1;
 
-    /// Whether we found a block for the provided index.
+    // Whether we found a block for the provided index.
     bool found = 2;
 
-    /// The block data
+    // The block data
     blockchain.ArchiveBlock block_data = 3;
 
     // Timestamp result code
@@ -971,10 +971,10 @@ message BlockDataWithTimestamp {
 }
 
 message GetBlocksDataResponse {
-    /// Result (one for each index in the request)
+    // Result (one for each index in the request)
     repeated BlockDataWithTimestamp results = 1;
 
-    /// Latest block in the ledger.
+    // Latest block in the ledger.
     blockchain.Block latest_block = 2;
 }
 
@@ -1029,7 +1029,7 @@ message GetTxOutResultsByPubKeyResponse {
 
 //
 // Convenience calls
-///
+//
 
 // Get the balance for a given monitor, subadddress index and a specific token id.
 message GetBalanceRequest {

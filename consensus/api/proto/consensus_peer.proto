@@ -13,18 +13,18 @@ package consensus_peer;
 option go_package = "mobilecoin/api";
 
 service ConsensusPeerAPI {
-    /// This API call is made with an encrypted payload for the enclave,
-    /// indicating a new value to be acted upon.
+    // This API call is made with an encrypted payload for the enclave,
+    // indicating a new value to be acted upon.
     rpc PeerTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
 
-    /// Feed a consensus message into the node.
+    // Feed a consensus message into the node.
     rpc SendConsensusMsg (ConsensusMsg) returns (ConsensusMsgResponse) {}
 
-    /// Get the latest SCP message the node has issued, if any.
+    // Get the latest SCP message the node has issued, if any.
     rpc GetLatestMsg (google.protobuf.Empty) returns (GetLatestMsgResponse) {}
 
-    /// Get the (encypted) transactions with the given hashes.
-    /// The hashes are sent in the AAD data.
+    // Get the (encypted) transactions with the given hashes.
+    // The hashes are sent in the AAD data.
     rpc GetTxs(GetTxsRequest) returns (GetTxsResponse);
 }
 
@@ -41,9 +41,9 @@ enum ConsensusMsgResult {
     UnknownPeer = 10;
 }
 
-/// Response from a ConsensusMsg RPC call.
+// Response from a ConsensusMsg RPC call.
 message ConsensusMsgResponse {
-    /// Result.
+    // Result.
     ConsensusMsgResult result = 1;
 }
 
@@ -53,22 +53,22 @@ message GetLatestMsgResponse {
     bytes payload = 1;
 }
 
-/// Payload for a GetTxs call.
+// Payload for a GetTxs call.
 message GetTxsRequest {
-    /// Channel ID.
+    // Channel ID.
     bytes channel_id = 1;
 
-    /// List of tx hashes to fetch.
+    // List of tx hashes to fetch.
     repeated bytes tx_hashes = 2;
 }
 
-/// Response from a GetTxs call.
+// Response from a GetTxs call.
 message GetTxsResponse { oneof payload {
-    /// Call succeeded, encrypted Tx data was returned.
+    // Call succeeded, encrypted Tx data was returned.
     attest.Message success = 1;
 
-    /// Failed due to tx hashes not in cache.
-    /// (protobuf prohibits using the `repeated` marker inside `oneof`)
+    // Failed due to tx hashes not in cache.
+    // (protobuf prohibits using the `repeated` marker inside `oneof`)
     TxHashesNotInCache tx_hashes_not_in_cache = 2;
 } }
 
