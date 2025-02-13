@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024 The MobileCoin Foundation
+// Copyright (c) 2018-2025 The MobileCoin Foundation
 
 //! The mobilecoind Service
 //! * provides a GRPC server
@@ -1598,6 +1598,31 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let counter_amount = Amount::new(request.counter_value, request.counter_token_id.into());
 
+        let opt_fee_output = if request.fractional_fee_basis_points != 0 {
+            if request.fractional_fee_basis_points > 10000 {
+                return Err(RpcStatus::with_message(
+                    RpcStatusCode::INVALID_ARGUMENT,
+                    "fractional_fee_basis_points too large".into(),
+                ));
+            }
+
+            let fractional_fee_address =
+                request.fractional_fee_address.as_ref().ok_or_else(|| {
+                    RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        "fractional_fee_address".into(),
+                    )
+                })?;
+            let fractional_fee_address =
+                PublicAddress::try_from(fractional_fee_address).map_err(|err| {
+                    rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger)
+                })?;
+
+            Some((request.fractional_fee_basis_points, fractional_fee_address))
+        } else {
+            None
+        };
+
         // Attempt to construct an sci
         let sci = self
             .transactions_manager
@@ -1610,6 +1635,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 request.minimum_fill_value,
                 &self.get_last_block_infos(),
                 request.tombstone,
+                opt_fee_output,
                 None, // opt_memo_builder
             )
             .map_err(|err| {

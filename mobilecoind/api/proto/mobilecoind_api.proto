@@ -871,6 +871,15 @@ message GenerateSwapRequest {
 
     // Tombstone block (setting to 0 means this offer does not expire).
     uint64 tombstone = 8;
+
+    // Optional "fractional fee" output value, in basis points (setting to 0 means no such fractional output is added)
+    // The token id is counter_token_id.
+    // (May be used in some swapping schemes, such as deqs revision 55e0d4f121d7cb5c03e017c5027712dbe84feec7)
+    // Invalid if used with allow_partial_fill = false.
+    uint64 fractional_fee_basis_points = 9;
+
+    // Address for the fractional fee output, if one was specified
+    external.PublicAddress fractional_fee_address = 10;
 }
 
 message GenerateSwapResponse {

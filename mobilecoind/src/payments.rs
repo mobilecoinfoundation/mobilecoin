@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024 The MobileCoin Foundation
+// Copyright (c) 2018-2025 The MobileCoin Foundation
 
 //! Construct and submit transactions to the validator network.
 
@@ -505,6 +505,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ///   determining block version. This should come from polling_network_state
     /// * `opt_tombstone` - Tombstone block. If zero, the swap offer doesn't
     ///   expire.
+    /// * `opt_fee_output` - A nonzero number of fee basis points to apply to
+    ///   the counter amount, and public address to receive it. Intended for use
+    ///   with dex fees, for example.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
     ///   default one (EmptyMemoBuilder).
     pub fn build_swap_proposal(
@@ -517,6 +520,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         min_fill_value: u64,
         last_block_infos: &[BlockInfo],
         opt_tombstone: u64,
+        opt_fee_output: Option<(u64, PublicAddress)>,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
     ) -> Result<SignedContingentInput, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "counter_amount" => format!("{counter_amount:?}")));
@@ -561,6 +565,28 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             fractional_outputs.push((counter_amount, change_subaddress));
         } else {
             required_outputs.push((counter_amount, change_subaddress));
+        }
+
+        if let Some((fee_basis_points, fee_address)) = opt_fee_output {
+            if fee_basis_points == 0 {
+                return Err(Error::TxBuild("Invalid fee_basis_points == 0".to_string()));
+            }
+            if fee_basis_points > 10000 {
+                return Err(Error::TxBuild(
+                    "Invalid fee_basis_points ({fee_basis_points}) > 10000".to_string(),
+                ));
+            }
+            // Note: This matches `fn calc_fee_amount` in dex sources
+            // at revision 55e0d4f121d7cb5c03e017c5027712dbe84feec7
+            let fee_value = (((counter_amount.value as u128 * fee_basis_points as u128) + 9999u128)
+                / 10000u128) as u64;
+            let fee_amount = Amount::new(fee_value, counter_amount.token_id);
+
+            if is_partial_fill {
+                fractional_outputs.push((fee_amount, fee_address));
+            } else {
+                required_outputs.push((fee_amount, fee_address));
+            }
         }
 
         // Build and return the TxProposal object
