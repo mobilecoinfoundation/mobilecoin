@@ -68,6 +68,7 @@ service MobilecoindAPI {
     rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}
     rpc GetBlockIndexByTxPubKey (GetBlockIndexByTxPubKeyRequest) returns (GetBlockIndexByTxPubKeyResponse) {}
     rpc GetTxOutResultsByPubKey (GetTxOutResultsByPubKeyRequest) returns (GetTxOutResultsByPubKeyResponse) {}
+    rpc GetKeyImages (GetKeyImagesRequest) returns (GetKeyImagesResponse) {}
 
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
@@ -1034,6 +1035,22 @@ message GetTxOutResultsByPubKeyRequest {
 message GetTxOutResultsByPubKeyResponse {
     repeated fog_ledger.TxOutResult results = 1;
     blockchain.Block latest_block = 2;
+}
+
+// Get the status of a set of key images, together with the latest block index in the local ledger.
+// (The latter information can be used to detect stale data and avoid races.)
+message GetKeyImagesRequest {
+    repeated external.KeyImage key_images = 1;
+}
+
+message GetKeyImagesResponse {
+    repeated KeyImageResult results = 1;
+    uint64 latest_block_index = 2;
+}
+
+message KeyImageResult {
+    fog_ledger.KeyImageResultCode result_code = 1;
+    uint64 found_in_block = 2;
 }
 
 //
