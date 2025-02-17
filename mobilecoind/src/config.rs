@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2025 The MobileCoin Foundation
 #![deny(missing_docs)]
 
 //! Configuration parameters for mobilecoind
@@ -203,6 +203,7 @@ impl Config {
     ) -> Arc<dyn Fn(&[FogUri]) -> Result<FogResolver, String> + Send + Sync> {
         let env = Arc::new(
             grpcio::EnvBuilder::new()
+                .cq_count(1)
                 .name_prefix("FogPubkeyResolver-RPC".to_string())
                 .build(),
         );
