@@ -9,7 +9,7 @@ ARG BASE_TAG=latest
 FROM ${REPO_ORG}/dcap-runtime-base:${BASE_TAG}
 
 # Install logstash to ship logs when used as a standalone container.
-ARG LOGSTASH_VERSION=7.16.3
+ARG LOGSTASH_VERSION=8.9.0
 ARG LOGSTASH_URL=https://artifacts.opensearch.org/logstash/logstash-oss-with-opensearch-output-plugin-${LOGSTASH_VERSION}-linux-x64.tar.gz
 
 RUN  mkdir -p /opt/logstash \

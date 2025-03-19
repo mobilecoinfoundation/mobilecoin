@@ -1,9 +1,9 @@
 [image]
-url = mobilecoin/builder-install
-tag = v0.0.36
+url = mobilecoin/fat-sgx-builder
+tag = v24.4.0
 [builder-install]
-url = mobilecoin/builder-install
-tag = v0.0.36
+url = mobilecoin/fat-sgx-builder
+tag = v24.4.0
 [signing-tools]
 url = mobilecoin/signing-tools
 tag = v0.0.1

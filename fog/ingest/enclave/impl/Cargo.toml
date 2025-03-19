@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-enclave-impl"
-version = "6.1.1"
+version = "7.0.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
