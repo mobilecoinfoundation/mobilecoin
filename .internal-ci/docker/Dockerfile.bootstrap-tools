@@ -22,6 +22,7 @@ RUN apt-get update \
         jq \
         vim \
         python3-pip \
+        python3-venv \
         zstd \
         openssl \
  && rm -rf /var/cache/apt \
