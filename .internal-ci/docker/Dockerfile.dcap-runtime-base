@@ -37,7 +37,7 @@ RUN  apt-get update \
   && rm -r /var/lib/apt/lists
 
 # Install DCAP libraries
-ARG DCAP_VERSION=1.22.100.3-focal1
+ARG DCAP_VERSION=1.22.100.3-noble1
 ENV DCAP_VERSION=${DCAP_VERSION}
 
 # Explicitly call out *all* dependency versions. This is because the Intel
