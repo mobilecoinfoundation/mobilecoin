@@ -14,7 +14,7 @@ env:
 jobs:
   android-bindings:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.36
+    container: mobilecoin/fat-sgx-builder:v24.4.2
     permissions:
       pull-requests: write
     env:
@@ -28,7 +28,7 @@ jobs:
 
   full-service:
     runs-on: mcf-dev-large-x64
-    container: mobilecoin/builder-install:v0.0.36
+    container: mobilecoin/fat-sgx-builder:v24.4.2
     permissions:
       pull-requests: write
     env:

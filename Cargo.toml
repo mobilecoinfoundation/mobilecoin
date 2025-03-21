@@ -189,7 +189,7 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.76.0"
+rust-version = "1.83.0"
 
 [profile.dev]
 opt-level = 0

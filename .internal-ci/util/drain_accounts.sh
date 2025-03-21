@@ -71,6 +71,8 @@ pushd "${strategies_dir}" >/dev/null || exit 1
 
 echo "-- Install requirements"
 echo ""
+python3 -m venv venv
+source venv/bin/activate
 pip3 install -r requirements.txt
 
 echo ""

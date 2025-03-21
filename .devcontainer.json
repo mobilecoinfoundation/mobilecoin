@@ -1,0 +1,31 @@
+
+{
+  "image": "mobilecoin/fat-sgx-devcontainer:v24.4.2",
+  "runArgs": [
+    "--network=host"
+  ],
+  "capAdd": ["SYS_PTRACE"],
+  "containerEnv": {
+    "MC_CHAIN_ID": "local",
+    "RUST_BACKTRACE": "1",
+    "SGX_MODE": "SW"
+  },
+  "remoteUser": "sentz",
+  "postCreateCommand": "/usr/local/bin/startup-devcontainer.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "fill-labs.dependi",
+        "github.vscode-github-actions",
+        "GitHub.copilot",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "rust-lang.rust-analyzer",
+        "timonwong.shellcheck",
+        "be5invis.toml",
+        "redhat.vscode-yaml",
+        "ms-python.python",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  }
+}

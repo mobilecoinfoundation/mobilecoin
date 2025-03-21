@@ -9,11 +9,6 @@ ARG REPO_ORG=mobilecoin
 ARG BASE_TAG=latest
 FROM ${REPO_ORG}/dcap-runtime-base:${BASE_TAG}
 
-RUN addgroup --system --gid 1000 app \
-  && addgroup --system --gid 2000 app-data \
-  && adduser --system --ingroup app --uid 1000 app \
-  && usermod -a -G 2000 app
-
 # Copy binaries
 ARG RUST_BIN_PATH=target/release
 COPY ${RUST_BIN_PATH}/test_client /usr/local/bin/
@@ -47,7 +42,7 @@ VOLUME /keys
 # Share enclave css files in /measurements
 VOLUME /measurements
 
-USER app
+USER ubuntu
 EXPOSE 8001
 ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
 CMD [ "/usr/local/bin/test_client" ]

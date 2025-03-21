@@ -10,10 +10,10 @@ use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.23.100.2";
+const SGX_VERSION: &str = "2.25.100.3";
 
 const INGEST_ENCLAVE_PRODUCT_ID: u16 = 4;
-const INGEST_ENCLAVE_SECURITY_VERSION: u16 = 8;
+const INGEST_ENCLAVE_SECURITY_VERSION: u16 = 9;
 const INGEST_ENCLAVE_NAME: &str = "ingest-enclave";
 const INGEST_ENCLAVE_DIR: &str = "../trusted";
 const INGEST_ENCLAVE_BUILD_DIR: &str = "enclave";
