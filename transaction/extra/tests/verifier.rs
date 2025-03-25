@@ -18,7 +18,7 @@ use mc_transaction_core::{
     Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_extra::UnsignedTx;
-use mc_transaction_summary::{verify_tx_summary, TransactionEntity};
+use mc_transaction_summary::{verify_tx_summary, TotalKind, TransactionEntity};
 use mc_util_from_random::FromRandom;
 use mc_util_serial::encode;
 use rand::{rngs::StdRng, SeedableRng};
@@ -221,7 +221,10 @@ fn test_max_size_tx_summary_verification() {
             160
         )]
     );
-    assert_eq!(&report.totals, &[(TokenId::from(0), 16000),]);
+    assert_eq!(
+        &report.totals,
+        &[(TokenId::from(0), TotalKind::Ours, 16000)]
+    );
 
     assert_eq!(report.network_fee, Amount::new(15840, TokenId::from(0)));
 }
@@ -256,7 +259,10 @@ fn test_min_size_tx_summary_verification() {
             10
         )]
     );
-    assert_eq!(&report.totals, &[(TokenId::from(0), 1000),]);
+    assert_eq!(
+        &report.totals,
+        &[(TokenId::from(0), TotalKind::Ours, 1000),]
+    );
     assert_eq!(report.network_fee, Amount::new(990, TokenId::from(0)));
 }
 
@@ -343,7 +349,11 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, (value + value2 - change_value) as i64),]
+            &[(
+                token_id,
+                TotalKind::Ours,
+                (value + value2 - change_value) as i64
+            ),]
         );
         assert_eq!(
             &report.outputs,
@@ -431,7 +441,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, ((value - change_value) as i64)),]
+            &[(token_id, TotalKind::Ours, (value - change_value) as i64),]
         );
         assert_eq!(
             &report.outputs,
@@ -523,7 +533,11 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
         let recipient2_hash = ShortAddressHash::from(&recipient2.default_subaddress());
         assert_eq!(
             &report.totals,
-            &[(token_id, (value + value2 + Mob::MINIMUM_FEE) as i64),]
+            &[(
+                token_id,
+                TotalKind::Ours,
+                (value + value2 + Mob::MINIMUM_FEE) as i64
+            ),]
         );
         let mut outputs = vec![
             (
@@ -556,15 +570,16 @@ fn test_sci_tx_summary_verification() {
     let alice = AccountKey::random(&mut rng);
     let bob = AccountKey::random(&mut rng);
 
-    let value = 1475 * MILLIMOB_TO_PICOMOB;
-    let amount = Amount::new(value, Mob::ID);
+    let sci_value = 1475 * MILLIMOB_TO_PICOMOB;
+    let sci_token = Mob::ID;
+    let sci_amount = Amount::new(sci_value, sci_token);
     let token2 = TokenId::from(2);
     let value2 = 100_000;
     let amount2 = Amount::new(value2, token2);
 
-    // Alice provides amount of Mob
+    // Alice provides sci_amount of sci_token
     let input_credentials =
-        get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
+        get_input_credentials(block_version, sci_amount, &alice, &fog_resolver, &mut rng);
 
     let proofs = input_credentials.membership_proofs.clone();
 
@@ -620,7 +635,7 @@ fn test_sci_tx_summary_verification() {
     // Bob keeps the Mob that Alice supplies, less fees
     builder
         .add_output(
-            Amount::new(value - Mob::MINIMUM_FEE, Mob::ID),
+            Amount::new(sci_value - Mob::MINIMUM_FEE, sci_token),
             &bob.default_subaddress(),
             &mut rng,
         )
@@ -647,12 +662,13 @@ fn test_sci_tx_summary_verification() {
         &signing_data.mlsag_signing_digest[..]
     );
 
-    // TODO: fix this test
     assert_eq!(
         &report.totals,
         &[
-            // Bob spends 3x worth of token id 2 in the transaction
-            (token2, value2 as i64),
+            // Bob sends 100_000 of token id 2 to the swap counterparty
+            (token2, TotalKind::Ours, value2 as i64),
+            // SCI is fully consumed
+            (sci_token, TotalKind::Sci, sci_value as i64),
         ]
     );
     let mut outputs = vec![
@@ -662,7 +678,7 @@ fn test_sci_tx_summary_verification() {
         (
             TransactionEntity::OurAddress(bob_hash),
             Mob::ID,
-            value - Mob::MINIMUM_FEE,
+            sci_value - Mob::MINIMUM_FEE,
         ),
     ];
     outputs.sort();
@@ -685,15 +701,16 @@ fn test_sci_three_way_tx_summary_verification() {
     let bob = AccountKey::random(&mut rng);
     let charlie = AccountKey::random(&mut rng);
 
-    let value = 1475 * MILLIMOB_TO_PICOMOB;
-    let amount = Amount::new(value, Mob::ID);
+    let sci_value = 1475 * MILLIMOB_TO_PICOMOB;
+    let sci_token = Mob::ID;
+    let sci_amount = Amount::new(sci_value, sci_token);
     let token2 = TokenId::from(2);
     let value2 = 100_000;
     let amount2 = Amount::new(value2, token2);
 
     // Alice provides amount of Mob
     let input_credentials =
-        get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
+        get_input_credentials(block_version, sci_amount, &alice, &fog_resolver, &mut rng);
 
     let proofs = input_credentials.membership_proofs.clone();
 
@@ -749,7 +766,7 @@ fn test_sci_three_way_tx_summary_verification() {
     // Bob sends the Mob that Alice supplies, less fees, to his friend Charlie
     builder
         .add_output(
-            Amount::new(value - Mob::MINIMUM_FEE, Mob::ID),
+            Amount::new(sci_value - Mob::MINIMUM_FEE, Mob::ID),
             &charlie.default_subaddress(),
             &mut rng,
         )
@@ -780,8 +797,11 @@ fn test_sci_three_way_tx_summary_verification() {
     assert_eq!(
         &report.totals,
         &[
-            // Bob's spend to create the transaction
-            (token2, value2 as i64),
+            // Bob's spent 100_000 in the transaction (started with 300_000 and got 200_000 back as
+            // change)
+            (token2, TotalKind::Ours, 100_000),
+            // SCI is fully consumed
+            (sci_token, TotalKind::Sci, sci_value as i64),
         ]
     );
     let mut outputs = vec![
@@ -789,7 +809,7 @@ fn test_sci_three_way_tx_summary_verification() {
         (
             TransactionEntity::OtherAddress(charlie_hash),
             Mob::ID,
-            (value - Mob::MINIMUM_FEE),
+            (sci_value - Mob::MINIMUM_FEE),
         ),
         // Output to swap counterparty
         (TransactionEntity::Swap, token2, value2),
