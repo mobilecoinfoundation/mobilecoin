@@ -132,6 +132,7 @@ pub struct TxSummaryUnblindingReport<
     pub tombstone_block: u64,
 }
 
+/// The kind of total in the report
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum TotalKind {
     /// Input owned by our account (less change), outgoing from our account
