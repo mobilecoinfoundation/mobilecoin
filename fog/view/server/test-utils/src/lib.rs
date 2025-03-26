@@ -227,6 +227,7 @@ impl RouterTestEnvironment {
                     sharding_strategy,
                     postgres_config: Default::default(),
                     block_query_batch_size: 2,
+                    db_polling_interval_ms: Duration::from_millis(100),
                 };
 
                 let enclave = SgxViewEnclave::new(

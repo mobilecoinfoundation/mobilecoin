@@ -17,12 +17,9 @@ use std::{
     time::Duration,
 };
 
-/// Time to wait between database fetch attempts.
-pub const DB_POLL_INTERNAL: Duration = Duration::from_millis(100);
-
 /// Approximate maximum number of ETxOutRecords we will collect inside
 /// fetched_records before blocking and waiting for the enclave thread to pick
-/// them up. Since DB fetching is significantlly faster than enclave insertion
+/// them up. Since DB fetching is significantly faster than enclave insertion
 /// we need a mechanism that prevents fetched_records from growing indefinitely.
 /// This essentially caps the memory usage of the fetched_records array.
 /// Assuming each ETxOutRecord is <256 bytes, this gives a worst case scenario
@@ -77,6 +74,7 @@ pub struct DbFetcher {
 impl DbFetcher {
     pub fn new<DB, SS>(
         db: DB,
+        db_polling_interval: Duration,
         readiness_indicator: ReadinessIndicator,
         sharding_strategy: SS,
         block_query_batch_size: usize,
@@ -104,6 +102,7 @@ impl DbFetcher {
                 .spawn(move || {
                     DbFetcherThread::start(
                         db,
+                        db_polling_interval,
                         thread_stop_requested,
                         thread_shared_state,
                         thread_num_queued_records_limiter,
@@ -179,6 +178,7 @@ where
     SS: ShardingStrategy + Clone + Send + Sync + 'static,
 {
     db: DB,
+    db_polling_interval: Duration,
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
     block_tracker: BlockTracker<SS>,
@@ -197,6 +197,7 @@ where
 {
     pub fn start(
         db: DB,
+        db_polling_interval: Duration,
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
@@ -211,6 +212,7 @@ where
         );
         let thread = Self {
             db,
+            db_polling_interval,
             stop_requested,
             shared_state,
             block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
@@ -243,7 +245,7 @@ where
             // loaded into the queue.
             self.readiness_indicator.set_ready();
 
-            sleep(DB_POLL_INTERNAL);
+            sleep(self.db_polling_interval);
         }
     }
 
@@ -382,7 +384,7 @@ where
                     // We might have more work to do, we aren't sure because of the error
                     may_have_more_work = true;
                     // Let's back off for one interval when there is an error
-                    sleep(DB_POLL_INTERNAL);
+                    sleep(self.db_polling_interval);
                 }
             }
         }
@@ -415,6 +417,7 @@ mod tests {
         let db = db_test_context.get_db_instance();
         let db_fetcher = DbFetcher::new(
             db.clone(),
+            Duration::from_millis(100),
             Default::default(),
             EpochShardingStrategy::default(),
             1,
@@ -651,6 +654,7 @@ mod tests {
         let db = db_test_context.get_db_instance();
         let db_fetcher = DbFetcher::new(
             db.clone(),
+            Duration::from_millis(100),
             Default::default(),
             EpochShardingStrategy::default(),
             1,
@@ -714,6 +718,7 @@ mod tests {
         let db = db_test_context.get_db_instance();
         let db_fetcher = DbFetcher::new(
             db.clone(),
+            Duration::from_millis(100),
             Default::default(),
             EpochShardingStrategy::default(),
             1,

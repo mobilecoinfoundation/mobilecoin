@@ -30,7 +30,7 @@ use mc_common::{
 };
 use mc_connection::{BlockInfo, BlockchainConnection, UserTxConnection};
 use mc_core::slip10::Slip10KeyGenerator;
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
@@ -582,6 +582,34 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }));
 
         Ok(response)
+    }
+
+    fn tx_out_view_key_match_impl(
+        &mut self,
+        request: api::TxOutViewKeyMatchRequest,
+    ) -> Result<api::TxOutViewKeyMatchResponse, RpcStatus> {
+        let tx_out = TxOut::try_from(request.get_txo())
+            .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))?;
+        let view_private_key = RistrettoPrivate::try_from(request.get_view_private_key())
+            .map_err(|err| rpc_invalid_arg_error("view_private_key.try_from", err, &self.logger))?;
+
+        match tx_out.view_key_match(&view_private_key) {
+            Ok((amount, shared_secret)) => {
+                let shared_secret: mc_api::external::CompressedRistretto = (&shared_secret).into();
+
+                Ok(api::TxOutViewKeyMatchResponse {
+                    matched: true,
+                    value: amount.value,
+                    token_id: *amount.token_id,
+                    shared_secret: Some(shared_secret).into(),
+                    ..Default::default()
+                })
+            }
+            Err(_) => Ok(api::TxOutViewKeyMatchResponse {
+                matched: false,
+                ..Default::default()
+            }),
+        }
     }
 
     fn parse_request_code_impl(
@@ -2626,6 +2654,7 @@ build_api! {
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
     get_short_address_hash GetShortAddressHashRequest GetShortAddressHashResponse get_short_address_hash_impl,
     validate_authenticated_sender_memo ValidateAuthenticatedSenderMemoRequest ValidateAuthenticatedSenderMemoResponse validate_authenticated_sender_memo_impl,
+    tx_out_view_key_match TxOutViewKeyMatchRequest TxOutViewKeyMatchResponse tx_out_view_key_match_impl,
 
     // b58 codes
     parse_request_code ParseRequestCodeRequest ParseRequestCodeResponse parse_request_code_impl,
@@ -3503,6 +3532,69 @@ mod test {
         request.set_sender((&bob_addr).into());
         let response = client.validate_authenticated_sender_memo(&request).unwrap();
         assert!(!response.success);
+    }
+
+    #[test_with_logger]
+    fn test_tx_out_view_key_match_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger, &mut rng);
+
+        // Insert a block with a known recipient (this is block 4)
+        let recipient = AccountKey::random(&mut rng);
+        add_block_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            &[recipient.default_subaddress()],
+            Amount::new(102030, TokenId::from(1)),
+            &[KeyImage::from(101)],
+            &mut rng,
+        )
+        .unwrap();
+
+        // Get the block so we can test the matching.
+        let block = client
+            .get_block(&api::GetBlockRequest {
+                block: ledger_db.num_blocks().unwrap() - 1,
+                ..Default::default()
+            })
+            .unwrap();
+
+        // The block should have a single tx out and we should be able to match it with
+        // the correct view private key.
+        let view_private_key =
+            mc_api::external::RistrettoPrivate::from(recipient.view_private_key());
+        let resp = client
+            .tx_out_view_key_match(&api::TxOutViewKeyMatchRequest {
+                txo: Some(block.txos[0].clone()).into(),
+                view_private_key: Some(view_private_key).into(),
+                ..Default::default()
+            })
+            .unwrap();
+
+        assert!(resp.matched);
+        assert_eq!(resp.value, 102030);
+        assert_eq!(resp.token_id, 1);
+        assert_eq!(resp.get_shared_secret().data.len(), 32);
+
+        // Try with an incorrect view private key
+        let view_private_key = mc_api::external::RistrettoPrivate::from(
+            AccountKey::random(&mut rng).view_private_key(),
+        );
+        let resp = client
+            .tx_out_view_key_match(&api::TxOutViewKeyMatchRequest {
+                txo: Some(block.txos[0].clone()).into(),
+                view_private_key: Some(view_private_key).into(),
+                ..Default::default()
+            })
+            .unwrap();
+
+        assert!(!resp.matched);
+        assert_eq!(resp.value, 0);
+        assert_eq!(resp.token_id, 0);
+        assert_eq!(resp.get_shared_secret().data.len(), 0);
     }
 
     #[test_with_logger]

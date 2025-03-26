@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [6.1.1]
+
+### Fixed
+
+- Update grpcio for fog-local-network ([#4014])
+- Fix ledger distribution resync ([#4013])
+
+## [6.1.0]
+
+### Changed
+
+- make fog-view db polling configurable ([#4005])
+
+#### CI/CD
+
+- fix ledger bootstrap job ([#4002])
+- static ingress cookie salt values ([#4006])
+- clean up deprecated charts ([#4007])
+- configuration for "big" network testing ([#4008])
+- fog-view - blue/green and zone based deployments. ([#4009])
+
 ## [6.0.2]
 
 ### Fixed
