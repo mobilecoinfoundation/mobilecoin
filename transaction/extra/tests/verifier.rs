@@ -661,13 +661,12 @@ fn test_sci_tx_summary_verification() {
         &signing_data.mlsag_signing_digest[..]
     );
 
-    // TODO: fix this test
     assert_eq!(
         &report.totals,
         &[
-            // Bob spends 3x worth of token id 2 in the transaction
+            // Bob sends 100_000 of token id 2 to the swap counterparty
             (token2, TotalKind::Ours, value2 as i128),
-            // SCI inputs used in the transaction
+            // SCI inputs used in the transaction (fully consumed)
             (Mob::ID, TotalKind::Sci, value as i128),
         ]
     );
