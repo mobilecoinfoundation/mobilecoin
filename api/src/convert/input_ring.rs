@@ -117,8 +117,7 @@ mod tests {
     use mc_account_keys::AccountKey;
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_builder::{
-        test_utils::get_input_credentials, DefaultTxOutputsOrdering, EmptyMemoBuilder,
-        TransactionBuilder,
+        test_utils::get_input_credentials, EmptyMemoBuilder, TransactionBuilder,
     };
     use mc_transaction_core::{tokens::Mob, Amount, BlockVersion, Token};
     use rand::{rngs::StdRng, SeedableRng};
@@ -140,7 +139,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -160,7 +158,7 @@ mod tests {
                 .unwrap();
 
             let unsigned_tx = transaction_builder
-                .build_unsigned::<DefaultTxOutputsOrdering>()
+                .build_unsigned(EmptyMemoBuilder)
                 .unwrap();
 
             let input_ring = unsigned_tx.rings[0].clone();

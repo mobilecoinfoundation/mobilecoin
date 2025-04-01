@@ -580,7 +580,6 @@ mod combine_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 MockFogResolver::default(),
-                EmptyMemoBuilder,
             )
             .unwrap();
             transaction_builder.add_input(input_credentials);
@@ -594,7 +593,7 @@ mod combine_tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
             let client_tx = WellFormedTxContext::from_tx(&tx, 0);
 
@@ -643,7 +642,6 @@ mod combine_tests {
                         block_version,
                         Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                         MockFogResolver::default(),
-                        EmptyMemoBuilder,
                     )
                     .unwrap();
 
@@ -683,7 +681,7 @@ mod combine_tests {
                         .unwrap();
 
                     let tx = transaction_builder
-                        .build(&NoKeysRingSigner {}, &mut rng)
+                        .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                         .unwrap();
                     WellFormedTxContext::from_tx(&tx, 0)
                 };
@@ -752,7 +750,6 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -766,7 +763,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
@@ -796,7 +793,6 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -810,7 +806,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
@@ -864,7 +860,6 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -878,7 +873,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
@@ -960,7 +955,6 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -974,7 +968,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
@@ -1005,7 +999,6 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -1019,7 +1012,7 @@ mod combine_tests {
                     .unwrap();
 
                 let mut tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
                 tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0];
                 WellFormedTxContext::from_tx(&tx, 0)
@@ -1074,7 +1067,6 @@ mod combine_tests {
                     block_version,
                     Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
-                    EmptyMemoBuilder,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -1088,7 +1080,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };

@@ -8,8 +8,7 @@ use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
 use mc_transaction_builder::{
     test_utils::{get_input_credentials, get_unsigned_transaction},
-    DefaultTxOutputsOrdering, EmptyMemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder,
-    TransactionBuilder,
+    EmptyMemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder, TransactionBuilder,
 };
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
@@ -112,6 +111,7 @@ fn test_max_size_tx_payload_sizes() {
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
     let (unsigned_tx, _sender, _recipient) = get_current_max_size_transaction(&mut rng);
+
     let (signing_data, tx_summary, tx_summary_unblinding_data, _extended_message_digest) =
         unsigned_tx.get_signing_data(&mut rng).unwrap();
     let signature_rct = signing_data
@@ -287,7 +287,6 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             block_version,
             Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
-            EmptyMemoBuilder,
         )
         .unwrap();
 
@@ -327,7 +326,7 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             .unwrap();
 
         let unsigned_tx = transaction_builder
-            .build_unsigned::<DefaultTxOutputsOrdering>()
+            .build_unsigned(EmptyMemoBuilder)
             .unwrap();
 
         let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
@@ -387,7 +386,6 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             block_version,
             Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
-            EmptyMemoBuilder,
         )
         .unwrap();
 
@@ -419,7 +417,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             .unwrap();
 
         let unsigned_tx = transaction_builder
-            .build_unsigned::<DefaultTxOutputsOrdering>()
+            .build_unsigned(EmptyMemoBuilder)
             .unwrap();
 
         let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
@@ -478,7 +476,6 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             block_version,
             Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
-            EmptyMemoBuilder,
         )
         .unwrap();
 
@@ -510,7 +507,7 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             .unwrap();
 
         let unsigned_tx = transaction_builder
-            .build_unsigned::<DefaultTxOutputsOrdering>()
+            .build_unsigned(EmptyMemoBuilder)
             .unwrap();
 
         let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
@@ -613,7 +610,6 @@ fn test_sci_tx_summary_verification() {
         block_version,
         Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         fog_resolver,
-        EmptyMemoBuilder,
     )
     .unwrap();
 
@@ -641,9 +637,7 @@ fn test_sci_tx_summary_verification() {
         .unwrap();
     let bob_hash = ShortAddressHash::from(&bob.default_subaddress());
 
-    let unsigned_tx = builder
-        .build_unsigned::<DefaultTxOutputsOrdering>()
-        .unwrap();
+    let unsigned_tx = builder.build_unsigned(EmptyMemoBuilder).unwrap();
 
     let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
         unsigned_tx.get_signing_data(&mut rng).unwrap();
@@ -743,7 +737,6 @@ fn test_sci_three_way_tx_summary_verification() {
         block_version,
         Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         fog_resolver,
-        EmptyMemoBuilder,
     )
     .unwrap();
 
@@ -770,9 +763,7 @@ fn test_sci_three_way_tx_summary_verification() {
         )
         .unwrap();
 
-    let unsigned_tx = builder
-        .build_unsigned::<DefaultTxOutputsOrdering>()
-        .unwrap();
+    let unsigned_tx = builder.build_unsigned(EmptyMemoBuilder).unwrap();
 
     let (signing_data, tx_summary, tx_summary_unblinding_data, extended_message_digest) =
         unsigned_tx.get_signing_data(&mut rng).unwrap();
