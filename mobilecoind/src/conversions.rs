@@ -390,7 +390,8 @@ mod test {
         assert_eq!(decoded.decoded_memo, None);
 
         let memo2 =
-            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key)
+                .unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo2));
         assert!(decoded.has_authenticated_sender_memo());
         let sender_memo = decoded.get_authenticated_sender_memo();
@@ -403,7 +404,8 @@ mod test {
             bob_addr.view_public_key(),
             &tx_public_key,
             7u64,
-        );
+        )
+        .unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo3));
         assert!(decoded.has_authenticated_sender_memo());
         assert!(!decoded.has_unknown_memo());
@@ -418,7 +420,8 @@ mod test {
             bob_addr.view_public_key(),
             &tx_public_key,
             9u64,
-        );
+        )
+        .unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo4));
         assert!(decoded.has_authenticated_sender_memo());
         assert!(!decoded.has_unknown_memo());

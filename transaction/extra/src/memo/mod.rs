@@ -48,7 +48,10 @@
 //! | 0x0204          | Destination With Payment Intent Id Memo           |
 
 pub use self::{
-    authenticated_common::compute_authenticated_sender_memo,
+    authenticated_common::{
+        compute_authenticated_sender_memo, validate_authenticated_sender,
+        AuthenticatedMemoHmacSigner,
+    },
     authenticated_sender::AuthenticatedSenderMemo,
     authenticated_sender_with_payment_intent_id::AuthenticatedSenderWithPaymentIntentIdMemo,
     authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo,
@@ -156,7 +159,8 @@ mod tests {
         }
 
         let memo2 =
-            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key)
+                .unwrap();
         match MemoType::try_from(&MemoPayload::from(memo2.clone())).unwrap() {
             MemoType::AuthenticatedSender(memo) => {
                 assert_eq!(memo2, memo, "memo did not round trip");
@@ -171,7 +175,8 @@ mod tests {
             bob_addr.view_public_key(),
             &tx_public_key,
             7u64,
-        );
+        )
+        .unwrap();
         match MemoType::try_from(&MemoPayload::from(memo3.clone())).unwrap() {
             MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
                 assert_eq!(memo3, memo);
@@ -235,7 +240,8 @@ mod tests {
         let tx_public_key2 = CompressedRistrettoPublic::from_random(&mut rng);
 
         let memo1 =
-            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key)
+                .unwrap();
         assert_eq!(
             memo1.sender_address_hash(),
             ShortAddressHash::from(&alice_addr)
@@ -310,7 +316,8 @@ mod tests {
             bob_addr.view_public_key(),
             &tx_public_key,
             7u64,
-        );
+        )
+        .unwrap();
         assert_eq!(
             memo2.sender_address_hash(),
             ShortAddressHash::from(&alice_addr)

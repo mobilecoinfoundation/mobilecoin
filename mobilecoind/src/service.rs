@@ -2713,7 +2713,7 @@ mod test {
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         subaddress_store::SubaddressSPKId,
         test_utils::{
-            self, add_block_to_ledger, add_txos_to_ledger, get_test_fee_map,
+            self, add_block_to_ledger, add_txos_to_ledger, create_tx_out, get_test_fee_map,
             get_testing_environment, wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
         },
         utxo_store::UnspentTxOut,
@@ -2727,12 +2727,9 @@ mod test {
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
-    use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
     use mc_rand::RngCore;
-    use mc_transaction_builder::{
-        EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder, TransactionBuilder, TxOutContext,
-    };
+    use mc_transaction_builder::{MemoBuilder, RTHMemoBuilder};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},
         encrypted_fog_hint::EncryptedFogHint,
@@ -4133,20 +4130,10 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
-        let mut transaction_builder = TransactionBuilder::new(
-            BLOCK_VERSION,
-            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
-            MockFogResolver::default(),
-            EmptyMemoBuilder,
-        )
-        .unwrap();
-        let TxOutContext {
-            tx_out,
-            confirmation,
-            ..
-        } = transaction_builder
-            .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
-            .unwrap();
+
+        let (tx_out, shared_secret) =
+            create_tx_out(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng);
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
         add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
 
@@ -7390,20 +7377,11 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut transaction_builder = TransactionBuilder::new(
-            BLOCK_VERSION,
-            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
-            MockFogResolver::default(),
-            EmptyMemoBuilder,
-        )
-        .unwrap();
-        let TxOutContext { tx_out, .. } = transaction_builder
-            .add_output(
-                Amount::new(10, Mob::ID),
-                &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
-                &mut rng,
-            )
-            .unwrap();
+        let (tx_out, _) = create_tx_out(
+            Amount::new(10, Mob::ID),
+            &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
+            &mut rng,
+        );
 
         add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
 
@@ -7503,20 +7481,11 @@ mod test {
         let key = mnemonic.derive_slip10_key(0);
         let account_key = AccountKey::from(key);
 
-        let mut transaction_builder = TransactionBuilder::new(
-            BLOCK_VERSION,
-            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
-            MockFogResolver::default(),
-            EmptyMemoBuilder,
-        )
-        .unwrap();
-        let TxOutContext { tx_out, .. } = transaction_builder
-            .add_output(
-                Amount::new(10, Mob::ID),
-                &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
-                &mut rng,
-            )
-            .unwrap();
+        let (tx_out, _) = create_tx_out(
+            Amount::new(10, Mob::ID),
+            &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
+            &mut rng,
+        );
 
         add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
 

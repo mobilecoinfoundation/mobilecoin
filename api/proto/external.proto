@@ -781,3 +781,105 @@ message SigningData {
     /// all outputs are inferred from the tx.prefix.fee_token_id.
     repeated fixed64 output_token_ids = 7;
 }
+
+/// A structure containing all information needed to build an unsigned
+/// transaction, which can then be signed.
+/// The major difference between `TxBlueprint` and `UnsignedTx` is that
+/// `TxBlueprint` does not contain the output `TxOut`s but instead contains the
+/// information needed to build them.
+message TxBlueprint {
+    /// Transaction inputs
+    repeated TxIn inputs = 1;
+
+    /// rings
+    repeated InputRing rings = 2;
+
+    /// Outputs
+    repeated TxBlueprintOutput outputs = 3;
+
+    /// Fee to be paid.
+    Amount fee = 4;
+
+    /// The block index at which this transaction is no longer valid.
+    uint64 tombstone_block = 5;
+
+    /// Block version
+    uint32 block_version = 6;
+}
+
+
+/// The information we need to build an output TxOut
+message TxBlueprintOutput {
+    oneof output {
+        /// A normal output to a recipient public address
+        TxBlueprintOutputRecipient recipient = 1;
+
+        /// A change output
+        TxBlueprintOutputChange change = 2;
+
+        /// SCI Required Output
+        TxBlueprintOutputSci sci = 3;
+    }
+}
+
+message TxBlueprintOutputRecipient {
+    /// The recipient of the transaction
+    PublicAddress recipient = 1;
+
+    /// The amount being sent
+    Amount amount = 2;
+
+    /// The encrypted fog hint for the fog ingest server
+    EncryptedFogHint e_fog_hint = 3;
+
+    /// The tx private key for the output
+    RistrettoPrivate tx_private_key = 4;
+}
+
+message TxBlueprintOutputChange {
+    /// Destination of the change output
+    ReservedSubaddresses change_destination = 1;
+
+    /// The amount being sent
+    Amount amount = 2;
+
+    /// The encrypted fog hint for the fog ingest server
+    EncryptedFogHint e_fog_hint = 3;
+
+    /// The tx private key for the output
+    RistrettoPrivate tx_private_key = 4;
+}
+
+message TxBlueprintOutputSci {
+    /// The output
+    TxOut output = 1;
+
+    /// The unmasked amount
+    UnmaskedAmount unmasked_amount = 2;
+}
+
+/// An API type for the transaction builder that helps name and organize
+/// data that is passed when creating outputs for reserved subaddresses.
+///
+/// When creating outputs, the primary address is used to create the fog hint,
+/// but the special output types like change outputs and gift code outputs are
+/// sent to reserved subaddresses. This object provides a way of tracking the
+/// reserved subaddresses within the platform.
+message ReservedSubaddresses {
+    /// This is normally the default subaddress of an account. It is used to
+    /// create the fog hint for the change output.
+    PublicAddress primary_address = 1;
+
+    /// A secret reserved subaddress not known except by the owner of the
+    /// account. It is the account to which all change outputs are actually
+    /// sent. The account owner is able to confirm that an output is change
+    /// by checking that it matches to the change subaddress.
+    /// This should always be the change_subaddress for some AccountKey.
+    PublicAddress change_subaddress = 2;
+
+    /// A secret reserved subaddress to which gift code outputs are sent
+    /// when they are created. Similarly to the change_subaddress, gift code
+    /// creators can check to see gift codes they've created by checking outputs
+    /// at this subaddress
+    PublicAddress gift_code_subaddress = 3;
+}

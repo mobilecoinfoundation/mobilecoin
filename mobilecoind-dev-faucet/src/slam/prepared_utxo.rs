@@ -163,9 +163,8 @@ impl PreparedUtxo {
         };
 
         // Create tx_builder.
-        let mut tx_builder =
-            TransactionBuilder::new(block_version, fee_amount, fog_resolver, EmptyMemoBuilder)
-                .map_err(|err| format!("Transaction builder new: {err}"))?;
+        let mut tx_builder = TransactionBuilder::new(block_version, fee_amount, fog_resolver)
+            .map_err(|err| format!("Transaction builder new: {err}"))?;
 
         tx_builder.set_tombstone_block(tombstone_block);
         tx_builder.add_input(self.get_input_credentials(account_key)?);
@@ -178,7 +177,11 @@ impl PreparedUtxo {
             .map_err(|err| format!("Add output: {err}"))?;
 
         tx_builder
-            .build(&LocalRingSigner::from(account_key), &mut rng)
+            .build(
+                &LocalRingSigner::from(account_key),
+                EmptyMemoBuilder,
+                &mut rng,
+            )
             .map_err(|err| format!("Build Tx: {err}"))
     }
 

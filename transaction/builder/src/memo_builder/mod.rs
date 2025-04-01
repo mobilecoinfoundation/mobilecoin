@@ -5,6 +5,7 @@
 //! submodule.
 
 use super::ReservedSubaddresses;
+use alloc::boxed::Box;
 use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
@@ -59,6 +60,30 @@ pub trait MemoBuilder: Debug {
         change_destination: &ReservedSubaddresses,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError>;
+}
+
+impl MemoBuilder for Box<dyn MemoBuilder + Send + Sync> {
+    fn set_fee(&mut self, amount: Amount) -> Result<(), NewMemoError> {
+        (**self).set_fee(amount)
+    }
+
+    fn make_memo_for_output(
+        &mut self,
+        amount: Amount,
+        recipient: &PublicAddress,
+        memo_context: MemoContext,
+    ) -> Result<MemoPayload, NewMemoError> {
+        (**self).make_memo_for_output(amount, recipient, memo_context)
+    }
+
+    fn make_memo_for_change_output(
+        &mut self,
+        amount: Amount,
+        change_destination: &ReservedSubaddresses,
+        memo_context: MemoContext,
+    ) -> Result<MemoPayload, NewMemoError> {
+        (**self).make_memo_for_change_output(amount, change_destination, memo_context)
+    }
 }
 
 /// The empty memo builder always builds UnusedMemo.

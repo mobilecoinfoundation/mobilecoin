@@ -1160,11 +1160,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         *balance_sheet.entry(fee_token_id).or_default() += fee as i128;
 
         let fee_amount = Amount::new(fee, fee_token_id);
-        let mut tx_builder =
-            TransactionBuilder::new_with_box(block_version, fee_amount, fog_resolver, memo_builder)
-                .map_err(|err| {
-                    Error::TxBuild(format!("Error creating transaction builder: {err}"))
-                })?;
+        let mut tx_builder = TransactionBuilder::new(block_version, fee_amount, fog_resolver)
+            .map_err(|err| Error::TxBuild(format!("Error creating transaction builder: {err}")))?;
         tx_builder.set_fee_map(fee_map);
 
         // Unzip each vec of tuples into a tuple of vecs.
@@ -1276,11 +1273,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Add outputs to our destinations.
-        let mut tx_out_to_outlay_index = HashMap::default();
+        let mut tx_out_public_key_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
             let TxOutContext {
-                tx_out,
+                tx_out_public_key,
                 confirmation,
                 ..
             } = tx_builder
@@ -1292,7 +1289,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 )
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {err}")))?;
 
-            tx_out_to_outlay_index.insert(tx_out, i);
+            tx_out_public_key_to_outlay_index.insert(tx_out_public_key, i);
             outlay_confirmation_numbers.push(confirmation);
 
             *balance_sheet.entry(outlay.amount.token_id).or_default() +=
@@ -1345,7 +1342,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Build tx.
         let tx = tx_builder
-            .build(&NoKeysRingSigner {}, rng)
+            .build(&NoKeysRingSigner {}, memo_builder, rng)
             .map_err(|err| Error::TxBuild(format!("build tx failed: {err}")))?;
 
         // Map each TxOut in the constructed transaction to its respective outlay.
@@ -1355,8 +1352,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .iter()
             .enumerate()
             .filter_map(|(tx_out_index, tx_out)| {
-                tx_out_to_outlay_index
-                    .get(tx_out)
+                tx_out_public_key_to_outlay_index
+                    .get(&tx_out.public_key)
                     .map(|outlay_index| (*outlay_index, tx_out_index))
             })
             .collect::<HashMap<_, _>>();
