@@ -489,14 +489,12 @@ mod test {
     use crate::{
         monitor_store::MonitorData,
         test_utils::{
-            self, add_block_to_ledger, add_txos_to_ledger, get_test_databases, BlockVersion,
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            self, add_block_to_ledger, add_txos_to_ledger, create_tx_out, get_test_databases,
+            BlockVersion, DEFAULT_PER_RECIPIENT_AMOUNT,
         },
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_fog_report_validation_test_utils::MockFogResolver;
-    use mc_transaction_builder::{EmptyMemoBuilder, TransactionBuilder, TxOutContext};
     use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use std::time::Instant;
@@ -905,18 +903,10 @@ mod test {
         let receiver = AccountKey::random(&mut rng);
 
         // Add a block that has a bunch of irrelevant txos.
-        let mut transaction_builder = TransactionBuilder::new(
-            BlockVersion::MAX,
-            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
-            MockFogResolver::default(),
-            EmptyMemoBuilder,
-        )
-        .unwrap();
         let mut tx_outs = Vec::new();
         for i in 0..1000 {
-            let TxOutContext { tx_out, .. } = transaction_builder
-                .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(i), &mut rng)
-                .unwrap();
+            let (tx_out, _) =
+                create_tx_out(Amount::new(10, Mob::ID), &receiver.subaddress(i), &mut rng);
             tx_outs.push(tx_out);
         }
         let start = Instant::now();

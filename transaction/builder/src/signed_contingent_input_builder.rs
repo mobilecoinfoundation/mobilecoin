@@ -875,7 +875,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -902,7 +901,9 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -1135,7 +1136,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1162,7 +1162,9 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -1403,7 +1405,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1439,7 +1440,9 @@ pub mod tests {
 
             builder.set_tombstone_block(8088);
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -1682,7 +1685,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1703,7 +1705,7 @@ pub mod tests {
 
             // The transaction is balanced, but it fails because all rings were presigned
             assert_matches!(
-                builder.build(&NoKeysRingSigner {}, &mut rng),
+                builder.build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng),
                 Err(TxBuilderError::RingSignatureFailed(
                     RingCtError::AllRingsPresigned
                 ))
@@ -1774,7 +1776,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1809,7 +1810,9 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -1889,7 +1892,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1916,7 +1918,9 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -1992,7 +1996,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2027,7 +2030,9 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -2117,7 +2122,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2152,7 +2156,9 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -2237,7 +2243,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2272,7 +2277,9 @@ pub mod tests {
             builder.set_tombstone_block(1000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 1000);
 
@@ -2347,7 +2354,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2382,7 +2388,9 @@ pub mod tests {
             builder.set_tombstone_block(2000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 2000);
 
@@ -2472,7 +2480,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2507,7 +2514,9 @@ pub mod tests {
             builder.set_tombstone_block(2000);
 
             // The transaction is balanced, so this should build
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.tombstone_block, 2000);
 
@@ -2619,7 +2628,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2651,7 +2659,9 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -2893,7 +2903,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -2928,7 +2937,9 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -3172,7 +3183,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3208,7 +3218,9 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();
@@ -3442,7 +3454,6 @@ pub mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -3482,7 +3493,9 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let tx = builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
+            let tx = builder
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
+                .unwrap();
 
             // tx should have a valid signature, and pass all input rule checks
             validate_signature(block_version, &tx, &mut rng).unwrap();

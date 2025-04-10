@@ -3,7 +3,7 @@
 //! Object containing subaddresses of MobileCoin reserved subaddress indices
 
 use mc_account_keys::{AccountKey, PublicAddress, ViewAccountKey};
-
+use serde::{Deserialize, Serialize};
 /// This is an API type for the transaction builder that helps name and organize
 /// data that is passed when creating outputs for reserved subaddresses
 ///
@@ -14,7 +14,7 @@ use mc_account_keys::{AccountKey, PublicAddress, ViewAccountKey};
 ///
 /// This object can be created from an AccountKey, but it can also be created
 /// offline and then serialized and sent to a different machine.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ReservedSubaddresses {
     /// This is normally the default subaddress of an account. It is used to
     /// create the fog hint for the change output.

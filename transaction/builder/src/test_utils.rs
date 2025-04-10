@@ -3,8 +3,8 @@
 //! Utilities that help with testing the transaction builder and related objects
 
 use crate::{
-    DefaultTxOutputsOrdering, EmptyMemoBuilder, InputCredentials, MemoBuilder,
-    ReservedSubaddresses, TransactionBuilder, TxBuilderError,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
+    TxBuilderError,
 };
 use alloc::vec::Vec;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
@@ -178,7 +178,6 @@ pub fn get_unsigned_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver
         block_version,
         Amount::new(Mob::MINIMUM_FEE, token_id),
         fog_resolver.clone(),
-        EmptyMemoBuilder,
     )
     .unwrap();
     let input_value = 1000;
@@ -213,7 +212,7 @@ pub fn get_unsigned_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver
             )
             .unwrap();
     }
-    transaction_builder.build_unsigned::<DefaultTxOutputsOrdering>()
+    transaction_builder.build_unsigned(EmptyMemoBuilder)
 }
 
 /// Uses TransactionBuilder to build a generic transaction for testing.

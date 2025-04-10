@@ -7,15 +7,17 @@
 
 use super::MemoBuilder;
 use crate::ReservedSubaddresses;
+use alloc::{boxed::Box, sync::Arc};
+use core::fmt::Debug;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
 };
 use mc_transaction_extra::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
-    AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo, DestinationMemoError,
-    DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo, SenderMemoCredential,
-    UnusedMemo,
+    AuthenticatedMemoHmacSigner, AuthenticatedSenderMemo,
+    AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo,
+    DestinationMemo, DestinationMemoError, DestinationWithPaymentIntentIdMemo,
+    DestinationWithPaymentRequestIdMemo, SenderMemoCredential, UnusedMemo,
 };
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
@@ -54,32 +56,34 @@ use mc_transaction_extra::{
 /// address will be recorded in the 0x0200 Destination Memo.
 #[derive(Clone, Debug)]
 pub struct RTHMemoBuilder {
-    // The credential used to form 0x0100 and 0x0101 memos, if present.
-    sender_cred: Option<SenderMemoCredential>,
-    // The payment request id, if any
+    /// The authenticated sender hmac signer used when forming 0x0100 and 0x0101
+    /// memos. If not present, no authenticated sender memos will be formed.
+    authenticated_sender_hmac_signer:
+        Option<Arc<Box<dyn AuthenticatedMemoHmacSigner + 'static + Send + Sync>>>,
+    /// The payment request id, if any
     payment_request_id: Option<u64>,
-    // The payment intent id, if any
+    /// The payment intent id, if any
     payment_intent_id: Option<u64>,
-    // Whether destination memos are enabled.
+    /// Whether destination memos are enabled.
     destination_memo_enabled: bool,
-    // Tracks if we already wrote a destination memo, for error reporting
+    /// Tracks if we already wrote a destination memo, for error reporting
     wrote_destination_memo: bool,
-    // Tracks the last recipient
+    /// Tracks the last recipient
     last_recipient: ShortAddressHash,
-    // Tracks the total outlay so far
+    /// Tracks the total outlay so far
     total_outlay: u64,
-    // Tracks the total outlay token id
+    /// Tracks the total outlay token id
     outlay_token_id: Option<TokenId>,
-    // Tracks the number of recipients so far
+    /// Tracks the number of recipients so far
     num_recipients: u8,
-    // Tracks the fee
+    /// Tracks the fee
     fee: Amount,
 }
 
 impl Default for RTHMemoBuilder {
     fn default() -> Self {
         Self {
-            sender_cred: Default::default(),
+            authenticated_sender_hmac_signer: Default::default(),
             payment_request_id: None,
             payment_intent_id: None,
             destination_memo_enabled: false,
@@ -95,9 +99,11 @@ impl Default for RTHMemoBuilder {
 
 impl RTHMemoBuilder {
     /// Set the sender credential. If no sender credential is provided,
-    /// then authenticated sender memos cannot be produced.
+    /// then authenticated sender memos will not be produced.
+    /// This is the same as calling set_authenticated_sender_hmac_signer with
+    /// `Arc::new(Box::new(cred))` and is provided for convenience.
     ///
-    /// This credential usually be produced from your AccountKey object.
+    /// This credential is usually be produced from your AccountKey object.
     ///
     /// If you want to make it appear to the recipient as if this came from
     /// another address or a subaddress of yours,
@@ -109,12 +115,23 @@ impl RTHMemoBuilder {
     /// normally deposit to. Then a chat client will be able to associate both
     /// their deposits and withdrawals into a single chat interaction.
     pub fn set_sender_credential(&mut self, cred: SenderMemoCredential) {
-        self.sender_cred = Some(cred);
+        // self.sender_cred = Some(cred);
+        self.authenticated_sender_hmac_signer = Some(Arc::new(Box::new(cred)));
     }
 
-    /// Clear the sender credential.
-    pub fn clear_sender_credential(&mut self) {
-        self.sender_cred = None;
+    /// Set the authenticated sender hmac signer. If no authenticated sender
+    /// hmac signer is provided, then authenticated sender memos cannot be
+    /// produced.
+    pub fn set_authenticated_sender_hmac_signer(
+        &mut self,
+        hmac_signer: Arc<Box<dyn AuthenticatedMemoHmacSigner + 'static + Send + Sync>>,
+    ) {
+        self.authenticated_sender_hmac_signer = Some(hmac_signer);
+    }
+
+    /// Clear the authenticated sender hmac signer.
+    pub fn clear_authenticated_sender_hmac_signer(&mut self) {
+        self.authenticated_sender_hmac_signer = None;
     }
 
     /// Set the payment request id.
@@ -186,32 +203,34 @@ impl MemoBuilder for RTHMemoBuilder {
             .checked_add(1)
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = ShortAddressHash::from(recipient);
-        let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
+
+        let payload: MemoPayload = if let Some(hmac_signer) = &self.authenticated_sender_hmac_signer
+        {
             if self.payment_request_id.is_some() && self.payment_intent_id.is_some() {
                 return Err(NewMemoError::RequestAndIntentIdSet);
             }
             if let Some(payment_request_id) = self.payment_request_id {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(
-                    cred,
+                    &**hmac_signer,
                     recipient.view_public_key(),
                     &memo_context.tx_public_key.into(),
                     payment_request_id,
-                )
+                )?
                 .into()
             } else if let Some(payment_intent_id) = self.payment_intent_id {
                 AuthenticatedSenderWithPaymentIntentIdMemo::new(
-                    cred,
+                    &**hmac_signer,
                     recipient.view_public_key(),
                     &memo_context.tx_public_key.into(),
                     payment_intent_id,
-                )
+                )?
                 .into()
             } else {
                 AuthenticatedSenderMemo::new(
-                    cred,
+                    &**hmac_signer,
                     recipient.view_public_key(),
                     &memo_context.tx_public_key.into(),
-                )
+                )?
                 .into()
             }
         } else {

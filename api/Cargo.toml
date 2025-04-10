@@ -17,6 +17,7 @@ mc-common = { path = "../common", default-features = false }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
+mc-transaction-builder = { path = "../transaction/builder" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-extra = { path = "../transaction/extra" }
 mc-transaction-summary = { path = "../transaction/summary" }
@@ -41,7 +42,6 @@ mc-util-build-script = { path = "../util/build/script" }
 cargo-emit = "0.2.1"
 
 [dev-dependencies]
-assert_matches = "1"
 mc-attest-untrusted = { path = "../attest/untrusted" }
 mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
@@ -56,6 +56,7 @@ mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }
 mc-util-zip-exact = { path = "../util/zip-exact" }
 
+assert_matches = "1"
 generic-array = "0.14"
 pem = "3.0"
 prost = { version = "0.12", default-features = false }

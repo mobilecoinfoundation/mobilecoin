@@ -13,19 +13,22 @@
 extern crate alloc;
 
 mod memo;
+mod reserved_subaddresses;
 mod signed_contingent_input;
 mod tx_out_confirmation_number;
 mod tx_out_gift_code;
 mod unsigned_tx;
 
 pub use memo::{
-    compute_authenticated_sender_memo, compute_destination_memo, AuthenticatedSenderMemo,
+    compute_authenticated_sender_memo, compute_destination_memo, validate_authenticated_sender,
+    AuthenticatedMemoHmacSigner, AuthenticatedSenderMemo,
     AuthenticatedSenderWithPaymentIntentIdMemo, AuthenticatedSenderWithPaymentRequestIdMemo,
     BurnRedemptionMemo, DefragmentationMemo, DefragmentationMemoError, DestinationMemo,
     DestinationMemoError, DestinationWithPaymentIntentIdMemo, DestinationWithPaymentRequestIdMemo,
     GiftCodeCancellationMemo, GiftCodeFundingMemo, GiftCodeSenderMemo, MemoDecodingError, MemoType,
     RegisteredMemoType, SenderMemoCredential, UnusedMemo,
 };
+pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputAmounts, SignedContingentInputError,
 };

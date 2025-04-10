@@ -596,9 +596,7 @@ impl Client {
         let change_destination = ReservedSubaddresses::from(&self.account_key);
 
         // Make transaction builder
-        // TODO: Use RTH memos
-        let mut tx_builder =
-            TransactionBuilder::new(block_version, fee, fog_resolver, EmptyMemoBuilder)?;
+        let mut tx_builder = TransactionBuilder::new(block_version, fee, fog_resolver)?;
         tx_builder.set_tombstone_block(tombstone_block);
 
         tx_builder.set_fee_map(self.get_fee_map(true)?);
@@ -730,7 +728,8 @@ impl Client {
         }
 
         let ring_signer = LocalRingSigner::from(&self.account_key);
-        Ok(tx_builder.build(&ring_signer, rng)?)
+        // TODO: Use RTH memos
+        Ok(tx_builder.build(&ring_signer, EmptyMemoBuilder, rng)?)
     }
 
     /// Helper: Get merkle proofs corresponding to a given set of our inputs
@@ -1019,20 +1018,11 @@ fn build_transaction_helper<T: RngCore + CryptoRng>(
         return Err(Error::RingsForInput(rings.len(), inputs.len()));
     }
 
-    // Use the RTHMemoBuilder
-    // Note: Memos are disabled if we target an older block version
-    let mut tx_builder = {
-        let mut memo_builder = RTHMemoBuilder::default();
-        memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
-        memo_builder.enable_destination_memo();
-
-        TransactionBuilder::new(
-            block_version,
-            Amount::new(fee, amount.token_id),
-            fog_resolver,
-            memo_builder,
-        )?
-    };
+    let mut tx_builder = TransactionBuilder::new(
+        block_version,
+        Amount::new(fee, amount.token_id),
+        fog_resolver,
+    )?;
 
     tx_builder.set_fee_map(fee_map);
 
@@ -1070,7 +1060,12 @@ fn build_transaction_helper<T: RngCore + CryptoRng>(
     // Finalize
     tx_builder.set_tombstone_block(tombstone_block);
 
-    Ok(tx_builder.build(ring_signer, rng)?)
+    // Use the RTHMemoBuilder
+    // Note: Memos are disabled if we target an older block version
+    let mut memo_builder = RTHMemoBuilder::default();
+    memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
+    memo_builder.enable_destination_memo();
+    Ok(tx_builder.build(ring_signer, memo_builder, rng)?)
 }
 
 fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(

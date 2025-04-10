@@ -52,7 +52,8 @@ fn write_correct_encrypted_sender_memos() {
                 &sender_credential,
                 recipient_public_address.view_public_key(),
                 &tx_public_key,
-            );
+            )
+            .unwrap();
             let sender_memo_bytes: [u8; 64] = encrypted_sender_memo.clone().into();
 
             let encrypted_sender_memo_data = CorrectEncryptedSenderMemoData {
@@ -99,7 +100,8 @@ fn write_incorrect_encrypted_sender_memos() {
                 &sender_credential,
                 recipient_public_address.view_public_key(),
                 &tx_public_key,
-            );
+            )
+            .unwrap();
             let sender_memo_bytes: [u8; 64] = encrypted_sender_memo.clone().into();
 
             let encrypted_sender_memo_data = IncorrectEncryptedSenderMemoData {
@@ -246,7 +248,8 @@ fn write_correct_encrypted_sender_with_payment_request_id_memos() {
                     recipient_public_address.view_public_key(),
                     &tx_public_key,
                     payment_request_id,
-                );
+                )
+                .unwrap();
             let sender_with_payment_request_id_memo_bytes: [u8; 64] =
                 encrypted_sender_with_payment_request_id_memo.clone().into();
 
@@ -301,7 +304,8 @@ fn write_incorrect_encrypted_sender_with_payment_request_id_memos() {
                     recipient_public_address.view_public_key(),
                     &tx_public_key,
                     payment_request_id,
-                );
+                )
+                .unwrap();
             let sender_with_payment_request_id_memo_bytes: [u8; 64] =
                 encrypted_sender_with_payment_request_id_memo.clone().into();
 

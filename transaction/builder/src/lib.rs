@@ -12,22 +12,23 @@ mod error;
 mod input_credentials;
 mod input_materials;
 mod memo_builder;
-mod reserved_subaddresses;
 mod signed_contingent_input_builder;
 mod transaction_builder;
+mod tx_blueprint;
 
 #[cfg(any(test, feature = "test-only"))]
 pub mod test_utils;
 
 pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
+pub use mc_transaction_extra::ReservedSubaddresses;
 pub use memo_builder::{
     BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
     GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
     MemoBuilder, RTHMemoBuilder,
 };
-pub use reserved_subaddresses::ReservedSubaddresses;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{
     DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering,
 };
+pub use tx_blueprint::{TxBlueprint, TxBlueprintOutput};
