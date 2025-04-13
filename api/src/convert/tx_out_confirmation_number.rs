@@ -8,9 +8,7 @@ use mc_transaction_extra::TxOutConfirmationNumber;
 /// Convert TxOutConfirmationNumber --> external::TxOutConfirmationNumber.
 impl From<&TxOutConfirmationNumber> for external::TxOutConfirmationNumber {
     fn from(src: &TxOutConfirmationNumber) -> Self {
-        let mut tx_confirmation = external::TxOutConfirmationNumber::new();
-        tx_confirmation.set_hash(src.to_vec());
-        tx_confirmation
+        Self { hash: src.to_vec() }
     }
 }
 
@@ -19,7 +17,7 @@ impl TryFrom<&external::TxOutConfirmationNumber> for TxOutConfirmationNumber {
     type Error = ConversionError;
 
     fn try_from(src: &external::TxOutConfirmationNumber) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = src.get_hash();
+        let bytes: &[u8] = src.hash.as_slice();
         let mut hash = [0u8; 32];
         if bytes.len() != hash.len() {
             return Err(ConversionError::ArrayCastError);
@@ -44,8 +42,9 @@ mod tests {
     #[test]
     // external::TxOutConfirmationNumber --> TxOutConfirmationNumber
     fn test_confirmation_number_try_from() {
-        let mut source = external::TxOutConfirmationNumber::new();
-        source.set_hash(vec![7u8; 32]);
+        let source = external::TxOutConfirmationNumber {
+            hash: vec![7u8; 32],
+        };
         let converted = TxOutConfirmationNumber::try_from(&source).unwrap();
         assert_eq!(*converted.as_ref(), [7u8; 32]);
     }
@@ -54,8 +53,9 @@ mod tests {
     // Unmarshalling too many bytes into a TxOutConfirmationNumber should produce an
     // error.
     fn test_confirmation_number_try_from_too_many_bytes() {
-        let mut source = external::TxOutConfirmationNumber::new();
-        source.set_hash(vec![7u8; 99]); // Too many bytes.
+        let source = external::TxOutConfirmationNumber {
+            hash: vec![7u8; 99],
+        };
         assert!(TxOutConfirmationNumber::try_from(&source).is_err());
     }
 
@@ -63,8 +63,7 @@ mod tests {
     // Unmarshalling too few bytes into a TxOutConfirmationNumber should produce an
     // error.
     fn test_confirmation_number_try_from_too_few_bytes() {
-        let mut source = external::TxOutConfirmationNumber::new();
-        source.set_hash(vec![7u8; 3]); // Too few bytes.
+        let source = external::TxOutConfirmationNumber { hash: vec![7u8; 3] };
         assert!(TxOutConfirmationNumber::try_from(&source).is_err());
     }
 }

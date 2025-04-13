@@ -140,8 +140,8 @@ impl ServerCredentialsFetcher for ServerCertReloader {
 mod tests {
     use super::*;
     use crate::{
-        health_api::PingRequest, health_api_grpc::HealthClient, ConnectionUriGrpcioServer,
-        HealthService,
+        grpc_health_v1::{HealthClient, PingRequest},
+        ConnectionUriGrpcioServer, HealthService,
     };
     use grpcio::{
         ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder,
@@ -211,30 +211,34 @@ mod tests {
         // Connect the server whose CN is "www.server1.com" with the correct
         // certificate.
         let client1 = create_test_client(&server1_cert, "www.server1.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client1.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         // Connect the server whose CN is "www.server1.com" with a different ssl target
         // should fail.
         let client2 = create_test_client(&server1_cert, "www.server2.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         assert!(client2.ping(&req).is_err());
 
         // Connect the server whose CN is "www.server1.com" with an incorrect
         // certificate.
         let client3 = create_test_client(&server2_cert, "www.server1.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         assert!(client3.ping(&req).is_err());
 
         // Connecting with server2/"www.server2.com" should not work until we replace
         // the certificate and key file.
         let client4 = create_test_client(&server2_cert, "www.server2.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         assert!(client4.ping(&req).is_err());
 
         // Replace server1 certificates with server2. This should trigger the reloading
@@ -252,21 +256,23 @@ mod tests {
 
         // We should be able to connect using "www.server2.com".
         let client5 = create_test_client(&server2_cert, "www.server2.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let mut req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client5.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         // The original client should still be functional.
-        req.set_data(vec![5, 6, 7]);
+        req.data = vec![5, 6, 7];
         let reply = client1.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![5, 6, 7]);
+        assert_eq!(reply.data, vec![5, 6, 7]);
 
         // The previous server2 client should also work.
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client4.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
     }
 
     #[test_with_logger]
@@ -287,10 +293,11 @@ mod tests {
 
         // Sanity that the server works.
         let client1 = create_test_client(&server1_cert, "www.server1.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client1.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         // Replace the certificate file with junk.
         fs::write(cert_file, "junk").unwrap();
@@ -305,10 +312,11 @@ mod tests {
 
         // Server should still respond with the old certificate.
         let client2 = create_test_client(&server1_cert, "www.server1.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client2.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
     }
 
     #[test_with_logger]
@@ -331,16 +339,18 @@ mod tests {
 
         // Sanity that the servers works.
         let client1 = create_test_client(&server1_cert, "www.server1.com", port1);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client1.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         let client2 = create_test_client(&server1_cert, "www.server1.com", port2);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client2.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         // Replace server1 certificates with server2.
         std::fs::write(&cert_file, &server2_cert).unwrap();
@@ -356,16 +366,18 @@ mod tests {
 
         // Both servers should now have the new cerficates.
         let client3 = create_test_client(&server2_cert, "www.server2.com", port1);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client3.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         let client4 = create_test_client(&server2_cert, "www.server2.com", port2);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client4.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
     }
 
     #[test_with_logger]
@@ -404,10 +416,11 @@ mod tests {
 
         // Sanity that the servers works.
         let client1 = create_test_client(&server1_cert, "www.server1.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client1.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         // Replace server1 certificates with server2.
         std::fs::write(&cert_file, &server2_cert).unwrap();
@@ -423,15 +436,17 @@ mod tests {
 
         // Server should now have the new cerficate.
         let client2 = create_test_client(&server2_cert, "www.server2.com", port);
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client2.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
 
         // Original client should still be alive.
-        let mut req = PingRequest::default();
-        req.set_data(vec![1, 2, 3]);
+        let req = PingRequest {
+            data: vec![1, 2, 3],
+        };
         let reply = client1.ping(&req).expect("rpc");
-        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+        assert_eq!(reply.data, vec![1, 2, 3]);
     }
 }

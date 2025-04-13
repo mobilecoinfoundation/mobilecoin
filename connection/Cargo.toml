@@ -10,6 +10,7 @@ rust-version = { workspace = true }
 [dependencies]
 
 der = "0.7.8"
+mc-api = { path = "../api" }
 mc-attest-ake = { path = "../attest/ake" }
 mc-attest-api = { path = "../attest/api" }
 mc-attest-core = { path = "../attest/core" }
@@ -27,9 +28,10 @@ mc-util-uri = { path = "../util/uri" }
 aes-gcm = "0.10.3"
 cookie = "0.18"
 displaydoc = "0.2"
-grpcio = "0.13"
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 mc-attestation-verifier = "0.4.3"
 mc-rand = "1"
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 retry = "2.0"
 secrecy = "0.8"
 serde = "1.0"

@@ -14,7 +14,7 @@ pub mod keygen;
 use crate::error::Error;
 use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -110,8 +110,9 @@ pub fn write_b58pubfile<P: AsRef<Path>>(
     path: P,
     addr: &PublicAddress,
 ) -> Result<(), std::io::Error> {
-    let mut wrapper = PrintableWrapper::new();
-    wrapper.set_public_address(addr.into());
+    let wrapper = PrintableWrapper {
+        wrapper: Some(printable_wrapper::Wrapper::PublicAddress(addr.into())),
+    };
 
     let data = wrapper.b58_encode().map_err(to_io_error)?;
 
@@ -133,14 +134,14 @@ pub fn read_b58pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, st
     };
 
     let wrapper = PrintableWrapper::b58_decode(data).map_err(to_io_error)?;
-
-    if !wrapper.has_public_address() {
-        return Err(std::io::Error::new(
+    if let Some(printable_wrapper::Wrapper::PublicAddress(address)) = wrapper.wrapper.as_ref() {
+        address.try_into().map_err(to_io_error)
+    } else {
+        Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             "Printable Wrapper did not contain public address",
-        ));
+        ))
     }
-    wrapper.get_public_address().try_into().map_err(to_io_error)
 }
 
 fn to_io_error<E: 'static + std::error::Error + Send + Sync>(err: E) -> std::io::Error {

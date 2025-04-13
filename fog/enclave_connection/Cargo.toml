@@ -24,7 +24,7 @@ aes-gcm = "0.10.3"
 cookie = "0.18"
 der = "0.7.8"
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.13"
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 mc-attestation-verifier = "0.4.3"
 retry = "2.0"
 sha2 = { version = "0.10", default-features = false }

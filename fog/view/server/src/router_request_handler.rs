@@ -13,9 +13,9 @@ use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::SealedClientMessage;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{
-    view::{FogViewRouterRequest, FogViewRouterResponse, MultiViewStoreQueryRequest},
-    view_grpc::FogViewStoreApiClient,
+use mc_fog_api::fog_view::{
+    fog_view_router_request, fog_view_router_response, FogViewRouterRequest, FogViewRouterResponse,
+    FogViewStoreApiClient, MultiViewStoreQueryRequest,
 };
 use mc_fog_types::view::MultiViewStoreQueryResponse;
 use mc_fog_uri::FogViewStoreUri;
@@ -25,6 +25,7 @@ use mc_util_metrics::GrpcMethodName;
 use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
 use mc_util_uri::ConnectionUri;
 use std::{sync::Arc, time::Instant};
+
 const RETRY_COUNT: usize = 3;
 
 /// Handles a series of requests sent by the Fog Router client.
@@ -61,7 +62,7 @@ where
 /// Handles a client's request by performing either an authentication or a
 /// query.
 pub async fn handle_request<E>(
-    mut request: FogViewRouterRequest,
+    request: FogViewRouterRequest,
     shards: Vec<Shard>,
     enclave: E,
     logger: Logger,
@@ -70,21 +71,24 @@ where
     E: ViewEnclaveProxy,
 {
     let tracer = tracer!();
-    if request.has_auth() {
-        tracer.in_span("router_auth", |_cx| {
-            handle_auth_request(enclave, request.take_auth(), logger)
-        })
-    } else if request.has_query() {
-        handle_query_request(request.take_query(), enclave, shards, logger, &tracer)
-            .with_context(create_context(&tracer, "router_query"))
-            .await
-    } else {
-        let rpc_status = rpc_invalid_arg_error(
-            "Inavlid FogViewRouterRequest request",
-            "Neither the query nor auth fields were set".to_string(),
-            &logger,
-        );
-        Err(rpc_status)
+    match request.request_data {
+        Some(fog_view_router_request::RequestData::Auth(auth)) => tracer
+            .in_span("router_auth", |_cx| {
+                handle_auth_request(enclave, auth, logger)
+            }),
+        Some(fog_view_router_request::RequestData::Query(query)) => {
+            handle_query_request(query, enclave, shards, logger, &tracer)
+                .with_context(create_context(&tracer, "router_query"))
+                .await
+        }
+        _ => {
+            let rpc_status = rpc_invalid_arg_error(
+                "Inavlid FogViewRouterRequest request",
+                "Neither the query nor auth fields were set".to_string(),
+                &logger,
+            );
+            Err(rpc_status)
+        }
     }
 }
 
@@ -102,9 +106,11 @@ where
         router_server_err_to_rpc_status("Auth: e client accept", err.into(), logger)
     })?;
 
-    let mut response = FogViewRouterResponse::new();
-    response.mut_auth().set_data(client_auth_response.into());
-    Ok(response)
+    Ok(FogViewRouterResponse {
+        response_data: Some(fog_view_router_response::ResponseData::Auth(
+            client_auth_response.into(),
+        )),
+    })
 }
 
 /// Handles a client's query request.
@@ -149,9 +155,11 @@ where
             })
     })?;
 
-    let mut response = FogViewRouterResponse::new();
-    response.set_query(query_response.into());
-    Ok(response)
+    Ok(FogViewRouterResponse {
+        response_data: Some(fog_view_router_response::ResponseData::Query(
+            query_response.into(),
+        )),
+    })
 }
 
 async fn get_query_responses<E>(

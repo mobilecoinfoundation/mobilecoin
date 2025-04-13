@@ -10,7 +10,7 @@ mod mobilecoind;
 use dyn_clone::DynClone;
 use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_api::ledger::TxOutResult;
+use mc_fog_api::fog_ledger::TxOutResult;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_watcher_api::TimestampResultCode;
 use std::time::Duration;

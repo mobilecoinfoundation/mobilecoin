@@ -9,9 +9,9 @@ use mc_transaction_core::CompressedCommitment;
 
 impl From<&CompressedCommitment> for external::CompressedRistretto {
     fn from(source: &CompressedCommitment) -> Self {
-        let mut compressed_ristretto = external::CompressedRistretto::new();
-        compressed_ristretto.set_data(source.point.as_bytes().to_vec());
-        compressed_ristretto
+        Self {
+            data: source.point.as_bytes().to_vec(),
+        }
     }
 }
 
@@ -19,7 +19,7 @@ impl TryFrom<&external::CompressedRistretto> for CompressedCommitment {
     type Error = ConversionError;
 
     fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
+        let bytes: &[u8] = source.data.as_ref();
         let point =
             CompressedRistretto::from_slice(bytes).map_err(|_e| ConversionError::ArrayCastError)?;
         Ok(CompressedCommitment { point })
@@ -31,7 +31,7 @@ impl TryFrom<&external::CompressedRistretto> for RistrettoPublic {
     type Error = ConversionError;
 
     fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
+        let bytes: &[u8] = source.data.as_ref();
         RistrettoPublic::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
     }
 }
@@ -39,18 +39,18 @@ impl TryFrom<&external::CompressedRistretto> for RistrettoPublic {
 /// Convert CompressedRistrettoPublic --> external::CompressedRistretto
 impl From<&CompressedRistrettoPublic> for external::CompressedRistretto {
     fn from(other: &CompressedRistrettoPublic) -> Self {
-        let mut key = external::CompressedRistretto::new();
-        key.set_data(other.as_bytes().to_vec());
-        key
+        Self {
+            data: other.as_bytes().to_vec(),
+        }
     }
 }
 
 /// Convert &RistrettoPublic --> external::CompressedRistretto
 impl From<&RistrettoPublic> for external::CompressedRistretto {
     fn from(other: &RistrettoPublic) -> Self {
-        let mut key = external::CompressedRistretto::new();
-        key.set_data(other.to_bytes().to_vec());
-        key
+        Self {
+            data: other.to_bytes().to_vec(),
+        }
     }
 }
 
@@ -59,7 +59,7 @@ impl TryFrom<&external::CompressedRistretto> for CompressedRistrettoPublic {
     type Error = ConversionError;
 
     fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
+        let bytes: &[u8] = source.data.as_ref();
         CompressedRistrettoPublic::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
     }
 }

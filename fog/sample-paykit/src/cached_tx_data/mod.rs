@@ -13,7 +13,7 @@ use mc_account_keys::{
 use mc_blockchain_types::BlockIndex;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
-use mc_fog_api::{fog_common, ledger};
+use mc_fog_api::{fog_common, fog_ledger};
 use mc_fog_ledger_connection::{
     Error as LedgerConnectionError, FogBlockGrpcClient, FogKeyImageGrpcClient,
     KeyImageResultExtension,
@@ -495,7 +495,7 @@ impl CachedTxData {
                     let updated_missed_block_ranges =
                         CachedTxData::calculate_updated_missed_block_ranges(
                             &self.missed_block_ranges,
-                            &block_response.blocks.into_vec(),
+                            &block_response.blocks.to_vec(),
                         );
                     self.missed_block_ranges = updated_missed_block_ranges;
                 }
@@ -534,7 +534,7 @@ impl CachedTxData {
     /// retrieved in the BlockData object.
     fn calculate_updated_missed_block_ranges(
         missed_block_ranges: &[common::BlockRange],
-        block_data: &[ledger::BlockData],
+        block_data: &[fog_ledger::BlockData],
     ) -> Vec<common::BlockRange> {
         // Transforms the missed BlockRanges into a set of missed block
         // indices.
@@ -609,8 +609,11 @@ impl CachedTxData {
         missed_block_indices
     }
 
-    // Converts a ledger::BlockResponses to a Vec<TxOutRecord>.
-    fn create_tx_out_records(&self, block_response: &ledger::BlockResponse) -> Vec<TxOutRecord> {
+    // Converts a fog_ledger::BlockResponses to a Vec<TxOutRecord>.
+    fn create_tx_out_records(
+        &self,
+        block_response: &fog_ledger::BlockResponse,
+    ) -> Vec<TxOutRecord> {
         let mut tx_out_records: Vec<TxOutRecord> = Vec::new();
 
         for block_data in &block_response.blocks {
@@ -1407,15 +1410,17 @@ mod tests {
         let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
         let missed_block_ranges = vec![missed_block_range];
 
-        let mut block_data = vec![];
-        for index in first_index..final_index + 1 {
-            let mut block_datum = ledger::BlockData::new();
-            block_datum.index = index;
-            block_data.push(block_datum);
-        }
+        let block_data = (first_index..final_index + 1)
+            .map(|index| fog_ledger::BlockData {
+                index,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
 
-        let updated_missed_block_ranges =
-            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+        let updated_missed_block_ranges = CachedTxData::calculate_updated_missed_block_ranges(
+            &missed_block_ranges,
+            block_data.as_slice(),
+        );
 
         assert!(updated_missed_block_ranges.is_empty())
     }
@@ -1464,15 +1469,17 @@ mod tests {
         let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
         let missed_block_ranges = vec![missed_block_range];
 
-        let mut block_data = vec![];
-        for index in first_index..final_index - 1 {
-            let mut block_datum = ledger::BlockData::new();
-            block_datum.index = index;
-            block_data.push(block_datum);
-        }
+        let block_data = (first_index..final_index + 1)
+            .map(|index| fog_ledger::BlockData {
+                index,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
 
-        let updated_missed_block_ranges =
-            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+        let updated_missed_block_ranges = CachedTxData::calculate_updated_missed_block_ranges(
+            &missed_block_ranges,
+            block_data.as_slice(),
+        );
 
         assert_eq!(updated_missed_block_ranges.len(), 1);
         let updated_missed_block_range = &updated_missed_block_ranges[0];
@@ -1490,13 +1497,14 @@ mod tests {
             missed_block_ranges.push(missed_block_range);
         }
 
-        let retrieved_block_indices = vec![5, 6, 7, 8, 35, 38, 39, 40, 1, 2];
-        let mut block_data = vec![];
-        for index in retrieved_block_indices {
-            let mut block_datum = ledger::BlockData::new();
-            block_datum.index = index;
-            block_data.push(block_datum);
-        }
+        let retrieved_block_indices = [5, 6, 7, 8, 35, 38, 39, 40, 1, 2];
+        let block_data = retrieved_block_indices
+            .iter()
+            .map(|index| fog_ledger::BlockData {
+                index: *index,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
 
         let updated_missed_block_ranges =
             CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
@@ -1523,19 +1531,17 @@ mod tests {
         let final_index: u64 = 10;
         let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
         let missed_block_ranges = vec![missed_block_range];
-        let mut block_data = vec![];
 
         let first_unretrieved_index = 3;
         let second_unretrieved_index = 7;
 
-        for index in first_index..final_index + 1 {
-            if index == first_unretrieved_index || index == second_unretrieved_index {
-                continue;
-            }
-            let mut block_datum = ledger::BlockData::new();
-            block_datum.index = index;
-            block_data.push(block_datum);
-        }
+        let block_data = (first_index..final_index + 1)
+            .filter(|i| *i != first_unretrieved_index && *i != second_unretrieved_index)
+            .map(|index| fog_ledger::BlockData {
+                index,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
 
         let updated_missed_block_ranges =
             CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);

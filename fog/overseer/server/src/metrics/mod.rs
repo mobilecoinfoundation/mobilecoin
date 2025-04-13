@@ -32,9 +32,17 @@ pub fn set_metrics(logger: &Logger, ingest_summaries: &[IngestSummary]) {
 }
 
 fn get_ingress_key_count(ingest_summaries: &[IngestSummary]) -> i64 {
+    let default_pubkey = Default::default();
     let ingress_key_count = ingest_summaries
         .iter()
-        .map(|ingest_summary| ingest_summary.get_ingress_pubkey().get_data())
+        .map(|ingest_summary| {
+            ingest_summary
+                .ingress_pubkey
+                .as_ref()
+                .unwrap_or(&default_pubkey)
+                .data
+                .as_slice()
+        })
         .collect::<HashSet<_>>()
         .len();
 
@@ -44,7 +52,7 @@ fn get_ingress_key_count(ingest_summaries: &[IngestSummary]) -> i64 {
 fn get_egress_key_count(ingest_summaries: &[IngestSummary]) -> i64 {
     let egress_key_count = ingest_summaries
         .iter()
-        .map(|ingest_summary| ingest_summary.get_egress_pubkey())
+        .map(|ingest_summary| ingest_summary.egress_pubkey.as_slice())
         .collect::<HashSet<_>>()
         .len();
 
@@ -54,7 +62,7 @@ fn get_egress_key_count(ingest_summaries: &[IngestSummary]) -> i64 {
 fn get_active_node_count(ingest_summaries: &[IngestSummary]) -> i64 {
     ingest_summaries
         .iter()
-        .filter(|ingest_summary| ingest_summary.get_mode() == IngestControllerMode::Active)
+        .filter(|ingest_summary| ingest_summary.mode() == IngestControllerMode::Active)
         .count()
         .try_into()
         .unwrap()

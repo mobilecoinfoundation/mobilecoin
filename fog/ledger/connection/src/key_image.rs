@@ -9,7 +9,7 @@ use mc_common::{
     logger::{o, Logger},
     trace_time,
 };
-use mc_fog_api::{ledger::KeyImageResultCode, ledger_grpc::FogKeyImageApiClient};
+use mc_fog_api::fog_ledger::{FogKeyImageApiClient, KeyImageResultCode};
 use mc_fog_enclave_connection::EnclaveConnection;
 use mc_fog_types::ledger::{
     CheckKeyImagesRequest, CheckKeyImagesResponse, KeyImageQuery, KeyImageResult,

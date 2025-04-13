@@ -5,7 +5,6 @@
 use crate::{external, ConversionError};
 use mc_attest_verifier_types::{prost, DcapEvidence};
 use mc_util_serial::Message;
-use protobuf::Message as ProtoMessage;
 
 impl TryFrom<&DcapEvidence> for external::DcapEvidence {
     type Error = ConversionError;
@@ -26,11 +25,8 @@ impl TryFrom<&external::DcapEvidence> for DcapEvidence {
 impl From<&prost::DcapEvidence> for external::DcapEvidence {
     fn from(src: &prost::DcapEvidence) -> Self {
         let bytes = src.encode_to_vec();
-        let mut proto = Self::default();
-        proto
-            .merge_from_bytes(&bytes)
-            .expect("failure to merge means prost and protobuf are out of sync");
-        proto
+        Self::decode(bytes.as_slice())
+            .expect("failure to merge means prost and protobuf are out of sync")
     }
 }
 
@@ -86,7 +82,7 @@ mod test {
         let evidence = evidence();
         let mut proto_evidence = external::DcapEvidence::try_from(&evidence)
             .expect("Failed to convert evidence to proto");
-        let proto_quote = proto_evidence.mut_quote();
+        let proto_quote = proto_evidence.quote.as_mut().unwrap();
         proto_quote.data[0] += 1;
         let error = DcapEvidence::try_from(&proto_evidence);
 

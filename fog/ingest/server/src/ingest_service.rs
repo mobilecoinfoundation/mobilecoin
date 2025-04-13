@@ -12,10 +12,9 @@ use mc_api::external;
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
+    account_ingest::*,
     fog_common::BlockRange,
-    ingest::*,
     ingest_common::{IngestSummary, SetPeersRequest},
-    Empty,
 };
 use mc_fog_block_provider::BlockProvider;
 use mc_fog_ingest_enclave_api::Error as EnclaveError;
@@ -25,7 +24,6 @@ use mc_util_grpc::{
     rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
     rpc_precondition_error, rpc_unavailable_error, send_result,
 };
-use protobuf::RepeatedField;
 use std::{str::FromStr, sync::Arc};
 
 /// Implements the ingest grpc api
@@ -106,7 +104,7 @@ where
     }
 
     /// Logic of proto api
-    pub fn activate_impl(&mut self, _: Empty, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
+    pub fn activate_impl(&mut self, _: (), logger: &Logger) -> Result<IngestSummary, RpcStatus> {
         self.controller
             .activate(
                 self.block_provider
@@ -136,14 +134,14 @@ where
     }
 
     /// Logic of proto api
-    pub fn retire_impl(&mut self, _: Empty, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
+    pub fn retire_impl(&mut self, _: (), logger: &Logger) -> Result<IngestSummary, RpcStatus> {
         self.controller
             .retire()
             .map_err(|err| rpc_database_err(err, logger))
     }
 
     /// Logic of proto api
-    pub fn unretire_impl(&mut self, _: Empty, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
+    pub fn unretire_impl(&mut self, _: (), logger: &Logger) -> Result<IngestSummary, RpcStatus> {
         self.controller
             .unretire()
             .map_err(|err| rpc_database_err(err, logger))
@@ -154,9 +152,8 @@ where
         &mut self,
         request: ReportLostIngressKeyRequest,
         logger: &Logger,
-    ) -> Result<Empty, RpcStatus> {
-        let key: CompressedRistrettoPublic = request
-            .get_key()
+    ) -> Result<(), RpcStatus> {
+        let key: CompressedRistrettoPublic = (&request.key.unwrap_or_default())
             .try_into()
             .map_err(|err| rpc_invalid_arg_error("lost_ingress_key", err, logger))?;
 
@@ -164,7 +161,7 @@ where
             .report_lost_ingress_key(key)
             .map_err(|err| rpc_database_err(err, logger))?;
 
-        Ok(Empty::new())
+        Ok(())
     }
 
     /// Gets all the known missed block ranges
@@ -177,20 +174,15 @@ where
             .get_missed_block_ranges()
             .map_err(|err| rpc_database_err(err, logger))?;
 
-        let mut response = GetMissedBlockRangesResponse::new();
-        response.set_missed_block_ranges(RepeatedField::from_vec(
-            ranges
+        Ok(GetMissedBlockRangesResponse {
+            missed_block_ranges: ranges
                 .iter()
-                .map(|range| {
-                    let mut proto_range = BlockRange::new();
-                    proto_range.set_start_block(range.start_block);
-                    proto_range.set_end_block(range.end_block);
-                    proto_range
+                .map(|range| BlockRange {
+                    start_block: range.start_block,
+                    end_block: range.end_block,
                 })
                 .collect(),
-        ));
-
-        Ok(response)
+        })
     }
 
     /// Retrieves a private key from a remote encalve and then sets it as the
@@ -200,7 +192,7 @@ where
         request: SyncKeysFromRemoteRequest,
         logger: &Logger,
     ) -> Result<IngestSummary, RpcStatus> {
-        let peer_uri = IngestPeerUri::from_str(request.get_peer_uri())
+        let peer_uri = IngestPeerUri::from_str(&request.peer_uri)
             .map_err(|err| rpc_invalid_arg_error("invalid peer uri", err, logger))?;
 
         self.controller
@@ -234,47 +226,35 @@ where
             )
             .map_err(|err| rpc_precondition_error("get_ingress_key_records", err, logger))?;
 
-        let mut response = GetIngressKeyRecordsResponse::new();
-        response.set_records(RepeatedField::from_vec(
-            ingress_key_records
+        Ok(GetIngressKeyRecordsResponse {
+            records: ingress_key_records
                 .iter()
-                .map(|record| {
-                    let mut proto_ingress_public_key_record = IngressPublicKeyRecord::new();
-
-                    let ingress_public_key = external::CompressedRistretto::from(&record.key);
-                    proto_ingress_public_key_record.set_ingress_public_key(ingress_public_key);
-
-                    proto_ingress_public_key_record.set_start_block(record.status.start_block);
-                    proto_ingress_public_key_record.set_pubkey_expiry(record.status.pubkey_expiry);
-                    proto_ingress_public_key_record.set_retired(record.status.retired);
-                    proto_ingress_public_key_record.set_lost(record.status.lost);
-
-                    if let Some(last_scanned_block) = record.last_scanned_block {
-                        proto_ingress_public_key_record.set_last_scanned_block(last_scanned_block);
-                    }
-
-                    proto_ingress_public_key_record
+                .map(|record| IngressPublicKeyRecord {
+                    ingress_public_key: Some(external::CompressedRistretto::from(&record.key)),
+                    start_block: record.status.start_block,
+                    pubkey_expiry: record.status.pubkey_expiry,
+                    retired: record.status.retired,
+                    lost: record.status.lost,
+                    last_scanned_block: record.last_scanned_block.unwrap_or_default(),
                 })
                 .collect(),
-        ));
-
-        Ok(response)
+        })
     }
 }
 
 impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
-    mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<DB>
+    mc_fog_api::account_ingest::AccountIngestApi for IngestService<DB>
 where
     Error: From<<DB as RecoveryDb>::Error>,
 {
-    fn get_status(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
+    fn get_status(&mut self, ctx: RpcContext, _request: (), sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.get_status_impl(), logger)
         })
     }
 
-    fn new_keys(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
+    fn new_keys(&mut self, ctx: RpcContext, _request: (), sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.new_keys_impl(logger), logger)
@@ -310,21 +290,21 @@ where
         })
     }
 
-    fn activate(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<IngestSummary>) {
+    fn activate(&mut self, ctx: RpcContext, request: (), sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.activate_impl(request, logger), logger)
         })
     }
 
-    fn retire(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<IngestSummary>) {
+    fn retire(&mut self, ctx: RpcContext, request: (), sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.retire_impl(request, logger), logger)
         })
     }
 
-    fn unretire(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<IngestSummary>) {
+    fn unretire(&mut self, ctx: RpcContext, request: (), sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.unretire_impl(request, logger), logger)
@@ -335,7 +315,7 @@ where
         &mut self,
         ctx: RpcContext,
         request: ReportLostIngressKeyRequest,
-        sink: UnarySink<Empty>,
+        sink: UnarySink<()>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -351,7 +331,7 @@ where
     fn get_missed_block_ranges(
         &mut self,
         ctx: RpcContext,
-        _request: Empty,
+        _request: (),
         sink: UnarySink<GetMissedBlockRangesResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);

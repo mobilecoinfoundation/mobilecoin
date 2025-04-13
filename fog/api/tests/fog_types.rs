@@ -6,7 +6,7 @@
 use mc_crypto_keys::RistrettoPrivate;
 use mc_fog_api::kex_rng;
 use mc_fog_kex_rng::{KexRngPubkey, StoredRng};
-use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
+use mc_fog_report_api_test_utils::round_trip_message;
 use mc_transaction_core::{
     membership_proofs::Range,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
@@ -22,7 +22,7 @@ use mc_watcher_api::TimestampResultCode;
 fn fog_view_query_request_round_trip() {
     {
         let test_val: mc_fog_types::view::QueryRequest = Default::default();
-        round_trip_message::<mc_fog_types::view::QueryRequest, mc_fog_api::view::QueryRequest>(
+        round_trip_message::<mc_fog_types::view::QueryRequest, mc_fog_api::fog_view::QueryRequest>(
             &test_val,
         );
     }
@@ -34,7 +34,7 @@ fn fog_view_query_request_round_trip() {
                 .map(|_| <[u8; 32]>::sample(&mut rng).to_vec())
                 .collect(),
         };
-        round_trip_message::<mc_fog_types::view::QueryRequest, mc_fog_api::view::QueryRequest>(
+        round_trip_message::<mc_fog_types::view::QueryRequest, mc_fog_api::fog_view::QueryRequest>(
             &test_val,
         );
     });
@@ -45,16 +45,14 @@ fn fog_view_query_request_round_trip() {
 #[test]
 fn fog_view_query_request_protobuf_round_trip() {
     run_with_several_seeds(|mut rng| {
-        let mut test_val = mc_fog_api::view::QueryRequest::new();
-        for _ in 0..20 {
-            test_val
-                .get_txos
-                .push(<[u8; 32]>::sample(&mut rng).to_vec());
-        }
-        round_trip_protobuf_object::<
-            mc_fog_api::view::QueryRequest,
-            mc_fog_types::view::QueryRequest,
-        >(&test_val);
+        let test_val = mc_fog_api::fog_view::QueryRequest {
+            get_txos: (0..20_usize)
+                .map(|_| <[u8; 32]>::sample(&mut rng).to_vec())
+                .collect(),
+        };
+        round_trip_message::<mc_fog_api::fog_view::QueryRequest, mc_fog_types::view::QueryRequest>(
+            &test_val,
+        );
     });
 }
 
@@ -64,9 +62,10 @@ fn fog_view_query_request_protobuf_round_trip() {
 fn fog_view_query_request_aad_round_trip() {
     {
         let test_val: mc_fog_types::view::QueryRequestAAD = Default::default();
-        round_trip_message::<mc_fog_types::view::QueryRequestAAD, mc_fog_api::view::QueryRequestAAD>(
-            &test_val,
-        );
+        round_trip_message::<
+            mc_fog_types::view::QueryRequestAAD,
+            mc_fog_api::fog_view::QueryRequestAad,
+        >(&test_val);
     }
 
     run_with_several_seeds(|mut rng| {
@@ -74,9 +73,10 @@ fn fog_view_query_request_aad_round_trip() {
             start_from_user_event_id: rng.next_u64() as i64,
             start_from_block_index: rng.next_u64(),
         };
-        round_trip_message::<mc_fog_types::view::QueryRequestAAD, mc_fog_api::view::QueryRequestAAD>(
-            &test_val,
-        );
+        round_trip_message::<
+            mc_fog_types::view::QueryRequestAAD,
+            mc_fog_api::fog_view::QueryRequestAad,
+        >(&test_val);
     });
 }
 
@@ -85,22 +85,24 @@ fn fog_view_query_request_aad_round_trip() {
 #[test]
 fn fog_view_query_request_aad_protobuf_round_trip() {
     run_with_several_seeds(|mut rng| {
-        let mut test_val = mc_fog_api::view::QueryRequestAAD::new();
-        test_val.start_from_user_event_id = rng.next_u64() as i64;
-        test_val.start_from_block_index = rng.next_u64();
+        let test_val = mc_fog_api::fog_view::QueryRequestAad {
+            start_from_user_event_id: rng.next_u64() as i64,
+            start_from_block_index: rng.next_u64(),
+        };
 
-        round_trip_protobuf_object::<
-            mc_fog_api::view::QueryRequestAAD,
+        round_trip_message::<
+            mc_fog_api::fog_view::QueryRequestAad,
             mc_fog_types::view::QueryRequestAAD,
         >(&test_val);
     });
 
     run_with_several_seeds(|mut rng| {
-        let mut test_val = mc_fog_api::view::QueryRequestAAD::new();
-        test_val.start_from_user_event_id = rng.next_u64() as i64;
-        test_val.start_from_block_index = rng.next_u64();
-        round_trip_protobuf_object::<
-            mc_fog_api::view::QueryRequestAAD,
+        let test_val = mc_fog_api::fog_view::QueryRequestAad {
+            start_from_user_event_id: rng.next_u64() as i64,
+            start_from_block_index: rng.next_u64(),
+        };
+        round_trip_message::<
+            mc_fog_api::fog_view::QueryRequestAad,
             mc_fog_types::view::QueryRequestAAD,
         >(&test_val);
     });
@@ -112,7 +114,7 @@ fn fog_view_query_request_aad_protobuf_round_trip() {
 fn fog_view_query_response_round_trip() {
     {
         let test_val: mc_fog_types::view::QueryResponse = Default::default();
-        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::fog_view::QueryResponse>(
             &test_val,
         );
     }
@@ -136,7 +138,7 @@ fn fog_view_query_response_round_trip() {
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
             tx_out_search_results: vec![],
         };
-        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::fog_view::QueryResponse>(
             &test_val,
         );
     });
@@ -160,7 +162,7 @@ fn fog_view_query_response_round_trip() {
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
             tx_out_search_results: vec![],
         };
-        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::fog_view::QueryResponse>(
             &test_val,
         );
     });
@@ -191,7 +193,7 @@ fn fog_view_query_response_round_trip() {
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
             tx_out_search_results: vec![],
         };
-        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::fog_view::QueryResponse>(
             &test_val,
         );
     });
@@ -203,7 +205,7 @@ fn fog_view_query_response_round_trip() {
 fn tx_out_record_round_trip() {
     {
         let test_val: mc_fog_types::view::TxOutRecord = Default::default();
-        round_trip_message::<mc_fog_types::view::TxOutRecord, mc_fog_api::view::TxOutRecord>(
+        round_trip_message::<mc_fog_types::view::TxOutRecord, mc_fog_api::fog_view::TxOutRecord>(
             &test_val,
         );
     }
@@ -217,7 +219,7 @@ fn tx_out_record_round_trip() {
         };
         let test_val = mc_fog_types::view::TxOutRecord::new(fog_txout, meta);
 
-        round_trip_message::<mc_fog_types::view::TxOutRecord, mc_fog_api::view::TxOutRecord>(
+        round_trip_message::<mc_fog_types::view::TxOutRecord, mc_fog_api::fog_view::TxOutRecord>(
             &test_val,
         );
     });
@@ -231,7 +233,7 @@ fn get_output_response_round_trip() {
         let test_val = mc_fog_types::ledger::GetOutputsResponse::default();
         round_trip_message::<
             mc_fog_types::ledger::GetOutputsResponse,
-            mc_fog_api::ledger::GetOutputsResponse,
+            mc_fog_api::fog_ledger::GetOutputsResponse,
         >(&test_val);
     }
 
@@ -245,7 +247,7 @@ fn get_output_response_round_trip() {
 
         round_trip_message::<
             mc_fog_types::ledger::GetOutputsResponse,
-            mc_fog_api::ledger::GetOutputsResponse,
+            mc_fog_api::fog_ledger::GetOutputsResponse,
         >(&test_val);
     });
 }
@@ -258,7 +260,7 @@ fn check_key_images_response_round_trip() {
         let test_val = mc_fog_types::ledger::CheckKeyImagesResponse::default();
         round_trip_message::<
             mc_fog_types::ledger::CheckKeyImagesResponse,
-            mc_fog_api::ledger::CheckKeyImagesResponse,
+            mc_fog_api::fog_ledger::CheckKeyImagesResponse,
         >(&test_val);
     }
 
@@ -276,7 +278,7 @@ fn check_key_images_response_round_trip() {
 
         round_trip_message::<
             mc_fog_types::ledger::CheckKeyImagesResponse,
-            mc_fog_api::ledger::CheckKeyImagesResponse,
+            mc_fog_api::fog_ledger::CheckKeyImagesResponse,
         >(&test_val);
     });
 }
@@ -287,23 +289,23 @@ fn check_key_images_response_round_trip() {
 fn test_tx_out_search_result_enum_values() {
     assert_eq!(
         mc_fog_types::view::TxOutSearchResultCode::Found as u32,
-        mc_fog_api::view::TxOutSearchResultCode::Found as u32
+        mc_fog_api::fog_view::TxOutSearchResultCode::Found as u32
     );
     assert_eq!(
         mc_fog_types::view::TxOutSearchResultCode::NotFound as u32,
-        mc_fog_api::view::TxOutSearchResultCode::NotFound as u32
+        mc_fog_api::fog_view::TxOutSearchResultCode::NotFound as u32
     );
     assert_eq!(
         mc_fog_types::view::TxOutSearchResultCode::BadSearchKey as u32,
-        mc_fog_api::view::TxOutSearchResultCode::BadSearchKey as u32
+        mc_fog_api::fog_view::TxOutSearchResultCode::BadSearchKey as u32
     );
     assert_eq!(
         mc_fog_types::view::TxOutSearchResultCode::InternalError as u32,
-        mc_fog_api::view::TxOutSearchResultCode::InternalError as u32
+        mc_fog_api::fog_view::TxOutSearchResultCode::InternalError as u32
     );
     assert_eq!(
         mc_fog_types::view::TxOutSearchResultCode::RateLimited as u32,
-        mc_fog_api::view::TxOutSearchResultCode::RateLimited as u32
+        mc_fog_api::fog_view::TxOutSearchResultCode::RateLimited as u32
     );
 }
 
@@ -312,15 +314,15 @@ fn test_tx_out_search_result_enum_values() {
 fn test_key_image_result_code_enum_values() {
     assert_eq!(
         mc_fog_types::ledger::KeyImageResultCode::Spent as u32,
-        mc_fog_api::ledger::KeyImageResultCode::Spent as u32
+        mc_fog_api::fog_ledger::KeyImageResultCode::Spent as u32
     );
     assert_eq!(
         mc_fog_types::ledger::KeyImageResultCode::NotSpent as u32,
-        mc_fog_api::ledger::KeyImageResultCode::NotSpent as u32
+        mc_fog_api::fog_ledger::KeyImageResultCode::NotSpent as u32
     );
     assert_eq!(
         mc_fog_types::ledger::KeyImageResultCode::KeyImageError as u32,
-        mc_fog_api::ledger::KeyImageResultCode::KeyImageError as u32
+        mc_fog_api::fog_ledger::KeyImageResultCode::KeyImageError as u32
     );
 }
 
@@ -338,11 +340,12 @@ fn test_kex_rng_pubkey_round_trip() {
 #[test]
 fn test_kex_rng_pubkey_round_trip_protobuf() {
     run_with_several_seeds(|mut rng| {
-        let mut test_val = kex_rng::KexRngPubkey::new();
-        test_val.set_pubkey(<[u8; 32]>::sample(&mut rng).to_vec());
-        test_val.version = rng.next_u32();
+        let test_val = kex_rng::KexRngPubkey {
+            pubkey: <[u8; 32]>::sample(&mut rng).to_vec(),
+            version: rng.next_u32(),
+        };
 
-        round_trip_protobuf_object::<kex_rng::KexRngPubkey, KexRngPubkey>(&test_val);
+        round_trip_message::<kex_rng::KexRngPubkey, KexRngPubkey>(&test_val);
     });
 }
 
@@ -365,13 +368,14 @@ fn test_stored_kex_rng_round_trip() {
 #[test]
 fn test_stored_kex_rng_round_trip_protobuf() {
     run_with_several_seeds(|mut rng| {
-        let mut test_val = kex_rng::StoredRng::new();
-        test_val.set_secret(<[u8; 32]>::sample(&mut rng).to_vec());
-        test_val.set_buffer(<[u8; 16]>::sample(&mut rng).to_vec());
-        test_val.counter = rng.next_u64();
-        test_val.version = rng.next_u32();
+        let test_val = kex_rng::StoredRng {
+            secret: <[u8; 32]>::sample(&mut rng).to_vec(),
+            buffer: <[u8; 16]>::sample(&mut rng).to_vec(),
+            counter: rng.next_u64(),
+            version: rng.next_u32(),
+        };
 
-        round_trip_protobuf_object::<kex_rng::StoredRng, StoredRng>(&test_val);
+        round_trip_message::<kex_rng::StoredRng, StoredRng>(&test_val);
     });
 }
 

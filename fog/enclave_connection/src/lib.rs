@@ -217,15 +217,13 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let mut msg = Message::new();
-            msg.set_channel_id(Vec::from(attest_cipher.binding()));
-            msg.set_aad(aad.to_vec());
-
             let plaintext_bytes = mc_util_serial::encode(plaintext_request);
-
             let request_ciphertext = attest_cipher.encrypt(aad, &plaintext_bytes)?;
-            msg.set_data(request_ciphertext);
-            msg
+            Message {
+                channel_id: attest_cipher.binding().to_vec(),
+                aad: aad.to_vec(),
+                data: request_ciphertext,
+            }
         };
 
         // make an attested call to EnclaveGrpcChannel::enclave_request,
@@ -256,7 +254,8 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
+            let plaintext_bytes =
+                attest_cipher.decrypt(message.aad.as_slice(), message.data.as_slice())?;
             let plaintext_response: ResponseMessage = mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)
         }

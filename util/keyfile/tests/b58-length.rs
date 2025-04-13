@@ -1,5 +1,5 @@
 use mc_account_keys::{AccountKey, RootIdentity};
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
 
 // The limit which we require b58 addresses to be less than
@@ -29,8 +29,9 @@ fn test_b58pub_length<T: RngCore + CryptoRng>(
         let acct_key = AccountKey::from(&root_id);
         let addr = acct_key.default_subaddress();
 
-        let mut wrapper = PrintableWrapper::new();
-        wrapper.set_public_address((&addr).into());
+        let wrapper = PrintableWrapper {
+            wrapper: Some(printable_wrapper::Wrapper::PublicAddress((&addr).into())),
+        };
 
         let data = wrapper.b58_encode().unwrap();
 

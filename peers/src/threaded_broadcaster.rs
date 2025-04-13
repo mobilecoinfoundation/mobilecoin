@@ -399,7 +399,7 @@ impl PeerThread {
         let retry_iterator = retry_policy.get_delay_iterator().with_deadline(deadline);
 
         match conn.send_consensus_msg(&arc_msg, retry_iterator) {
-            Ok(resp) => match resp.get_result() {
+            Ok(resp) => match resp.result() {
                 ConsensusMsgResult::Ok => {}
                 ConsensusMsgResult::UnknownPeer => log::info!(
                     logger,

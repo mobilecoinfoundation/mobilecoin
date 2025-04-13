@@ -3,7 +3,7 @@
 //! Convert between BlockData and ArchiveBlock.
 
 use crate::{
-    blockchain::{ArchiveBlock, ArchiveBlocks},
+    blockchain::{archive_block, ArchiveBlock, ArchiveBlockV1, ArchiveBlocks},
     ConversionError,
 };
 use mc_blockchain_types::{BlockContents, BlockData, BlockMetadata, BlockSignature};
@@ -11,20 +11,15 @@ use mc_blockchain_types::{BlockContents, BlockData, BlockMetadata, BlockSignatur
 /// Convert BlockData --> ArchiveBlock.
 impl From<&BlockData> for ArchiveBlock {
     fn from(src: &BlockData) -> Self {
-        let mut archive_block = ArchiveBlock::new();
-        let archive_block_v1 = archive_block.mut_v1();
-        archive_block_v1.set_block(src.block().into());
-        archive_block_v1.set_block_contents(src.contents().into());
-
-        if let Some(signature) = src.signature() {
-            archive_block_v1.set_signature(signature.into());
+        Self {
+            block: archive_block::Block::V1(ArchiveBlockV1 {
+                block: Some(src.block().into()),
+                block_contents: Some(src.contents().into()),
+                signature: src.signature().map(|s| s.into()),
+                metadata: src.metadata().map(|m| m.into()),
+            })
+            .into(),
         }
-
-        if let Some(metadata) = src.metadata() {
-            archive_block_v1.set_metadata(metadata.into());
-        }
-
-        archive_block
     }
 }
 
@@ -33,13 +28,25 @@ impl TryFrom<&ArchiveBlock> for BlockData {
     type Error = ConversionError;
 
     fn try_from(src: &ArchiveBlock) -> Result<Self, Self::Error> {
-        if !src.has_v1() {
+        if src.block.is_none() {
             return Err(ConversionError::ObjectMissing);
         }
-        let archive_block_v1 = src.get_v1();
+        let archive_block_v1 = match src.block.as_ref() {
+            Some(archive_block::Block::V1(archive_block_v1)) => archive_block_v1,
+            _ => return Err(ConversionError::ObjectMissing),
+        };
 
-        let block = archive_block_v1.get_block().try_into()?;
-        let block_contents = BlockContents::try_from(archive_block_v1.get_block_contents())?;
+        let block = archive_block_v1
+            .block
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let block_contents = BlockContents::try_from(
+            archive_block_v1
+                .block_contents
+                .as_ref()
+                .unwrap_or(&Default::default()),
+        )?;
 
         let signature = archive_block_v1
             .signature
@@ -67,9 +74,9 @@ impl TryFrom<&ArchiveBlock> for BlockData {
 /// Convert &[BlockData] -> ArchiveBlocks
 impl From<&[BlockData]> for ArchiveBlocks {
     fn from(src: &[BlockData]) -> Self {
-        let mut archive_blocks = ArchiveBlocks::new();
-        archive_blocks.set_blocks(src.iter().map(ArchiveBlock::from).collect());
-        archive_blocks
+        Self {
+            blocks: src.iter().map(|block| block.into()).collect(),
+        }
     }
 }
 
@@ -79,7 +86,7 @@ impl TryFrom<&ArchiveBlocks> for Vec<BlockData> {
 
     fn try_from(src: &ArchiveBlocks) -> Result<Self, Self::Error> {
         let blocks_data = src
-            .get_blocks()
+            .blocks
             .iter()
             .map(BlockData::try_from)
             .collect::<Result<Vec<_>, ConversionError>>()?;
@@ -129,21 +136,22 @@ mod tests {
 
         // BlockData -> ArchiveBlock
         let archive_block = ArchiveBlock::from(&block_data);
+        let archive_block::Block::V1(archive_block_v1) = archive_block.block.as_ref().unwrap();
         assert_eq!(
             block_data.block(),
-            &Block::try_from(archive_block.get_v1().get_block()).unwrap(),
+            &Block::try_from(archive_block_v1.block.as_ref().unwrap()).unwrap(),
         );
         assert_eq!(
             block_data.contents(),
-            &BlockContents::try_from(archive_block.get_v1().get_block_contents()).unwrap()
+            &BlockContents::try_from(archive_block_v1.block_contents.as_ref().unwrap()).unwrap()
         );
         assert_eq!(
             block_data.signature().cloned().unwrap(),
-            BlockSignature::try_from(archive_block.get_v1().get_signature()).unwrap()
+            BlockSignature::try_from(archive_block_v1.signature.as_ref().unwrap()).unwrap()
         );
         assert_eq!(
             block_data.metadata().cloned().unwrap(),
-            BlockMetadata::try_from(archive_block.get_v1().get_metadata()).unwrap()
+            BlockMetadata::try_from(archive_block_v1.metadata.as_ref().unwrap()).unwrap()
         );
 
         // ArchiveBlock -> BlockData
@@ -160,11 +168,16 @@ mod tests {
         // ArchiveBlock with invalid signature cannot be converted back to BlockData
         {
             let mut archive_block = ArchiveBlock::from(&block_data);
-            archive_block
-                .mut_v1()
-                .mut_signature()
-                .mut_signature()
-                .mut_data()[0] += 1;
+            let archive_block::Block::V1(ref mut archive_block_v1) =
+                archive_block.block.as_mut().unwrap();
+            archive_block_v1
+                .signature
+                .as_mut()
+                .unwrap()
+                .signature
+                .as_mut()
+                .unwrap()
+                .data[0] += 1;
             assert_eq!(
                 BlockData::try_from(&archive_block),
                 Err(ConversionError::InvalidSignature)
@@ -174,11 +187,18 @@ mod tests {
         // ArchiveBlock with invalid metadata cannot be converted back to BlockData
         {
             let mut archive_block = ArchiveBlock::from(&block_data);
-            archive_block
-                .mut_v1()
-                .mut_metadata()
-                .mut_contents()
-                .mut_quorum_set()
+            let archive_block::Block::V1(ref mut archive_block_v1) =
+                archive_block.block.as_mut().unwrap();
+            archive_block_v1
+                .metadata
+                .as_mut()
+                .unwrap()
+                .contents
+                .as_mut()
+                .unwrap()
+                .quorum_set
+                .as_mut()
+                .unwrap()
                 .threshold += 1;
             assert_eq!(
                 BlockData::try_from(&archive_block),
@@ -189,10 +209,9 @@ mod tests {
         // ArchiveBlock with invalid contents cannot be converted back to BlockData
         {
             let mut archive_block = ArchiveBlock::from(&block_data);
-            archive_block
-                .mut_v1()
-                .mut_block_contents()
-                .clear_key_images();
+            let archive_block::Block::V1(ref mut archive_block_v1) =
+                archive_block.block.as_mut().unwrap();
+            archive_block_v1.block_contents.as_mut().unwrap().key_images = vec![];
             assert_eq!(
                 BlockData::try_from(&archive_block),
                 Err(ConversionError::InvalidContents)
@@ -208,23 +227,25 @@ mod tests {
         // Vec<BlockData> -> ArchiveBlocks
         let archive_blocks = ArchiveBlocks::from(blocks_data.as_slice());
         for (block_data, archive_block) in
-            zip_exact(blocks_data.iter(), archive_blocks.get_blocks().iter()).unwrap()
+            zip_exact(blocks_data.iter(), archive_blocks.blocks.iter()).unwrap()
         {
+            let archive_block::Block::V1(archive_block_v1) = archive_block.block.as_ref().unwrap();
             assert_eq!(
                 block_data.block(),
-                &Block::try_from(archive_block.get_v1().get_block()).unwrap(),
+                &Block::try_from(archive_block_v1.block.as_ref().unwrap()).unwrap(),
             );
             assert_eq!(
                 block_data.contents(),
-                &BlockContents::try_from(archive_block.get_v1().get_block_contents()).unwrap()
+                &BlockContents::try_from(archive_block_v1.block_contents.as_ref().unwrap())
+                    .unwrap()
             );
             assert_eq!(
                 block_data.signature().cloned().unwrap(),
-                BlockSignature::try_from(archive_block.get_v1().get_signature()).unwrap()
+                BlockSignature::try_from(archive_block_v1.signature.as_ref().unwrap()).unwrap()
             );
             assert_eq!(
                 block_data.metadata().cloned().unwrap(),
-                BlockMetadata::try_from(archive_block.get_v1().get_metadata()).unwrap()
+                BlockMetadata::try_from(archive_block_v1.metadata.as_ref().unwrap()).unwrap()
             );
         }
 
@@ -239,7 +260,7 @@ mod tests {
     fn test_try_from_blockchain_archive_blocks_rejects_invalid() {
         let blocks_data = generate_test_blocks_data(10);
         let mut archive_blocks = ArchiveBlocks::from(blocks_data.as_slice());
-        archive_blocks.mut_blocks().remove(5);
+        archive_blocks.blocks.remove(5);
 
         assert_eq!(
             Vec::<BlockData>::try_from(&archive_blocks),

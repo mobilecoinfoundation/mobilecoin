@@ -7,7 +7,7 @@ use grpcio::{CallOption, ChannelBuilder, EnvBuilder, MetadataBuilder};
 use mc_common::logger::Logger;
 use mc_connection::Connection;
 use mc_t3_api::{
-    external::CompressedRistretto, t3_grpc::TransactionServiceClient, CreateTransactionRequest,
+    external::v1::CompressedRistretto, t3_v1::TransactionServiceClient, CreateTransactionRequest,
     FindTransactionsRequest, ListTransactionsRequest, T3Uri, TestErrorRequest,
     TransparentTransaction,
 };
@@ -60,49 +60,49 @@ impl T3Connection {
         public_keys: Vec<CompressedRistretto>,
         public_key_hex: Vec<String>,
     ) -> Result<Vec<TransparentTransaction>, Error> {
-        let mut request = FindTransactionsRequest::new();
-        request.set_address_hashes(address_hashes.into());
-        request.set_public_keys(public_keys.into());
-        request.set_public_key_hex(public_key_hex.into());
+        let request = FindTransactionsRequest {
+            address_hashes: address_hashes.clone(),
+            public_keys: public_keys.clone(),
+            public_key_hex: public_key_hex.clone(),
+        };
 
         let response = self
             .transaction_service_client
             .find_transactions_opt(&request, common_headers_call_option(&self.api_key));
 
-        Ok(response.map(|mut response| response.take_transactions().to_vec())?)
+        Ok(response.map(|response| response.transactions.to_vec())?)
     }
 
     pub fn list_transactions(
         &self,
         created_since: u64,
     ) -> Result<Vec<TransparentTransaction>, Error> {
-        let mut request = ListTransactionsRequest::new();
-        request.set_created_since(created_since);
+        let request = ListTransactionsRequest { created_since };
 
         let response = self
             .transaction_service_client
             .list_transactions_opt(&request, common_headers_call_option(&self.api_key));
 
-        Ok(response.map(|mut response| response.take_transactions().to_vec())?)
+        Ok(response.map(|response| response.transactions.to_vec())?)
     }
 
     pub fn create_transaction(
         &self,
         transparent_transaction: TransparentTransaction,
     ) -> Result<TransparentTransaction, Error> {
-        let mut request = CreateTransactionRequest::new();
-        request.set_transaction(transparent_transaction);
+        let request = CreateTransactionRequest {
+            transaction: Some(transparent_transaction),
+        };
 
         let response = self
             .transaction_service_client
             .create_transaction_opt(&request, common_headers_call_option(&self.api_key));
 
-        Ok(response.map(|mut response| response.take_transaction())?)
+        Ok(response.map(|response| response.transaction.unwrap_or_default())?)
     }
 
     pub fn test_error(&self, code: i32) -> Result<(), Error> {
-        let mut request = TestErrorRequest::new();
-        request.set_code(code);
+        let request = TestErrorRequest { code };
 
         let response = self
             .transaction_service_client

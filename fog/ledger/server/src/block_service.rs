@@ -3,11 +3,7 @@
 use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::Logger;
-use mc_fog_api::{
-    external,
-    ledger::{BlockData, BlockRequest, BlockResponse},
-    ledger_grpc::FogBlockApi,
-};
+use mc_fog_api::fog_ledger::{BlockData, BlockRequest, BlockResponse, FogBlockApi};
 use mc_fog_block_provider::{BlockProvider, BlocksDataResponse};
 use mc_util_grpc::{
     check_request_chain_id, rpc_database_err, rpc_logger, send_result, Authenticator,
@@ -55,27 +51,27 @@ impl BlockService {
             .get_blocks_data(block_indices.as_slice())
             .map_err(|err| rpc_database_err(err, &self.logger))?;
 
-        let mut response = BlockResponse::new();
-        response.num_blocks = latest_block.index + 1;
-        response.global_txo_count = latest_block.cumulative_txo_count;
-
-        response.blocks = results
-            .into_iter()
-            .flatten()
-            .map(|b| {
-                let mut result = BlockData::new();
-                for output in b.block_data.contents().outputs.iter() {
-                    result.outputs.push(external::TxOut::from(output));
-                }
-                result.index = b.block_data.block().index;
-                result.global_txo_count = b.block_data.block().cumulative_txo_count;
-                result.timestamp = b.block_timestamp;
-                result.timestamp_result_code = b.block_timestamp_result_code as u32;
-                result
-            })
-            .collect();
-
-        Ok(response)
+        Ok(BlockResponse {
+            num_blocks: latest_block.index + 1,
+            global_txo_count: latest_block.cumulative_txo_count,
+            blocks: results
+                .into_iter()
+                .flatten()
+                .map(|b| BlockData {
+                    outputs: b
+                        .block_data
+                        .contents()
+                        .outputs
+                        .iter()
+                        .map(Into::into)
+                        .collect(),
+                    global_txo_count: b.block_data.block().cumulative_txo_count,
+                    timestamp: b.block_timestamp,
+                    timestamp_result_code: b.block_timestamp_result_code as u32,
+                    index: b.block_data.block().index,
+                })
+                .collect(),
+        })
     }
 }
 

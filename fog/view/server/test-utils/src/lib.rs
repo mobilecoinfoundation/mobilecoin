@@ -9,7 +9,7 @@ use mc_common::{
     time::SystemTimeProvider,
     ResponderId,
 };
-use mc_fog_api::view_grpc::FogViewStoreApiClient;
+use mc_fog_api::fog_view::FogViewStoreApiClient;
 use mc_fog_recovery_db_iface::{AddBlockDataStatus, IngestInvocationId, RecoveryDb};
 use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
 use mc_fog_test_infra::get_enclave_path;

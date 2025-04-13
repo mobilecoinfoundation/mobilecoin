@@ -5,9 +5,9 @@ use futures::{executor::block_on, FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{
-    view::{FogViewRouterRequest, FogViewRouterResponse},
-    view_grpc::{FogViewApi, FogViewRouterApi},
+use mc_fog_api::fog_view::{
+    fog_view_router_response, FogViewApi, FogViewRouterApi, FogViewRouterRequest,
+    FogViewRouterResponse,
 };
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
@@ -108,8 +108,10 @@ where
                 request,
                 self.logger.clone(),
             )
-            .map(|mut response| response.take_auth());
-
+            .map(|response| match response.response_data {
+                Some(fog_view_router_response::ResponseData::Auth(auth)) => auth,
+                _ => Default::default(),
+            });
             send_result(ctx, sink, result, logger);
         })
     }
@@ -139,7 +141,10 @@ where
                 self.logger.clone(),
                 &tracer,
             ))
-            .map(|mut response| response.take_query());
+            .map(|response| match response.response_data {
+                Some(fog_view_router_response::ResponseData::Query(query)) => query,
+                _ => Default::default(),
+            });
 
             send_result(ctx, sink, result, logger)
         })

@@ -7,9 +7,8 @@ use displaydoc::Display;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{self, log, Logger};
 use mc_crypto_keys::SignatureError;
-use mc_fog_api::{
-    report::{ReportRequest as ProtobufReportRequest, ReportResponse as ProtobufReportResponse},
-    report_grpc::ReportApi,
+use mc_fog_api::fog_report::{
+    ReportApi, ReportRequest as ProtobufReportRequest, ReportResponse as ProtobufReportResponse,
 };
 use mc_fog_recovery_db_iface::{RecoveryDbError, ReportDb};
 use mc_fog_report_types::{Report, ReportResponse};

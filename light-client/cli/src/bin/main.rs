@@ -10,7 +10,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_api::{
-    consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
+    consensus_client::ConsensusClientApiClient, consensus_common::BlockchainApiClient,
 };
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_light_client_verifier::{
@@ -18,8 +18,8 @@ use mc_light_client_verifier::{
     TrustedValidatorSetConfig,
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use mc_util_serial::Message;
 use mc_util_uri::ConsensusClientUri;
-use protobuf::Message;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{collections::BTreeSet, fs, io::Write, path::PathBuf, str::FromStr, sync::Arc};
 
@@ -162,9 +162,11 @@ fn cmd_generate_config(
     let node_ids = node_configs
         .iter()
         .map(|node_config| HexKeyNodeID {
-            responder_id: ResponderId::from_str(node_config.get_peer_responder_id()).unwrap(),
+            responder_id: ResponderId::from_str(&node_config.peer_responder_id).unwrap(),
             public_key: node_config
-                .get_scp_message_signing_key()
+                .scp_message_signing_key
+                .as_ref()
+                .unwrap()
                 .try_into()
                 .unwrap(),
         })
@@ -233,9 +235,7 @@ fn cmd_fetch_blocks(
     let bytes = match out_file_format {
         FileFormat::ArchiveBlocksProtobuf => {
             let archive_blocks = ArchiveBlocks::from(&block_data[..]);
-            archive_blocks
-                .write_to_bytes()
-                .expect("failed serializing ArchiveBlocks")
+            archive_blocks.encode_to_vec()
         }
 
         FileFormat::JsonBlockDataBytesArray => {

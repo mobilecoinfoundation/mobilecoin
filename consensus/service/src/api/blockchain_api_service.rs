@@ -7,15 +7,12 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_consensus_api::{
     blockchain,
-    consensus_common::{BlocksRequest, BlocksResponse, LastBlockInfoResponse},
-    consensus_common_grpc::BlockchainApi,
-    empty::Empty,
+    consensus_common::{BlockchainApi, BlocksRequest, BlocksResponse, LastBlockInfoResponse},
 };
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{tokens::Mob, BlockVersion, FeeMap, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
-use protobuf::RepeatedField;
-use std::{cmp, collections::HashMap, sync::Arc};
+use std::{cmp, collections::BTreeMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct BlockchainApiService<L: Ledger + Clone> {
@@ -66,21 +63,20 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
     /// Returns information about the last block.
     fn get_last_block_info_helper(&mut self) -> Result<LastBlockInfoResponse, mc_ledger_db::Error> {
         let num_blocks = self.ledger.num_blocks()?;
-        let mut resp = LastBlockInfoResponse::new();
-        resp.set_index(num_blocks - 1);
-        resp.set_mob_minimum_fee(
-            self.fee_map
+        #[allow(deprecated)]
+        Ok(LastBlockInfoResponse {
+            index: num_blocks - 1,
+            mob_minimum_fee: self
+                .fee_map
                 .get_fee_for_token(&Mob::ID)
                 .expect("should always have a fee for MOB"),
-        );
-        resp.set_minimum_fees(HashMap::from_iter(
-            self.fee_map
-                .iter()
-                .map(|(token_id, fee)| (**token_id, *fee)),
-        ));
-        resp.set_network_block_version(*self.network_block_version);
-
-        Ok(resp)
+            minimum_fees: BTreeMap::from_iter(
+                self.fee_map
+                    .iter()
+                    .map(|(token_id, fee)| (**token_id, *fee)),
+            ),
+            network_block_version: *self.network_block_version,
+        })
     }
 
     /// Returns blocks in the range [offset, offset + limit).
@@ -121,9 +117,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
             .map(|block| blockchain::Block::from(&block))
             .collect();
 
-        let mut response = BlocksResponse::new();
-        response.set_blocks(RepeatedField::from_vec(blocks));
-        Ok(response)
+        Ok(BlocksResponse { blocks })
     }
 }
 
@@ -132,7 +126,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
     fn get_last_block_info(
         &mut self,
         ctx: RpcContext,
-        _request: Empty,
+        _request: (),
         sink: UnarySink<LastBlockInfoResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
@@ -185,7 +179,7 @@ mod tests {
         ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder, ServerCredentials,
     };
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
-    use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
+    use mc_consensus_api::consensus_common::{self, BlockchainApiClient};
     use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
     use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::AccountKey;
@@ -197,7 +191,7 @@ mod tests {
     fn get_client_server<L: Ledger + Clone + 'static>(
         instance: BlockchainApiService<L>,
     ) -> (BlockchainApiClient, Server) {
-        let service = consensus_common_grpc::create_blockchain_api(instance);
+        let service = consensus_common::create_blockchain_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
@@ -231,11 +225,13 @@ mod tests {
         );
         let last_index = blocks_data.last().unwrap().block().index;
 
-        let mut expected_response = LastBlockInfoResponse::new();
-        expected_response.set_index(last_index);
-        expected_response.set_mob_minimum_fee(4000000000);
-        expected_response.set_minimum_fees(HashMap::from_iter([(0, 4000000000), (60, 128000)]));
-        expected_response.set_network_block_version(*BlockVersion::MAX);
+        #[allow(deprecated)]
+        let expected_response = LastBlockInfoResponse {
+            index: last_index,
+            mob_minimum_fee: 4000000000,
+            minimum_fees: BTreeMap::from_iter([(0, 4000000000), (60, 128000)]),
+            network_block_version: *BlockVersion::MAX,
+        };
         assert_eq!(last_index + 1, ledger_db.num_blocks().unwrap());
 
         let mut blockchain_api_service =
@@ -266,7 +262,7 @@ mod tests {
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
-        match client.get_last_block_info(&Empty::default()) {
+        match client.get_last_block_info(&()) {
             Ok(response) => {
                 panic!("Unexpected response {response:?}");
             }

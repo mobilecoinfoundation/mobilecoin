@@ -2,18 +2,17 @@
 
 //! Convert to/from blockchain::BlockSignature
 
-use crate::{blockchain, external, ConversionError};
+use crate::{blockchain, ConversionError};
 use mc_blockchain_types::BlockSignature;
-use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 
 /// Convert BlockSignature --> blockchain::BlockSignature.
 impl From<&BlockSignature> for blockchain::BlockSignature {
     fn from(src: &BlockSignature) -> Self {
-        let mut dst = blockchain::BlockSignature::new();
-        dst.set_signature(external::Ed25519Signature::from(src.signature()));
-        dst.set_signer(external::Ed25519Public::from(src.signer()));
-        dst.set_signed_at(src.signed_at());
-        dst
+        Self {
+            signature: Some(src.signature().into()),
+            signer: Some(src.signer().into()),
+            signed_at: src.signed_at(),
+        }
     }
 }
 
@@ -22,9 +21,17 @@ impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
     type Error = ConversionError;
 
     fn try_from(source: &blockchain::BlockSignature) -> Result<Self, Self::Error> {
-        let signature = Ed25519Signature::try_from(source.get_signature())?;
-        let signer = Ed25519Public::try_from(source.get_signer())?;
-        let signed_at = source.get_signed_at();
+        let signature = source
+            .signature
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let signer = source
+            .signer
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let signed_at = source.signed_at;
         Ok(BlockSignature::new(signature, signer, signed_at))
     }
 }
@@ -32,10 +39,11 @@ impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_crypto_keys::Ed25519Private;
+    use crate::external;
+    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_util_from_random::FromRandom;
     use mc_util_repr_bytes::ReprBytes;
-    use protobuf::Message;
+    use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
@@ -51,15 +59,15 @@ mod tests {
 
         let block_signature = blockchain::BlockSignature::from(&source_block_signature);
         assert_eq!(
-            block_signature.get_signature().get_data(),
+            block_signature.signature.unwrap().data,
             source_block_signature.signature().as_ref()
         );
         assert_eq!(
-            block_signature.get_signer().get_data(),
+            block_signature.signer.unwrap().data,
             source_block_signature.signer().to_bytes().as_slice(),
         );
         assert_eq!(
-            block_signature.get_signed_at(),
+            block_signature.signed_at,
             source_block_signature.signed_at(),
         );
     }
@@ -75,17 +83,15 @@ mod tests {
             31337,
         );
 
-        let mut source_block_signature = blockchain::BlockSignature::new();
-
-        let mut signature = external::Ed25519Signature::new();
-        signature.set_data(expected_block_signature.signature().to_bytes().to_vec());
-        source_block_signature.set_signature(signature);
-
-        let mut signer = external::Ed25519Public::new();
-        signer.set_data(expected_block_signature.signer().to_bytes().to_vec());
-        source_block_signature.set_signer(signer);
-
-        source_block_signature.set_signed_at(31337);
+        let source_block_signature = blockchain::BlockSignature {
+            signature: Some(external::Ed25519Signature {
+                data: expected_block_signature.signature().to_bytes().to_vec(),
+            }),
+            signer: Some(external::Ed25519Public {
+                data: expected_block_signature.signer().to_bytes().to_vec(),
+            }),
+            signed_at: 31337,
+        };
 
         let block_signature = BlockSignature::try_from(&source_block_signature).unwrap();
         assert_eq!(block_signature, expected_block_signature);
@@ -108,8 +114,7 @@ mod tests {
         {
             let blockchain_block_signature =
                 blockchain::BlockSignature::from(&source_block_signature);
-            let blockchain_block_signature_bytes =
-                blockchain_block_signature.write_to_bytes().unwrap();
+            let blockchain_block_signature_bytes = blockchain_block_signature.encode_to_vec();
 
             let block_signature_from_prost: BlockSignature =
                 mc_util_serial::decode(&blockchain_block_signature_bytes).expect("failed decoding");
@@ -120,7 +125,7 @@ mod tests {
         {
             let prost_block_signature_bytes = mc_util_serial::encode(&source_block_signature);
             let blockchain_block_signature =
-                blockchain::BlockSignature::parse_from_bytes(&prost_block_signature_bytes)
+                blockchain::BlockSignature::decode(prost_block_signature_bytes.as_slice())
                     .expect("failed decoding");
 
             assert_eq!(

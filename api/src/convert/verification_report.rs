@@ -7,21 +7,20 @@ use mc_attest_verifier_types::VerificationReport;
 
 impl From<&VerificationReport> for external::VerificationReport {
     fn from(src: &VerificationReport) -> Self {
-        let mut dst = external::VerificationReport::new();
-
-        dst.set_sig((&src.sig).into());
-        dst.set_chain(src.chain.as_slice().into());
-        dst.set_http_body(src.http_body.clone());
-        dst
+        Self {
+            sig: Some((&src.sig).into()),
+            chain: src.chain.as_slice().into(),
+            http_body: src.http_body.clone(),
+        }
     }
 }
 
 impl From<&external::VerificationReport> for VerificationReport {
     fn from(src: &external::VerificationReport) -> Self {
         VerificationReport {
-            sig: src.get_sig().into(),
-            chain: src.get_chain().to_vec(),
-            http_body: src.get_http_body().to_owned(),
+            sig: src.sig.as_ref().map(Into::into).unwrap_or_default(),
+            chain: src.chain.to_vec(),
+            http_body: src.http_body.clone(),
         }
     }
 }

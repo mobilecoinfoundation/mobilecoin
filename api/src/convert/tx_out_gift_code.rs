@@ -2,20 +2,17 @@
 
 //! Convert to/from printable::TxOutGiftCode
 
-use crate::{external, printable, ConversionError};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use crate::{printable, ConversionError};
 use mc_transaction_extra::TxOutGiftCode;
 
 /// Convert TxOutGiftCode --> printable::TxOutGiftCode.
 impl From<&TxOutGiftCode> for printable::TxOutGiftCode {
     fn from(src: &TxOutGiftCode) -> Self {
-        let mut tx_out_gift_code = printable::TxOutGiftCode::new();
-        tx_out_gift_code.set_global_index(src.global_index);
-        tx_out_gift_code
-            .set_onetime_private_key(external::RistrettoPrivate::from(&src.onetime_private_key));
-        tx_out_gift_code.set_shared_secret(external::CompressedRistretto::from(&src.shared_secret));
-
-        tx_out_gift_code
+        Self {
+            global_index: src.global_index,
+            onetime_private_key: Some((&src.onetime_private_key).into()),
+            shared_secret: Some((&src.shared_secret).into()),
+        }
     }
 }
 
@@ -24,14 +21,19 @@ impl TryFrom<&printable::TxOutGiftCode> for TxOutGiftCode {
     type Error = ConversionError;
 
     fn try_from(src: &printable::TxOutGiftCode) -> Result<Self, Self::Error> {
-        let global_index = src.get_global_index();
-        let onetime_private_key = RistrettoPrivate::try_from(src.get_onetime_private_key())?;
-        let compressed_shared_secret =
-            CompressedRistrettoPublic::try_from(src.get_shared_secret())?;
-        let shared_secret = RistrettoPublic::try_from(&compressed_shared_secret)?;
+        let onetime_private_key = src
+            .onetime_private_key
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let shared_secret = src
+            .shared_secret
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
 
         Ok(Self {
-            global_index,
+            global_index: src.global_index,
             onetime_private_key,
             shared_secret,
         })
@@ -41,9 +43,10 @@ impl TryFrom<&printable::TxOutGiftCode> for TxOutGiftCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use mc_util_serial::{decode, encode};
-    use protobuf::Message;
+    use prost::Message;
     use rand::rngs::StdRng;
     use rand_core::SeedableRng;
 
@@ -75,14 +78,14 @@ mod tests {
         // Encoding with prost, decoding with protobuf should produce the same object
         {
             let bytes = encode(&source);
-            let recovered = printable::TxOutGiftCode::parse_from_bytes(&bytes).unwrap();
+            let recovered = printable::TxOutGiftCode::decode(bytes.as_slice()).unwrap();
             assert_eq!(recovered, printable::TxOutGiftCode::from(&source));
         }
 
         // Encoding with protobuf, decoding with prost should produce the same object
         {
             let external = printable::TxOutGiftCode::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
+            let bytes = external.encode_to_vec();
             let recovered: TxOutGiftCode = decode(&bytes).unwrap();
             assert_eq!(source, recovered);
         }

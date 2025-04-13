@@ -10,8 +10,7 @@ rust-version = { workspace = true }
 [dependencies]
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.13"
-protobuf = "2.27.1"
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }

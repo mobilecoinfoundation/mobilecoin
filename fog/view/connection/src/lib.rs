@@ -13,7 +13,7 @@ use mc_common::{
     logger::{log, o, Logger},
     trace_time,
 };
-use mc_fog_api::view_grpc;
+use mc_fog_api::fog_view;
 use mc_fog_enclave_connection::{EnclaveConnection, Error as EnclaveConnectionError};
 use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::FogViewUri;
@@ -26,7 +26,7 @@ use std::{fmt::Display, sync::Arc};
 /// A high-level object mediating requests to the fog view service
 pub struct FogViewGrpcClient {
     /// The attested connection
-    conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
+    conn: EnclaveConnection<FogViewUri, fog_view::FogViewApiClient>,
     /// The grpc retry config
     grpc_retry_config: GrpcRetryConfig,
     /// The uri we connected to
@@ -57,7 +57,7 @@ impl FogViewGrpcClient {
 
         let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&uri, &logger);
 
-        let grpc_client = view_grpc::FogViewApiClient::new(ch);
+        let grpc_client = fog_view::FogViewApiClient::new(ch);
 
         Self {
             conn: EnclaveConnection::new(

@@ -20,11 +20,10 @@ use mc_common::{
 use mc_consensus_api::{
     consensus_common::ProposeTxResponse,
     consensus_peer::{
-        ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse, ConsensusMsgResult,
-        GetLatestMsgResponse, GetTxsRequest, GetTxsResponse, TxHashesNotInCache,
+        get_txs_response, ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse,
+        ConsensusMsgResult, ConsensusPeerApi, GetLatestMsgResponse, GetTxsRequest, GetTxsResponse,
+        TxHashesNotInCache,
     },
-    consensus_peer_grpc::ConsensusPeerApi,
-    empty::Empty,
 };
 use mc_consensus_enclave::{ConsensusEnclave, Error};
 use mc_ledger_db::Ledger;
@@ -241,11 +240,10 @@ impl ConsensusPeerApi for PeerApiService {
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let result: Result<ProposeTxResponse, RpcStatus> =
                 match self.handle_tx_propose(enclave_msg, logger) {
-                    Ok(num_blocks) => {
-                        let mut response = ProposeTxResponse::new();
-                        response.set_block_count(num_blocks);
-                        Ok(response)
-                    }
+                    Ok(num_blocks) => Ok(ProposeTxResponse {
+                        block_count: num_blocks,
+                        ..Default::default()
+                    }),
 
                     Err(err @ PeerServiceError::Enclave(Error::Attest(_))) => {
                         Err(rpc_permissions_error("peer_tx_propose", err, logger))
@@ -267,7 +265,7 @@ impl ConsensusPeerApi for PeerApiService {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             // The peer who delivered this message to us.
-            let from_responder_id = match ResponderId::from_str(request.get_from_responder_id()) {
+            let from_responder_id = match ResponderId::from_str(&request.from_responder_id) {
                 Ok(responder_id) => responder_id,
                 Err(_) => {
                     let result = Err(rpc_invalid_arg_error(
@@ -280,32 +278,29 @@ impl ConsensusPeerApi for PeerApiService {
                 }
             };
 
-            let consensus_msg: mc_peers::ConsensusMsg = match deserialize(request.get_payload()) {
-                Ok(consensus_msg) => consensus_msg,
-                Err(_) => {
-                    let result = Err(rpc_invalid_arg_error(
-                        "send_consensus_msg",
-                        "consensus_msg",
-                        logger,
-                    ));
-                    send_result(ctx, sink, result, logger);
-                    return;
-                }
-            };
+            let consensus_msg: mc_peers::ConsensusMsg =
+                match deserialize(request.payload.as_slice()) {
+                    Ok(consensus_msg) => consensus_msg,
+                    Err(_) => {
+                        let result = Err(rpc_invalid_arg_error(
+                            "send_consensus_msg",
+                            "consensus_msg",
+                            logger,
+                        ));
+                        send_result(ctx, sink, result, logger);
+                        return;
+                    }
+                };
 
             let result: Result<ConsensusMsgResponse, RpcStatus> = match self
                 .handle_consensus_msg(consensus_msg, from_responder_id)
             {
-                Ok(()) => {
-                    let mut response = ConsensusMsgResponse::new();
-                    response.set_result(ConsensusMsgResult::Ok);
-                    Ok(response)
-                }
-                Err(PeerServiceError::UnknownPeer(_)) => {
-                    let mut response = ConsensusMsgResponse::new();
-                    response.set_result(ConsensusMsgResult::UnknownPeer);
-                    Ok(response)
-                }
+                Ok(()) => Ok(ConsensusMsgResponse {
+                    result: ConsensusMsgResult::Ok.into(),
+                }),
+                Err(PeerServiceError::UnknownPeer(_)) => Ok(ConsensusMsgResponse {
+                    result: ConsensusMsgResult::UnknownPeer.into(),
+                }),
                 Err(PeerServiceError::ConsensusMsgInvalidSignature) => Err(rpc_invalid_arg_error(
                     "send_consensus_msg",
                     "InvalidConsensusMsgSignature",
@@ -326,17 +321,17 @@ impl ConsensusPeerApi for PeerApiService {
     fn get_latest_msg(
         &mut self,
         ctx: RpcContext,
-        _request: Empty,
+        _request: (),
         sink: UnarySink<GetLatestMsgResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            let mut response = GetLatestMsgResponse::new();
-            if let Some(latest_msg) = (self.fetch_latest_msg_fn)() {
-                let serialized_msg = mc_util_serial::serialize(&latest_msg)
-                    .expect("Failed serializing consensus msg");
-                response.set_payload(serialized_msg);
-            }
+            let payload = if let Some(latest_msg) = (self.fetch_latest_msg_fn)() {
+                mc_util_serial::serialize(&latest_msg).expect("Failed serializing consensus msg")
+            } else {
+                Vec::new()
+            };
+            let response = GetLatestMsgResponse { payload };
             send_result(ctx, sink, Ok(response), logger);
         });
     }
@@ -352,7 +347,7 @@ impl ConsensusPeerApi for PeerApiService {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let mut tx_hashes: Vec<TxHash> = Vec::new();
-            for tx_hash_bytes in request.get_tx_hashes() {
+            for tx_hash_bytes in request.tx_hashes.iter() {
                 match TxHash::try_from(&tx_hash_bytes[..]) {
                     Ok(tx_hash) => tx_hashes.push(tx_hash),
                     Err(_) => {
@@ -363,24 +358,22 @@ impl ConsensusPeerApi for PeerApiService {
                 }
             }
 
-            let peer_session = PeerSession::from(request.get_channel_id());
+            let peer_session = PeerSession::from(request.channel_id);
 
             let result: Result<GetTxsResponse, RpcStatus> =
                 match self.handle_get_txs(tx_hashes, peer_session, logger) {
-                    Ok(enclave_message) => {
-                        let mut response = GetTxsResponse::new();
-                        response.set_success(enclave_message.into());
-                        Ok(response)
-                    }
+                    Ok(enclave_message) => Ok(GetTxsResponse {
+                        payload: Some(get_txs_response::Payload::Success(enclave_message.into())),
+                    }),
                     Err(PeerServiceError::UnknownTransactions(tx_hashes)) => {
-                        let mut tx_hashes_not_in_cache = TxHashesNotInCache::new();
-                        tx_hashes_not_in_cache.set_tx_hashes(
-                            tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect(),
-                        );
-
-                        let mut response = GetTxsResponse::new();
-                        response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
-                        Ok(response)
+                        let tx_hashes_not_in_cache = TxHashesNotInCache {
+                            tx_hashes: tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect(),
+                        };
+                        Ok(GetTxsResponse {
+                            payload: Some(get_txs_response::Payload::TxHashesNotInCache(
+                                tx_hashes_not_in_cache,
+                            )),
+                        })
                     }
                     // Unexpected errors:
                     Err(err) => Err(rpc_internal_error("get_txs", err, logger)),
@@ -400,9 +393,8 @@ mod tests {
     };
     use mc_blockchain_types::Block;
     use mc_common::{logger::test_with_logger, NodeID};
-    use mc_consensus_api::{
-        consensus_peer::ConsensusMsg,
-        consensus_peer_grpc::{create_consensus_peer_api, ConsensusPeerApiClient},
+    use mc_consensus_api::consensus_peer::{
+        create_consensus_peer_api, ConsensusMsg, ConsensusPeerApiClient,
     };
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_consensus_scp::{
@@ -519,14 +511,15 @@ mod tests {
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_x_signer_key).unwrap()
         };
 
-        let mut message = ConsensusMsg::new();
-        message.set_from_responder_id(from.to_string());
-        message.set_payload(mc_util_serial::serialize(&payload).unwrap());
+        let message = ConsensusMsg {
+            from_responder_id: from.to_string(),
+            payload: mc_util_serial::serialize(&payload).unwrap(),
+        };
 
         match client.send_consensus_msg(&message) {
             Ok(consensus_msg_response) => {
                 assert_eq!(
-                    consensus_msg_response.get_result(),
+                    consensus_msg_response.result(),
                     ConsensusMsgResult::UnknownPeer
                 );
             }
@@ -593,13 +586,14 @@ mod tests {
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_a_signer_key).unwrap()
         };
 
-        let mut message = ConsensusMsg::new();
-        message.set_from_responder_id(from.to_string());
-        message.set_payload(mc_util_serial::serialize(&payload).unwrap());
+        let message = ConsensusMsg {
+            from_responder_id: from.to_string(),
+            payload: mc_util_serial::serialize(&payload).unwrap(),
+        };
 
         match client.send_consensus_msg(&message) {
             Ok(consensus_msg_response) => {
-                assert_eq!(consensus_msg_response.get_result(), ConsensusMsgResult::Ok);
+                assert_eq!(consensus_msg_response.result(), ConsensusMsgResult::Ok);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -633,10 +627,11 @@ mod tests {
 
         // A message from a known peer. The payload does not deserialize to a
         // ConsensusMsg.
-        let mut message = ConsensusMsg::new();
         let from = known_responder_ids[0].clone();
-        message.set_from_responder_id(from.to_string());
-        message.set_payload(vec![240, 159, 146, 150]); // UTF-8 "sparkle heart".
+        let message = ConsensusMsg {
+            from_responder_id: from.to_string(),
+            payload: vec![240, 159, 146, 150], // UTF-8 "sparkle heart".
+        };
 
         match client.send_consensus_msg(&message) {
             Ok(response) => panic!("Unexpected response: {response:?}"),
@@ -711,9 +706,10 @@ mod tests {
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &wrong_signer_key).unwrap()
         };
 
-        let mut message = ConsensusMsg::new();
-        message.set_from_responder_id(from.to_string());
-        message.set_payload(mc_util_serial::serialize(&payload).unwrap());
+        let message = ConsensusMsg {
+            from_responder_id: from.to_string(),
+            payload: mc_util_serial::serialize(&payload).unwrap(),
+        };
 
         match client.send_consensus_msg(&message) {
             Ok(response) => panic!("Unexpected response: {response:?}"),

@@ -227,7 +227,7 @@ fn three_node_cluster_fencing(logger: Logger) {
 
             // There should be a block written only by the node that won the race.
             let active_summary = active_summary.unwrap();
-            let active_iid = IngestInvocationId::from(active_summary.get_ingest_invocation_id());
+            let active_iid = IngestInvocationId::from(active_summary.ingest_invocation_id);
 
             let num_blocks = helper.ledger.num_blocks().unwrap();
 
@@ -308,9 +308,9 @@ fn three_node_cluster_fencing(logger: Logger) {
             assert!(node.is_active());
 
             let node_summary = node.get_ingest_summary();
-            assert_eq!(node_summary.get_next_block_index(), num_blocks);
+            assert_eq!(node_summary.next_block_index, num_blocks);
 
-            IngestInvocationId::from(node_summary.get_ingest_invocation_id())
+            IngestInvocationId::from(node_summary.ingest_invocation_id)
         };
 
         let invocation_id = helper

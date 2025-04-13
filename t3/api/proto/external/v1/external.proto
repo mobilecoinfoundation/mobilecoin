@@ -50,7 +50,9 @@ message Ed25519Signature {
 // `account-keys` crate
 //
 
-// Complete AccountKey, containing the pair of secret keys, which can be used
+// Complete AccountKey
+//
+// Contains the pair of secret keys, which can be used
 // for spending, and optionally some Fog related info that is used to form
 // public addresses for accounts that sign up with Fog service.
 //
@@ -100,6 +102,8 @@ message PublicAddress {
   bytes fog_authority_sig = 5;
 }
 
+// A compact form of a user's account key
+//
 // A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
 // The RootIdentity is a compact form of a user's account key, if it has been
 // derived in this way. This may be useful for e.g. paper wallets.
@@ -120,9 +124,10 @@ message RootEntropy {
   bytes data = 1;
 }
 
-// A ViewKey is a reduced AccountKey -- it contains the private key necessary to
-// view your transactions and see the amounts, but not to send new transactions.
-// This concept is part of Cryptonote.
+// A ViewKey is a reduced AccountKey
+//
+// It contains the private key necessary to view your transactions and see the
+// amounts, but not to send new transactions. This concept is part of Cryptonote.
 // In Mobilecoin, all public addresses correspond to subaddresses, and often
 // the "default subaddress" is used.
 // The ViewKey similarly corresponds to a particular subaddress.
@@ -140,6 +145,7 @@ message ViewKey {
 //
 
 // A 32-byte scalar associated to the ristretto group.
+//
 // This is the same as RistrettoPrivate, but they are used in different places.
 // TODO: MC-1605 Consider to factor out this type, or just this proto message.
 message CurveScalar {

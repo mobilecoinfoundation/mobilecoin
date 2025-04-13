@@ -13,7 +13,7 @@ use mc_common::{
     lru::LruCache,
     ResponderId,
 };
-use protobuf::Message;
+use prost::Message;
 use reqwest::Error as ReqwestError;
 use std::{
     fs,
@@ -167,7 +167,7 @@ impl ReqwestTransactionsFetcher {
         self.get_block_data_by_index(0, None)
     }
 
-    fn fetch_protobuf_object<M: Message>(
+    fn fetch_protobuf_object<M: Message + Default>(
         &self,
         url: &Url,
     ) -> Result<M, ReqwestTransactionsFetcherError> {
@@ -187,7 +187,7 @@ impl ReqwestTransactionsFetcher {
             bytes
         };
 
-        let obj = M::parse_from_bytes(&bytes).map_err(|err| {
+        let obj = M::decode(bytes.as_slice()).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
                 format!("protobuf parse failed: {err:?}"),

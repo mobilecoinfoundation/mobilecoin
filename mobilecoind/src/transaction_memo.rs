@@ -2,9 +2,7 @@
 
 use mc_account_keys::AccountKey;
 use mc_api::ConversionError;
-use mc_mobilecoind_api::{
-    mobilecoind_api, TransactionMemo_RTH_oneof_payment_id, TransactionMemo_oneof_transaction_memo,
-};
+use mc_mobilecoind_api::{mobilecoind_api, transaction_memo, transaction_memo_rth};
 use mc_transaction_builder::{
     BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder,
 };
@@ -107,34 +105,30 @@ impl TryFrom<&mobilecoind_api::TransactionMemo> for TransactionMemo {
                 subaddress_index: None,
             }),
 
-            Some(TransactionMemo_oneof_transaction_memo::rth(rth)) => {
-                let subaddress_index = if rth.has_subaddress_index() {
-                    Some(rth.get_subaddress_index())
-                } else {
-                    None
-                };
+            Some(transaction_memo::TransactionMemo::Rth(rth)) => {
+                let subaddress_index = rth.subaddress_index;
                 match rth.payment_id.as_ref() {
                     None => Ok(TransactionMemo::Rth { subaddress_index }),
 
-                    Some(TransactionMemo_RTH_oneof_payment_id::payment_intent_id(
-                        payment_intent_id,
-                    )) => Ok(TransactionMemo::RthWithPaymentIntentId {
-                        subaddress_index,
-                        payment_intent_id: *payment_intent_id,
-                    }),
+                    Some(transaction_memo_rth::PaymentId::PaymentIntentId(payment_intent_id)) => {
+                        Ok(TransactionMemo::RthWithPaymentIntentId {
+                            subaddress_index,
+                            payment_intent_id: *payment_intent_id,
+                        })
+                    }
 
-                    Some(TransactionMemo_RTH_oneof_payment_id::payment_request_id(
-                        payment_request_id,
-                    )) => Ok(TransactionMemo::RthWithPaymentRequestId {
-                        subaddress_index,
-                        payment_request_id: *payment_request_id,
-                    }),
+                    Some(transaction_memo_rth::PaymentId::PaymentRequestId(payment_request_id)) => {
+                        Ok(TransactionMemo::RthWithPaymentRequestId {
+                            subaddress_index,
+                            payment_request_id: *payment_request_id,
+                        })
+                    }
                 }
             }
 
-            Some(TransactionMemo_oneof_transaction_memo::empty(_)) => Ok(TransactionMemo::Empty),
+            Some(transaction_memo::TransactionMemo::Empty(_)) => Ok(TransactionMemo::Empty),
 
-            Some(TransactionMemo_oneof_transaction_memo::burn_redemption(burn_redemption)) => {
+            Some(transaction_memo::TransactionMemo::BurnRedemption(burn_redemption)) => {
                 if burn_redemption.memo_data.len() != BurnRedemptionMemo::MEMO_DATA_LEN {
                     return Err(ConversionError::ArrayCastError);
                 }
@@ -165,10 +159,7 @@ mod tests {
     #[test]
     fn transaction_memo_try_from_rth_default() {
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::rth(
-                mc_mobilecoind_api::TransactionMemo_RTH::default(),
-            )),
-            ..Default::default()
+            transaction_memo: Some(transaction_memo::TransactionMemo::Rth(Default::default())),
         };
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(
@@ -182,11 +173,12 @@ mod tests {
     #[test]
     fn transaction_memo_try_from_rth_explicit_subaddress_index() {
         for subaddress_index in [0, 123, u64::MAX] {
-            let mut rth = mc_mobilecoind_api::TransactionMemo_RTH::default();
-            rth.set_subaddress_index(subaddress_index);
-            let src = mobilecoind_api::TransactionMemo {
-                transaction_memo: Some(TransactionMemo_oneof_transaction_memo::rth(rth)),
+            let rth = mc_mobilecoind_api::TransactionMemoRth {
+                subaddress_index: Some(subaddress_index),
                 ..Default::default()
+            };
+            let src = mobilecoind_api::TransactionMemo {
+                transaction_memo: Some(transaction_memo::TransactionMemo::Rth(rth)),
             };
 
             let result = super::TransactionMemo::try_from(&src).unwrap();
@@ -201,11 +193,12 @@ mod tests {
 
     #[test]
     fn transaction_memo_try_from_rth_payment_request_id() {
-        let mut rth = mc_mobilecoind_api::TransactionMemo_RTH::default();
-        rth.set_payment_request_id(123);
-        let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::rth(rth.clone())),
+        let mut rth = mc_mobilecoind_api::TransactionMemoRth {
+            payment_id: Some(transaction_memo_rth::PaymentId::PaymentRequestId(123)),
             ..Default::default()
+        };
+        let src = mobilecoind_api::TransactionMemo {
+            transaction_memo: Some(transaction_memo::TransactionMemo::Rth(rth.clone())),
         };
 
         let result = super::TransactionMemo::try_from(&src).unwrap();
@@ -217,10 +210,9 @@ mod tests {
             }
         );
 
-        rth.set_subaddress_index(456);
+        rth.subaddress_index = Some(456);
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::rth(rth)),
-            ..Default::default()
+            transaction_memo: Some(transaction_memo::TransactionMemo::Rth(rth)),
         };
 
         let result = super::TransactionMemo::try_from(&src).unwrap();
@@ -235,11 +227,12 @@ mod tests {
 
     #[test]
     fn transaction_memo_try_from_rth_payment_intent_id() {
-        let mut rth = mc_mobilecoind_api::TransactionMemo_RTH::default();
-        rth.set_payment_intent_id(123);
-        let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::rth(rth.clone())),
+        let mut rth = mc_mobilecoind_api::TransactionMemoRth {
+            payment_id: Some(transaction_memo_rth::PaymentId::PaymentIntentId(123)),
             ..Default::default()
+        };
+        let src = mobilecoind_api::TransactionMemo {
+            transaction_memo: Some(transaction_memo::TransactionMemo::Rth(rth.clone())),
         };
 
         let result = super::TransactionMemo::try_from(&src).unwrap();
@@ -251,10 +244,9 @@ mod tests {
             }
         );
 
-        rth.set_subaddress_index(456);
+        rth.subaddress_index = Some(456);
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::rth(rth)),
-            ..Default::default()
+            transaction_memo: Some(transaction_memo::TransactionMemo::Rth(rth)),
         };
 
         let result = super::TransactionMemo::try_from(&src).unwrap();
@@ -270,10 +262,7 @@ mod tests {
     #[test]
     fn transaction_memo_try_from_empty() {
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::empty(
-                Default::default(),
-            )),
-            ..Default::default()
+            transaction_memo: Some(transaction_memo::TransactionMemo::Empty(Default::default())),
         };
         let result = super::TransactionMemo::try_from(&src).unwrap();
         assert_eq!(result, super::TransactionMemo::Empty);
@@ -282,49 +271,41 @@ mod tests {
     #[test]
     fn transaction_memo_try_from_burn_redemption() {
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::burn_redemption(
+            transaction_memo: Some(transaction_memo::TransactionMemo::BurnRedemption(
                 Default::default(),
             )),
-            ..Default::default()
         };
         let result = super::TransactionMemo::try_from(&src).unwrap_err();
         assert_eq!(result, ConversionError::ArrayCastError);
 
-        let burn_redemption = mc_mobilecoind_api::TransactionMemo_BurnRedemption {
-            memo_data: vec![],
-            ..Default::default()
-        };
+        let burn_redemption =
+            mc_mobilecoind_api::TransactionMemoBurnRedemption { memo_data: vec![] };
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::burn_redemption(
+            transaction_memo: Some(transaction_memo::TransactionMemo::BurnRedemption(
                 burn_redemption,
             )),
-            ..Default::default()
         };
         let result = super::TransactionMemo::try_from(&src).unwrap_err();
         assert_eq!(result, ConversionError::ArrayCastError);
 
-        let burn_redemption = mc_mobilecoind_api::TransactionMemo_BurnRedemption {
+        let burn_redemption = mc_mobilecoind_api::TransactionMemoBurnRedemption {
             memo_data: vec![1; BurnRedemptionMemo::MEMO_DATA_LEN - 1],
-            ..Default::default()
         };
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::burn_redemption(
+            transaction_memo: Some(transaction_memo::TransactionMemo::BurnRedemption(
                 burn_redemption,
             )),
-            ..Default::default()
         };
         let result = super::TransactionMemo::try_from(&src).unwrap_err();
         assert_eq!(result, ConversionError::ArrayCastError);
 
-        let burn_redemption = mc_mobilecoind_api::TransactionMemo_BurnRedemption {
+        let burn_redemption = mc_mobilecoind_api::TransactionMemoBurnRedemption {
             memo_data: vec![1; BurnRedemptionMemo::MEMO_DATA_LEN],
-            ..Default::default()
         };
         let src = mobilecoind_api::TransactionMemo {
-            transaction_memo: Some(TransactionMemo_oneof_transaction_memo::burn_redemption(
+            transaction_memo: Some(transaction_memo::TransactionMemo::BurnRedemption(
                 burn_redemption,
             )),
-            ..Default::default()
         };
 
         let result = super::TransactionMemo::try_from(&src).unwrap();
