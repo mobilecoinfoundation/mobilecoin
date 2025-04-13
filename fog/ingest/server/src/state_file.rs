@@ -3,7 +3,8 @@
 //! State we want to keep between invocations of the ingest server.
 
 use mc_fog_api::ingest_common::IngestStateFile;
-use protobuf::Message;
+use mc_util_serial::prost;
+use prost::Message;
 use std::{
     fs,
     io::{Error, ErrorKind, Result, Write},
@@ -26,7 +27,7 @@ impl StateFile {
     /// Read the data from the state file on disk
     pub fn read(&self) -> Result<IngestStateFile> {
         let file_data = fs::read(&self.file_path)?;
-        let state_data = IngestStateFile::parse_from_bytes(&file_data).map_err(|e| {
+        let state_data = IngestStateFile::decode(file_data.as_slice()).map_err(|e| {
             Error::new(
                 ErrorKind::Other,
                 format!("Failed parsing state file {:?}: {}", self.file_path, e),
@@ -47,12 +48,7 @@ impl StateFile {
     /// Unfortunately there's no way to do 4 in the rust stdlib, so we would
     /// need to use nix or something. https://github.com/rust-lang/rust/issues/32255#issuecomment-308296338
     pub fn write(&self, state_data: &IngestStateFile) -> Result<()> {
-        let proto_data = state_data.write_to_bytes().map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("failed serializing state data: {e}"),
-            )
-        })?;
+        let proto_data = state_data.encode_to_vec();
         let mut file = fs::File::create(&self.file_path)?;
         file.write_all(&proto_data)?;
         file.sync_all()

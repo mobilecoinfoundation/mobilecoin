@@ -18,26 +18,23 @@ use mc_transaction_core::{
     Amount, MemoPayload, TokenId,
 };
 use mc_transaction_extra::{MemoType, TxOutConfirmationNumber};
-use protobuf::RepeatedField;
 
 impl From<&UnspentTxOut> for api::UnspentTxOut {
     fn from(src: &UnspentTxOut) -> Self {
-        let mut dst = Self::new();
-
-        dst.set_tx_out((&src.tx_out).into());
-        dst.set_subaddress_index(src.subaddress_index);
-        dst.set_key_image((&src.key_image).into());
-        dst.set_value(src.value);
-        dst.set_attempted_spend_height(src.attempted_spend_height);
-        dst.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
-        dst.set_token_id(src.token_id);
-        dst.set_memo_payload(src.memo_payload.clone());
-
-        if let Ok(mp) = MemoPayload::try_from(&src.memo_payload[..]) {
-            dst.set_decoded_memo(decode_memo(&mp));
+        Self {
+            tx_out: Some((&src.tx_out).into()),
+            subaddress_index: src.subaddress_index,
+            key_image: Some((&src.key_image).into()),
+            value: src.value,
+            attempted_spend_height: src.attempted_spend_height,
+            attempted_spend_tombstone: src.attempted_spend_tombstone,
+            token_id: src.token_id,
+            memo_payload: src.memo_payload.clone(),
+            decoded_memo: MemoPayload::try_from(&src.memo_payload[..])
+                .ok()
+                .map(|m| decode_memo(&m)),
+            ..Default::default()
         }
-
-        dst
     }
 }
 
@@ -45,9 +42,9 @@ impl TryFrom<&api::UnspentTxOut> for UnspentTxOut {
     type Error = ConversionError;
 
     fn try_from(src: &api::UnspentTxOut) -> Result<Self, Self::Error> {
-        let tx_out = TxOut::try_from(src.get_tx_out())?;
+        let tx_out = TxOut::try_from(src.tx_out.as_ref().unwrap_or(&Default::default()))?;
         let subaddress_index = src.subaddress_index;
-        let key_image = KeyImage::try_from(src.get_key_image())?;
+        let key_image = KeyImage::try_from(src.key_image.as_ref().unwrap_or(&Default::default()))?;
         let value = src.value;
         let attempted_spend_height = src.attempted_spend_height;
         let attempted_spend_tombstone = src.attempted_spend_tombstone;
@@ -82,31 +79,41 @@ fn bytes_to_tx_private_key(bytes: &[u8]) -> Result<Option<RistrettoPrivate>, Con
 // Note: This could be From<&MemoPayload> for api::DecodedMemo, but there are
 // orphan rules issues.
 fn decode_memo(memo_payload: &MemoPayload) -> api::DecodedMemo {
-    let mut result = api::DecodedMemo::new();
+    let mut result = api::DecodedMemo::default();
 
     match MemoType::try_from(memo_payload) {
         Ok(MemoType::Unused(_)) => {}
         Ok(MemoType::AuthenticatedSender(memo)) => {
-            let mut asm = api::AuthenticatedSenderMemo::new();
-            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
-            result.set_authenticated_sender_memo(asm);
+            let asm = api::AuthenticatedSenderMemo {
+                sender_hash: memo.sender_address_hash().as_ref().to_vec(),
+                ..Default::default()
+            };
+            result.decoded_memo =
+                Some(api::decoded_memo::DecodedMemo::AuthenticatedSenderMemo(asm));
         }
         Ok(MemoType::AuthenticatedSenderWithPaymentRequestId(memo)) => {
-            let mut asm = api::AuthenticatedSenderMemo::new();
-            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
-            asm.set_payment_request_id(memo.payment_request_id());
-            result.set_authenticated_sender_memo(asm);
+            let asm = api::AuthenticatedSenderMemo {
+                sender_hash: memo.sender_address_hash().as_ref().to_vec(),
+                payment_request_id: Some(memo.payment_request_id()),
+                ..Default::default()
+            };
+            result.decoded_memo =
+                Some(api::decoded_memo::DecodedMemo::AuthenticatedSenderMemo(asm));
         }
         Ok(MemoType::AuthenticatedSenderWithPaymentIntentId(memo)) => {
-            let mut asm = api::AuthenticatedSenderMemo::new();
-            asm.set_sender_hash(memo.sender_address_hash().as_ref().to_vec());
-            asm.set_payment_intent_id(memo.payment_intent_id());
-            result.set_authenticated_sender_memo(asm);
+            let asm = api::AuthenticatedSenderMemo {
+                sender_hash: memo.sender_address_hash().as_ref().to_vec(),
+                payment_intent_id: Some(memo.payment_intent_id()),
+                ..Default::default()
+            };
+            result.decoded_memo =
+                Some(api::decoded_memo::DecodedMemo::AuthenticatedSenderMemo(asm));
         }
         Ok(_) | Err(_) => {
-            let mut um = api::UnknownMemo::new();
-            um.set_type_bytes(memo_payload.get_memo_type().to_vec());
-            result.set_unknown_memo(um);
+            let um = api::UnknownMemo {
+                type_bytes: memo_payload.get_memo_type().to_vec(),
+            };
+            result.decoded_memo = Some(api::decoded_memo::DecodedMemo::UnknownMemo(um));
         }
     }
 
@@ -115,15 +122,14 @@ fn decode_memo(memo_payload: &MemoPayload) -> api::DecodedMemo {
 
 impl From<&Outlay> for api::Outlay {
     fn from(src: &Outlay) -> Self {
-        let mut dst = Self::new();
-
-        dst.set_value(src.value);
-        dst.set_receiver((&src.receiver).into());
-        if let Some(key) = src.tx_private_key {
-            dst.set_tx_private_key(key.to_bytes().to_vec());
+        Self {
+            value: src.value,
+            receiver: Some((&src.receiver).into()),
+            tx_private_key: src
+                .tx_private_key
+                .map(|k| k.to_bytes().to_vec())
+                .unwrap_or_default(),
         }
-
-        dst
     }
 }
 
@@ -132,8 +138,9 @@ impl TryFrom<&api::Outlay> for Outlay {
 
     fn try_from(src: &api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
-        let receiver = PublicAddress::try_from(src.get_receiver())?;
-        let tx_private_key = bytes_to_tx_private_key(src.get_tx_private_key())?;
+        let receiver =
+            PublicAddress::try_from(src.receiver.as_ref().unwrap_or(&Default::default()))?;
+        let tx_private_key = bytes_to_tx_private_key(src.tx_private_key.as_slice())?;
 
         Ok(Self {
             value,
@@ -145,16 +152,15 @@ impl TryFrom<&api::Outlay> for Outlay {
 
 impl From<&OutlayV2> for api::OutlayV2 {
     fn from(src: &OutlayV2) -> Self {
-        let mut dst = Self::new();
-
-        dst.set_value(src.amount.value);
-        dst.set_token_id(*src.amount.token_id);
-        dst.set_receiver((&src.receiver).into());
-        if let Some(key) = src.tx_private_key {
-            dst.set_tx_private_key(key.to_bytes().to_vec());
+        Self {
+            value: src.amount.value,
+            token_id: *src.amount.token_id,
+            receiver: Some((&src.receiver).into()),
+            tx_private_key: src
+                .tx_private_key
+                .map(|k| k.to_bytes().to_vec())
+                .unwrap_or_default(),
         }
-
-        dst
     }
 }
 
@@ -163,8 +169,9 @@ impl TryFrom<&api::OutlayV2> for OutlayV2 {
 
     fn try_from(src: &api::OutlayV2) -> Result<Self, Self::Error> {
         let amount = Amount::new(src.value, TokenId::from(src.token_id));
-        let receiver = PublicAddress::try_from(src.get_receiver())?;
-        let tx_private_key = bytes_to_tx_private_key(src.get_tx_private_key())?;
+        let receiver =
+            PublicAddress::try_from(src.receiver.as_ref().unwrap_or(&Default::default()))?;
+        let tx_private_key = bytes_to_tx_private_key(src.tx_private_key.as_slice())?;
 
         Ok(Self {
             amount,
@@ -176,31 +183,23 @@ impl TryFrom<&api::OutlayV2> for OutlayV2 {
 
 impl From<&TxProposal> for api::TxProposal {
     fn from(src: &TxProposal) -> api::TxProposal {
-        let mut dst = api::TxProposal::new();
-
-        dst.set_input_list(RepeatedField::from_vec(
-            src.utxos.iter().map(|utxo| utxo.into()).collect(),
-        ));
-        dst.set_outlay_list(RepeatedField::from_vec(
-            src.outlays.iter().map(|outlay| outlay.into()).collect(),
-        ));
-        dst.set_tx((&src.tx).into());
-        dst.set_fee(src.tx.prefix.fee);
-        dst.set_outlay_index_to_tx_out_index(
-            src.outlay_index_to_tx_out_index
+        Self {
+            input_list: src.utxos.iter().map(Into::into).collect(),
+            outlay_list: src.outlays.iter().map(Into::into).collect(),
+            tx: Some((&src.tx).into()),
+            fee: src.tx.prefix.fee,
+            outlay_index_to_tx_out_index: src
+                .outlay_index_to_tx_out_index
                 .iter()
                 .map(|(key, val)| (*key as u64, *val as u64))
                 .collect(),
-        );
-        dst.set_outlay_confirmation_numbers(
-            src.outlay_confirmation_numbers
+            outlay_confirmation_numbers: src
+                .outlay_confirmation_numbers
                 .iter()
                 .map(|val| val.to_vec())
                 .collect(),
-        );
-        dst.set_scis(src.scis.iter().map(Into::into).collect());
-
-        dst
+            scis: src.scis.iter().map(Into::into).collect(),
+        }
     }
 }
 
@@ -208,32 +207,41 @@ impl TryFrom<&api::TxProposal> for TxProposal {
     type Error = ConversionError;
 
     fn try_from(src: &api::TxProposal) -> Result<Self, Self::Error> {
-        if src.fee != src.get_tx().get_prefix().fee {
+        if src.fee
+            != src
+                .tx
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .prefix
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .fee
+        {
             return Err(ConversionError::FeeMismatch);
         }
 
         let utxos = src
-            .get_input_list()
+            .input_list
             .iter()
             .map(UnspentTxOut::try_from)
             .collect::<Result<Vec<UnspentTxOut>, ConversionError>>()?;
 
         let outlays: Vec<OutlayV2> = src
-            .get_outlay_list()
+            .outlay_list
             .iter()
             .map(OutlayV2::try_from)
             .collect::<Result<_, _>>()?;
 
         let scis: Vec<SciForTx> = src
-            .get_scis()
+            .scis
             .iter()
             .map(SciForTx::try_from)
             .collect::<Result<_, _>>()?;
 
-        let tx = Tx::try_from(src.get_tx())?;
+        let tx = Tx::try_from(src.tx.as_ref().unwrap_or(&Default::default()))?;
 
         let outlay_index_to_tx_out_index = src
-            .get_outlay_index_to_tx_out_index()
+            .outlay_index_to_tx_out_index
             .iter()
             .map(|(key, val)| (*key as usize, *val as usize))
             .collect::<HashMap<_, _>>();
@@ -250,7 +258,7 @@ impl TryFrom<&api::TxProposal> for TxProposal {
         }
 
         let outlay_confirmation_numbers = src
-            .get_outlay_confirmation_numbers()
+            .outlay_confirmation_numbers
             .iter()
             .map(|src| match src.len() {
                 32 => {
@@ -275,10 +283,10 @@ impl TryFrom<&api::TxProposal> for TxProposal {
 
 impl From<&SciForTx> for api::SciForTx {
     fn from(src: &SciForTx) -> Self {
-        let mut dst = Self::new();
-        dst.set_sci((&src.sci).into());
-        dst.set_partial_fill_value(src.partial_fill_value);
-        dst
+        Self {
+            sci: Some((&src.sci).into()),
+            partial_fill_value: src.partial_fill_value,
+        }
     }
 }
 
@@ -286,7 +294,7 @@ impl TryFrom<&api::SciForTx> for SciForTx {
     type Error = ConversionError;
 
     fn try_from(src: &api::SciForTx) -> Result<Self, Self::Error> {
-        let sci = src.get_sci().try_into()?;
+        let sci = src.sci.as_ref().unwrap_or(&Default::default()).try_into()?;
         let partial_fill_value = src.partial_fill_value;
 
         Ok(Self {
@@ -305,6 +313,7 @@ mod test {
         test_utils::{create_ledger, create_transaction, initialize_ledger},
         Ledger,
     };
+    use mc_mobilecoind_api::decoded_memo;
     use mc_transaction_core::{tokens::Mob, BlockVersion, Token};
     use mc_transaction_extra::{
         AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentIntentIdMemo,
@@ -351,11 +360,14 @@ mod test {
 
         let proto = api::UnspentTxOut::from(&rust);
 
-        assert_eq!(tx_out, TxOut::try_from(proto.get_tx_out()).unwrap());
+        assert_eq!(
+            tx_out,
+            TxOut::try_from(proto.tx_out.as_ref().unwrap()).unwrap()
+        );
         assert_eq!(subaddress_index, proto.subaddress_index);
         assert_eq!(
             key_image,
-            KeyImage::try_from(proto.get_key_image()).unwrap()
+            KeyImage::try_from(proto.key_image.as_ref().unwrap()).unwrap()
         );
         assert_eq!(value, proto.value);
         assert_eq!(attempted_spend_height, proto.attempted_spend_height);
@@ -392,11 +404,14 @@ mod test {
         let memo2 =
             AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
         let decoded = decode_memo(&MemoPayload::from(memo2));
-        assert!(decoded.has_authenticated_sender_memo());
-        let sender_memo = decoded.get_authenticated_sender_memo();
-        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
-        assert!(!sender_memo.has_payment_request_id());
-        assert!(!sender_memo.has_payment_intent_id());
+        if let Some(decoded_memo::DecodedMemo::AuthenticatedSenderMemo(memo)) = decoded.decoded_memo
+        {
+            assert_eq!(memo.sender_hash, alice_hash.as_ref());
+            assert_eq!(memo.payment_request_id, None);
+            assert_eq!(memo.payment_intent_id, None);
+        } else {
+            panic!("Expected AuthenticatedSenderMemo, got {decoded:?}");
+        }
 
         let memo3 = AuthenticatedSenderWithPaymentRequestIdMemo::new(
             &alice_cred,
@@ -405,13 +420,14 @@ mod test {
             7u64,
         );
         let decoded = decode_memo(&MemoPayload::from(memo3));
-        assert!(decoded.has_authenticated_sender_memo());
-        assert!(!decoded.has_unknown_memo());
-        let sender_memo = decoded.get_authenticated_sender_memo();
-        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
-        assert!(sender_memo.has_payment_request_id());
-        assert_eq!(sender_memo.get_payment_request_id(), 7);
-        assert!(!sender_memo.has_payment_intent_id());
+        if let Some(decoded_memo::DecodedMemo::AuthenticatedSenderMemo(memo)) = decoded.decoded_memo
+        {
+            assert_eq!(memo.sender_hash, alice_hash.as_ref());
+            assert_eq!(memo.payment_request_id, Some(7));
+            assert_eq!(memo.payment_intent_id, None);
+        } else {
+            panic!("Expected AuthenticatedSenderMemo, got {decoded:?}");
+        }
 
         let memo4 = AuthenticatedSenderWithPaymentIntentIdMemo::new(
             &alice_cred,
@@ -420,29 +436,32 @@ mod test {
             9u64,
         );
         let decoded = decode_memo(&MemoPayload::from(memo4));
-        assert!(decoded.has_authenticated_sender_memo());
-        assert!(!decoded.has_unknown_memo());
-        let sender_memo = decoded.get_authenticated_sender_memo();
-        assert_eq!(sender_memo.get_sender_hash(), alice_hash.as_ref());
-        assert!(!sender_memo.has_payment_request_id());
-        assert!(sender_memo.has_payment_intent_id());
-        assert_eq!(sender_memo.get_payment_intent_id(), 9);
+        if let Some(decoded_memo::DecodedMemo::AuthenticatedSenderMemo(memo)) = decoded.decoded_memo
+        {
+            assert_eq!(memo.sender_hash, alice_hash.as_ref());
+            assert_eq!(memo.payment_request_id, None);
+            assert_eq!(memo.payment_intent_id, Some(9));
+        } else {
+            panic!("Expected AuthenticatedSenderMemo, got {decoded:?}");
+        }
 
         // Destination memos are not implemented yet
         let memo5 = DestinationMemo::new(ShortAddressHash::from(&bob_addr), 17, 18).unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo5));
-        assert!(!decoded.has_authenticated_sender_memo());
-        assert!(decoded.has_unknown_memo());
-        let type_bytes = decoded.get_unknown_memo().get_type_bytes();
-        assert_eq!(&type_bytes, &[2u8, 0u8]);
+        if let Some(decoded_memo::DecodedMemo::UnknownMemo(memo)) = decoded.decoded_memo {
+            assert_eq!(memo.type_bytes, &[2u8, 0u8]);
+        } else {
+            panic!("Expected UnknownMemo, got {decoded:?}");
+        }
 
         // This is an unassigned memo type
         let memo6 = MemoPayload::new([7u8, 8u8], [0u8; 64]);
         let decoded = decode_memo(&memo6);
-        assert!(!decoded.has_authenticated_sender_memo());
-        assert!(decoded.has_unknown_memo());
-        let type_bytes = decoded.get_unknown_memo().get_type_bytes();
-        assert_eq!(&type_bytes, &[7u8, 8u8]);
+        if let Some(decoded_memo::DecodedMemo::UnknownMemo(memo)) = decoded.decoded_memo {
+            assert_eq!(memo.type_bytes, &[7u8, 8u8]);
+        } else {
+            panic!("Expected UnknownMemo, got {decoded:?}");
+        }
     }
 
     #[test]
@@ -460,7 +479,7 @@ mod test {
 
         assert_eq!(proto.value, rust.value);
         assert_eq!(
-            PublicAddress::try_from(proto.get_receiver()).unwrap(),
+            PublicAddress::try_from(proto.receiver.as_ref().unwrap()).unwrap(),
             public_addr
         );
 
@@ -483,7 +502,7 @@ mod test {
 
         assert_eq!(proto.value, rust.value);
         assert_eq!(
-            PublicAddress::try_from(proto.get_receiver()).unwrap(),
+            PublicAddress::try_from(proto.receiver.as_ref().unwrap()).unwrap(),
             public_addr
         );
 
@@ -573,18 +592,18 @@ mod test {
 
         assert_eq!(
             rust.utxos,
-            vec![UnspentTxOut::try_from(&proto.get_input_list()[0]).unwrap()],
+            vec![UnspentTxOut::try_from(&proto.input_list[0]).unwrap()],
         );
 
         assert_eq!(
             rust.outlays,
-            vec![OutlayV2::try_from(&proto.get_outlay_list()[0]).unwrap()],
+            vec![OutlayV2::try_from(&proto.outlay_list[0]).unwrap()],
         );
 
-        assert_eq!(proto.get_outlay_index_to_tx_out_index().len(), 1);
-        assert_eq!(proto.get_outlay_index_to_tx_out_index().get(&0), Some(&0));
+        assert_eq!(proto.outlay_index_to_tx_out_index.len(), 1);
+        assert_eq!(proto.outlay_index_to_tx_out_index.get(&0), Some(&0));
 
-        assert_eq!(rust.tx, Tx::try_from(proto.get_tx()).unwrap());
+        assert_eq!(rust.tx, Tx::try_from(proto.tx.as_ref().unwrap()).unwrap());
 
         // Proto -> Rust
         assert_eq!(rust, TxProposal::try_from(&proto).unwrap());

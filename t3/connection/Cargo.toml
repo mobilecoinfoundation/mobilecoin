@@ -10,8 +10,7 @@ rust-version = { workspace = true }
 [dependencies]
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
-protobuf = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 
 mc-common = { workspace = true, features = ["log"] }
 mc-connection = { workspace = true }

@@ -30,9 +30,8 @@ mc-util-uri = { workspace = true }
 
 crossbeam-channel = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 mockall = { workspace = true }
-protobuf = { workspace = true }
 retry = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 

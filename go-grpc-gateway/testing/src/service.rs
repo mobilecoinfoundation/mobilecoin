@@ -1,8 +1,7 @@
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{self, Logger};
-use mc_fog_report_api::{
-    report::{ReportRequest as ProtobufReportRequest, ReportResponse as ProtobufReportResponse},
-    report_grpc::ReportApi,
+use mc_fog_report_api::fog_report::{
+    ReportApi, ReportRequest as ProtobufReportRequest, ReportResponse as ProtobufReportResponse,
 };
 use mc_fog_report_server::SVC_COUNTERS;
 use mc_fog_report_types::ReportResponse;

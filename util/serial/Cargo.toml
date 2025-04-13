@@ -13,11 +13,10 @@ rust-version = { workspace = true }
 # so if anything else in your build plan will activate ser../../std, then mcseri../../std is
 # required.
 std = ["serde/std", "serde_cbor/std", "serde_with"]
-test_utils = ["protobuf"]
+test_utils = []
 
 [dependencies]
 prost = { workspace = true, features = ["prost-derive"] }
-protobuf = { workspace = true, optional = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 serde_cbor = { workspace = true, features = ["alloc"] }
 serde_with = { workspace = true, features = ["macros"], optional = true }

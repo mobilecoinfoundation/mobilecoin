@@ -19,9 +19,8 @@ mc-util-grpc = { workspace = true }
 mc-util-serial = { workspace = true, features = ["std"] }
 
 clap = { workspace = true, features = ["derive", "env"] }
-grpcio = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 hex = { workspace = true }
-protobuf = { workspace = true }
 rocket = { workspace = true, features = ["json"] }
 serde = { workspace = true }
 serde_derive = { workspace = true }

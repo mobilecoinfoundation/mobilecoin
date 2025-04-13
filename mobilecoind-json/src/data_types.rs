@@ -4,12 +4,11 @@
 
 use mc_api::external::{
     CompressedRistretto, EncryptedFogHint, EncryptedMemo, InputRules, KeyImage, MaskedAmount,
-    PublicAddress, RingMLSAG, SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement,
+    PublicAddress, RingMlsag, SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement,
     TxOutMembershipHash, TxOutMembershipProof, TxPrefix,
 };
 use mc_mobilecoind_api as api;
 use mc_util_serial::JsonU64;
-use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Deserialize, Default, Debug)]
@@ -66,10 +65,24 @@ pub struct JsonAccountKeyResponse {
 
 impl From<&api::GetAccountKeyResponse> for JsonAccountKeyResponse {
     fn from(src: &api::GetAccountKeyResponse) -> Self {
+        let default_account_key = Default::default();
+        let account_key = src.account_key.as_ref().unwrap_or(&default_account_key);
         Self {
-            view_private_key: hex::encode(src.get_account_key().get_view_private_key().get_data()),
+            view_private_key: hex::encode(
+                account_key
+                    .view_private_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
             spend_private_key: hex::encode(
-                src.get_account_key().get_spend_private_key().get_data(),
+                account_key
+                    .spend_private_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
             ),
         }
     }
@@ -105,7 +118,7 @@ pub struct JsonMonitorListResponse {
 impl From<&api::GetMonitorListResponse> for JsonMonitorListResponse {
     fn from(src: &api::GetMonitorListResponse) -> Self {
         Self {
-            monitor_ids: src.get_monitor_id_list().iter().map(hex::encode).collect(),
+            monitor_ids: src.monitor_id_list.iter().map(hex::encode).collect(),
         }
     }
 }
@@ -120,13 +133,14 @@ pub struct JsonMonitorStatusResponse {
 
 impl From<&api::GetMonitorStatusResponse> for JsonMonitorStatusResponse {
     fn from(src: &api::GetMonitorStatusResponse) -> Self {
-        let status = src.get_status();
+        let default_status = Default::default();
+        let status = src.status.as_ref().unwrap_or(&default_status);
 
         Self {
-            first_subaddress: status.get_first_subaddress(),
-            num_subaddresses: status.get_num_subaddresses(),
-            first_block: status.get_first_block(),
-            next_block: status.get_next_block(),
+            first_subaddress: status.first_subaddress,
+            num_subaddresses: status.num_subaddresses,
+            first_block: status.first_block,
+            next_block: status.next_block,
         }
     }
 }
@@ -158,13 +172,19 @@ pub struct JsonUnspentTxOut {
 impl From<&api::UnspentTxOut> for JsonUnspentTxOut {
     fn from(src: &api::UnspentTxOut) -> Self {
         Self {
-            tx_out: src.get_tx_out().into(),
-            subaddress_index: src.get_subaddress_index(),
-            key_image: hex::encode(src.get_key_image().get_data()),
+            tx_out: src.tx_out.as_ref().unwrap_or(&Default::default()).into(),
+            subaddress_index: src.subaddress_index,
+            key_image: hex::encode(
+                src.key_image
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
             value: JsonU64(src.value),
-            attempted_spend_height: src.get_attempted_spend_height(),
-            attempted_spend_tombstone: src.get_attempted_spend_tombstone(),
-            monitor_id: hex::encode(src.get_monitor_id()),
+            attempted_spend_height: src.attempted_spend_height,
+            attempted_spend_tombstone: src.attempted_spend_tombstone,
+            monitor_id: hex::encode(src.monitor_id.as_slice()),
         }
     }
 }
@@ -174,29 +194,24 @@ impl TryFrom<&JsonUnspentTxOut> for api::UnspentTxOut {
     type Error = String;
 
     fn try_from(src: &JsonUnspentTxOut) -> Result<api::UnspentTxOut, String> {
-        let mut key_image = KeyImage::new();
-        key_image.set_data(
-            hex::decode(&src.key_image)
-                .map_err(|err| format!("Failed to decode key image hex: {err}"))?,
-        );
-
         // Reconstruct the public address as a protobuf
-        let mut utxo = api::UnspentTxOut::new();
-        utxo.set_tx_out(
-            mc_api::external::TxOut::try_from(&src.tx_out)
-                .map_err(|err| format!("Failed to get TxOut: {err}"))?,
-        );
-        utxo.set_subaddress_index(src.subaddress_index);
-        utxo.set_key_image(key_image);
-        utxo.set_value(src.value.into());
-        utxo.set_attempted_spend_height(src.attempted_spend_height);
-        utxo.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
-        utxo.set_monitor_id(
-            hex::decode(&src.monitor_id)
+        Ok(api::UnspentTxOut {
+            tx_out: Some(
+                mc_api::external::TxOut::try_from(&src.tx_out)
+                    .map_err(|err| format!("Failed to get TxOut: {err}"))?,
+            ),
+            subaddress_index: src.subaddress_index,
+            key_image: Some(KeyImage {
+                data: hex::decode(&src.key_image)
+                    .map_err(|err| format!("Failed to decode key image hex: {err}"))?,
+            }),
+            value: src.value.into(),
+            attempted_spend_height: src.attempted_spend_height,
+            attempted_spend_tombstone: src.attempted_spend_tombstone,
+            monitor_id: hex::decode(&src.monitor_id)
                 .map_err(|err| format!("Failed to decode monitor id hex: {err}"))?,
-        );
-
-        Ok(utxo)
+            ..Default::default()
+        })
     }
 }
 
@@ -208,11 +223,7 @@ pub struct JsonUtxosResponse {
 impl From<&api::GetUnspentTxOutListResponse> for JsonUtxosResponse {
     fn from(src: &api::GetUnspentTxOutListResponse) -> Self {
         Self {
-            output_list: src
-                .get_output_list()
-                .iter()
-                .map(JsonUnspentTxOut::from)
-                .collect(),
+            output_list: src.output_list.iter().map(JsonUnspentTxOut::from).collect(),
         }
     }
 }
@@ -232,7 +243,7 @@ pub struct JsonCreateRequestCodeResponse {
 impl From<&api::CreateRequestCodeResponse> for JsonCreateRequestCodeResponse {
     fn from(src: &api::CreateRequestCodeResponse) -> Self {
         Self {
-            b58_request_code: String::from(src.get_b58_code()),
+            b58_request_code: src.b58_code.clone(),
         }
     }
 }
@@ -258,11 +269,23 @@ pub struct JsonPublicAddress {
 impl From<&PublicAddress> for JsonPublicAddress {
     fn from(src: &PublicAddress) -> Self {
         Self {
-            view_public_key: hex::encode(src.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(src.get_spend_public_key().get_data()),
-            fog_report_url: String::from(src.get_fog_report_url()),
-            fog_report_id: String::from(src.get_fog_report_id()),
-            fog_authority_sig: hex::encode(src.get_fog_authority_sig()),
+            view_public_key: hex::encode(
+                src.view_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            spend_public_key: hex::encode(
+                src.spend_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            fog_report_url: src.fog_report_url.clone(),
+            fog_report_id: src.fog_report_id.clone(),
+            fog_authority_sig: hex::encode(src.fog_authority_sig.as_slice()),
         }
     }
 }
@@ -290,14 +313,29 @@ pub struct JsonPublicAddressResponse {
 
 impl From<&api::GetPublicAddressResponse> for JsonPublicAddressResponse {
     fn from(src: &api::GetPublicAddressResponse) -> Self {
-        let public_address = src.get_public_address();
+        let default_address = Default::default();
+        let public_address = src.public_address.as_ref().unwrap_or(&default_address);
         Self {
-            view_public_key: hex::encode(public_address.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(public_address.get_spend_public_key().get_data()),
-            fog_report_url: String::from(public_address.get_fog_report_url()),
-            fog_report_id: String::from(public_address.get_fog_report_id()),
-            fog_authority_sig: hex::encode(public_address.get_fog_authority_sig()),
-            b58_address_code: src.get_b58_code().to_string(),
+            view_public_key: hex::encode(
+                public_address
+                    .view_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            spend_public_key: hex::encode(
+                public_address
+                    .spend_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            fog_report_url: public_address.fog_report_url.clone(),
+            fog_report_id: public_address.fog_report_id.clone(),
+            fog_authority_sig: hex::encode(public_address.fog_authority_sig.as_slice()),
+            b58_address_code: src.b58_code.to_string(),
         }
     }
 }
@@ -308,29 +346,24 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
 
     fn try_from(src: &JsonPublicAddress) -> Result<PublicAddress, String> {
         // Decode the keys
-        let mut view_public_key = CompressedRistretto::new();
-        view_public_key.set_data(
-            hex::decode(&src.view_public_key)
+        let view_public_key = CompressedRistretto {
+            data: hex::decode(&src.view_public_key)
                 .map_err(|err| format!("Failed to decode view key hex: {err}"))?,
-        );
-        let mut spend_public_key = CompressedRistretto::new();
-        spend_public_key.set_data(
-            hex::decode(&src.spend_public_key)
+        };
+        let spend_public_key = CompressedRistretto {
+            data: hex::decode(&src.spend_public_key)
                 .map_err(|err| format!("Failed to decode spend key hex: {err}"))?,
-        );
+        };
 
         // Reconstruct the public address as a protobuf
-        let mut public_address = PublicAddress::new();
-        public_address.set_view_public_key(view_public_key);
-        public_address.set_spend_public_key(spend_public_key);
-        public_address.set_fog_report_url(src.fog_report_url.clone());
-        public_address.set_fog_report_id(src.fog_report_id.clone());
-        public_address.set_fog_authority_sig(
-            hex::decode(&src.fog_authority_sig)
+        Ok(PublicAddress {
+            view_public_key: Some(view_public_key),
+            spend_public_key: Some(spend_public_key),
+            fog_report_url: src.fog_report_url.clone(),
+            fog_report_id: src.fog_report_id.clone(),
+            fog_authority_sig: hex::decode(&src.fog_authority_sig)
                 .map_err(|err| format!("Failed to decode fog authority sig hex: {err}"))?,
-        );
-
-        Ok(public_address)
+        })
     }
 }
 
@@ -344,9 +377,9 @@ pub struct JsonParseRequestCodeResponse {
 impl From<&api::ParseRequestCodeResponse> for JsonParseRequestCodeResponse {
     fn from(src: &api::ParseRequestCodeResponse) -> Self {
         Self {
-            receiver: JsonPublicAddress::from(src.get_receiver()),
-            value: JsonU64(src.get_value()),
-            memo: src.get_memo().to_string(),
+            receiver: JsonPublicAddress::from(src.receiver.as_ref().unwrap_or(&Default::default())),
+            value: JsonU64(src.value),
+            memo: src.memo.to_string(),
         }
     }
 }
@@ -364,7 +397,7 @@ pub struct JsonCreateAddressCodeResponse {
 impl From<&api::CreateAddressCodeResponse> for JsonCreateAddressCodeResponse {
     fn from(src: &api::CreateAddressCodeResponse) -> Self {
         Self {
-            b58_code: String::from(src.get_b58_code()),
+            b58_code: src.b58_code.clone(),
         }
     }
 }
@@ -377,7 +410,7 @@ pub struct JsonParseAddressCodeResponse {
 impl From<&api::ParseAddressCodeResponse> for JsonParseAddressCodeResponse {
     fn from(src: &api::ParseAddressCodeResponse) -> Self {
         Self {
-            receiver: JsonPublicAddress::from(src.get_receiver()),
+            receiver: JsonPublicAddress::from(src.receiver.as_ref().unwrap_or(&Default::default())),
         }
     }
 }
@@ -392,11 +425,11 @@ impl From<&api::SenderTxReceipt> for JsonSenderTxReceipt {
     fn from(src: &api::SenderTxReceipt) -> Self {
         Self {
             key_images: src
-                .get_key_image_list()
+                .key_image_list
                 .iter()
-                .map(|key_image| hex::encode(key_image.get_data()))
+                .map(|key_image| hex::encode(key_image.data.as_slice()))
                 .collect(),
-            tombstone: src.get_tombstone(),
+            tombstone: src.tombstone,
         }
     }
 }
@@ -413,11 +446,19 @@ pub struct JsonReceiverTxReceipt {
 impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
-            recipient: JsonPublicAddress::from(src.get_recipient()),
-            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
-            tx_out_hash: hex::encode(src.get_tx_out_hash()),
-            tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(src.get_confirmation_number()),
+            recipient: JsonPublicAddress::from(
+                src.recipient.as_ref().unwrap_or(&Default::default()),
+            ),
+            tx_public_key: hex::encode(
+                src.tx_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            tx_out_hash: hex::encode(src.tx_out_hash.as_slice()),
+            tombstone: src.tombstone,
+            confirmation_number: hex::encode(src.confirmation_number.as_slice()),
         }
     }
 }
@@ -438,9 +479,13 @@ pub struct JsonSendPaymentResponse {
 impl From<&api::SendPaymentResponse> for JsonSendPaymentResponse {
     fn from(src: &api::SendPaymentResponse) -> Self {
         Self {
-            sender_tx_receipt: JsonSenderTxReceipt::from(src.get_sender_tx_receipt()),
+            sender_tx_receipt: JsonSenderTxReceipt::from(
+                src.sender_tx_receipt
+                    .as_ref()
+                    .unwrap_or(&Default::default()),
+            ),
             receiver_tx_receipt_list: src
-                .get_receiver_tx_receipt_list()
+                .receiver_tx_receipt_list
                 .iter()
                 .map(JsonReceiverTxReceipt::from)
                 .collect(),
@@ -465,8 +510,8 @@ pub struct JsonOutlay {
 impl From<&api::Outlay> for JsonOutlay {
     fn from(src: &api::Outlay) -> Self {
         Self {
-            value: JsonU64(src.get_value()),
-            receiver: src.get_receiver().into(),
+            value: JsonU64(src.value),
+            receiver: src.receiver.as_ref().unwrap_or(&Default::default()).into(),
         }
     }
 }
@@ -475,14 +520,14 @@ impl TryFrom<&JsonOutlay> for api::Outlay {
     type Error = String;
 
     fn try_from(src: &JsonOutlay) -> Result<api::Outlay, String> {
-        let mut outlay = api::Outlay::new();
-        outlay.set_value(src.value.into());
-        outlay.set_receiver(
-            PublicAddress::try_from(&src.receiver)
-                .map_err(|err| format!("Could not convert receiver: {err}"))?,
-        );
-
-        Ok(outlay)
+        Ok(api::Outlay {
+            value: src.value.into(),
+            receiver: Some(
+                PublicAddress::try_from(&src.receiver)
+                    .map_err(|err| format!("Could not convert receiver: {err}"))?,
+            ),
+            ..Default::default()
+        })
     }
 }
 
@@ -496,9 +541,9 @@ pub struct JsonOutlayV2 {
 impl From<&api::OutlayV2> for JsonOutlayV2 {
     fn from(src: &api::OutlayV2) -> Self {
         Self {
-            value: JsonU64(src.get_value()),
-            token_id: JsonU64(src.get_token_id()),
-            receiver: src.get_receiver().into(),
+            value: JsonU64(src.value),
+            token_id: JsonU64(src.token_id),
+            receiver: src.receiver.as_ref().unwrap_or(&Default::default()).into(),
         }
     }
 }
@@ -507,15 +552,15 @@ impl TryFrom<&JsonOutlayV2> for api::OutlayV2 {
     type Error = String;
 
     fn try_from(src: &JsonOutlayV2) -> Result<api::OutlayV2, String> {
-        let mut outlay = api::OutlayV2::new();
-        outlay.set_value(src.value.into());
-        outlay.set_token_id(src.token_id.into());
-        outlay.set_receiver(
-            PublicAddress::try_from(&src.receiver)
-                .map_err(|err| format!("Could not convert receiver: {err}"))?,
-        );
-
-        Ok(outlay)
+        Ok(api::OutlayV2 {
+            value: src.value.into(),
+            token_id: src.token_id.into(),
+            receiver: Some(
+                PublicAddress::try_from(&src.receiver)
+                    .map_err(|err| format!("Could not convert receiver: {err}"))?,
+            ),
+            ..Default::default()
+        })
     }
 }
 
@@ -527,19 +572,31 @@ pub struct JsonMaskedAmount {
     pub version: Option<u32>,
 }
 
-impl From<&mc_api::external::TxOut_oneof_masked_amount> for JsonMaskedAmount {
-    fn from(src: &mc_api::external::TxOut_oneof_masked_amount) -> Self {
+impl From<&mc_api::external::tx_out::MaskedAmount> for JsonMaskedAmount {
+    fn from(src: &mc_api::external::tx_out::MaskedAmount) -> Self {
         match src {
-            mc_api::external::TxOut_oneof_masked_amount::masked_amount_v1(src) => Self {
-                commitment: hex::encode(src.get_commitment().get_data()),
-                masked_value: JsonU64(src.get_masked_value()),
-                masked_token_id: hex::encode(src.get_masked_token_id()),
+            mc_api::external::tx_out::MaskedAmount::MaskedAmountV1(src) => Self {
+                commitment: hex::encode(
+                    src.commitment
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .data
+                        .as_slice(),
+                ),
+                masked_value: JsonU64(src.masked_value),
+                masked_token_id: hex::encode(src.masked_token_id.as_slice()),
                 version: Some(1),
             },
-            mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(src) => Self {
-                commitment: hex::encode(src.get_commitment().get_data()),
-                masked_value: JsonU64(src.get_masked_value()),
-                masked_token_id: hex::encode(src.get_masked_token_id()),
+            mc_api::external::tx_out::MaskedAmount::MaskedAmountV2(src) => Self {
+                commitment: hex::encode(
+                    src.commitment
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .data
+                        .as_slice(),
+                ),
+                masked_value: JsonU64(src.masked_value),
+                masked_token_id: hex::encode(src.masked_token_id.as_slice()),
                 version: Some(2),
             },
         }
@@ -547,32 +604,28 @@ impl From<&mc_api::external::TxOut_oneof_masked_amount> for JsonMaskedAmount {
 }
 
 // Helper conversion between json and protobuf
-impl TryFrom<&JsonMaskedAmount> for mc_api::external::TxOut_oneof_masked_amount {
+impl TryFrom<&JsonMaskedAmount> for mc_api::external::tx_out::MaskedAmount {
     type Error = String;
 
-    fn try_from(
-        src: &JsonMaskedAmount,
-    ) -> Result<mc_api::external::TxOut_oneof_masked_amount, String> {
-        let mut commitment = CompressedRistretto::new();
-        commitment.set_data(
-            hex::decode(&src.commitment)
+    fn try_from(src: &JsonMaskedAmount) -> Result<mc_api::external::tx_out::MaskedAmount, String> {
+        let commitment = CompressedRistretto {
+            data: hex::decode(&src.commitment)
                 .map_err(|err| format!("Failed to decode commitment hex: {err}"))?,
-        );
-        let mut masked_amount = MaskedAmount::new();
-        masked_amount.set_commitment(commitment);
-        masked_amount.set_masked_value(src.masked_value.into());
-        masked_amount.set_masked_token_id(
-            hex::decode(&src.masked_token_id)
+        };
+        let masked_amount = MaskedAmount {
+            commitment: Some(commitment),
+            masked_value: src.masked_value.into(),
+            masked_token_id: hex::decode(&src.masked_token_id)
                 .map_err(|err| format!("Failed to decode masked token id hex: {err}"))?,
-        );
+        };
 
         match src.version {
-            None | Some(1) => {
-                Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v1(masked_amount))
-            }
-            Some(2) => {
-                Ok(mc_api::external::TxOut_oneof_masked_amount::masked_amount_v2(masked_amount))
-            }
+            None | Some(1) => Ok(mc_api::external::tx_out::MaskedAmount::MaskedAmountV1(
+                masked_amount,
+            )),
+            Some(2) => Ok(mc_api::external::tx_out::MaskedAmount::MaskedAmountV2(
+                masked_amount,
+            )),
             Some(other) => Err(format!("Unknown masked amount version: {other}")),
         }
     }
@@ -591,10 +644,34 @@ impl From<&mc_api::external::TxOut> for JsonTxOut {
     fn from(src: &mc_api::external::TxOut) -> Self {
         Self {
             masked_amount: src.masked_amount.as_ref().map(Into::into),
-            target_key: hex::encode(src.get_target_key().get_data()),
-            public_key: hex::encode(src.get_public_key().get_data()),
-            e_fog_hint: hex::encode(src.get_e_fog_hint().get_data()),
-            e_memo: hex::encode(src.get_e_memo().get_data()),
+            target_key: hex::encode(
+                src.target_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            public_key: hex::encode(
+                src.public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            e_fog_hint: hex::encode(
+                src.e_fog_hint
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            e_memo: hex::encode(
+                src.e_memo
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
         }
     }
 }
@@ -604,41 +681,34 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
     type Error = String;
 
     fn try_from(src: &JsonTxOut) -> Result<mc_api::external::TxOut, String> {
-        let mut target_key = CompressedRistretto::new();
-        target_key.set_data(
-            hex::decode(&src.target_key)
+        let target_key = CompressedRistretto {
+            data: hex::decode(&src.target_key)
                 .map_err(|err| format!("Failed to decode target key hex: {err}"))?,
-        );
-        let mut public_key = CompressedRistretto::new();
-        public_key.set_data(
-            hex::decode(&src.public_key)
+        };
+        let public_key = CompressedRistretto {
+            data: hex::decode(&src.public_key)
                 .map_err(|err| format!("Failed to decode public key hex: {err}"))?,
-        );
-        let mut e_fog_hint = EncryptedFogHint::new();
-        e_fog_hint.set_data(
-            hex::decode(&src.e_fog_hint)
+        };
+        let e_fog_hint = EncryptedFogHint {
+            data: hex::decode(&src.e_fog_hint)
                 .map_err(|err| format!("Failed to decode e_fog_hint hex: {err}"))?,
-        );
-        let mut e_memo = EncryptedMemo::new();
-        e_memo.set_data(
-            hex::decode(&src.e_memo)
+        };
+        let e_memo = EncryptedMemo {
+            data: hex::decode(&src.e_memo)
                 .map_err(|err| format!("Failed to decode e_memo hex: {err}"))?,
-        );
+        };
 
-        let mut txo = mc_api::external::TxOut::new();
-        txo.masked_amount = src
-            .masked_amount
-            .as_ref()
-            .map(TryInto::try_into)
-            .transpose()?;
-        txo.set_target_key(target_key);
-        txo.set_public_key(public_key);
-        txo.set_e_fog_hint(e_fog_hint);
-        if !e_memo.get_data().is_empty() {
-            txo.set_e_memo(e_memo);
-        }
-
-        Ok(txo)
+        Ok(mc_api::external::TxOut {
+            masked_amount: src
+                .masked_amount
+                .as_ref()
+                .map(TryInto::try_into)
+                .transpose()?,
+            target_key: Some(target_key),
+            public_key: Some(public_key),
+            e_fog_hint: Some(e_fog_hint),
+            e_memo: Some(e_memo),
+        })
     }
 }
 
@@ -658,10 +728,16 @@ impl From<&TxOutMembershipElement> for JsonTxOutMembershipElement {
     fn from(src: &TxOutMembershipElement) -> Self {
         Self {
             range: JsonRange {
-                from: JsonU64(src.get_range().get_from()),
-                to: JsonU64(src.get_range().get_to()),
+                from: JsonU64(src.range.as_ref().unwrap_or(&Default::default()).from),
+                to: JsonU64(src.range.as_ref().unwrap_or(&Default::default()).to),
             },
-            hash: hex::encode(src.get_hash().get_data()),
+            hash: hex::encode(
+                src.hash
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
         }
     }
 }
@@ -676,10 +752,10 @@ pub struct JsonTxOutMembershipProof {
 impl From<&TxOutMembershipProof> for JsonTxOutMembershipProof {
     fn from(src: &TxOutMembershipProof) -> Self {
         Self {
-            index: JsonU64(src.get_index()),
-            highest_index: JsonU64(src.get_highest_index()),
+            index: JsonU64(src.index),
+            highest_index: JsonU64(src.highest_index),
             elements: src
-                .get_elements()
+                .elements
                 .iter()
                 .map(JsonTxOutMembershipElement::from)
                 .collect(),
@@ -693,28 +769,28 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
     fn try_from(src: &JsonTxOutMembershipProof) -> Result<TxOutMembershipProof, String> {
         let mut elements: Vec<TxOutMembershipElement> = Vec::new();
         for element in &src.elements {
-            let mut range = mc_api::external::Range::new();
-            range.set_from(element.range.from.into());
-            range.set_to(element.range.to.into());
+            let range = mc_api::external::Range {
+                from: element.range.from.into(),
+                to: element.range.to.into(),
+            };
 
-            let mut hash = TxOutMembershipHash::new();
-            hash.set_data(
-                hex::decode(&element.hash)
+            let hash = TxOutMembershipHash {
+                data: hex::decode(&element.hash)
                     .map_err(|err| format!("Could not decode elem hash: {err}"))?,
-            );
+            };
 
-            let mut elem = TxOutMembershipElement::new();
-            elem.set_range(range);
-            elem.set_hash(hash);
+            let elem = TxOutMembershipElement {
+                range: Some(range),
+                hash: Some(hash),
+            };
             elements.push(elem);
         }
 
-        let mut proof = TxOutMembershipProof::new();
-        proof.set_index(src.index.into());
-        proof.set_highest_index(src.highest_index.into());
-        proof.set_elements(RepeatedField::from_vec(elements));
-
-        Ok(proof)
+        Ok(TxOutMembershipProof {
+            index: src.index.into(),
+            highest_index: src.highest_index.into(),
+            elements,
+        })
     }
 }
 
@@ -760,11 +836,7 @@ pub struct JsonInputRules {
 impl From<&InputRules> for JsonInputRules {
     fn from(src: &InputRules) -> Self {
         Self {
-            required_outputs: src
-                .get_required_outputs()
-                .iter()
-                .map(JsonTxOut::from)
-                .collect(),
+            required_outputs: src.required_outputs.iter().map(JsonTxOut::from).collect(),
             max_tombstone_block: src.max_tombstone_block,
         }
     }
@@ -774,18 +846,18 @@ impl TryFrom<&JsonInputRules> for InputRules {
     type Error = String;
 
     fn try_from(src: &JsonInputRules) -> Result<InputRules, String> {
-        let mut input_rules = InputRules::new();
-        input_rules.set_required_outputs(
-            src.required_outputs
+        Ok(InputRules {
+            required_outputs: src
+                .required_outputs
                 .iter()
                 .map(|out| {
                     mc_api::external::TxOut::try_from(out)
                         .map_err(|err| format!("Could not get TxOut: {err}"))
                 })
                 .collect::<Result<_, String>>()?,
-        );
-        input_rules.max_tombstone_block = src.max_tombstone_block;
-        Ok(input_rules)
+            max_tombstone_block: src.max_tombstone_block,
+            ..Default::default()
+        })
     }
 }
 
@@ -799,9 +871,9 @@ pub struct JsonTxIn {
 impl From<&TxIn> for JsonTxIn {
     fn from(src: &TxIn) -> Self {
         Self {
-            ring: src.get_ring().iter().map(JsonTxOut::from).collect(),
+            ring: src.ring.iter().map(JsonTxOut::from).collect(),
             proofs: src
-                .get_proofs()
+                .proofs
                 .iter()
                 .map(JsonTxOutMembershipProof::from)
                 .collect(),
@@ -834,14 +906,11 @@ impl TryFrom<&JsonTxIn> for TxIn {
             .map(InputRules::try_from)
             .transpose()?;
 
-        let mut txin = TxIn::new();
-        txin.set_ring(RepeatedField::from_vec(outputs));
-        txin.set_proofs(RepeatedField::from_vec(proofs));
-        if let Some(rules) = input_rules {
-            txin.set_input_rules(rules);
-        }
-
-        Ok(txin)
+        Ok(TxIn {
+            ring: outputs,
+            proofs,
+            input_rules,
+        })
     }
 }
 
@@ -856,10 +925,10 @@ pub struct JsonTxPrefix {
 impl From<&TxPrefix> for JsonTxPrefix {
     fn from(src: &TxPrefix) -> Self {
         Self {
-            inputs: src.get_inputs().iter().map(JsonTxIn::from).collect(),
-            outputs: src.get_outputs().iter().map(JsonTxOut::from).collect(),
-            fee: JsonU64(src.get_fee()),
-            tombstone_block: JsonU64(src.get_tombstone_block()),
+            inputs: src.inputs.iter().map(JsonTxIn::from).collect(),
+            outputs: src.outputs.iter().map(JsonTxOut::from).collect(),
+            fee: JsonU64(src.fee),
+            tombstone_block: JsonU64(src.tombstone_block),
         }
     }
 }
@@ -882,13 +951,13 @@ impl TryFrom<&JsonTxPrefix> for TxPrefix {
             outputs.push(p_output);
         }
 
-        let mut prefix = TxPrefix::new();
-        prefix.set_inputs(RepeatedField::from_vec(inputs));
-        prefix.set_outputs(RepeatedField::from_vec(outputs));
-        prefix.set_fee(src.fee.into());
-        prefix.set_tombstone_block(src.tombstone_block.into());
-
-        Ok(prefix)
+        Ok(TxPrefix {
+            inputs,
+            outputs,
+            fee: src.fee.into(),
+            tombstone_block: src.tombstone_block.into(),
+            ..Default::default()
+        })
     }
 }
 
@@ -899,16 +968,28 @@ pub struct JsonRingMLSAG {
     pub key_image: String,
 }
 
-impl From<&RingMLSAG> for JsonRingMLSAG {
-    fn from(src: &RingMLSAG) -> Self {
+impl From<&RingMlsag> for JsonRingMLSAG {
+    fn from(src: &RingMlsag) -> Self {
         Self {
-            c_zero: hex::encode(src.get_c_zero().get_data()),
+            c_zero: hex::encode(
+                src.c_zero
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
             responses: src
-                .get_responses()
+                .responses
                 .iter()
-                .map(|x| hex::encode(x.get_data()))
+                .map(|x| hex::encode(x.data.as_slice()))
                 .collect(),
-            key_image: hex::encode(src.get_key_image().get_data()),
+            key_image: hex::encode(
+                src.key_image
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
         }
     }
 }
@@ -927,17 +1008,17 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
     fn from(src: &SignatureRctBulletproofs) -> Self {
         Self {
             ring_signatures: src
-                .get_ring_signatures()
+                .ring_signatures
                 .iter()
                 .map(JsonRingMLSAG::from)
                 .collect(),
             pseudo_output_commitments: src
-                .get_pseudo_output_commitments()
+                .pseudo_output_commitments
                 .iter()
-                .map(|x| hex::encode(x.get_data()))
+                .map(|x| hex::encode(x.data.as_slice()))
                 .collect(),
-            range_proof_bytes: hex::encode(src.get_range_proof_bytes()),
-            range_proofs: src.get_range_proofs().iter().map(hex::encode).collect(),
+            range_proof_bytes: hex::encode(src.range_proof_bytes.as_slice()),
+            range_proofs: src.range_proofs.iter().map(hex::encode).collect(),
             pseudo_output_token_ids: src.pseudo_output_token_ids.iter().map(Into::into).collect(),
             output_token_ids: src.output_token_ids.iter().map(Into::into).collect(),
         }
@@ -948,72 +1029,65 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
     type Error = String;
 
     fn try_from(src: &JsonSignatureRctBulletproofs) -> Result<SignatureRctBulletproofs, String> {
-        let mut ring_sigs: Vec<RingMLSAG> = Vec::new();
+        let mut ring_sigs: Vec<RingMlsag> = Vec::new();
         for sig in &src.ring_signatures {
-            let mut c_zero = mc_api::external::CurveScalar::new();
-            c_zero.set_data(
-                hex::decode(&sig.c_zero)
+            let c_zero = mc_api::external::CurveScalar {
+                data: hex::decode(&sig.c_zero)
                     .map_err(|err| format!("Could not decode from hex: {err}"))?,
-            );
+            };
 
             let mut responses: Vec<mc_api::external::CurveScalar> = Vec::new();
             for resp in &sig.responses {
-                let mut response = mc_api::external::CurveScalar::new();
-                response.set_data(
-                    hex::decode(resp).map_err(|err| format!("Could not decode from hex: {err}"))?,
-                );
+                let response = mc_api::external::CurveScalar {
+                    data: hex::decode(resp)
+                        .map_err(|err| format!("Could not decode from hex: {err}"))?,
+                };
                 responses.push(response);
             }
 
-            let mut key_image = KeyImage::new();
-            key_image.set_data(
-                hex::decode(&sig.key_image)
+            let key_image = KeyImage {
+                data: hex::decode(&sig.key_image)
                     .map_err(|err| format!("Could not decode from hex: {err}"))?,
-            );
-
-            let mut ring_sig = RingMLSAG::new();
-            ring_sig.set_c_zero(c_zero);
-            ring_sig.set_responses(RepeatedField::from_vec(responses));
-            ring_sig.set_key_image(key_image);
+            };
+            let ring_sig = RingMlsag {
+                c_zero: Some(c_zero),
+                responses,
+                key_image: Some(key_image),
+            };
 
             ring_sigs.push(ring_sig);
         }
 
         let mut commitments: Vec<CompressedRistretto> = Vec::new();
         for comm in &src.pseudo_output_commitments {
-            let mut compressed = CompressedRistretto::new();
-            compressed.set_data(
-                hex::decode(comm).map_err(|err| format!("Could not decode from hex: {err}"))?,
-            );
+            let compressed = CompressedRistretto {
+                data: hex::decode(comm)
+                    .map_err(|err| format!("Could not decode from hex: {err}"))?,
+            };
             commitments.push(compressed);
         }
 
-        let mut signature = SignatureRctBulletproofs::new();
-        signature.set_ring_signatures(RepeatedField::from_vec(ring_sigs));
-        signature.set_pseudo_output_commitments(RepeatedField::from_vec(commitments));
-        let range_proof_bytes = hex::decode(&src.range_proof_bytes).map_err(|err| {
-            format!(
-                "Could not decode top-level range proof from hex '{}': {}",
-                &src.range_proof_bytes, err
-            )
-        })?;
-        signature.set_range_proof_bytes(range_proof_bytes);
-        let range_proofs = src
-            .range_proofs
-            .iter()
-            .map(|hex_str| {
-                hex::decode(hex_str).map_err(|err| {
-                    format!("Could not decode range proof from hex '{hex_str}': {err}")
+        let signature = SignatureRctBulletproofs {
+            ring_signatures: ring_sigs,
+            pseudo_output_commitments: commitments,
+            range_proof_bytes: hex::decode(&src.range_proof_bytes).map_err(|err| {
+                format!(
+                    "Could not decode top-level range proof from hex '{}': {}",
+                    &src.range_proof_bytes, err
+                )
+            })?,
+            range_proofs: src
+                .range_proofs
+                .iter()
+                .map(|hex_str| {
+                    hex::decode(hex_str).map_err(|err| {
+                        format!("Could not decode range proof from hex '{hex_str}': {err}")
+                    })
                 })
-            })
-            .collect::<Result<_, _>>()?;
-        signature.set_range_proofs(range_proofs);
-
-        signature.set_pseudo_output_token_ids(
-            src.pseudo_output_token_ids.iter().map(Into::into).collect(),
-        );
-        signature.set_output_token_ids(src.output_token_ids.iter().map(Into::into).collect());
-
+                .collect::<Result<_, _>>()?,
+            pseudo_output_token_ids: src.pseudo_output_token_ids.iter().map(Into::into).collect(),
+            output_token_ids: src.output_token_ids.iter().map(Into::into).collect(),
+        };
         Ok(signature)
     }
 }
@@ -1027,8 +1101,8 @@ pub struct JsonTx {
 impl From<&Tx> for JsonTx {
     fn from(src: &Tx) -> Self {
         Self {
-            prefix: src.get_prefix().into(),
-            signature: src.get_signature().into(),
+            prefix: src.prefix.as_ref().unwrap_or(&Default::default()).into(),
+            signature: src.signature.as_ref().unwrap_or(&Default::default()).into(),
         }
     }
 }
@@ -1037,17 +1111,17 @@ impl TryFrom<&JsonTx> for Tx {
     type Error = String;
 
     fn try_from(src: &JsonTx) -> Result<Tx, String> {
-        let mut tx = Tx::new();
-
-        tx.set_prefix(
-            TxPrefix::try_from(&src.prefix)
-                .map_err(|err| format!("Could not convert TxPrefix: {err}"))?,
-        );
-        tx.set_signature(
-            SignatureRctBulletproofs::try_from(&src.signature)
-                .map_err(|err| format!("Could not convert signature: {err}"))?,
-        );
-
+        let tx = Tx {
+            prefix: Some(
+                TxPrefix::try_from(&src.prefix)
+                    .map_err(|err| format!("Could not convert TxPrefix: {err}"))?,
+            ),
+            signature: Some(
+                SignatureRctBulletproofs::try_from(&src.signature)
+                    .map_err(|err| format!("Could not convert signature: {err}"))?,
+            ),
+            ..Default::default()
+        };
         Ok(tx)
     }
 }
@@ -1066,25 +1140,17 @@ pub struct JsonTxProposal {
 impl From<&api::TxProposal> for JsonTxProposal {
     fn from(src: &api::TxProposal) -> Self {
         let outlay_map: Vec<(usize, usize)> = src
-            .get_outlay_index_to_tx_out_index()
+            .outlay_index_to_tx_out_index
             .iter()
             .map(|(key, val)| (*key as usize, *val as usize))
             .collect();
         Self {
-            input_list: src
-                .get_input_list()
-                .iter()
-                .map(JsonUnspentTxOut::from)
-                .collect(),
-            outlay_list: src
-                .get_outlay_list()
-                .iter()
-                .map(JsonOutlayV2::from)
-                .collect(),
-            tx: src.get_tx().into(),
-            fee: src.get_fee(),
+            input_list: src.input_list.iter().map(JsonUnspentTxOut::from).collect(),
+            outlay_list: src.outlay_list.iter().map(JsonOutlayV2::from).collect(),
+            tx: src.tx.as_ref().unwrap_or(&Default::default()).into(),
+            fee: src.fee,
             outlay_index_to_tx_out_index: outlay_map,
-            outlay_confirmation_numbers: src.get_outlay_confirmation_numbers().to_vec(),
+            outlay_confirmation_numbers: src.outlay_confirmation_numbers.to_vec(),
         }
     }
 }
@@ -1109,23 +1175,19 @@ impl TryFrom<&JsonTxProposal> for api::TxProposal {
         }
 
         // Reconstruct the public address as a protobuf
-        let mut proposal = api::TxProposal::new();
-        proposal.set_input_list(RepeatedField::from_vec(inputs));
-        proposal.set_outlay_list(RepeatedField::from_vec(outlays));
-        proposal
-            .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {err}"))?);
-        proposal.set_fee(src.fee);
-        proposal.set_outlay_index_to_tx_out_index(
-            src.outlay_index_to_tx_out_index
+        Ok(api::TxProposal {
+            input_list: inputs,
+            outlay_list: outlays,
+            tx: Some(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {err}"))?),
+            fee: src.fee,
+            outlay_index_to_tx_out_index: src
+                .outlay_index_to_tx_out_index
                 .iter()
                 .map(|(key, val)| (*key as u64, *val as u64))
                 .collect(),
-        );
-        proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
-            src.outlay_confirmation_numbers.clone(),
-        ));
-
-        Ok(proposal)
+            outlay_confirmation_numbers: src.outlay_confirmation_numbers.clone(),
+            ..Default::default()
+        })
     }
 }
 
@@ -1143,7 +1205,11 @@ pub struct JsonCreateTxProposalResponse {
 impl From<&api::GenerateTxResponse> for JsonCreateTxProposalResponse {
     fn from(src: &api::GenerateTxResponse) -> Self {
         Self {
-            tx_proposal: src.get_tx_proposal().into(),
+            tx_proposal: src
+                .tx_proposal
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .into(),
         }
     }
 }
@@ -1162,9 +1228,13 @@ pub struct JsonSubmitTxResponse {
 impl From<&api::SubmitTxResponse> for JsonSubmitTxResponse {
     fn from(src: &api::SubmitTxResponse) -> Self {
         Self {
-            sender_tx_receipt: src.get_sender_tx_receipt().into(),
+            sender_tx_receipt: src
+                .sender_tx_receipt
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .into(),
             receiver_tx_receipt_list: src
-                .get_receiver_tx_receipt_list()
+                .receiver_tx_receipt_list
                 .iter()
                 .map(JsonReceiverTxReceipt::from)
                 .collect(),
@@ -1176,8 +1246,6 @@ impl TryFrom<&JsonSubmitTxResponse> for api::SubmitTxResponse {
     type Error = String;
 
     fn try_from(src: &JsonSubmitTxResponse) -> Result<Self, String> {
-        let mut sender_receipt = api::SenderTxReceipt::new();
-
         let key_images: Vec<KeyImage> = src
             .sender_tx_receipt
             .key_images
@@ -1188,41 +1256,37 @@ impl TryFrom<&JsonSubmitTxResponse> for api::SubmitTxResponse {
                 })
             })
             .collect::<Result<Vec<KeyImage>, String>>()?;
-
-        sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
-        sender_receipt.set_tombstone(src.sender_tx_receipt.tombstone);
+        let sender_receipt = api::SenderTxReceipt {
+            key_image_list: key_images,
+            tombstone: src.sender_tx_receipt.tombstone,
+        };
 
         let mut receiver_receipts = Vec::new();
         for r in src.receiver_tx_receipt_list.iter() {
-            let mut receiver_receipt = api::ReceiverTxReceipt::new();
-            receiver_receipt.set_recipient(
-                PublicAddress::try_from(&r.recipient)
-                    .map_err(|err| format!("Failed to convert recipient: {err}"))?,
-            );
-            let mut pubkey = mc_api::external::CompressedRistretto::new();
-            pubkey.set_data(
-                hex::decode(&r.tx_public_key)
+            let pubkey = mc_api::external::CompressedRistretto {
+                data: hex::decode(&r.tx_public_key)
                     .map_err(|err| format!("Failed to decode hex for tx_public_key: {err}"))?,
-            );
-            receiver_receipt.set_tx_public_key(pubkey);
-            receiver_receipt.set_tx_out_hash(
-                hex::decode(&r.tx_out_hash)
+            };
+            let receiver_receipt = api::ReceiverTxReceipt {
+                recipient: Some(
+                    PublicAddress::try_from(&r.recipient)
+                        .map_err(|err| format!("Failed to convert recipient: {err}"))?,
+                ),
+                tx_public_key: Some(pubkey),
+                tx_out_hash: hex::decode(&r.tx_out_hash)
                     .map_err(|err| format!("Failed to decode hex for tx_out_hash: {err}"))?,
-            );
-            receiver_receipt.set_tombstone(r.tombstone);
-            receiver_receipt.set_confirmation_number(
-                hex::decode(&r.confirmation_number).map_err(|err| {
+                tombstone: r.tombstone,
+                confirmation_number: hex::decode(&r.confirmation_number).map_err(|err| {
                     format!("Failed to decode hex for confirmation_number: {err}")
                 })?,
-            );
+            };
             receiver_receipts.push(receiver_receipt);
         }
 
-        let mut resp = api::SubmitTxResponse::new();
-        resp.set_sender_tx_receipt(sender_receipt);
-        resp.set_receiver_tx_receipt_list(RepeatedField::from_vec(receiver_receipts));
-
-        Ok(resp)
+        Ok(api::SubmitTxResponse {
+            sender_tx_receipt: Some(sender_receipt),
+            receiver_tx_receipt_list: receiver_receipts,
+        })
     }
 }
 
@@ -1233,7 +1297,7 @@ pub struct JsonStatusResponse {
 
 impl From<&api::GetTxStatusAsSenderResponse> for JsonStatusResponse {
     fn from(src: &api::GetTxStatusAsSenderResponse) -> Self {
-        let status_str = match src.get_status() {
+        let status_str = match src.status() {
             api::TxStatus::Unknown => "unknown",
             api::TxStatus::Verified => "verified",
             api::TxStatus::TombstoneBlockExceeded => "failed",
@@ -1255,7 +1319,7 @@ impl From<&api::GetTxStatusAsSenderResponse> for JsonStatusResponse {
 
 impl From<&api::GetTxStatusAsReceiverResponse> for JsonStatusResponse {
     fn from(src: &api::GetTxStatusAsReceiverResponse) -> Self {
-        let status_str = match src.get_status() {
+        let status_str = match src.status() {
             api::TxStatus::Unknown => "unknown",
             api::TxStatus::Verified => "verified",
             api::TxStatus::TombstoneBlockExceeded => "failed",
@@ -1301,12 +1365,28 @@ pub struct JsonBlockSignature {
 
 impl From<&api::ArchiveBlockSignatureData> for JsonBlockSignature {
     fn from(src: &api::ArchiveBlockSignatureData) -> Self {
+        let default_signature = Default::default();
+        let signature = src.signature.as_ref().unwrap_or(&default_signature);
         Self {
             src_url: src.src_url.clone(),
             filename: src.filename.clone(),
-            signature: hex::encode(src.get_signature().get_signature().get_data()),
-            signer: hex::encode(src.get_signature().get_signer().get_data()),
-            signed_at: src.get_signature().signed_at,
+            signature: hex::encode(
+                signature
+                    .signature
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            signer: hex::encode(
+                signature
+                    .signer
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            signed_at: signature.signed_at,
         }
     }
 }
@@ -1341,23 +1421,45 @@ pub struct JsonBlockDetailsResponse {
 
 impl From<&api::GetBlockResponse> for JsonBlockDetailsResponse {
     fn from(src: &api::GetBlockResponse) -> Self {
-        let block = src.get_block();
+        let default_block = Default::default();
+        let block = src.block.as_ref().unwrap_or(&default_block);
 
         Self {
-            block_id: hex::encode(block.get_id().get_data()),
-            version: block.get_version(),
-            parent_id: hex::encode(block.get_parent_id().get_data()),
-            index: JsonU64(block.get_index()),
-            cumulative_txo_count: JsonU64(block.get_cumulative_txo_count()),
-            contents_hash: hex::encode(block.get_contents_hash().get_data()),
+            block_id: hex::encode(
+                block
+                    .id
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            version: block.version,
+            parent_id: hex::encode(
+                block
+                    .parent_id
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            index: JsonU64(block.index),
+            cumulative_txo_count: JsonU64(block.cumulative_txo_count),
+            contents_hash: hex::encode(
+                block
+                    .contents_hash
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
             key_images: src
-                .get_key_images()
+                .key_images
                 .iter()
-                .map(|k| hex::encode(k.get_data()))
+                .map(|k| hex::encode(k.data.as_slice()))
                 .collect(),
-            txos: src.get_txos().iter().map(JsonTxOut::from).collect(),
+            txos: src.txos.iter().map(JsonTxOut::from).collect(),
             signatures: src
-                .get_signatures()
+                .signatures
                 .iter()
                 .map(JsonBlockSignature::from)
                 .collect(),
@@ -1377,17 +1479,29 @@ pub struct JsonProcessedTxOut {
 
 impl From<&api::ProcessedTxOut> for JsonProcessedTxOut {
     fn from(src: &api::ProcessedTxOut) -> Self {
-        let direction_str = match src.direction {
+        let direction_str = match src.direction() {
             api::ProcessedTxOutDirection::Invalid => "invalid",
             api::ProcessedTxOutDirection::Received => "received",
             api::ProcessedTxOutDirection::Spent => "spent",
         };
 
         Self {
-            monitor_id: hex::encode(src.get_monitor_id()),
+            monitor_id: hex::encode(src.monitor_id.as_slice()),
             subaddress_index: src.subaddress_index,
-            public_key: hex::encode(src.get_public_key().get_data()),
-            key_image: hex::encode(src.get_key_image().get_data()),
+            public_key: hex::encode(
+                src.public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            key_image: hex::encode(
+                src.key_image
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
             value: JsonU64(src.value),
             direction: direction_str.to_owned(),
         }
@@ -1402,11 +1516,7 @@ pub struct JsonProcessedBlockResponse {
 impl From<&api::GetProcessedBlockResponse> for JsonProcessedBlockResponse {
     fn from(src: &api::GetProcessedBlockResponse) -> Self {
         Self {
-            tx_outs: src
-                .get_tx_outs()
-                .iter()
-                .map(JsonProcessedTxOut::from)
-                .collect(),
+            tx_outs: src.tx_outs.iter().map(JsonProcessedTxOut::from).collect(),
         }
     }
 }
@@ -1432,7 +1542,7 @@ pub struct JsonMobilecoindVersionResponse {
 impl From<&api::MobilecoindVersionResponse> for JsonMobilecoindVersionResponse {
     fn from(src: &api::MobilecoindVersionResponse) -> Self {
         Self {
-            version: src.get_version().to_string(),
+            version: src.version.to_string(),
         }
     }
 }
@@ -1449,7 +1559,7 @@ mod test {
     use mc_transaction_core_test_utils::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     /// Test conversion of TxProposal
     #[test]
@@ -1498,39 +1608,43 @@ mod test {
             let attempted_spend_tombstone = 1234;
 
             // make proto UnspentTxOut
-            let mut unspent = api::UnspentTxOut::new();
-            unspent.set_tx_out(mc_api::external::TxOut::from(&tx_out));
-            unspent.set_subaddress_index(subaddress_index);
-            unspent.set_key_image(mc_api::external::KeyImage::from(&key_image));
-            unspent.set_value(value);
-            unspent.set_attempted_spend_height(attempted_spend_height);
-            unspent.set_attempted_spend_tombstone(attempted_spend_tombstone);
-            unspent
+            api::UnspentTxOut {
+                tx_out: Some((&tx_out).into()),
+                subaddress_index,
+                key_image: Some((&key_image).into()),
+                value,
+                attempted_spend_height,
+                attempted_spend_tombstone,
+                ..Default::default()
+            }
         };
 
         // Make proto outlay
-        let mut outlay = api::OutlayV2::new();
         let public_addr = AccountKey::random(&mut rng).default_subaddress();
-        outlay.set_receiver(mc_api::external::PublicAddress::from(&public_addr));
-        outlay.set_value(1234);
+        let outlay = api::OutlayV2 {
+            value: 1234,
+            receiver: Some((&public_addr).into()),
+            ..Default::default()
+        };
 
-        let outlay_index_to_tx_out_index = HashMap::from_iter(vec![(0, 0)]);
+        let outlay_index_to_tx_out_index = BTreeMap::from_iter(vec![(0, 0)]);
         let outlay_confirmation_numbers = [mc_transaction_extra::TxOutConfirmationNumber::from(
             [0u8; 32],
         )];
 
         // Make proto TxProposal
-        let mut proto_proposal = api::TxProposal::new();
-        proto_proposal.set_input_list(RepeatedField::from_vec(vec![utxo]));
-        proto_proposal.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
-        proto_proposal.set_tx(mc_api::external::Tx::from(&tx));
-        proto_proposal.set_outlay_index_to_tx_out_index(outlay_index_to_tx_out_index);
-        proto_proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
-            outlay_confirmation_numbers
+        let proto_proposal = api::TxProposal {
+            input_list: vec![utxo],
+            outlay_list: vec![outlay],
+            tx: Some((&tx).into()),
+            fee: 0,
+            outlay_index_to_tx_out_index,
+            outlay_confirmation_numbers: outlay_confirmation_numbers
                 .iter()
                 .map(|x| x.to_vec())
                 .collect(),
-        ));
+            ..Default::default()
+        };
 
         // Proto -> Json
         let json_proposal = JsonTxProposal::from(&proto_proposal);
@@ -1543,63 +1657,183 @@ mod test {
         assert_eq!(proto_proposal.outlay_list, proto2.outlay_list);
 
         // The tx is complicated, so check each field of the tx
-        assert_eq!(proto_proposal.get_tx().prefix, proto2.get_tx().prefix);
+        assert_eq!(
+            proto_proposal.tx.as_ref().unwrap().prefix,
+            proto2.tx.as_ref().unwrap().prefix
+        );
         assert_eq!(
             proto_proposal
-                .get_tx()
-                .get_signature()
-                .get_ring_signatures()[0]
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures[0]
                 .c_zero,
-            proto2.get_tx().get_signature().get_ring_signatures()[0].c_zero
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures[0]
+                .c_zero
         );
         assert_eq!(
             proto_proposal
-                .get_tx()
-                .get_signature()
-                .get_ring_signatures()[0]
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures[0]
                 .responses,
-            proto2.get_tx().get_signature().get_ring_signatures()[0].responses
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures[0]
+                .responses
         );
         assert_eq!(
             proto_proposal
-                .get_tx()
-                .get_signature()
-                .get_ring_signatures()[0]
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures[0]
                 .key_image,
-            proto2.get_tx().get_signature().get_ring_signatures()[0].key_image
-        );
-        assert_eq!(
-            proto_proposal.get_tx().get_signature().ring_signatures,
-            proto2.get_tx().get_signature().ring_signatures
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures[0]
+                .key_image
         );
         assert_eq!(
             proto_proposal
-                .get_tx()
-                .get_signature()
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures,
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .ring_signatures
+        );
+        assert_eq!(
+            proto_proposal
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
                 .pseudo_output_commitments,
-            proto2.get_tx().get_signature().pseudo_output_commitments
-        );
-        assert_eq!(
-            proto_proposal.get_tx().get_signature().range_proof_bytes,
-            proto2.get_tx().get_signature().range_proof_bytes,
-        );
-        assert_eq!(
-            proto_proposal.get_tx().get_signature().range_proofs,
-            proto2.get_tx().get_signature().range_proofs
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .pseudo_output_commitments
         );
         assert_eq!(
             proto_proposal
-                .get_tx()
-                .get_signature()
-                .pseudo_output_token_ids,
-            proto2.get_tx().get_signature().pseudo_output_token_ids,
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .range_proof_bytes,
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .range_proof_bytes
         );
         assert_eq!(
-            proto_proposal.get_tx().get_signature().output_token_ids,
-            proto2.get_tx().get_signature().output_token_ids,
+            proto_proposal
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .range_proofs,
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .range_proofs
+        );
+        assert_eq!(
+            proto_proposal
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .pseudo_output_token_ids,
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .pseudo_output_token_ids
+        );
+        assert_eq!(
+            proto_proposal
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .output_token_ids,
+            proto2
+                .tx
+                .as_ref()
+                .unwrap()
+                .signature
+                .as_ref()
+                .unwrap()
+                .output_token_ids
         );
 
-        assert_eq!(proto_proposal.get_tx().signature, proto2.get_tx().signature);
+        assert_eq!(
+            proto_proposal.tx.as_ref().unwrap().signature,
+            proto2.tx.as_ref().unwrap().signature
+        );
         assert_eq!(proto_proposal.tx, proto2.tx);
 
         // Check the rest of the fields

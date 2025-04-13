@@ -9,6 +9,7 @@ use crate::{
 };
 use core::{result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
+use mc_api::printable::printable_wrapper;
 use mc_attestation_verifier::TrustedIdentity;
 use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
@@ -18,7 +19,7 @@ use mc_connection::{
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData, RingSigner};
-use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_api::fog_ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
     FogBlockGrpcClient, FogKeyImageGrpcClient, FogMerkleProofGrpcClient,
     FogUntrustedLedgerGrpcClient, OutputResultExtension,
@@ -972,8 +973,11 @@ impl Client {
     pub fn get_b58_address(&self) -> String {
         let public_address = self.account_key.default_subaddress();
 
-        let mut wrapper = mc_api::printable::PrintableWrapper::new();
-        wrapper.set_public_address((&public_address).into());
+        let wrapper = mc_api::printable::PrintableWrapper {
+            wrapper: Some(printable_wrapper::Wrapper::PublicAddress(
+                (&public_address).into(),
+            )),
+        };
 
         wrapper.b58_encode().unwrap()
     }

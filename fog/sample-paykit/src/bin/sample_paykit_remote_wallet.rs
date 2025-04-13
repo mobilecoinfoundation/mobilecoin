@@ -9,12 +9,10 @@ use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_account_keys::AccountKey;
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_fog_sample_paykit::{
-    empty::Empty,
     remote_wallet::{
-        BalanceCheckResponse, DebugRequest, DebugResponse, FollowupBalanceCheckRequest,
-        FreshBalanceCheckRequest, StopRequest,
+        create_remote_wallet_api, BalanceCheckResponse, DebugRequest, DebugResponse,
+        FollowupBalanceCheckRequest, FreshBalanceCheckRequest, RemoteWalletApi, StopRequest,
     },
-    remote_wallet_grpc::{create_remote_wallet_api, RemoteWalletApi},
     Client, ClientBuilder,
 };
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
@@ -97,7 +95,7 @@ impl RemoteWalletService {
 
         // Figure out the view/ledger URIs and adapt the scheme to match what the Rust
         // clients expect.
-        let fog_uri = request.get_fog_uri();
+        let fog_uri = &request.fog_uri;
         let (fog_view_uri, fog_ledger_uri) = if fog_uri.starts_with("fog://") {
             (
                 FogViewUri::from_str(&fog_uri.replace("fog://", "fog-view://"))
@@ -123,7 +121,7 @@ impl RemoteWalletService {
         };
 
         // Get chain id if any. (Empty string is ignored and this is proto default)
-        let chain_id = request.get_chain_id();
+        let chain_id = &request.chain_id;
 
         // Create client and perform balance check.
         let mut client = ClientBuilder::new(
@@ -151,7 +149,6 @@ impl RemoteWalletService {
             client_id: client_id as u32,
             balance,
             block_count: block_count.into(),
-            ..Default::default()
         };
         log::info!(self.logger, "Fresh balance check: {:?}", response);
         Ok(response)
@@ -174,7 +171,6 @@ impl RemoteWalletService {
                     client_id: request.client_id,
                     balance,
                     block_count: block_count.into(),
-                    ..Default::default()
                 };
                 log::info!(self.logger, "Followup balance check: {:?}", response);
                 Ok(response)
@@ -194,10 +190,7 @@ impl RemoteWalletService {
             Some(Some(client)) => {
                 let debug_info = client.debug_balance();
 
-                let response = DebugResponse {
-                    debug_info,
-                    ..Default::default()
-                };
+                let response = DebugResponse { debug_info };
                 log::info!(self.logger, "Debug info: {:?}", response);
                 Ok(response)
             }
@@ -240,7 +233,7 @@ impl RemoteWalletApi for RemoteWalletService {
         )
     }
 
-    fn stop(&mut self, ctx: RpcContext, request: StopRequest, sink: UnarySink<Empty>) {
+    fn stop(&mut self, ctx: RpcContext, request: StopRequest, sink: UnarySink<()>) {
         let mut state = self.state.lock().expect("mutex poisoned");
         if request.client_id as usize >= state.clients.len() {
             send_result(
@@ -255,7 +248,7 @@ impl RemoteWalletApi for RemoteWalletService {
             )
         } else {
             state.clients[request.client_id as usize] = None;
-            send_result(ctx, sink, Ok(Empty::default()), &self.logger)
+            send_result(ctx, sink, Ok(()), &self.logger)
         }
     }
 
@@ -263,11 +256,11 @@ impl RemoteWalletApi for RemoteWalletService {
         send_result(ctx, sink, self.debug_impl(request), &self.logger)
     }
 
-    fn reset(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<Empty>) {
+    fn reset(&mut self, ctx: RpcContext, _request: (), sink: UnarySink<()>) {
         let mut state = self.state.lock().expect("mutex poisoned");
         state.clients.clear();
 
-        send_result(ctx, sink, Ok(Empty::default()), &self.logger)
+        send_result(ctx, sink, Ok(()), &self.logger)
     }
 }
 

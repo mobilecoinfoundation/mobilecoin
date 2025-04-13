@@ -8,19 +8,16 @@ use grpcio::{ChannelBuilder, Environment};
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
-    empty::Empty,
-    ingest::{
-        GetIngressKeyRecordsRequest, IngressPublicKeyRecord, ReportLostIngressKeyRequest,
-        SetPubkeyExpiryWindowRequest, SyncKeysFromRemoteRequest,
+    account_ingest::{
+        AccountIngestApiClient, GetIngressKeyRecordsRequest, IngressPublicKeyRecord,
+        ReportLostIngressKeyRequest, SetPubkeyExpiryWindowRequest, SyncKeysFromRemoteRequest,
     },
     ingest_common::{IngestSummary, SetPeersRequest},
-    ingest_grpc::AccountIngestApiClient,
 };
 use mc_fog_types::common::BlockRange;
 use mc_fog_uri::FogIngestUri;
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
 use mc_util_uri::ConnectionUri;
-use protobuf::RepeatedField;
 use retry::{retry, Error as RetryError};
 use std::{sync::Arc, time::Duration};
 
@@ -78,7 +75,7 @@ impl FogIngestGrpcClient {
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .get_status_opt(&Empty::new(), self.creds.call_option()?)?)
+                .get_status_opt(&(), self.creds.call_option()?)?)
         })
     }
 
@@ -86,7 +83,7 @@ impl FogIngestGrpcClient {
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .new_keys_opt(&Empty::default(), self.creds.call_option()?)?)
+                .new_keys_opt(&(), self.creds.call_option()?)?)
         })
     }
 
@@ -94,8 +91,9 @@ impl FogIngestGrpcClient {
         &self,
         pubkey_expiry_window: u64,
     ) -> ClientResult<IngestSummary> {
-        let mut req = SetPubkeyExpiryWindowRequest::new();
-        req.set_pubkey_expiry_window(pubkey_expiry_window);
+        let req = SetPubkeyExpiryWindowRequest {
+            pubkey_expiry_window,
+        };
 
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
@@ -105,8 +103,9 @@ impl FogIngestGrpcClient {
     }
 
     pub fn set_peers(&self, peer_uris: &[String]) -> ClientResult<IngestSummary> {
-        let mut req = SetPeersRequest::new();
-        req.set_ingest_peer_uris(RepeatedField::from_vec(peer_uris.to_vec()));
+        let req = SetPeersRequest {
+            ingest_peer_uris: peer_uris.to_vec(),
+        };
 
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
@@ -120,7 +119,7 @@ impl FogIngestGrpcClient {
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .activate_opt(&Empty::default(), self.creds.call_option()?)?)
+                .activate_opt(&(), self.creds.call_option()?)?)
         })
     }
 
@@ -128,7 +127,7 @@ impl FogIngestGrpcClient {
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .retire_opt(&Empty::default(), self.creds.call_option()?)?)
+                .retire_opt(&(), self.creds.call_option()?)?)
         })
     }
 
@@ -136,17 +135,18 @@ impl FogIngestGrpcClient {
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .unretire_opt(&Empty::default(), self.creds.call_option()?)?)
+                .unretire_opt(&(), self.creds.call_option()?)?)
         })
     }
 
     pub fn report_lost_ingress_key(&self, key: CompressedRistrettoPublic) -> ClientResult<()> {
         log::trace!(self.logger, "report_lost_ingress_key({})", key,);
 
-        let mut req = ReportLostIngressKeyRequest::new();
-        req.set_key((&key).into());
+        let req = ReportLostIngressKeyRequest {
+            key: Some((&key).into()),
+        };
 
-        let _ = retry(self.get_retries(), || -> Result<_, Error> {
+        retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
                 .report_lost_ingress_key_opt(&req, self.creds.call_option()?)?)
@@ -159,11 +159,11 @@ impl FogIngestGrpcClient {
         let resp = retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .get_status_opt(&Empty::new(), self.creds.call_option()?)?)
+                .get_status_opt(&(), self.creds.call_option()?)?)
         })?;
 
         Ok(
-            CompressedRistrettoPublic::try_from(resp.get_ingress_pubkey())
+            CompressedRistrettoPublic::try_from(&resp.ingress_pubkey.unwrap_or_default())
                 .expect("Got back invalid compressed ristretto point"),
         )
     }
@@ -174,11 +174,11 @@ impl FogIngestGrpcClient {
         let resp = retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
-                .get_missed_block_ranges_opt(&Empty::default(), self.creds.call_option()?)?)
+                .get_missed_block_ranges_opt(&(), self.creds.call_option()?)?)
         })?;
 
         Ok(resp
-            .get_missed_block_ranges()
+            .missed_block_ranges
             .iter()
             .map(|range| BlockRange::new(range.start_block, range.end_block))
             .collect())
@@ -186,8 +186,9 @@ impl FogIngestGrpcClient {
 
     pub fn sync_keys_from_remote(&self, peer_uri: String) -> ClientResult<IngestSummary> {
         log::trace!(self.logger, "sync_keys_from_remote()");
-        let mut req = SyncKeysFromRemoteRequest::new();
-        req.set_peer_uri(peer_uri);
+        let req = SyncKeysFromRemoteRequest {
+            peer_uri: peer_uri.clone(),
+        };
 
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
@@ -204,10 +205,12 @@ impl FogIngestGrpcClient {
     ) -> ClientResult<Vec<IngressPublicKeyRecord>> {
         log::trace!(self.logger, "get_ingress_key_records()");
 
-        let mut req = GetIngressKeyRecordsRequest::new();
-        req.set_start_block_at_least(start_block_at_least);
-        req.set_should_include_lost_keys(should_include_lost_keys);
-        req.set_should_include_retired_keys(should_include_retired_keys);
+        let req = GetIngressKeyRecordsRequest {
+            start_block_at_least,
+            should_include_lost_keys,
+            should_include_retired_keys,
+            ..Default::default()
+        };
 
         let resp = retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
@@ -215,7 +218,7 @@ impl FogIngestGrpcClient {
                 .get_ingress_key_records_opt(&req, self.creds.call_option()?)?)
         })?;
 
-        Ok(resp.get_records().to_vec())
+        Ok(resp.records.to_vec())
     }
 
     // The retry crate works by taking an iterator over durations, and a closure

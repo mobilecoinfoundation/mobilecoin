@@ -20,16 +20,13 @@ where
     DigestAlgo: NoiseDigest,
 {
     fn from(src: AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestAlgo>) -> Self {
-        let mut retval = Self::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
 impl From<AuthMessage> for AuthResponseOutput {
     fn from(src: AuthMessage) -> AuthResponseOutput {
-        let mut taken_self = src;
-        AuthResponseOutput::from(taken_self.take_data())
+        src.data.into()
     }
 }
 
@@ -41,9 +38,7 @@ impl From<AuthMessage> for PeerAuthRequest {
 
 impl From<PeerAuthRequest> for AuthMessage {
     fn from(src: PeerAuthRequest) -> AuthMessage {
-        let mut retval = AuthMessage::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
@@ -55,9 +50,7 @@ impl From<AuthMessage> for ClientAuthRequest {
 
 impl From<ClientAuthRequest> for AuthMessage {
     fn from(src: ClientAuthRequest) -> AuthMessage {
-        let mut retval = AuthMessage::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
@@ -69,9 +62,7 @@ impl From<AuthMessage> for NonceAuthRequest {
 
 impl From<NonceAuthRequest> for AuthMessage {
     fn from(src: NonceAuthRequest) -> AuthMessage {
-        let mut retval = AuthMessage::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
@@ -83,9 +74,7 @@ impl From<AuthMessage> for NonceAuthResponse {
 
 impl From<NonceAuthResponse> for AuthMessage {
     fn from(src: NonceAuthResponse) -> AuthMessage {
-        let mut retval = AuthMessage::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
@@ -97,9 +86,7 @@ impl From<AuthMessage> for PeerAuthResponse {
 
 impl From<PeerAuthResponse> for AuthMessage {
     fn from(src: PeerAuthResponse) -> AuthMessage {
-        let mut retval = AuthMessage::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
@@ -111,9 +98,7 @@ impl From<AuthMessage> for ClientAuthResponse {
 
 impl From<ClientAuthResponse> for AuthMessage {
     fn from(src: ClientAuthResponse) -> AuthMessage {
-        let mut retval = AuthMessage::default();
-        retval.set_data(src.into());
-        retval
+        Self { data: src.into() }
     }
 }
 
@@ -129,11 +114,11 @@ impl<S: Session> From<Message> for EnclaveMessage<S> {
 
 impl<S: Session> From<EnclaveMessage<S>> for Message {
     fn from(src: EnclaveMessage<S>) -> Message {
-        let mut retval = Message::default();
-        retval.set_aad(src.aad);
-        retval.set_channel_id(src.channel_id.into());
-        retval.set_data(src.data);
-        retval
+        Self {
+            aad: src.aad,
+            channel_id: src.channel_id.into(),
+            data: src.data,
+        }
     }
 }
 
@@ -150,13 +135,13 @@ impl From<NonceMessage> for EnclaveMessage<NonceSession> {
 
 impl From<EnclaveMessage<NonceSession>> for NonceMessage {
     fn from(src: EnclaveMessage<NonceSession>) -> NonceMessage {
-        let mut retval = NonceMessage::default();
-        retval.set_aad(src.aad);
-        // it doesn't matter if we don't bump the nonce when retrieving it,
-        // src.channel_id will be discarded anyways.
-        retval.set_nonce(src.channel_id.nonce());
-        retval.set_channel_id(src.channel_id.into());
-        retval.set_data(src.data);
-        retval
+        Self {
+            aad: src.aad,
+            // it doesn't matter if we don't bump the nonce when retrieving it,
+            // src.channel_id will be discarded anyway.
+            nonce: src.channel_id.nonce(),
+            channel_id: src.channel_id.into(),
+            data: src.data,
+        }
     }
 }

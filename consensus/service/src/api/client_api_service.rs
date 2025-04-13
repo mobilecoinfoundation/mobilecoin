@@ -15,11 +15,9 @@ use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::ClientSession;
 use mc_common::{logger::Logger, LruCache};
 use mc_consensus_api::{
-    consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
-    consensus_client_grpc::ConsensusClientApi,
+    consensus_client::{ConsensusClientApi, ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_common::ProposeTxResponse,
     consensus_config::{ConsensusNodeConfig, TokenConfig},
-    empty::Empty,
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_service_config::Config;
@@ -166,7 +164,7 @@ impl ClientApiService {
         (*self.propose_tx_callback)(ConsensusValue::TxHash(tx_hash), None, None);
         counters::ADD_TX.inc();
 
-        let response = ProposeTxResponse::new();
+        let response = ProposeTxResponse::default();
         Ok(response)
     }
 
@@ -182,7 +180,7 @@ impl ClientApiService {
         counters::PROPOSE_MINT_CONFIG_TX_INITIATED.inc();
         let mint_config_tx = MintConfigTx::try_from(&grpc_tx)
             .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{err:?}")))?;
-        let response = ProposeMintConfigTxResponse::new();
+        let response = ProposeMintConfigTxResponse::default();
 
         // Validate the transaction.
         // This is done here as a courtesy to give clients immediate feedback about the
@@ -208,7 +206,7 @@ impl ClientApiService {
         counters::PROPOSE_MINT_TX_INITIATED.inc();
         let mint_tx = MintTx::try_from(&grpc_tx)
             .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{err:?}")))?;
-        let response = ProposeMintTxResponse::new();
+        let response = ProposeMintTxResponse::default();
 
         // Validate the transaction.
         // This is done here as a courtesy to give clients immediate feedback about the
@@ -229,38 +227,36 @@ impl ClientApiService {
             .tokens()
             .iter()
             .map(|token_config| {
-                let mut grpc_token_config = TokenConfig::new();
-                grpc_token_config.set_token_id(*token_config.token_id());
-                grpc_token_config
-                    .set_minimum_fee(token_config.minimum_fee_or_default().unwrap_or(0));
-                if let Some(governors) = token_config.governors()? {
-                    grpc_token_config.set_governors((&governors).into());
-                }
-
-                let active_mint_configs = self
-                    .ledger
-                    .get_active_mint_configs(token_config.token_id())?;
-                if let Some(active_mint_configs) = active_mint_configs.as_ref() {
-                    grpc_token_config.set_active_mint_configs(active_mint_configs.into());
-                }
-
+                let grpc_token_config = TokenConfig {
+                    token_id: *token_config.token_id(),
+                    minimum_fee: token_config.minimum_fee_or_default().unwrap_or(0),
+                    governors: token_config
+                        .governors()?
+                        .as_ref()
+                        .map(|governors| governors.into()),
+                    active_mint_configs: self
+                        .ledger
+                        .get_active_mint_configs(token_config.token_id())?
+                        .as_ref()
+                        .map(|active_mint_configs| active_mint_configs.into()),
+                };
                 Ok((*token_config.token_id(), grpc_token_config))
             })
             .collect::<Result<_, ConsensusGrpcError>>()?;
 
-        let mut response = ConsensusNodeConfig::new();
-        response.set_minting_trust_root((&self.enclave.get_minting_trust_root()?).into());
-        response.set_token_config_map(token_config_map);
-        if let Some(governors_signature) = tokens_config.governors_signature.as_ref() {
-            response.set_governors_signature(governors_signature.into());
-        }
-        response.set_peer_responder_id(self.config.peer_responder_id.to_string());
-        response.set_client_responder_id(self.config.client_responder_id.to_string());
-        response.set_block_signing_key((&self.enclave.get_signer()?).into());
-        response.set_block_version(*self.config.block_version);
-        response.set_scp_message_signing_key((&self.config.msg_signer_key.public_key()).into());
-
-        Ok(response)
+        Ok(ConsensusNodeConfig {
+            minting_trust_root: Some((&self.enclave.get_minting_trust_root()?).into()),
+            token_config_map,
+            governors_signature: tokens_config
+                .governors_signature
+                .as_ref()
+                .map(|governors_signature| governors_signature.into()),
+            peer_responder_id: self.config.peer_responder_id.to_string(),
+            client_responder_id: self.config.client_responder_id.to_string(),
+            block_signing_key: Some((&self.enclave.get_signer()?).into()),
+            block_version: *self.config.block_version,
+            scp_message_signing_key: Some((&self.config.msg_signer_key.public_key()).into()),
+        })
     }
 }
 
@@ -313,8 +309,8 @@ impl ConsensusClientApi for ClientApiService {
 
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
-            response.set_block_count(num_blocks);
-            response.set_block_version(*self.config.block_version);
+            response.block_count = num_blocks;
+            response.block_version = *self.config.block_version;
             Ok(response)
         });
 
@@ -351,8 +347,8 @@ impl ConsensusClientApi for ClientApiService {
 
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
-            response.set_block_count(num_blocks);
-            response.set_block_version(*self.config.block_version);
+            response.block_count = num_blocks;
+            response.block_version = *self.config.block_version;
             Ok(response)
         });
 
@@ -389,8 +385,8 @@ impl ConsensusClientApi for ClientApiService {
 
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
-            response.set_block_count(num_blocks);
-            response.set_block_version(*self.config.block_version);
+            response.block_count = num_blocks;
+            response.block_version = *self.config.block_version;
             Ok(response)
         });
 
@@ -402,7 +398,7 @@ impl ConsensusClientApi for ClientApiService {
     fn get_node_config(
         &mut self,
         ctx: RpcContext,
-        _empty: Empty,
+        _empty: (),
         sink: UnarySink<ConsensusNodeConfig>,
     ) {
         let result = self.get_node_config_impl().map_err(RpcStatus::from);
@@ -433,8 +429,9 @@ mod client_api_tests {
         LruCache, NodeID, ResponderId,
     };
     use mc_consensus_api::{
-        consensus_client::MintValidationResultCode, consensus_client_grpc,
-        consensus_client_grpc::ConsensusClientApiClient, consensus_common::ProposeTxResult,
+        consensus_client,
+        consensus_client::{ConsensusClientApiClient, MintValidationResultCode},
+        consensus_common::ProposeTxResult,
     };
     use mc_consensus_enclave::{Error as EnclaveError, TxContext};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
@@ -461,7 +458,7 @@ mod client_api_tests {
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
-        let service = consensus_client_grpc::create_consensus_client_api(instance);
+        let service = consensus_client::create_consensus_client_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
@@ -578,8 +575,8 @@ mod client_api_tests {
         let message = Message::default();
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
-                assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.result(), ProposeTxResult::Ok);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -652,8 +649,8 @@ mod client_api_tests {
         // Try with chain id header
         match client.client_tx_propose_opt(&message, call_option("local")) {
             Ok(propose_tx_response) => {
-                assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.result(), ProposeTxResult::Ok);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -785,10 +782,10 @@ mod client_api_tests {
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result(),
+                    propose_tx_response.result(),
                     ProposeTxResult::ContainsSpentKeyImage
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -848,10 +845,10 @@ mod client_api_tests {
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result(),
+                    propose_tx_response.result(),
                     ProposeTxResult::FeeMapDigestMismatch
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -919,10 +916,10 @@ mod client_api_tests {
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result(),
+                    propose_tx_response.result(),
                     ProposeTxResult::InvalidRangeProof
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -1141,10 +1138,10 @@ mod client_api_tests {
         match client.propose_mint_config_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result().get_code(),
+                    propose_tx_response.result.unwrap().code(),
                     MintValidationResultCode::Ok
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -1213,10 +1210,10 @@ mod client_api_tests {
         match client.propose_mint_config_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result().get_code(),
+                    propose_tx_response.result.unwrap().code(),
                     MintValidationResultCode::NonceAlreadyUsed
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -1454,10 +1451,10 @@ mod client_api_tests {
         match client.propose_mint_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result().get_code(),
+                    propose_tx_response.result.unwrap().code(),
                     MintValidationResultCode::Ok
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -1531,10 +1528,10 @@ mod client_api_tests {
         match client.propose_mint_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.get_result().get_code(),
+                    propose_tx_response.result.unwrap().code(),
                     MintValidationResultCode::NonceAlreadyUsed
                 );
-                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+                assert_eq!(propose_tx_response.block_count, num_blocks);
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
@@ -1805,8 +1802,8 @@ mod client_api_tests {
         let propose_tx_response = client
             .client_tx_propose(&message)
             .expect("Client tx propose error");
-        assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-        assert_eq!(propose_tx_response.get_block_count(), NUM_BLOCKS);
+        assert_eq!(propose_tx_response.result(), ProposeTxResult::Ok);
+        assert_eq!(propose_tx_response.block_count, NUM_BLOCKS);
 
         let tracker = tracked_sessions
             .lock()

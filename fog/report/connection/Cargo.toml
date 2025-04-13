@@ -17,4 +17,4 @@ mc-util-serial = { workspace = true }
 mc-util-uri = { workspace = true }
 
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }

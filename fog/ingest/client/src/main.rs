@@ -204,7 +204,7 @@ fn get_ingress_key_records(
             .iter()
             .map(|record| {
                 json!({
-                    "ingress_public_key": hex::encode(record.get_ingress_public_key().get_data()),
+                    "ingress_public_key": hex::encode(&record.ingress_public_key.as_ref().expect("Missing ingress public key").data),
                     "start_block": record.start_block,
                     "pubkey_expiry": record.pubkey_expiry,
                     "retired": record.retired,
@@ -224,10 +224,10 @@ fn ingest_summary_to_json(summary: &IngestSummary) -> String {
         "mode": format!("{:?}", summary.mode),
         "next_block_index": summary.next_block_index,
         "pubkey_expiry_window": summary.pubkey_expiry_window,
-        "ingress_pubkey": hex::encode(summary.get_ingress_pubkey().get_data()),
-        "egress_pubkey": hex::encode(summary.get_egress_pubkey()),
+        "ingress_pubkey": hex::encode(&summary.ingress_pubkey.as_ref().expect("Missing ingress public key").data),
+        "egress_pubkey": hex::encode(&summary.egress_pubkey),
         "kex_rng_version": summary.kex_rng_version,
-        "peers": summary.get_peers(),
+        "peers": summary.peers,
         "ingest_invocation_id": summary.ingest_invocation_id,
     }))
     .expect("could not pretty print")

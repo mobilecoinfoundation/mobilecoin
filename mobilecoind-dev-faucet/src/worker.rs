@@ -21,8 +21,8 @@
 #![allow(clippy::assertions_on_constants)]
 
 use api::{
-    external::PublicAddress, mobilecoind_api_grpc::MobilecoindApiClient, SubmitTxResponse,
-    TxStatus, UnspentTxOut,
+    external::PublicAddress, mobilecoind_api::MobilecoindApiClient, SubmitTxResponse, TxStatus,
+    UnspentTxOut,
 };
 use displaydoc::Display;
 use mc_common::logger::{log, o, Logger};
@@ -306,11 +306,16 @@ impl Worker {
 
         // Now wait for monitor state to at least pass this point
         loop {
-            let mut req = api::GetMonitorStatusRequest::new();
-            req.set_monitor_id(monitor_id.clone());
+            let req = api::GetMonitorStatusRequest {
+                monitor_id: monitor_id.clone(),
+            };
             match client.get_monitor_status(&req) {
                 Ok(resp) => {
-                    let monitor_block_count = resp.get_status().next_block;
+                    let monitor_block_count = resp
+                        .status
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .next_block;
                     if monitor_block_count >= block_count {
                         log::info!(
                             logger,
@@ -570,10 +575,12 @@ impl WorkerTokenState {
         self.check_on_in_flight_txs(client, logger);
 
         // Now, get a fresh unspent tx out list associated to this token
-        let mut resp = {
-            let mut req = api::GetUnspentTxOutListRequest::new();
-            req.token_id = *self.token_id;
-            req.monitor_id = monitor_id.to_vec();
+        let resp = {
+            let req = api::GetUnspentTxOutListRequest {
+                token_id: *self.token_id,
+                monitor_id: monitor_id.to_vec(),
+                ..Default::default()
+            };
 
             client.get_unspent_tx_out_list(&req).map_err(|err| {
                 format!(
@@ -602,7 +609,9 @@ impl WorkerTokenState {
             }
 
             let key_image: KeyImage = utxo
-                .get_key_image()
+                .key_image
+                .as_ref()
+                .unwrap_or(&Default::default())
                 .try_into()
                 .map_err(|err| format!("invalid key image: {err}"))?;
             if let Entry::Vacant(e) = self.queued_utxo_trackers.entry(key_image) {
@@ -641,7 +650,7 @@ impl WorkerTokenState {
         // "maybe_send_split_txs" and "maybe_send_defragmentation_tx" are expected
         // to handle that.
         let mut non_target_value_utxos: Vec<_> = resp
-            .take_output_list()
+            .output_list
             .into_iter()
             .filter(|utxo| utxo.token_id == self.token_id && utxo.value != self.target_value)
             .collect();
@@ -832,7 +841,13 @@ impl WorkerTokenState {
             // should back off and wait for it to clear and re-evaluate.
             let key_images: HashSet<KeyImage> = top_utxos
                 .iter()
-                .map(|utxo| utxo.get_key_image().try_into().unwrap())
+                .map(|utxo| {
+                    utxo.key_image
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .try_into()
+                        .unwrap()
+                })
                 .collect();
             if key_images
                 .iter()
@@ -850,9 +865,11 @@ impl WorkerTokenState {
             // We will repeat this outlay MAX_OUTPUTS - 1 times
             // (-1 is for a change output, which might be slightly larger than avg_value, or
             // less due to fees)
-            let mut outlay = api::Outlay::new();
-            outlay.set_receiver(public_address.clone());
-            outlay.set_value(avg_value);
+            let outlay = api::Outlay {
+                receiver: Some(public_address.clone()),
+                value: avg_value,
+                ..Default::default()
+            };
 
             // Generate a Tx
             // Note: This will fail if MAX_INPUTS < MAX_OUTPUTS, but right now MAX_INPUTS =
@@ -861,19 +878,22 @@ impl WorkerTokenState {
                 MAX_INPUTS >= MAX_OUTPUTS,
                 "MAX_INPUTS < MAX_OUTPUTS, this rebalancing code needs rework"
             );
-            let mut req = api::GenerateTxRequest::new();
-            req.set_sender_monitor_id(monitor_id.to_vec());
-            req.set_token_id(*self.token_id);
-            req.set_input_list(top_utxos.iter().cloned().collect());
-            req.set_outlay_list(vec![outlay; MAX_OUTPUTS_USIZE - 1].into());
+            let req = api::GenerateTxRequest {
+                sender_monitor_id: monitor_id.to_vec(),
+                token_id: *self.token_id,
+                input_list: top_utxos.to_vec(),
+                outlay_list: vec![outlay; MAX_OUTPUTS_USIZE - 1],
+                ..Default::default()
+            };
 
-            let mut resp = client
+            let resp = client
                 .generate_tx(&req)
                 .map_err(|err| format!("Failed to generate rebalancing tx: {err}"))?;
 
             // Submit the Tx
-            let mut req = api::SubmitTxRequest::new();
-            req.set_tx_proposal(resp.take_tx_proposal());
+            let req = api::SubmitTxRequest {
+                tx_proposal: resp.tx_proposal,
+            };
             let submit_tx_response = client
                 .submit_tx(&req)
                 .map_err(|err| format!("Failed to submit rebalancing tx: {err}"))?;
@@ -903,9 +923,11 @@ impl WorkerTokenState {
             // We will repeat this outlay MAX_OUTPUTS - 1 times
             // (-1 is for a change output)
             // for each split tx we submit.
-            let mut outlay = api::Outlay::new();
-            outlay.set_receiver(public_address.clone());
-            outlay.set_value(self.target_value);
+            let outlay = api::Outlay {
+                receiver: Some(public_address.clone()),
+                value: self.target_value,
+                ..Default::default()
+            };
 
             // Try to split any top-value utxos that are not already in-flight.
             for utxo in top_utxos {
@@ -914,7 +936,12 @@ impl WorkerTokenState {
                     continue;
                 }
                 // If this utxo is already in-flight, skip it
-                let key_image: KeyImage = utxo.get_key_image().try_into().unwrap();
+                let key_image: KeyImage = utxo
+                    .key_image
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .try_into()
+                    .unwrap();
                 if self.key_image_is_in_flight(&key_image) {
                     continue;
                 }
@@ -926,19 +953,22 @@ impl WorkerTokenState {
                 ) as usize;
 
                 // Generate a Tx
-                let mut req = api::GenerateTxRequest::new();
-                req.set_sender_monitor_id(monitor_id.to_vec());
-                req.set_token_id(*self.token_id);
-                req.set_input_list(vec![utxo.clone()].into());
-                req.set_outlay_list(vec![outlay.clone(); num_target_value_utxos].into());
+                let req = api::GenerateTxRequest {
+                    sender_monitor_id: monitor_id.to_vec(),
+                    token_id: *self.token_id,
+                    input_list: vec![utxo.clone()],
+                    outlay_list: vec![outlay.clone(); num_target_value_utxos],
+                    ..Default::default()
+                };
 
-                let mut resp = client
+                let resp = client
                     .generate_tx(&req)
                     .map_err(|err| format!("Failed to generate split tx: {err}"))?;
 
                 // Submit the Tx
-                let mut req = api::SubmitTxRequest::new();
-                req.set_tx_proposal(resp.take_tx_proposal());
+                let req = api::SubmitTxRequest {
+                    tx_proposal: resp.tx_proposal,
+                };
                 let submit_tx_response = client
                     .submit_tx(&req)
                     .map_err(|err| format!("Failed to submit split tx: {err}"))?;
@@ -989,7 +1019,12 @@ impl WorkerTokenState {
         let (key_images, selected_utxos): (HashSet<KeyImage>, Vec<_>) = utxos
             .iter()
             .filter_map(|utxo| {
-                let key_image: KeyImage = utxo.get_key_image().try_into().unwrap();
+                let key_image: KeyImage = utxo
+                    .key_image
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .try_into()
+                    .unwrap();
                 if self.key_image_is_in_flight(&key_image) {
                     None
                 } else {
@@ -1026,24 +1061,29 @@ impl WorkerTokenState {
         ) as usize;
 
         // Generate an outlay
-        let mut outlay = api::Outlay::new();
-        outlay.set_receiver(public_address.clone());
-        outlay.set_value(self.target_value);
+        let outlay = api::Outlay {
+            receiver: Some(public_address.clone()),
+            value: self.target_value,
+            ..Default::default()
+        };
 
         // Generate a Tx
-        let mut req = api::GenerateTxRequest::new();
-        req.set_sender_monitor_id(monitor_id.to_vec());
-        req.set_token_id(*self.token_id);
-        req.set_input_list(selected_utxos.iter().cloned().collect());
-        req.set_outlay_list(vec![outlay; num_target_value_utxos].into());
+        let req = api::GenerateTxRequest {
+            sender_monitor_id: monitor_id.to_vec(),
+            token_id: *self.token_id,
+            input_list: selected_utxos.to_vec(),
+            outlay_list: vec![outlay; num_target_value_utxos],
+            ..Default::default()
+        };
 
-        let mut resp = client
+        let resp = client
             .generate_tx(&req)
             .map_err(|err| format!("Failed to generate split tx: {err}"))?;
 
         // Submit the Tx
-        let mut req = api::SubmitTxRequest::new();
-        req.set_tx_proposal(resp.take_tx_proposal());
+        let req = api::SubmitTxRequest {
+            tx_proposal: resp.tx_proposal,
+        };
         let submit_tx_response = client
             .submit_tx(&req)
             .map_err(|err| format!("Failed to submit split tx: {err}"))?;
@@ -1085,10 +1125,10 @@ fn is_tx_still_in_flight(
 ) -> bool {
     match client.get_tx_status_as_sender(tx) {
         Ok(resp) => {
-            if resp.status == TxStatus::Unknown {
+            if resp.status() == TxStatus::Unknown {
                 return true;
             }
-            if resp.status != TxStatus::Verified {
+            if resp.status() != TxStatus::Verified {
                 log::error!(
                     logger,
                     "{} Tx ended with status: {:?}",

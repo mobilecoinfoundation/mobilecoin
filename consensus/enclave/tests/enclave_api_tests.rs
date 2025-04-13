@@ -101,9 +101,11 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
 
-    let mut msg = Message::new();
-    msg.set_channel_id(Vec::from(initiator.binding()));
-    msg.set_data(ciphertext);
+    let msg = Message {
+        channel_id: Vec::from(initiator.binding()),
+        data: ciphertext,
+        ..Default::default()
+    };
 
     enclave
         .client_tx_propose(msg.into())
@@ -114,9 +116,11 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let tx_ciphertext = initiator.encrypt(&[], &bad_req_bytes).unwrap();
 
-    let mut msg = Message::new();
-    msg.set_channel_id(Vec::from(initiator.binding()));
-    msg.set_data(tx_ciphertext);
+    let msg = Message {
+        channel_id: Vec::from(initiator.binding()),
+        data: tx_ciphertext,
+        ..Default::default()
+    };
 
     let result = enclave.client_tx_propose(msg.into());
     assert!(result.is_err(), "unexpected success with bad serialized Tx");
@@ -127,9 +131,11 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
 
-    let mut msg = Message::new();
-    msg.set_channel_id(Vec::from(initiator.binding()));
-    msg.set_data(ciphertext);
+    let msg = Message {
+        channel_id: Vec::from(initiator.binding()),
+        data: ciphertext,
+        ..Default::default()
+    };
 
     assert_eq!(
         enclave.client_tx_propose(msg.into()),
@@ -142,9 +148,11 @@ fn consensus_enclave_client_tx_propose(logger: Logger) {
 
     let ciphertext = initiator.encrypt(&[], &encode(&req)).unwrap();
 
-    let mut msg = Message::new();
-    msg.set_channel_id(Vec::from(initiator.binding()));
-    msg.set_data(ciphertext);
+    let msg = Message {
+        channel_id: Vec::from(initiator.binding()),
+        data: ciphertext,
+        ..Default::default()
+    };
 
     enclave
         .client_tx_propose(msg.into())

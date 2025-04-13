@@ -30,9 +30,9 @@ crc = { workspace = true }
 displaydoc = { workspace = true }
 mc-sgx-core-types = { workspace = true }
 mc-sgx-dcap-types = { workspace = true }
-protobuf = { workspace = true }
 
 curve25519-dalek = { workspace = true }
+prost = { version = "0.11", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }
@@ -58,7 +58,6 @@ mc-util-zip-exact = { workspace = true }
 
 generic-array = { workspace = true }
 pem = { workspace = true }
-prost = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
 rand_hc = { workspace = true }

@@ -5,11 +5,9 @@
 //! MobileCoin-specific (Ping) extensions.
 
 use crate::{
-    health_api::{
-        HealthCheckRequest, HealthCheckResponse, HealthCheckResponse_ServingStatus, PingRequest,
-        PingResponse,
+    grpc_health_v1::{
+        create_health, Health, HealthCheckRequest, HealthCheckResponse, PingRequest, PingResponse,
     },
-    health_api_grpc::{create_health, Health},
     rpc_logger, send_result, SVC_COUNTERS,
 };
 use futures::prelude::*;
@@ -19,9 +17,8 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-
 // Re-export the health check status enum for convenience.
-pub use crate::health_api::HealthCheckResponse_ServingStatus as HealthCheckStatus;
+pub use crate::grpc_health_v1::health_check_response::ServingStatus as HealthCheckStatus;
 
 // A prototype of a callback function that receives a service name and returns
 // it's health status. By defauult, `HealthService` would respond SERVING to all
@@ -65,12 +62,13 @@ impl Health for HealthService {
         let logger = rpc_logger(&ctx, &self.logger);
 
         let status = match &self.service_health_check_callback {
-            None => HealthCheckResponse_ServingStatus::SERVING,
-            Some(callback) => callback(req.get_service()),
+            None => HealthCheckStatus::Serving,
+            Some(callback) => callback(&req.service),
         };
 
-        let mut resp = HealthCheckResponse::new();
-        resp.set_status(status);
+        let resp = HealthCheckResponse {
+            status: status.into(),
+        };
         send_result(ctx, sink, Ok(resp), &logger);
     }
 
@@ -78,8 +76,7 @@ impl Health for HealthService {
         let _timer = SVC_COUNTERS.req(&ctx);
         let logger = rpc_logger(&ctx, &self.logger);
 
-        let mut resp = PingResponse::new();
-        resp.set_data(req.get_data().to_vec());
+        let resp = PingResponse { data: req.data };
         send_result(ctx, sink, Ok(resp), &logger);
     }
 
@@ -139,9 +136,9 @@ impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
     fn from(src: ReadinessIndicator) -> Self {
         Arc::new(move |_| -> HealthCheckStatus {
             if src.ready() {
-                HealthCheckStatus::SERVING
+                HealthCheckStatus::Serving
             } else {
-                HealthCheckStatus::NOT_SERVING
+                HealthCheckStatus::NotServing
             }
         })
     }

@@ -14,7 +14,7 @@ path = "src/bin/ingest.rs"
 [dependencies]
 # third party
 clap = { workspace = true, features = ["derive", "env"] }
-grpcio = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 retry = { workspace = true }
 tempfile = { workspace = true }
 

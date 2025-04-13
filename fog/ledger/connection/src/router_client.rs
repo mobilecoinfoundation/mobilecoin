@@ -18,8 +18,7 @@ use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_fog_api::{
     attest::{AuthMessage, Message},
-    ledger::{LedgerRequest, LedgerResponse},
-    ledger_grpc::LedgerApiClient,
+    fog_ledger::{ledger_request, ledger_response, LedgerApiClient, LedgerRequest, LedgerResponse},
 };
 use mc_fog_types::ledger::{CheckKeyImagesRequest, CheckKeyImagesResponse, KeyImageQuery};
 use mc_fog_uri::FogLedgerUri;
@@ -105,18 +104,25 @@ impl LedgerGrpcClient {
         let (initiator, auth_request_output) = initiator.try_next(&mut csprng, init_input)?;
 
         let attested_message: AuthMessage = auth_request_output.into();
-        let mut request = LedgerRequest::new();
-        request.set_auth(attested_message);
+        let request = LedgerRequest {
+            request_data: Some(ledger_request::RequestData::Auth(attested_message)),
+        };
         self.request_sender
             .send((request.clone(), grpcio::WriteFlags::default()))
             .await?;
 
-        let mut response = self
+        let response = self
             .response_receiver
             .try_next()
             .await?
             .ok_or(Error::ResponseNotReceived)?;
-        let auth_response_msg = response.take_auth();
+        let auth_response_msg = if let Some(ledger_response::ResponseData::Auth(auth_response)) =
+            response.response_data
+        {
+            auth_response
+        } else {
+            Default::default()
+        };
 
         let epoch_time = SystemTimeProvider
             .since_epoch()
@@ -174,29 +180,35 @@ impl LedgerGrpcClient {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let mut msg = Message::new();
-            msg.set_channel_id(Vec::from(attest_cipher.binding()));
-            msg.set_aad(aad.clone());
-
             let plaintext_bytes = mc_util_serial::encode(&key_images_request);
 
             let request_ciphertext = attest_cipher.encrypt(&aad, &plaintext_bytes)?;
-            msg.set_data(request_ciphertext);
-            msg
+            Message {
+                channel_id: Vec::from(attest_cipher.binding()),
+                aad: aad.clone(),
+                data: request_ciphertext,
+            }
         };
-        let mut request = LedgerRequest::new();
-        request.set_check_key_images(msg);
+        let request = LedgerRequest {
+            request_data: Some(ledger_request::RequestData::CheckKeyImages(msg)),
+        };
 
         self.request_sender
             .send((request.clone(), grpcio::WriteFlags::default()))
             .await?;
 
-        let message = self
+        let response = self
             .response_receiver
             .try_next()
             .await?
-            .ok_or(Error::ResponseNotReceived)?
-            .take_check_key_image_response();
+            .ok_or(Error::ResponseNotReceived)?;
+        let message = if let Some(ledger_response::ResponseData::CheckKeyImageResponse(msg)) =
+            response.response_data
+        {
+            msg
+        } else {
+            Default::default()
+        };
 
         {
             let attest_cipher = self
@@ -204,7 +216,8 @@ impl LedgerGrpcClient {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
+            let plaintext_bytes =
+                attest_cipher.decrypt(message.aad.as_slice(), message.data.as_slice())?;
             let plaintext_response: CheckKeyImagesResponse =
                 mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)

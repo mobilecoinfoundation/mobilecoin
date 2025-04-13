@@ -24,7 +24,7 @@ aes-gcm = { workspace = true }
 cookie = { workspace = true }
 der = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 retry = { workspace = true }
 sha2 = { workspace = true }

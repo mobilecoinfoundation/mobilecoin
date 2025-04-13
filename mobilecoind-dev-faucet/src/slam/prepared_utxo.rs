@@ -6,7 +6,7 @@ use mc_api::ConversionError;
 use mc_common::logger::{log, Logger};
 use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_resolver::FogResolver;
-use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
+use mc_mobilecoind_api::{self as api, mobilecoind_api::MobilecoindApiClient};
 use mc_transaction_builder::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_transaction_core::{
     constants::RING_SIZE,
@@ -75,13 +75,21 @@ impl PreparedUtxo {
         // The Tx builder sorts the ring anyways, so it doesn't matter if we always put
         // the real input first.
         let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) = proofs_resp
-            .get_output_list()
+            .output_list
             .iter()
-            .chain(mixins_resp.get_mixins().iter())
+            .chain(mixins_resp.mixins.iter())
             .map(|tx_out_with_proof| {
                 Ok((
-                    tx_out_with_proof.get_output().try_into()?,
-                    tx_out_with_proof.get_proof().try_into()?,
+                    tx_out_with_proof
+                        .output
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .try_into()?,
+                    tx_out_with_proof
+                        .proof
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .try_into()?,
                 ))
             })
             .collect::<Result<Vec<_>, ConversionError>>()
@@ -103,9 +111,15 @@ impl PreparedUtxo {
         mobilecoind_api_client: &MobilecoindApiClient,
     ) -> Result<(api::GetMembershipProofsResponse, api::GetMixinsResponse), String> {
         // Get a membership proof for this utxo
-        let mut req = api::GetMembershipProofsRequest::new();
-        req.mut_outputs()
-            .push(utxo_record.utxo.get_tx_out().clone());
+        let req = api::GetMembershipProofsRequest {
+            outputs: vec![utxo_record
+                .utxo
+                .tx_out
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .clone()],
+            ..Default::default()
+        };
 
         let proofs_resp = mobilecoind_api_client
             .get_membership_proofs_async(&req)
@@ -114,10 +128,15 @@ impl PreparedUtxo {
             .map_err(|err| format!("Request membership proofs ended in error: {err}"))?;
 
         // Get mixins for this utxo
-        let mut req = api::GetMixinsRequest::new();
-        req.set_num_mixins(RING_SIZE as u64 - 1);
-        req.mut_excluded()
-            .push(utxo_record.utxo.get_tx_out().clone());
+        let req = api::GetMixinsRequest {
+            num_mixins: RING_SIZE as u64 - 1,
+            excluded: vec![utxo_record
+                .utxo
+                .tx_out
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .clone()],
+        };
 
         let mixins_resp = mobilecoind_api_client
             .get_mixins_async(&req)
@@ -138,7 +157,11 @@ impl PreparedUtxo {
     ) -> Result<Tx, String> {
         let mut rng = thread_rng();
         // Get block version to target
-        let block_version = network_state.get_last_block_info().network_block_version;
+        let block_version = network_state
+            .last_block_info
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .network_block_version;
         let block_version = BlockVersion::try_from(block_version).map_err(|err| {
             format!("Got invalid block version {block_version} from network ({err})")
         })?;
@@ -147,7 +170,9 @@ impl PreparedUtxo {
         let value = self.utxo_record.utxo.value;
         let token_id = self.utxo_record.utxo.token_id;
         let fee_value = *network_state
-            .get_last_block_info()
+            .last_block_info
+            .as_ref()
+            .unwrap_or(&Default::default())
             .minimum_fees
             .get(&token_id)
             .ok_or_else(|| format!("Missing fee for token id: {token_id}"))?;

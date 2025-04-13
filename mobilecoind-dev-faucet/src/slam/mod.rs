@@ -4,7 +4,7 @@ use super::{GetUtxoError, UtxoRecord, Worker};
 use displaydoc::Display;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::logger::{log, o, Logger};
-use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient};
+use mc_mobilecoind_api::{self as api, mobilecoind_api::MobilecoindApiClient};
 use mc_util_uri::ConsensusClientUri;
 use std::{
     sync::{
@@ -413,31 +413,30 @@ impl SlamState {
         recipient: &PublicAddress,
     ) -> api::SubmitTxResponse {
         // Construct sender receipt.
-        let mut sender_tx_receipt = api::SenderTxReceipt::new();
-        sender_tx_receipt.set_key_image_list(tx.key_images().iter().map(Into::into).collect());
-        sender_tx_receipt.set_tombstone(tx.prefix.tombstone_block);
+        let sender_tx_receipt = api::SenderTxReceipt {
+            key_image_list: tx.key_images().iter().map(Into::into).collect(),
+            tombstone: tx.prefix.tombstone_block,
+        };
 
         // Construct receiver receipts.
         let receiver_tx_receipts = tx
             .prefix
             .outputs
             .iter()
-            .map(|tx_out| {
-                let mut receiver_tx_receipt = api::ReceiverTxReceipt::new();
-                receiver_tx_receipt.set_recipient(recipient.into());
-                receiver_tx_receipt.set_tx_public_key((&tx_out.public_key).into());
-                receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
-                receiver_tx_receipt.set_tombstone(tx.prefix.tombstone_block);
-
-                receiver_tx_receipt
+            .map(|tx_out| api::ReceiverTxReceipt {
+                recipient: Some(recipient.into()),
+                tx_public_key: Some((&tx_out.public_key).into()),
+                tx_out_hash: tx_out.hash().to_vec(),
+                tombstone: tx.prefix.tombstone_block,
+                ..Default::default()
             })
             .collect();
 
         // Return response.
-        let mut response = api::SubmitTxResponse::new();
-        response.set_sender_tx_receipt(sender_tx_receipt);
-        response.set_receiver_tx_receipt_list(receiver_tx_receipts);
-        response
+        api::SubmitTxResponse {
+            sender_tx_receipt: Some(sender_tx_receipt),
+            receiver_tx_receipt_list: receiver_tx_receipts,
+        }
     }
 
     /// Get at status report for the slam

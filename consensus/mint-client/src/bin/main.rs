@@ -6,8 +6,7 @@ use clap::Parser;
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_consensus_api::{
-    consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
-    empty::Empty,
+    consensus_client::ConsensusClientApiClient, consensus_common::BlockchainApiClient,
 };
 use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{printers, Commands, Config, FogContext};
@@ -19,7 +18,6 @@ use mc_transaction_core::{
     mint::{MintConfigTx, MintTx},
 };
 use mc_util_grpc::{common_headers_call_option, ConnectionUriGrpcioChannel};
-use protobuf::ProtobufEnum;
 use std::{fs, process::exit, sync::Arc};
 
 fn main() {
@@ -41,7 +39,7 @@ fn main() {
             let tx = params
                 .try_into_mint_config_tx(|| {
                     let last_block_info = blockchain_api
-                        .get_last_block_info(&Empty::new())
+                        .get_last_block_info(&())
                         .expect("get last block info");
                     last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                 })
@@ -59,7 +57,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.get_result().get_code().value());
+            exit(resp.result.unwrap().code);
         }
 
         Commands::GenerateMintConfigTx {
@@ -74,7 +72,7 @@ fn main() {
                             .connect_to_uri(node, &logger);
                         let blockchain_api = BlockchainApiClient::new(ch);
                         let last_block_info = blockchain_api
-                            .get_last_block_info(&Empty::new())
+                            .get_last_block_info(&())
                             .expect("get last block info");
                         last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                     } else {
@@ -146,7 +144,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.get_result().get_code().value());
+            exit(resp.result.unwrap().code);
         }
 
         Commands::GenerateAndSubmitMintTx {
@@ -170,7 +168,7 @@ fn main() {
             let tx = params
                 .try_into_mint_tx(maybe_fog_bits, || {
                     let last_block_info = blockchain_api
-                        .get_last_block_info(&Empty::new())
+                        .get_last_block_info(&())
                         .expect("get last block info");
                     last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                 })
@@ -188,7 +186,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.get_result().get_code().value());
+            exit(resp.result.unwrap().code);
         }
 
         Commands::GenerateMintTx {
@@ -212,7 +210,7 @@ fn main() {
                             .connect_to_uri(node, &logger);
                         let blockchain_api = BlockchainApiClient::new(ch);
                         let last_block_info = blockchain_api
-                            .get_last_block_info(&Empty::new())
+                            .get_last_block_info(&())
                             .expect("get last block info");
                         last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                     } else {
@@ -284,7 +282,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.get_result().get_code().value());
+            exit(resp.result.unwrap().code);
         }
 
         Commands::SignGovernors {

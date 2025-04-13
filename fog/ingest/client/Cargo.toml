@@ -19,9 +19,8 @@ path = "src/main.rs"
 # third party
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 hex = { workspace = true }
-protobuf = { workspace = true }
 retry = { workspace = true }
 serde_json = { workspace = true }
 

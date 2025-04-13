@@ -56,7 +56,9 @@ impl TestIngestNode {
     /// Helper to fetch and parse the ingress pubkey for this node.
     pub fn get_ingress_key(&self) -> CompressedRistrettoPublic {
         self.get_ingest_summary()
-            .get_ingress_pubkey()
+            .ingress_pubkey
+            .as_ref()
+            .unwrap()
             .try_into()
             .unwrap()
     }

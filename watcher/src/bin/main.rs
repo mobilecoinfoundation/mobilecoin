@@ -57,7 +57,7 @@ fn main() {
 
     // Start gRPC server.
     let health_check_callback: Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send> =
-        Arc::new(move |_| HealthCheckStatus::SERVING);
+        Arc::new(move |_| HealthCheckStatus::Serving);
     let health_service =
         HealthService::new(Some(health_check_callback), logger.clone()).into_service();
 

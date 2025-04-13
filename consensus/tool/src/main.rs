@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand};
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_connection::BlockInfo;
-use mc_consensus_api::{consensus_common_grpc::BlockchainApiClient, empty::Empty};
+use mc_consensus_api::consensus_common::BlockchainApiClient;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConsensusClientUri;
 use serde_json::to_string_pretty;
@@ -96,9 +96,7 @@ fn main() {
     match config.tool_command {
         ToolCommand::Status => {
             for (uri, conn) in &blockchain_conns {
-                let last_block_info = conn
-                    .get_last_block_info(&Empty::new())
-                    .expect("get last block info");
+                let last_block_info = conn.get_last_block_info(&()).expect("get last block info");
 
                 let block_info = BlockInfo::from(last_block_info);
 
@@ -112,7 +110,7 @@ fn main() {
         ToolCommand::WaitForBlock { index, period } => loop {
             let mut needs_retry = false;
             for (uri, conn) in &blockchain_conns {
-                match conn.get_last_block_info(&Empty::new()) {
+                match conn.get_last_block_info(&()) {
                     Ok(last_block_info) => {
                         if last_block_info.index < index {
                             needs_retry = true;
@@ -139,7 +137,7 @@ fn main() {
             let last_block_index = loop {
                 let mut was_updated = false;
                 for (uri, conn) in &blockchain_conns {
-                    match conn.get_last_block_info(&Empty::new()) {
+                    match conn.get_last_block_info(&()) {
                         Ok(last_block_info) => {
                             if last_block_index != Some(last_block_info.index) {
                                 last_block_index = Some(last_block_info.index);
