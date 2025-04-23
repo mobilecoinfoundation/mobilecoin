@@ -788,6 +788,15 @@ impl WatcherDB {
         })
     }
 
+    /// Public get attestation evidence by hash.
+    pub fn get_attestation_evidence_by_hash(
+        &self,
+        hash: &[u8],
+    ) -> Result<Option<EvidenceKind>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.attestation_evidence_by_hash(&db_txn, hash)
+    }
+
     /// Get attestation evidence for a given block signer.
     /// Returns a map of tx source url to all attestation evidence instances
     /// seen for the given signer. Notes:

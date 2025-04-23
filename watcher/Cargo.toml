@@ -15,6 +15,10 @@ path = "src/bin/main.rs"
 name = "mc-watcher-db-dump"
 path = "src/bin/db-dump.rs"
 
+[[bin]]
+name = "mc-watcher-db-compare-to-pb"
+path = "src/bin/db-compare-to-pb.rs"
+
 [dependencies]
 mc-api = { path = "../api" }
 mc-attest-ake = { path = "../attest/ake" }
@@ -54,6 +58,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 sha2 = "0.10"
 toml = "0.8"
 url = "2.5"
+protobuf = "2.27.1"
 
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }

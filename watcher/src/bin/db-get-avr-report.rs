@@ -1,0 +1,182 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
+//! A utility for examining the contents of a given watcher db.
+
+use clap::Parser;
+use mc_attest_core::{EvidenceKind, VerificationReportData};
+use mc_common::logger::{create_app_logger, o};
+use mc_crypto_keys::Ed25519Public;
+use mc_util_repr_bytes::ReprBytes;
+use mc_watcher::{attestation_evidence_collector, error::WatcherDBError, watcher_db::WatcherDB};
+use std::path::PathBuf;
+use url::Url;
+
+/// Command line configuration.
+#[derive(Debug, Parser)]
+#[clap(
+    name = "mc-watcher-db-get-avr-report",
+    about = "A utility for getting an AVR report by signer from a watcher db"
+)]
+pub struct Config {
+    /// Path to watcher db (lmdb).
+    #[clap(long, default_value = "/tmp/watcher-db", env = "MC_WATCHER_DB")]
+    pub watcher_db: PathBuf,
+
+    /// hash of the report
+    #[clap(long, default_value = "", env = "MC_REPORT_HASH")]
+    pub report_hash: String,
+}
+
+fn main() {
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+
+    let config = Config::parse();
+    let watcher_db =
+        WatcherDB::open_ro(&config.watcher_db, logger).expect("Failed opening watcher db");
+
+    let last_synced_blocks = watcher_db
+        .last_synced_blocks()
+        .expect("last_synced_blocks failed");
+    if last_synced_blocks.is_empty() {
+        println!("Last synced blocks is empty - aborting");
+        return;
+    }
+
+    // let max_url_len = last_synced_blocks
+    //     .iter()
+    //     .map(|(url, _block_index)| url.as_str().len())
+    //     .max()
+    //     .unwrap_or(0);
+
+    // println!("Last synced blocks:");
+    // for (url, block_index) in last_synced_blocks.iter() {
+    //     println!("{url:max_url_len$}: {block_index:?}");
+    // }
+    // println!();
+
+    // println!("Signers:");
+    // for (tx_src_url, max_block_index) in last_synced_blocks.iter() {
+    //     let max_block_count = max_block_index.map(|idx| idx +
+    // 1).unwrap_or(0);
+
+    //     // Construct a list of ranges, where each range is mapped to the
+    // signer that     // signed the range, assuming that information is
+    // available.     let mut ranges = Vec::new();
+    //     let mut cur_start_index = 0;
+    //     let mut cur_end_index = 0;
+    //     let mut cur_signer = None;
+    //     for block_index in 0..max_block_count {
+    //         let signer = match watcher_db.get_block_data(tx_src_url,
+    // block_index) {             Ok(block_data) =>
+    // block_data.signature().map(|sig| *sig.signer()),
+    // Err(WatcherDBError::NotFound) => None,             Err(err) => {
+    //                 panic!("Failed getting block
+    // {tx_src_url}@{cur_start_index}: {err}");             }
+    //         };
+
+    //         if signer == cur_signer {
+    //             cur_end_index += 1;
+    //         } else {
+    //             ranges.push(((cur_start_index, cur_end_index),
+    // cur_signer.take()));             cur_start_index = block_index;
+    //             cur_end_index = block_index;
+    //             cur_signer = signer;
+    //         }
+    //     }
+    //     ranges.push(((cur_start_index, cur_end_index), cur_signer.take()));
+
+    //     println!("{tx_src_url}");
+    //     for ((start, end), signer) in ranges.iter() {
+    //         let report_status = display_report_status(&watcher_db,
+    // tx_src_url, signer);
+
+    //         println!(
+    //             " - {} - {}: {:?} ({})",
+    //             start,
+    //             end,
+    //             signer.map(|s| hex::encode(s.to_bytes())),
+    //             report_status,
+    //         );
+    //     }
+    //     println!();
+    // }
+
+    let report_hash =
+        hex::decode(&config.report_hash).expect("failed to parse report hash from hex");
+
+    let report = watcher_db
+        .get_attestation_evidence_by_hash(&report_hash)
+        .expect("get_attestation_evidence failed");
+
+    match report {
+        Some(report) => match report {
+            // It seem that there isn't any epid report in this subdir in the db
+            EvidenceKind::Epid(report) => {
+                println!("epid report available");
+                println!("{}", report);
+            }
+            EvidenceKind::Dcap(evidence) => {
+                println!("DCAP evidence available");
+                println!("{:#?}", evidence);
+            }
+        },
+        None => {
+            println!("no report available");
+        }
+    }
+}
+
+fn display_report_status(
+    watcher_db: &WatcherDB,
+    tx_src_url: &Url,
+    signer: &Option<Ed25519Public>,
+) -> String {
+    if signer.is_none() {
+        return "no signature".to_owned();
+    }
+
+    let signer = signer.unwrap();
+
+    let reports = watcher_db
+        .attestation_evidence_for_signer(&signer)
+        .expect("get_verification_reports_for_signer failed");
+
+    // Should only have one URL associated with this signer
+    match reports.len() {
+        0 => "no reports".to_owned(),
+        1 => match reports.get(tx_src_url) {
+            Some(reports) => {
+                // Should only have one report associated with the signer+url pair
+                match reports.len() {
+                    0 => "no reports".to_owned(),
+                    1 => match &reports[0] {
+                        Some(report) => match report {
+                            EvidenceKind::Epid(report) => {
+                                let report_data = VerificationReportData::try_from(report)
+                                    .expect("failed constructing verification report data");
+                                format!(
+                                    "report available, id {} generated at {}",
+                                    report_data.id, report_data.timestamp
+                                )
+                            }
+                            EvidenceKind::Dcap(evidence) => {
+                                let signer =
+                                    attestation_evidence_collector::get_block_signer_from_dcap_evidence(evidence)
+                                    .expect("failed getting signer from dcap evidence");
+                                format!("DCAP evidence available, signer {signer}")
+                            }
+                        },
+                        None => "no report".to_owned(),
+                    },
+                    _ => "MULTIPLE REPORTS AVAILABLE".to_owned(),
+                }
+            }
+            None => format!(
+                "Signer reported for a different URL ({})!",
+                reports.keys().next().unwrap()
+            ),
+        },
+        _ => "MULTIPLE REPORTS".to_owned(),
+    }
+}
