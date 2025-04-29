@@ -693,9 +693,12 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
             data: hex::decode(&src.e_fog_hint)
                 .map_err(|err| format!("Failed to decode e_fog_hint hex: {err}"))?,
         };
-        let e_memo = EncryptedMemo {
-            data: hex::decode(&src.e_memo)
-                .map_err(|err| format!("Failed to decode e_memo hex: {err}"))?,
+        let memo_data = hex::decode(&src.e_memo)
+            .map_err(|err| format!("Failed to decode e_memo hex: {err}"))?;
+        let e_memo = if memo_data.is_empty() {
+            None
+        } else {
+            Some(EncryptedMemo { data: memo_data })
         };
 
         Ok(mc_api::external::TxOut {
@@ -707,7 +710,7 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
             target_key: Some(target_key),
             public_key: Some(public_key),
             e_fog_hint: Some(e_fog_hint),
-            e_memo: Some(e_memo),
+            e_memo,
         })
     }
 }
