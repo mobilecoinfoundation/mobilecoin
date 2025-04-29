@@ -1469,7 +1469,7 @@ mod tests {
         let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
         let missed_block_ranges = vec![missed_block_range];
 
-        let block_data = (first_index..final_index + 1)
+        let block_data = (first_index..final_index - 1)
             .map(|index| fog_ledger::BlockData {
                 index,
                 ..Default::default()

@@ -3696,7 +3696,14 @@ mod test {
         assert!(!resp.matched);
         assert_eq!(resp.value, 0);
         assert_eq!(resp.token_id, 0);
-        assert_eq!(resp.shared_secret.unwrap().data.len(), 0);
+        assert_eq!(
+            resp.shared_secret
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .data
+                .len(),
+            0
+        );
     }
 
     #[test_with_logger]

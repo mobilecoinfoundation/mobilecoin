@@ -1138,7 +1138,11 @@ mod client_api_tests {
         match client.propose_mint_config_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.result.unwrap().code(),
+                    propose_tx_response
+                        .result
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .code(),
                     MintValidationResultCode::Ok
                 );
                 assert_eq!(propose_tx_response.block_count, num_blocks);
@@ -1451,7 +1455,11 @@ mod client_api_tests {
         match client.propose_mint_tx(&(&tx).into()) {
             Ok(propose_tx_response) => {
                 assert_eq!(
-                    propose_tx_response.result.unwrap().code(),
+                    propose_tx_response
+                        .result
+                        .as_ref()
+                        .unwrap_or(&Default::default())
+                        .code(),
                     MintValidationResultCode::Ok
                 );
                 assert_eq!(propose_tx_response.block_count, num_blocks);
