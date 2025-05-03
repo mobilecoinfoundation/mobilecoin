@@ -221,7 +221,7 @@ fn get_ingress_key_records(
 
 fn ingest_summary_to_json(summary: &IngestSummary) -> String {
     to_string_pretty(&json!({
-        "mode": format!("{:?}", summary.mode),
+        "mode": format!("{:?}", summary.mode()),
         "next_block_index": summary.next_block_index,
         "pubkey_expiry_window": summary.pubkey_expiry_window,
         "ingress_pubkey": hex::encode(&summary.ingress_pubkey.as_ref().expect("Missing ingress public key").data),
