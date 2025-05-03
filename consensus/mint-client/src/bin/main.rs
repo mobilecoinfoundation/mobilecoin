@@ -57,7 +57,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.result.unwrap().code);
+            exit(resp.result.as_ref().unwrap_or(&Default::default()).code);
         }
 
         Commands::GenerateMintConfigTx {
@@ -144,7 +144,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.result.unwrap().code);
+            exit(resp.result.as_ref().unwrap_or(&Default::default()).code);
         }
 
         Commands::GenerateAndSubmitMintTx {
@@ -186,7 +186,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.result.unwrap().code);
+            exit(resp.result.as_ref().unwrap_or(&Default::default()).code);
         }
 
         Commands::GenerateMintTx {
@@ -282,7 +282,7 @@ fn main() {
             // Relying on the success result code being 0, we terminate ourselves in a way
             // that allows whoever started this binary to easily determine if submitting the
             // transaction succeeded.
-            exit(resp.result.unwrap().code);
+            exit(resp.result.as_ref().unwrap_or(&Default::default()).code);
         }
 
         Commands::SignGovernors {
