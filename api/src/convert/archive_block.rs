@@ -28,12 +28,8 @@ impl TryFrom<&ArchiveBlock> for BlockData {
     type Error = ConversionError;
 
     fn try_from(src: &ArchiveBlock) -> Result<Self, Self::Error> {
-        if src.block.is_none() {
+        let Some(archive_block::Block::V1(archive_block_v1)) = src.block.as_ref() else {
             return Err(ConversionError::ObjectMissing);
-        }
-        let archive_block_v1 = match src.block.as_ref() {
-            Some(archive_block::Block::V1(archive_block_v1)) => archive_block_v1,
-            _ => return Err(ConversionError::ObjectMissing),
         };
 
         let block = archive_block_v1
