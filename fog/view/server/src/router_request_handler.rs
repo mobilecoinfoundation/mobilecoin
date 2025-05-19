@@ -83,7 +83,7 @@ where
         }
         _ => {
             let rpc_status = rpc_invalid_arg_error(
-                "Inavlid FogViewRouterRequest request",
+                "Invalid FogViewRouterRequest request",
                 "Neither the query nor auth fields were set".to_string(),
                 &logger,
             );
