@@ -1511,12 +1511,7 @@ pub struct HealthTracker {
     // Set to i for the duration of the i'th transfer
     counter: AtomicUsize,
     // The counter value during the most recent failure.
-    // Note that this starts as 0, and as such we are unable to distinguish
-    // between a failure that occurred at counter value 0 and no failure occuring at all.
-    // This is acceptable, since the only purpose of last_failure is to enable the auto-healing
-    // mechanism inside `set_counter`, that that works regardless of the meaning of the
-    // zero value.
-    last_failure: AtomicUsize,
+    last_failure: Mutex<Option<usize>>,
     // How many successful transfers needed to forget a previous unsuccessful
     // transaction and enable us to be healthy. (This usage of the word "time"
     // does not refer to duration or seconds elapsed).
@@ -1537,6 +1532,7 @@ impl HealthTracker {
         counters::LAST_POLLING_SUCCESSFUL.set(1);
         Self {
             healing_time,
+            last_failure: Mutex::new(None),
             ..Default::default()
         }
     }
@@ -1544,15 +1540,16 @@ impl HealthTracker {
     /// Set the counter value, and maybe update healthy status
     pub fn set_counter(&self, counter: usize) {
         self.counter.store(counter, Ordering::SeqCst);
-        if self.last_failure.load(Ordering::SeqCst) + self.healing_time < counter {
+
+        let last_failure = self.last_failure.lock().unwrap();
+        if last_failure.is_some() && last_failure.unwrap() + self.healing_time < counter {
             counters::LAST_POLLING_SUCCESSFUL.set(1);
         }
     }
 
     /// Announce a failure, which will update the healthy status, and be tracked
     pub fn announce_failure(&self) {
-        self.last_failure
-            .store(self.counter.load(Ordering::SeqCst), Ordering::SeqCst);
+        *self.last_failure.lock().unwrap() = Some(self.counter.load(Ordering::SeqCst));
         counters::LAST_POLLING_SUCCESSFUL.set(0);
     }
 }
