@@ -229,7 +229,9 @@ impl State {
 
         let monitor_printable_wrapper = PrintableWrapper::b58_decode(monitor_b58_address.clone())
             .expect("Could not decode b58 address");
-        let Some(printable_wrapper::Wrapper::PublicAddress(monitor_public_address)) = monitor_printable_wrapper.wrapper else {
+        let Some(printable_wrapper::Wrapper::PublicAddress(monitor_public_address)) =
+            monitor_printable_wrapper.wrapper
+        else {
             panic!("Printable Wrapper did not contain public address");
         };
 
@@ -271,12 +273,13 @@ impl State {
         let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
             .map_err(|err| format!("Could not decode b58 address: {err}"))?;
 
-        let Some(printable_wrapper::Wrapper::PublicAddress(public_address) = printable_wrapper.wrapper else {
-                return Err(format!(
-                    "b58 address '{}' is not a public address",
-                    req.b58_address
-                ));
-            };
+        let Some(printable_wrapper::Wrapper::PublicAddress(public_address)) =
+            printable_wrapper.wrapper
+        else {
+            return Err(format!(
+                "b58 address '{}' is not a public address",
+                req.b58_address
+            ));
         };
 
         let token_id = TokenId::from(req.token_id.as_ref());
