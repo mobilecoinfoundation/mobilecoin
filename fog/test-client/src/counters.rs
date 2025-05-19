@@ -2,7 +2,12 @@
 
 //! Prometheus metrics, interesting when the test runs continuously
 
-use mc_util_metrics::{register_histogram, Histogram, IntCounter, IntGauge, OpMetrics};
+use mc_transaction_core::TokenId;
+use mc_util_metrics::{
+    register_histogram, Collector, Desc, Histogram, IntCounter, IntGauge, IntGaugeVec,
+    MetricFamily, OpMetrics, Opts,
+};
+use std::collections::HashMap;
 
 // Histogram buckets used for reporting the TX_CONFIRMED_TIME and
 // TX_RECEIVED_TIME to prometheus
@@ -28,6 +33,9 @@ const TX_TIME_BUCKETS_SHORT: &[f64] = &[0.2, 0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0, 
 lazy_static::lazy_static! {
     /// Counter group
     pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("fog_test_client");
+
+    /// Metrics for each individual client.
+    pub static ref CLIENT_METRICS: ClientMetrics = ClientMetrics::new_and_registered();
 
     /// Time in seconds that it takes for the source client to build a transaction (including fog interactions)
     pub static ref TX_BUILD_TIME: Histogram =
@@ -107,4 +115,77 @@ lazy_static::lazy_static! {
     /// It is (1) if NO client has failed their most recent transfer.
     /// This is updated after every transfer attempt.
     pub static ref LAST_POLLING_SUCCESSFUL: IntGauge = OP_COUNTERS.gauge("last_polling_successful");
+}
+
+/// Metrics for each individual client.
+/// Clients are identified by their index in the config.
+#[derive(Clone)]
+pub struct ClientMetrics {
+    balance_gauges: IntGaugeVec,
+    balance_block_count_gauges: IntGaugeVec,
+}
+
+impl Default for ClientMetrics {
+    fn default() -> Self {
+        ClientMetrics {
+            balance_gauges: IntGaugeVec::new(
+                Opts::new(
+                    "test_client_balance",
+                    "Balance of each individual test client",
+                ),
+                &["client_index", "token_id"],
+            )
+            .unwrap(),
+            balance_block_count_gauges: IntGaugeVec::new(
+                Opts::new(
+                    "test_client_balance_block_count",
+                    "Block count at which the balance was last updated",
+                ),
+                &["client_index"],
+            )
+            .unwrap(),
+        }
+    }
+}
+
+impl ClientMetrics {
+    /// Create a new ClientMetrics instance and register it with the Prometheus
+    /// crate.
+    pub fn new_and_registered() -> Self {
+        let client_metrics = Self::default();
+        prometheus::register(Box::new(client_metrics.clone()))
+            .expect("ClientMetrics registration on Prometheus failed.");
+        client_metrics
+    }
+
+    /// Update the balance and block count for a given client.
+    pub fn update_balance(
+        &self,
+        client_index: usize,
+        balances: &HashMap<TokenId, u64>,
+        block_count: impl Into<u64>,
+    ) {
+        let block_count = block_count.into();
+        for (token_id, balance) in balances {
+            self.balance_gauges
+                .with_label_values(&[&client_index.to_string(), &token_id.to_string()])
+                .set(*balance as i64);
+        }
+        self.balance_block_count_gauges
+            .with_label_values(&[&client_index.to_string()])
+            .set(block_count as i64);
+    }
+}
+
+impl Collector for ClientMetrics {
+    fn desc(&self) -> Vec<&Desc> {
+        self.balance_gauges.desc()
+    }
+
+    fn collect(&self) -> Vec<MetricFamily> {
+        let mut metrics = Vec::with_capacity(2);
+        metrics.extend(self.balance_gauges.collect());
+        metrics.extend(self.balance_block_count_gauges.collect());
+        metrics
+    }
 }
