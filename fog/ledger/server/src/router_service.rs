@@ -122,7 +122,7 @@ where
             }
             _ => {
                 let error = rpc_internal_error(
-                    "Inavlid LedgerRequest response",
+                    "Invalid LedgerRequest response",
                     "Cannot provide a check key image response to the client's key image request."
                         .to_string(),
                     &scope_logger,
@@ -168,7 +168,7 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
                     Some(ledger_response::ResponseData::Auth(auth)) => sink.success(auth),
                     _ => {
                         let error = rpc_internal_error(
-                            "Inavlid LedgerRequest response",
+                            "Invalid LedgerRequest response",
                             "Response to client's auth request did not contain an auth response."
                                 .to_string(),
                             &logger,
