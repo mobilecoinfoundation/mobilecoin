@@ -399,13 +399,21 @@ impl PeerThread {
         let retry_iterator = retry_policy.get_delay_iterator().with_deadline(deadline);
 
         match conn.send_consensus_msg(&arc_msg, retry_iterator) {
-            Ok(resp) => match resp.result() {
-                ConsensusMsgResult::Ok => {}
-                ConsensusMsgResult::UnknownPeer => log::info!(
+            Ok(resp) => match ConsensusMsgResult::from_i32(resp.result) {
+                Some(ConsensusMsgResult::Ok) => {}
+                Some(ConsensusMsgResult::UnknownPeer) => log::info!(
                     logger,
                     "Peer {}: does not accept broadcast messages from unknown peers",
                     conn
                 ),
+                None => {
+                    log::info!(
+                        logger,
+                        "Peer {}: returned unknown result: {:?}",
+                        conn,
+                        resp.result
+                    );
+                }
             },
             Err(err) => {
                 log::error!(
