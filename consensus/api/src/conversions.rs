@@ -163,43 +163,53 @@ impl TryInto<MintValidationError> for MintValidationResult {
     type Error = String;
 
     fn try_into(self) -> Result<MintValidationError, Self::Error> {
-        match self.code() {
-            MintValidationResultCode::Ok => {
+        match MintValidationResultCode::from_i32(self.code) {
+            Some(MintValidationResultCode::Ok) => {
                 Err("Ok value cannot be converted into MintValidationError".to_string())
             }
-            MintValidationResultCode::InvalidBlockVersion => {
+            Some(MintValidationResultCode::InvalidBlockVersion) => {
                 Ok(MintValidationError::InvalidBlockVersion(
                     BlockVersion::try_from(self.block_version).map_err(|err| err.to_string())?,
                 ))
             }
-            MintValidationResultCode::InvalidTokenId => {
+            Some(MintValidationResultCode::InvalidTokenId) => {
                 Ok(MintValidationError::InvalidTokenId(self.token_id.into()))
             }
-            MintValidationResultCode::InvalidNonceLength => Ok(
+            Some(MintValidationResultCode::InvalidNonceLength) => Ok(
                 MintValidationError::InvalidNonceLength(self.nonce_length as usize),
             ),
-            MintValidationResultCode::InvalidSignerSet => Ok(MintValidationError::InvalidSignerSet),
-            MintValidationResultCode::InvalidSignature => Ok(MintValidationError::InvalidSignature),
-            MintValidationResultCode::TombstoneBlockExceeded => {
+            Some(MintValidationResultCode::InvalidSignerSet) => {
+                Ok(MintValidationError::InvalidSignerSet)
+            }
+            Some(MintValidationResultCode::InvalidSignature) => {
+                Ok(MintValidationError::InvalidSignature)
+            }
+            Some(MintValidationResultCode::TombstoneBlockExceeded) => {
                 Ok(MintValidationError::TombstoneBlockExceeded)
             }
-            MintValidationResultCode::TombstoneBlockTooFar => {
+            Some(MintValidationResultCode::TombstoneBlockTooFar) => {
                 Ok(MintValidationError::TombstoneBlockTooFar)
             }
-            MintValidationResultCode::Unknown => Ok(MintValidationError::Unknown),
-            MintValidationResultCode::AmountExceedsMintLimit => {
+            Some(MintValidationResultCode::Unknown) => Ok(MintValidationError::Unknown),
+            Some(MintValidationResultCode::AmountExceedsMintLimit) => {
                 Ok(MintValidationError::AmountExceedsMintLimit)
             }
-            MintValidationResultCode::NoGovernors => Ok(MintValidationError::NoGovernors(
+            Some(MintValidationResultCode::NoGovernors) => Ok(MintValidationError::NoGovernors(
                 TokenId::from(self.token_id),
             )),
-            MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),
-            MintValidationResultCode::NoMatchingMintConfig => {
+            Some(MintValidationResultCode::NonceAlreadyUsed) => {
+                Ok(MintValidationError::NonceAlreadyUsed)
+            }
+            Some(MintValidationResultCode::NoMatchingMintConfig) => {
                 Ok(MintValidationError::NoMatchingMintConfig)
             }
-            MintValidationResultCode::MintingToFogNotSupported => {
+            Some(MintValidationResultCode::MintingToFogNotSupported) => {
                 Ok(MintValidationError::MintingToFogNotSupported)
             }
+            None => Err(format!(
+                "Unknown code value ({}) cannot be converted into MintValidationError",
+                self.code
+            )),
         }
     }
 }
