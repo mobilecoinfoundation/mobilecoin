@@ -51,7 +51,10 @@ fn main() {
                 println!("Memo: {}", payload.memo);
                 println!("BIP39 entropy: {}", hex::encode(&payload.bip39_entropy));
             }
-            _ => {}
+            _ => {
+                println!("Failed decoding b58, empty PrintableWrapper");
+                std::process::exit(1);
+            }
         },
 
         Err(err) => {
