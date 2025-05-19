@@ -97,7 +97,6 @@ mod tests {
     use super::*;
     use crate::sharding_strategy::{EpochShardingStrategy, ShardingStrategy};
     use grpcio::ChannelBuilder;
-    use mc_attest_api::attest;
     use mc_common::logger::test_with_logger;
     use mc_fog_api::fog_view::FogViewStoreApiClient;
     use mc_fog_types::common::BlockRange;

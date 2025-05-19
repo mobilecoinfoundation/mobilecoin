@@ -680,12 +680,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let wrapper = api::printable::PrintableWrapper::b58_decode(request.b58_code.to_string())
             .map_err(|err| rpc_internal_error("PrintableWrapper.b58_decode", err, &self.logger))?;
 
-        let Some(printable_wrapper::Wrapper::TransferPayload(transfer_payload)) = wrapper.wrapper else {
-                return Err(RpcStatus::with_message(
-                    RpcStatusCode::INVALID_ARGUMENT,
-                    "has_transfer_payload".into(),
-                ));
-            };
+        let Some(printable_wrapper::Wrapper::TransferPayload(transfer_payload)) = wrapper.wrapper
+        else {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "has_transfer_payload".into(),
+            ));
+        };
 
         let tx_public_key = RistrettoPublic::try_from(
             transfer_payload
