@@ -1510,9 +1510,12 @@ impl core::fmt::Display for TxInfo {
 pub struct HealthTracker {
     // Set to i for the duration of the i'th transfer
     counter: AtomicUsize,
-    // Whether we have observed any failure
-    have_failure: AtomicBool,
-    // The counter value during the most recent failure
+    // The counter value during the most recent failure.
+    // Note that this starts as 0, and as such we are unable to distinguish
+    // between a failure that occurred at counter value 0 and no failure occuring at all.
+    // This is acceptable, since the only purpose of last_failure is to enable the auto-healing
+    // mechanism inside `set_counter`, that that works regardless of the meaning of the
+    // zero value.
     last_failure: AtomicUsize,
     // How many successful transfers needed to forget a previous unsuccessful
     // transaction and enable us to be healthy. (This usage of the word "time"
@@ -1541,19 +1544,7 @@ impl HealthTracker {
     /// Set the counter value, and maybe update healthy status
     pub fn set_counter(&self, counter: usize) {
         self.counter.store(counter, Ordering::SeqCst);
-        // If:
-        // * there is a failure
-        // * the failure happened at least healing_time ago then set ourselves healthy
-        //   again
-        // The combination of have_failure + last_failure can be thought of as an
-        // `Option<u64>`, but because there's no Atomic version of
-        // `Option<u64>`, we need to have two atomics. If we had an
-        // AtomicOptionU64 type then we would check for Some(last_failure), and we would
-        // never set last_failure to None, which is also why we don't set have_failure
-        // to false.
-        if self.have_failure.load(Ordering::SeqCst)
-            && self.last_failure.load(Ordering::SeqCst) + self.healing_time < counter
-        {
+        if self.last_failure.load(Ordering::SeqCst) + self.healing_time < counter {
             counters::LAST_POLLING_SUCCESSFUL.set(1);
         }
     }
@@ -1562,8 +1553,6 @@ impl HealthTracker {
     pub fn announce_failure(&self) {
         self.last_failure
             .store(self.counter.load(Ordering::SeqCst), Ordering::SeqCst);
-        // Store have_failure only after writing to last_failure
-        self.have_failure.store(true, Ordering::SeqCst);
         counters::LAST_POLLING_SUCCESSFUL.set(0);
     }
 }
