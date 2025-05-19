@@ -179,7 +179,10 @@ impl ClientMetrics {
 
 impl Collector for ClientMetrics {
     fn desc(&self) -> Vec<&Desc> {
-        self.balance_gauges.desc()
+        let mut metrics = Vec::with_capacity(2);
+        metrics.extend(self.balance_gauges.desc());
+        metrics.extend(self.balance_block_count_gauges.desc());
+        metrics
     }
 
     fn collect(&self) -> Vec<MetricFamily> {
