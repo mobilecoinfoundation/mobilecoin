@@ -1546,8 +1546,9 @@ impl HealthTracker {
         // * the failure happened at least healing_time ago then set ourselves healthy
         //   again
         if self.have_failure.load(Ordering::SeqCst)
-            && self.last_failure.load(Ordering::SeqCst) + self.healing_time <= counter
+            && self.last_failure.load(Ordering::SeqCst) + self.healing_time < counter
         {
+            self.have_failure.store(false, Ordering::SeqCst);
             counters::LAST_POLLING_SUCCESSFUL.set(1);
         }
     }
