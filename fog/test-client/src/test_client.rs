@@ -5,7 +5,10 @@
 //! - Fog canary (sends transactions in prod to alert if it fails, and collect
 //!   timings)
 
-use crate::{counters, error::TestClientError};
+use crate::{
+    counters::{self, CLIENT_METRICS},
+    error::TestClientError,
+};
 
 use hex_fmt::HexList;
 use maplit::hashmap;
@@ -296,7 +299,9 @@ impl TestClient {
     fn transfer(
         &self,
         source_client: &mut Client,
+        source_client_index: usize,
         target_client: &Client,
+        _target_client_index: usize,
         token_id: TokenId,
     ) -> Result<TransferData, TestClientError> {
         self.tx_info.clear();
@@ -310,11 +315,12 @@ impl TestClient {
 
         // First do a balance check to flush out any spent txos
         let tracer = tracer!();
-        tracer.in_span("pre_transfer_balance_check", |_cx| {
+        let (balances, block_count) = tracer.in_span("pre_transfer_balance_check", |_cx| {
             source_client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)
         })?;
+        CLIENT_METRICS.update_balance(source_client_index, &balances, block_count);
 
         let mut rng = McRng;
         assert!(target_address.fog_report_url().is_some());
@@ -429,6 +435,8 @@ impl TestClient {
     /// balance.
     ///
     /// Arguments:
+    /// * client: The client to use for this check
+    /// * client_index: The index of the client in the list of clients
     /// * block_index: The block_index containing new transactions that must be
     ///   in the balance
     /// * expected_balance: The expected balance to compute after this
@@ -436,6 +444,7 @@ impl TestClient {
     fn ensure_expected_balance_after_block(
         &self,
         client: &mut Client,
+        client_index: usize,
         block_index: BlockIndex,
         expected_balances: HashMap<TokenId, u64>,
     ) -> Result<(), TestClientError> {
@@ -446,6 +455,7 @@ impl TestClient {
             let (new_balances, new_block_count) = client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)?;
+            CLIENT_METRICS.update_balance(client_index, &new_balances, new_block_count);
 
             // Wait for client cursor to include the index where the transaction landed.
             if u64::from(new_block_count) > block_index {
@@ -567,6 +577,7 @@ impl TestClient {
                 let (src_balances, src_cursor) = source_client_lk
                     .check_balance()
                     .map_err(TestClientError::CheckBalance)?;
+                CLIENT_METRICS.update_balance(source_client_index, &src_balances, src_cursor);
                 let src_balance = src_balances.get(&token_id).cloned().unwrap_or_default();
 
                 log::info!(
@@ -580,8 +591,8 @@ impl TestClient {
                 let (tgt_balances, tgt_cursor) = target_client_lk
                     .check_balance()
                     .map_err(TestClientError::CheckBalance)?;
+                CLIENT_METRICS.update_balance(target_client_index, &tgt_balances, tgt_cursor);
                 let tgt_balance = tgt_balances.get(&token_id).cloned().unwrap_or_default();
-
                 log::info!(
                     self.logger,
                     "client {} has a TokenId({}) balance of {} after {} blocks",
@@ -599,7 +610,13 @@ impl TestClient {
         )?;
 
         let transfer_start = std::time::SystemTime::now();
-        let transfer_data = self.transfer(&mut source_client_lk, &target_client_lk, token_id)?;
+        let transfer_data = self.transfer(
+            &mut source_client_lk,
+            source_client_index,
+            &target_client_lk,
+            target_client_index,
+            token_id,
+        )?;
 
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
@@ -626,6 +643,7 @@ impl TestClient {
 
         let mut receive_tx_worker = ReceiveTxWorker::new(
             target_client,
+            target_client_index,
             hashmap! { token_id => tgt_balance },
             hashmap! { token_id => tgt_balance + self.policy.transfer_amount },
             self.policy.clone(),
@@ -652,6 +670,7 @@ impl TestClient {
         tracer.in_span("ensure_expected_balance_after_block", |_cx| {
             self.ensure_expected_balance_after_block(
                 &mut source_client_lk,
+                source_client_index,
                 transaction_appeared,
                 hashmap! { token_id => src_balance - self.policy.transfer_amount - transfer_data.fee.value },
             )
@@ -749,7 +768,9 @@ impl TestClient {
     fn atomic_swap(
         &self,
         source_client: &mut Client,
+        source_client_index: usize,
         target_client: &mut Client,
+        target_client_index: usize,
         token_id1: TokenId,
         token_id2: TokenId,
         is_partial_fill: bool,
@@ -780,16 +801,19 @@ impl TestClient {
 
         // First do a balance check to flush out any spent txos
         let tracer = tracer!();
-        tracer.in_span("pre_swap_src_balance_check", |_cx| {
+        let (src_balances, src_cursor) = tracer.in_span("pre_swap_src_balance_check", |_cx| {
             source_client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)
         })?;
-        tracer.in_span("pre_swap_dst_balance_check", |_cx| {
+        CLIENT_METRICS.update_balance(source_client_index, &src_balances, src_cursor);
+
+        let (tgt_balances, tgt_cursor) = tracer.in_span("pre_swap_dst_balance_check", |_cx| {
             target_client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)
         })?;
+        CLIENT_METRICS.update_balance(target_client_index, &tgt_balances, tgt_cursor);
 
         assert!(target_address.fog_report_url().is_some());
 
@@ -874,9 +898,9 @@ impl TestClient {
         token_id2: TokenId,
         is_partial_fill: bool,
         source_client: Arc<Mutex<Client>>,
-        _source_client_index: usize,
+        source_client_index: usize,
         target_client: Arc<Mutex<Client>>,
-        _target_client_index: usize,
+        target_client_index: usize,
     ) -> Result<(), TestClientError> {
         self.tx_info.clear();
         let tracer = tracer!();
@@ -887,13 +911,15 @@ impl TestClient {
         let (src_balances, tgt_balances) = tracer.in_span(
             "test_atomic_swap_pre_checks",
             |_cx| -> Result<(_, _), TestClientError> {
-                let (src_balances, _src_cursor) = source_client_lk
+                let (src_balances, src_cursor) = source_client_lk
                     .check_balance()
                     .map_err(TestClientError::CheckBalance)?;
+                CLIENT_METRICS.update_balance(source_client_index, &src_balances, src_cursor);
 
-                let (tgt_balances, _tgt_cursor) = target_client_lk
+                let (tgt_balances, tgt_cursor) = target_client_lk
                     .check_balance()
                     .map_err(TestClientError::CheckBalance)?;
+                CLIENT_METRICS.update_balance(target_client_index, &tgt_balances, tgt_cursor);
 
                 Ok((src_balances, tgt_balances))
             },
@@ -902,7 +928,9 @@ impl TestClient {
         let transfer_start = std::time::SystemTime::now();
         let transfer_data = self.atomic_swap(
             &mut source_client_lk,
+            source_client_index,
             &mut target_client_lk,
+            target_client_index,
             token_id1,
             token_id2,
             is_partial_fill,
@@ -926,6 +954,7 @@ impl TestClient {
         drop(target_client_lk);
         let mut receive_tx_worker = ReceiveTxWorker::new(
             target_client,
+            target_client_index,
             tgt_balances,
             expected_tgt_balances,
             self.policy.clone(),
@@ -959,6 +988,7 @@ impl TestClient {
         tracer.in_span("ensure_expected_balance_after_block", |_cx| {
             self.ensure_expected_balance_after_block(
                 &mut source_client_lk,
+                source_client_index,
                 transaction_appeared,
                 expected_src_balance,
             )
@@ -1221,6 +1251,7 @@ impl ReceiveTxWorker {
     /// * logger
     pub fn new(
         client: Arc<Mutex<Client>>,
+        client_index: usize,
         current_balances: HashMap<TokenId, u64>,
         expected_balances: HashMap<TokenId, u64>,
         policy: TestClientPolicy,
@@ -1260,6 +1291,7 @@ impl ReceiveTxWorker {
                     let (new_balances, new_block_count) = client
                         .check_balance()
                         .map_err(TestClientError::CheckBalance)?;
+                    CLIENT_METRICS.update_balance(client_index, &new_balances, new_block_count);
 
                     if balance_match(&expected_balances, &new_balances) {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
