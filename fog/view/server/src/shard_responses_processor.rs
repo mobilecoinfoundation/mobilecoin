@@ -117,10 +117,7 @@ mod tests {
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
         let successful_response = mc_fog_api::fog_view::MultiViewStoreQueryResponse {
-            query_response: Some(attest::NonceMessage {
-                data: vec![],
-                ..Default::default()
-            }),
+            query_response: Some(Default::default()),
             store_uri: view_uri_string,
             block_range: Some(mc_fog_api::fog_common::BlockRange::from(&block_range)),
             status: mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::Success.into(),
