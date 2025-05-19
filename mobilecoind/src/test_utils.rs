@@ -19,7 +19,7 @@ use mc_consensus_scp::QuorumSet;
 use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{test_utils::recreate_ledger_db, Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_api::{mobilecoind_api::MobilecoindApiClient, MobilecoindUri};
 use mc_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, Amount, FeeMap, Token, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;

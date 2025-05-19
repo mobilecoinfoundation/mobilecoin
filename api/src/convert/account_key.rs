@@ -7,24 +7,13 @@ use mc_account_keys::AccountKey;
 
 impl From<&AccountKey> for external::AccountKey {
     fn from(src: &AccountKey) -> Self {
-        let mut dst = external::AccountKey::new();
-
-        dst.set_view_private_key(external::RistrettoPrivate::from(src.view_private_key()));
-        dst.set_spend_private_key(external::RistrettoPrivate::from(src.spend_private_key()));
-
-        if let Some(url) = src.fog_report_url() {
-            dst.set_fog_report_url(url.to_string());
+        Self {
+            view_private_key: Some(src.view_private_key().into()),
+            spend_private_key: Some(src.spend_private_key().into()),
+            fog_report_url: src.fog_report_url().unwrap_or_default().into(),
+            fog_authority_spki: src.fog_authority_spki().unwrap_or_default().to_vec(),
+            fog_report_id: src.fog_report_id().unwrap_or_default().into(),
         }
-
-        if let Some(spki) = src.fog_authority_spki() {
-            dst.set_fog_authority_spki(spki.to_vec());
-        }
-
-        if let Some(key) = src.fog_report_id() {
-            dst.set_fog_report_id(key.to_string());
-        }
-
-        dst
     }
 }
 
@@ -74,11 +63,11 @@ mod tests {
             let account_key = AccountKey::random(&mut rng);
             let proto_credentials = external::AccountKey::from(&account_key);
             assert_eq!(
-                *proto_credentials.get_view_private_key(),
+                *proto_credentials.view_private_key.as_ref().unwrap(),
                 external::RistrettoPrivate::from(account_key.view_private_key())
             );
             assert_eq!(
-                *proto_credentials.get_spend_private_key(),
+                *proto_credentials.spend_private_key.as_ref().unwrap(),
                 external::RistrettoPrivate::from(account_key.spend_private_key())
             );
             assert_eq!(proto_credentials.fog_report_url, String::from(""));
@@ -106,11 +95,11 @@ mod tests {
 
             let proto_credentials = external::AccountKey::from(&account_key);
             assert_eq!(
-                *proto_credentials.get_view_private_key(),
+                *proto_credentials.view_private_key.as_ref().unwrap(),
                 external::RistrettoPrivate::from(account_key.view_private_key())
             );
             assert_eq!(
-                *proto_credentials.get_spend_private_key(),
+                *proto_credentials.spend_private_key.as_ref().unwrap(),
                 external::RistrettoPrivate::from(account_key.spend_private_key())
             );
             assert_eq!(

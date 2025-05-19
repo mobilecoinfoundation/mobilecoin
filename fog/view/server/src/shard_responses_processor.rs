@@ -98,7 +98,7 @@ mod tests {
     use crate::sharding_strategy::{EpochShardingStrategy, ShardingStrategy};
     use grpcio::ChannelBuilder;
     use mc_common::logger::test_with_logger;
-    use mc_fog_api::view_grpc::FogViewStoreApiClient;
+    use mc_fog_api::fog_view::FogViewStoreApiClient;
     use mc_fog_types::common::BlockRange;
     use mc_fog_uri::FogViewStoreScheme;
     use mc_util_grpc::ConnectionUriGrpcioChannel;
@@ -109,22 +109,18 @@ mod tests {
         shard_index: usize,
         block_range: BlockRange,
     ) -> MultiViewStoreQueryResponse {
-        let mut successful_response = mc_fog_api::view::MultiViewStoreQueryResponse::new();
-        let client_auth_request = Vec::new();
-        successful_response
-            .mut_query_response()
-            .set_data(client_auth_request);
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
             FogViewStoreScheme::SCHEME_INSECURE,
             shard_index,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
-        successful_response.set_store_uri(view_uri_string);
-        successful_response.set_block_range(mc_fog_api::fog_common::BlockRange::from(&block_range));
-        successful_response
-            .set_status(mc_fog_api::view::MultiViewStoreQueryResponseStatus::SUCCESS);
-
+        let successful_response = mc_fog_api::fog_view::MultiViewStoreQueryResponse {
+            query_response: Some(Default::default()),
+            store_uri: view_uri_string,
+            block_range: Some(mc_fog_api::fog_common::BlockRange::from(&block_range)),
+            status: mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::Success.into(),
+        };
         successful_response
             .try_into()
             .expect("Couldn't convert MultiViewStoreQueryResponse proto to internal struct")
@@ -133,18 +129,20 @@ mod tests {
     fn create_failed_mvq_response(
         shard_index: usize,
         block_range: BlockRange,
-        status: mc_fog_api::view::MultiViewStoreQueryResponseStatus,
+        status: mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus,
     ) -> MultiViewStoreQueryResponse {
-        let mut failed_response = mc_fog_api::view::MultiViewStoreQueryResponse::new();
         let view_uri_string = format!(
             "{}://node{}.test.mobilecoin.com:{}",
             FogViewStoreScheme::SCHEME_INSECURE,
             shard_index,
             FogViewStoreScheme::DEFAULT_INSECURE_PORT,
         );
-        failed_response.set_store_uri(view_uri_string);
-        failed_response.set_block_range(mc_fog_api::fog_common::BlockRange::from(&block_range));
-        failed_response.set_status(status);
+        let failed_response = mc_fog_api::fog_view::MultiViewStoreQueryResponse {
+            store_uri: view_uri_string,
+            block_range: Some(mc_fog_api::fog_common::BlockRange::from(&block_range)),
+            status: status.into(),
+            ..Default::default()
+        };
 
         failed_response
             .try_into()
@@ -234,7 +232,7 @@ mod tests {
         let failed_mvq_response = create_failed_mvq_response(
             shard_index,
             block_range,
-            mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::AuthenticationError,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
@@ -255,7 +253,7 @@ mod tests {
         let failed_mvq_response = create_failed_mvq_response(
             shard_index,
             block_range,
-            mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::AuthenticationError,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
@@ -276,7 +274,7 @@ mod tests {
         let failed_mvq_response = create_failed_mvq_response(
             shard_index,
             block_range,
-            mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+            mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::AuthenticationError,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
@@ -297,7 +295,7 @@ mod tests {
         let failed_mvq_response = create_failed_mvq_response(
             shard_index,
             block_range,
-            mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
+            mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::NotReady,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
@@ -318,7 +316,7 @@ mod tests {
         let failed_mvq_response = create_failed_mvq_response(
             shard_index,
             block_range,
-            mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
+            mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::NotReady,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
 
@@ -339,7 +337,7 @@ mod tests {
         let failed_mvq_response = create_failed_mvq_response(
             shard_index,
             block_range,
-            mc_fog_api::view::MultiViewStoreQueryResponseStatus::NOT_READY,
+            mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::NotReady,
         );
         let shards_and_responses = vec![(shard, failed_mvq_response)];
         let result = process_shard_responses(shards_and_responses, logger);
@@ -362,7 +360,7 @@ mod tests {
             let failed_mvq_response = create_failed_mvq_response(
                 i,
                 block_range,
-                mc_fog_api::view::MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR,
+                mc_fog_api::fog_view::MultiViewStoreQueryResponseStatus::AuthenticationError,
             );
             shards_and_clients.push((shard, failed_mvq_response));
         }

@@ -49,6 +49,7 @@ message TransferPayload {
 }
 
 // Message encoding information required to locate a TxOut,
+//
 // un-blind the amount, and spend the TxOut. This can be used to give
 // MobileCoin to both FOG & non-FOG users who may not yet have
 // a MobileCoin account enabled

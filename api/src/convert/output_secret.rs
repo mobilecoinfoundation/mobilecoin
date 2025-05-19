@@ -7,10 +7,10 @@ use mc_transaction_core::ring_ct::OutputSecret;
 
 impl From<&OutputSecret> for external::OutputSecret {
     fn from(source: &OutputSecret) -> Self {
-        let mut output_secret = external::OutputSecret::new();
-        output_secret.set_amount((&source.amount).into());
-        output_secret.set_blinding((&source.blinding).into());
-        output_secret
+        Self {
+            amount: Some((&source.amount).into()),
+            blinding: Some((&source.blinding).into()),
+        }
     }
 }
 
@@ -18,10 +18,13 @@ impl TryFrom<&external::OutputSecret> for OutputSecret {
     type Error = ConversionError;
 
     fn try_from(source: &external::OutputSecret) -> Result<Self, Self::Error> {
-        Ok(OutputSecret {
-            amount: source.get_amount().into(),
-            blinding: source.get_blinding().try_into()?,
-        })
+        let amount = source.amount.as_ref().unwrap_or(&Default::default()).into();
+        let blinding = source
+            .blinding
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        Ok(OutputSecret { amount, blinding })
     }
 }
 

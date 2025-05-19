@@ -1137,6 +1137,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-new"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3418329ca0ad70234b9735dc4ceed10af4df60eff9c8e7b06cb5e520d92c3535"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "devise"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1461,28 +1472,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "failure"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
-dependencies = [
- "backtrace",
- "failure_derive",
-]
-
-[[package]]
-name = "failure_derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
- "synstructure",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1791,22 +1780,27 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e398946b5721d72478eb647260a1b7c1d5f70f0de35399846c3913bd369a33e"
 dependencies = [
+ "bytes 1.1.0",
  "futures-executor",
  "futures-util",
  "grpcio-sys",
  "libc",
  "log",
  "parking_lot 0.12.0",
- "protobuf",
+ "prost",
 ]
 
 [[package]]
 name = "grpcio-compiler"
-version = "0.7.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1f1abac9f330ac9ee0950220c10eea84d66479cede4836f0b924407fecf093c"
+checksum = "375292b9a9e3f5f9c6ef978d1f28070a6b56ab78f8be0cfbee16c62d5b0fa361"
 dependencies = [
- "protobuf",
+ "derive-new",
+ "prost",
+ "prost-build",
+ "prost-types",
+ "tempfile",
 ]
 
 [[package]]
@@ -2541,7 +2535,6 @@ dependencies = [
  "mc-watcher-api",
  "pem",
  "prost",
- "protobuf",
  "rand",
  "rand_core",
  "rand_hc",
@@ -2597,7 +2590,7 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-serial",
- "protobuf",
+ "prost",
 ]
 
 [[package]]
@@ -2884,6 +2877,7 @@ dependencies = [
  "der",
  "displaydoc",
  "grpcio",
+ "mc-api",
  "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
@@ -2899,6 +2893,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
+ "prost",
  "rand",
  "rand_hc",
  "retry",
@@ -2934,7 +2929,7 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-serial",
- "protobuf",
+ "prost",
  "rand_core",
  "rand_hc",
 ]
@@ -3112,7 +3107,6 @@ dependencies = [
  "mc-util-parse",
  "mc-util-uri",
  "pem",
- "protobuf",
  "rand",
  "serde",
  "serde_json",
@@ -3236,7 +3230,6 @@ dependencies = [
  "mc-util-uri",
  "mockall",
  "once_cell",
- "protobuf",
  "rand",
  "rand_core",
  "rand_hc",
@@ -3643,7 +3636,6 @@ dependencies = [
  "mc-util-test-helper",
  "mc-watcher-api",
  "prost",
- "protobuf",
 ]
 
 [[package]]
@@ -3754,7 +3746,6 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher",
  "predicates",
- "protobuf",
  "rand",
  "retry",
  "serde_json",
@@ -3931,7 +3922,6 @@ dependencies = [
  "mc-util-uri",
  "mc-watcher",
  "mc-watcher-api",
- "protobuf",
  "rand_core",
  "rand_hc",
  "retry",
@@ -4007,7 +3997,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
- "protobuf",
+ "prost",
  "retry",
  "sha2 0.10.8",
 ]
@@ -4330,7 +4320,6 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "prost",
- "protobuf",
 ]
 
 [[package]]
@@ -4339,7 +4328,6 @@ version = "7.0.0"
 dependencies = [
  "mc-util-serial",
  "prost",
- "protobuf",
 ]
 
 [[package]]
@@ -4514,7 +4502,7 @@ dependencies = [
  "mc-util-telemetry",
  "mc-util-test-helper",
  "mc-util-uri",
- "protobuf",
+ "prost",
  "rand",
  "serde_json",
 ]
@@ -5001,7 +4989,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-telemetry",
  "mc-util-test-helper",
- "protobuf",
+ "prost",
  "retry",
  "rusoto_core",
  "rusoto_s3",
@@ -5062,7 +5050,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-uri",
  "mockall",
- "protobuf",
+ "prost",
  "rand",
  "reqwest",
  "retry",
@@ -5089,7 +5077,6 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
- "protobuf",
  "rayon",
  "serde_json",
 ]
@@ -5204,7 +5191,6 @@ dependencies = [
  "pem",
  "portpicker",
  "prost",
- "protobuf",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -5232,7 +5218,7 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-uri",
- "protobuf",
+ "prost",
  "rand",
 ]
 
@@ -5286,7 +5272,6 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-serial",
- "protobuf",
  "rand",
  "rocket",
  "serde",
@@ -5371,7 +5356,6 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "mockall",
- "protobuf",
  "rand",
  "rand_hc",
  "retry",
@@ -5727,7 +5711,7 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-uri",
- "protobuf",
+ "prost",
 ]
 
 [[package]]
@@ -5742,7 +5726,6 @@ dependencies = [
  "mc-t3-api",
  "mc-util-grpc",
  "mc-util-uri",
- "protobuf",
 ]
 
 [[package]]
@@ -6041,8 +6024,9 @@ dependencies = [
 name = "mc-util-build-grpc"
 version = "7.0.0"
 dependencies = [
+ "grpcio-compiler",
  "mc-util-build-script",
- "protoc-grpcio",
+ "prost-build",
 ]
 
 [[package]]
@@ -6160,7 +6144,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "prometheus",
- "protobuf",
+ "prost",
  "rand",
  "retry",
  "serde",
@@ -6262,7 +6246,7 @@ dependencies = [
  "lazy_static",
  "mc-common",
  "prometheus",
- "protobuf",
+ "prost",
  "serde_json",
 ]
 
@@ -6304,7 +6288,6 @@ name = "mc-util-serial"
 version = "7.0.0"
 dependencies = [
  "prost",
- "protobuf",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -7296,39 +7279,6 @@ name = "protobuf"
 version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
-
-[[package]]
-name = "protobuf-codegen"
-version = "2.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "033460afb75cf755fcfc16dfaed20b86468082a2ea24e05ac35ab4a099a017d6"
-dependencies = [
- "protobuf",
-]
-
-[[package]]
-name = "protoc"
-version = "2.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2ef1dc036942fac2470fdb8a911f125404ee9129e9e807f3d12d8589001a38f"
-dependencies = [
- "log",
- "which",
-]
-
-[[package]]
-name = "protoc-grpcio"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "980d0ed845138df84f72beb72faf6d726c70c99d0debb2b5e1e7dee61f853df7"
-dependencies = [
- "failure",
- "grpcio-compiler",
- "protobuf",
- "protobuf-codegen",
- "protoc",
- "tempfile",
-]
 
 [[package]]
 name = "quick-error"
@@ -8636,18 +8586,6 @@ name = "sync_wrapper"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
-
-[[package]]
-name = "synstructure"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67656ea1dc1b41b1451851562ea232ec2e5a80242139f7e679ceccfb5d61f545"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
- "unicode-xid",
-]
 
 [[package]]
 name = "system-configuration"

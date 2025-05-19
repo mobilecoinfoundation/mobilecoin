@@ -32,11 +32,9 @@ use grpcio::{RpcContext, RpcStatusCode};
 use mc_common::logger::global_log;
 use prometheus::{
     core::{Collector, Desc},
-    exponential_buckets,
     proto::MetricFamily,
     HistogramOpts, HistogramTimer, HistogramVec, IntCounterVec, Opts, Result,
 };
-use protobuf::Message;
 use std::{path::Path, str};
 
 /// Helper that encapsulates boilerplate for tracking prometheus metrics about
@@ -63,9 +61,6 @@ pub struct ServiceMetrics {
 
     /// Duration of gRPC method calls tracked
     duration: HistogramVec,
-
-    /// Histogram of message sizes for each gRPC message type tracked
-    message_size: HistogramVec,
 }
 impl Default for ServiceMetrics {
     fn default() -> Self {
@@ -87,8 +82,6 @@ impl Default for ServiceMetrics {
 impl ServiceMetrics {
     /// Create a default constructor that initializes all metrics
     pub fn new<S: Into<String>>(name: S) -> ServiceMetrics {
-        let message_size_buckets = exponential_buckets(2.0, 2.0, 22)
-            .expect("Could not create buckets for message-size histogram");
         let name_str = name.into();
 
         ServiceMetrics {
@@ -117,15 +110,6 @@ impl ServiceMetrics {
                     "Duration for a request, in units of time",
                 ),
                 &["method"],
-            )
-            .unwrap(),
-            message_size: HistogramVec::new(
-                HistogramOpts::new(
-                    format!("{name_str}_message_size"),
-                    "gRPC message size, in bytes (or close to)",
-                )
-                .buckets(message_size_buckets),
-                &["message"],
             )
             .unwrap(),
         }
@@ -197,16 +181,6 @@ impl ServiceMetrics {
             .inc();
     }
 
-    /// Tracks gRPC message name and size for aggregation into a Prometheus
-    /// histogram
-    pub fn message<M: Message>(&self, message: &M) {
-        let computed_size = message.compute_size();
-        let message_fullname = message.descriptor().full_name();
-        self.message_size
-            .with_label_values(&[message_fullname])
-            .observe(f64::from(computed_size));
-    }
-
     pub fn register_default(&self) -> Result<()> {
         prometheus::register(Box::new(self.clone()))
     }
@@ -221,7 +195,6 @@ impl Collector for ServiceMetrics {
             self.num_error.desc(),
             self.num_status_code.desc(),
             self.duration.desc(),
-            self.message_size.desc(),
         ]
         .into_iter()
         .map(|m| m[0])
@@ -236,7 +209,6 @@ impl Collector for ServiceMetrics {
             self.num_error.collect(),
             self.num_status_code.collect(),
             self.duration.collect(),
-            self.message_size.collect(),
         ];
 
         vs.into_iter().fold(vec![], |mut l, v| {

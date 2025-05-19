@@ -138,7 +138,9 @@ message OutlayV2 {
 }
 
 // Structure used to refer to a TxOut in the ledger that is presumed to be spendable.
-// The structure is annotated with extra information needed to spend the TxOut in a payment, calculated using the private keys that control the TxOut.
+//
+// The structure is annotated with extra information needed to spend the TxOut
+// in a payment, calculated using the private keys that control the TxOut.
 message UnspentTxOut {
     // The actual TxOut object found in the ledger.
     external.TxOut tx_out = 1;
@@ -182,6 +184,7 @@ message DecodedMemo {
 }
 
 // Structure used to represent the decoded MCIP #4 Authenticated sender memo and its variants.
+//
 // Note that the sender can write whatever they want in a memo, and to rely on the data.
 // You must validate the memo by checking the hmac, see the ValidateAuthenticatedSenderMemo rpc call.
 message AuthenticatedSenderMemo {
@@ -340,10 +343,12 @@ message ProcessedTxOut {
 }
 
 
-// Recoverable Transaction History memo with an optional u64 specifying the
-// subaddress index to generate the sender memo credential from.
+// Recoverable Transaction History memo
+//
+// With an optional u64 specifying the subaddress index to generate the sender
+// memo credential from.
 // Defaults to the default subaddress of the monitor.
-// Allows optinally speciying a payment intent id or payment request id.
+// Allows optionally specifying a payment intent id or payment request id.
 message TransactionMemo_RTH {
     optional uint64 subaddress_index = 1;
     oneof payment_id {
@@ -556,7 +561,9 @@ message CreateRequestCodeResponse {
 }
 
 // Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_public_key/memo.
-// This code provides a mobile client with everything required to construct a self-payment, allowing funds to be withdrawn from a gift card.
+//
+// This code provides a mobile client with everything required to construct a
+// self-payment, allowing funds to be withdrawn from a gift card.
 message ParseTransferCodeRequest {
     string b58_code = 1;
 }
@@ -628,6 +635,7 @@ message GetMembershipProofsResponse {
 // - Sum of inputs needs to be greater than sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
+//
 // Right now that fee is the network-reported minimum fee for the given token id.
 message GenerateTxRequest {
     // Monitor id sending the funds.
@@ -675,6 +683,7 @@ message GenerateTxResponse {
 // - Sum of inputs needs to be greater than or equal to the sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
+//
 // Right now that fee is the network-reported minimum fee for the fee token id.
 message GenerateMixedTxRequest {
     // Monitor id sending the funds.
@@ -761,9 +770,10 @@ message GenerateTransferCodeTxResponse {
     bytes bip39_entropy = 6;
 }
 
-// Generate a transaction without a monitor, requires an account key and
-// a list of UnspentTxOuts. All coins (minus the fee) are transferred to
-// a single recipient. Used for temporary accounts like gift codes.
+// Generate a transaction without a monitor.
+//
+// Requires an account key and a list of UnspentTxOuts. All coins (minus the fee)
+// are transferred to a single recipient. Used for temporary accounts like gift codes.
 // All inputs must be of the same token id.
 message GenerateTxFromTxOutListRequest {
     // Account key that owns the transactions
@@ -829,8 +839,10 @@ message GenerateBurnRedemptionTxResponse {
     TxProposal tx_proposal = 1;
 }
 
-// Generate a simple swap proposal. The result is a signed contingent input
-// which trades one currency for another and is suitable for use with the deqs.
+// Generate a simple swap proposal.
+//
+// The result is a signed contingent input which trades one currency for another
+// and is suitable for use with the deqs.
 // (This API is restrictive and doesn't let you build more complex SCIs.)
 message GenerateSwapRequest {
     // Monitor id sending the funds.

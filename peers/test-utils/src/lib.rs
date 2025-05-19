@@ -199,8 +199,9 @@ impl<L: Ledger + Sync> ConsensusConnection for MockPeerConnection<L> {
         }
 
         locked_state.msgs.push_back(msg.clone());
-        let mut resp = ConsensusMsgResponse::new();
-        resp.set_result(ConsensusMsgResult::Ok);
+        let resp = ConsensusMsgResponse {
+            result: ConsensusMsgResult::Ok.into(),
+        };
         Ok(resp)
     }
 

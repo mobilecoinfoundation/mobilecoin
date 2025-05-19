@@ -9,7 +9,7 @@ use crate::{
 };
 use core::fmt::{Display, Formatter, Result as FmtResult};
 use grpcio::{ChannelBuilder, Environment, Error as GrpcError};
-use mc_attest_api::attest_grpc::AttestedApiClient;
+use mc_attest_api::attest::AttestedApiClient;
 use mc_attest_core::EvidenceKind;
 use mc_attest_enclave_api::PeerSession;
 use mc_blockchain_types::{Block, BlockID, BlockIndex};
@@ -22,14 +22,12 @@ use mc_connection::{
     Result as ConnectionResult,
 };
 use mc_consensus_api::{
-    consensus_common::BlocksRequest,
-    consensus_common_grpc::BlockchainApiClient,
+    blockchain,
+    consensus_common::{BlockchainApiClient, BlocksRequest},
     consensus_peer::{
-        ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse,
-        GetTxsRequest as GrpcFetchTxsRequest,
+        get_txs_response::Payload, ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse,
+        ConsensusPeerApiClient, GetTxsRequest as GrpcFetchTxsRequest,
     },
-    consensus_peer_grpc::ConsensusPeerApiClient,
-    empty::Empty,
     ConversionError,
 };
 use mc_consensus_enclave_api::{ConsensusEnclave, TxContext, WellFormedEncryptedTx};
@@ -37,7 +35,6 @@ use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::{deserialize, serialize};
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
-use protobuf::RepeatedField;
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
@@ -208,16 +205,16 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
     fn fetch_blocks(&mut self, range: Range<BlockIndex>) -> ConnectionResult<Vec<Block>> {
         trace_time!(self.logger, "PeerConnection::get_blocks");
 
-        let mut request = BlocksRequest::new();
-        request.set_offset(range.start);
-        let limit =
-            u32::try_from(range.end - range.start).or(Err(ConnectionError::RequestTooLarge))?;
-        request.set_limit(limit);
+        let request = BlocksRequest {
+            offset: range.start,
+            limit: u32::try_from(range.end - range.start)
+                .or(Err(ConnectionError::RequestTooLarge))?,
+        };
 
         self.log_attested_call("fetch_blocks", |this| {
             this.blockchain_api_client.get_blocks(&request)
         })?
-        .get_blocks()
+        .blocks
         .iter()
         .map(|proto_block| Block::try_from(proto_block).map_err(ConnectionError::from))
         .collect::<ConnectionResult<Vec<Block>>>()
@@ -226,17 +223,19 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
     fn fetch_block_ids(&mut self, range: Range<BlockIndex>) -> ConnectionResult<Vec<BlockID>> {
         trace_time!(self.logger, "PeerConnection::get_blocks");
 
-        let mut request = BlocksRequest::new();
-        request.set_offset(range.start);
-        let limit =
-            u32::try_from(range.end - range.start).or(Err(ConnectionError::RequestTooLarge))?;
-        request.set_limit(limit);
+        let request = BlocksRequest {
+            offset: range.start,
+            limit: u32::try_from(range.end - range.start)
+                .or(Err(ConnectionError::RequestTooLarge))?,
+        };
 
+        let default_block = blockchain::BlockId::default();
         self.attested_call(|this| this.blockchain_api_client.get_blocks(&request))?
-            .get_blocks()
+            .blocks
             .iter()
             .map(|proto_block| {
-                BlockID::try_from(proto_block.get_id()).map_err(ConnectionError::from)
+                BlockID::try_from(proto_block.id.as_ref().unwrap_or(&default_block))
+                    .map_err(ConnectionError::from)
             })
             .collect::<ConnectionResult<Vec<BlockID>>>()
     }
@@ -246,8 +245,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
 
         Ok(self
             .log_attested_call("fetch_block_height", |this| {
-                this.blockchain_api_client
-                    .get_last_block_info(&Empty::new())
+                this.blockchain_api_client.get_last_block_info(&())
             })?
             .index)
     }
@@ -256,8 +254,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
         trace_time!(self.logger, "PeerConnection::fetch_block_info");
 
         let block_info = self.log_attested_call("fetch_block_info", |this| {
-            this.blockchain_api_client
-                .get_last_block_info(&Empty::new())
+            this.blockchain_api_client.get_last_block_info(&())
         })?;
         Ok(block_info.into())
     }
@@ -275,9 +272,10 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
     }
 
     fn send_consensus_msg(&mut self, msg: &ConsensusMsg) -> Result<ConsensusMsgResponse> {
-        let mut grpc_msg = GrpcConsensusMsg::default();
-        grpc_msg.set_from_responder_id(self.local_node_id.responder_id.to_string());
-        grpc_msg.set_payload(serialize(&msg)?);
+        let grpc_msg = GrpcConsensusMsg {
+            from_responder_id: self.local_node_id.responder_id.to_string(),
+            payload: serialize(&msg)?,
+        };
 
         let response = self.log_attested_call("send_consensus_msg", |this| {
             this.consensus_api_client.send_consensus_msg(&grpc_msg)
@@ -317,43 +315,39 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
             self.attest()?;
         }
 
-        let mut request = GrpcFetchTxsRequest::new();
-        request.set_channel_id(self.channel_id.as_ref().unwrap().as_ref().to_vec());
-        request.set_tx_hashes(RepeatedField::from_vec(
-            hashes.iter().map(|tx| tx.to_vec()).collect(),
-        ));
+        let request = GrpcFetchTxsRequest {
+            channel_id: self.channel_id.as_ref().unwrap().as_ref().to_vec(),
+            tx_hashes: hashes.iter().map(|tx| tx.to_vec()).collect(),
+        };
 
-        let mut response = self.log_attested_call("get_txs", |this| {
+        let response = self.log_attested_call("get_txs", |this| {
             this.consensus_api_client.get_txs(&request)
         })?;
-        if response.has_tx_hashes_not_in_cache() {
-            let tx_hashes = response
-                .get_tx_hashes_not_in_cache()
-                .get_tx_hashes()
-                .iter()
-                .map(|tx_hash_bytes| {
-                    TxHash::try_from(&tx_hash_bytes[..])
-                        .map_err(|_| Error::Conversion(ConversionError::ArrayCastError))
-                })
-                .collect::<StdResult<Vec<TxHash>, _>>()?;
-            return Err(Error::TxHashesNotInCache(tx_hashes));
+        match response.payload {
+            Some(Payload::TxHashesNotInCache(not_in_cache)) => {
+                let tx_hashes = not_in_cache
+                    .tx_hashes
+                    .iter()
+                    .map(|tx_hash_bytes| {
+                        TxHash::try_from(&tx_hash_bytes[..])
+                            .map_err(|_| Error::Conversion(ConversionError::ArrayCastError))
+                    })
+                    .collect::<StdResult<Vec<TxHash>, _>>()?;
+                Err(Error::TxHashesNotInCache(tx_hashes))
+            }
+            Some(Payload::Success(message)) => Ok(self.enclave.peer_tx_propose(message.into())?),
+            _ => Err(Error::NotFound),
         }
-
-        let tx_contexts = self
-            .enclave
-            .peer_tx_propose(response.take_success().into())?;
-
-        Ok(tx_contexts)
     }
 
     fn fetch_latest_msg(&mut self) -> Result<Option<ConsensusMsg>> {
         let response = self.log_attested_call("get_latest_msg", |this| {
-            this.consensus_api_client.get_latest_msg(&Empty::new())
+            this.consensus_api_client.get_latest_msg(&())
         })?;
-        if response.get_payload().is_empty() {
+        if response.payload.is_empty() {
             Ok(None)
         } else {
-            let msg = deserialize::<ConsensusMsg>(response.get_payload())?;
+            let msg = deserialize::<ConsensusMsg>(response.payload.as_slice())?;
 
             Ok(Some(msg))
         }

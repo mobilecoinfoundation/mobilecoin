@@ -30,9 +30,8 @@ mc-util-uri = { path = "../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.13"
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 mockall = "0.12.1"
-protobuf = "2.27.1"
 retry = "2.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 

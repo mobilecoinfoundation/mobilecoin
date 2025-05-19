@@ -5,17 +5,13 @@
 use crate::{external, ConversionError};
 use mc_attest_verifier_types::{prost, EnclaveReportDataContents};
 use mc_util_serial::Message;
-use protobuf::Message as ProtoMessage;
 
 impl From<&EnclaveReportDataContents> for external::EnclaveReportDataContents {
     fn from(src: &EnclaveReportDataContents) -> Self {
         let prost = prost::EnclaveReportDataContents::from(src);
         let bytes = prost.encode_to_vec();
-        let mut proto = Self::default();
-        proto
-            .merge_from_bytes(&bytes)
-            .expect("failure to merge means prost and protobuf are out of sync");
-        proto
+        Self::decode(bytes.as_slice())
+            .expect("failure to merge means prost and protobuf are out of sync")
     }
 }
 

@@ -18,9 +18,9 @@ use mc_common::{
 };
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
-use mc_fog_api::{
-    view::{FogViewRouterRequest, FogViewRouterResponse},
-    view_grpc::FogViewRouterApiClient,
+use mc_fog_api::fog_view::{
+    fog_view_router_request, fog_view_router_response, FogViewRouterApiClient,
+    FogViewRouterRequest, FogViewRouterResponse,
 };
 use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::{ConnectionUri, FogViewRouterUri};
@@ -103,18 +103,26 @@ impl FogViewRouterGrpcClient {
         let (initiator, auth_request_output) = initiator.try_next(&mut csprng, init_input)?;
 
         let attested_message: AuthMessage = auth_request_output.into();
-        let mut request = FogViewRouterRequest::new();
-        request.set_auth(attested_message);
+        let request = FogViewRouterRequest {
+            request_data: Some(fog_view_router_request::RequestData::Auth(attested_message)),
+        };
         self.request_sender
             .send((request, grpcio::WriteFlags::default()))
             .await?;
 
-        let mut response = self
+        let response = self
             .response_receiver
             .try_next()
             .await?
             .ok_or(Error::ResponseNotReceived)?;
-        let auth_response_msg = response.take_auth();
+        let auth_response_msg =
+            if let Some(fog_view_router_response::ResponseData::Auth(auth_msg)) =
+                response.response_data
+            {
+                auth_msg
+            } else {
+                Default::default()
+            };
 
         let epoch_time = SystemTimeProvider
             .since_epoch()
@@ -170,29 +178,35 @@ impl FogViewRouterGrpcClient {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let mut msg = Message::new();
-            msg.set_channel_id(Vec::from(attest_cipher.binding()));
-            msg.set_aad(aad.clone());
-
             let plaintext_bytes = mc_util_serial::encode(&plaintext_request);
-
             let request_ciphertext = attest_cipher.encrypt(&aad, &plaintext_bytes)?;
-            msg.set_data(request_ciphertext);
-            msg
+            Message {
+                channel_id: Vec::from(attest_cipher.binding()),
+                aad,
+                data: request_ciphertext,
+            }
         };
-        let mut request = FogViewRouterRequest::new();
-        request.set_query(msg);
+        let request = FogViewRouterRequest {
+            request_data: Some(fog_view_router_request::RequestData::Query(msg.clone())),
+        };
 
         self.request_sender
             .send((request, grpcio::WriteFlags::default()))
             .await?;
 
-        let message = self
+        let response = self
             .response_receiver
             .try_next()
             .await?
-            .ok_or(Error::ResponseNotReceived)?
-            .take_query();
+            .ok_or(Error::ResponseNotReceived)?;
+
+        let message = if let Some(fog_view_router_response::ResponseData::Query(msg)) =
+            response.response_data
+        {
+            msg
+        } else {
+            Default::default()
+        };
 
         {
             let attest_cipher = self
@@ -200,7 +214,8 @@ impl FogViewRouterGrpcClient {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
+            let plaintext_bytes =
+                attest_cipher.decrypt(message.aad.as_slice(), message.data.as_slice())?;
             let plaintext_response: QueryResponse = mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)
         }

@@ -9,7 +9,7 @@ use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_mobilecoind_api::{
-    mobilecoind_api_grpc::MobilecoindApiClient, GetBlockRequest, GetBlocksDataRequest,
+    mobilecoind_api::MobilecoindApiClient, GetBlockRequest, GetBlocksDataRequest,
     GetMembershipProofsRequest, GetTxOutResultsByPubKeyRequest, MobilecoindUri,
 };
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
@@ -54,13 +54,12 @@ impl BlockProvider for MobilecoindBlockProvider {
 
     fn get_latest_block(&self) -> Result<Block, Error> {
         let response = self.client.get_latest_block(&Default::default())?;
-        Ok(response.get_block().try_into()?)
+        Ok((&response.block.unwrap_or_default()).try_into()?)
     }
 
     fn get_blocks_data(&self, block_indices: &[BlockIndex]) -> Result<BlocksDataResponse, Error> {
         let request = GetBlocksDataRequest {
             blocks: block_indices.to_vec(),
-            ..Default::default()
         };
         let response = self.client.get_blocks_data(&request)?;
 
@@ -73,14 +72,21 @@ impl BlockProvider for MobilecoindBlockProvider {
                 }
 
                 Ok(Some(BlockDataWithTimestamp {
-                    block_data: BlockData::try_from(result.get_block_data())?,
+                    block_data: BlockData::try_from(
+                        result.block_data.as_ref().unwrap_or(&Default::default()),
+                    )?,
                     block_timestamp: result.timestamp,
-                    block_timestamp_result_code: (&result.timestamp_result_code).try_into()?,
+                    block_timestamp_result_code: (&result.timestamp_result_code()).try_into()?,
                 }))
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
-        let latest_block = Block::try_from(response.get_latest_block())?;
+        let latest_block = Block::try_from(
+            response
+                .latest_block
+                .as_ref()
+                .unwrap_or(&Default::default()),
+        )?;
 
         Ok(BlocksDataResponse {
             results,
@@ -94,17 +100,14 @@ impl BlockProvider for MobilecoindBlockProvider {
             return u64::MAX;
         }
 
-        let request = GetBlockRequest {
-            block: block_index,
-            ..Default::default()
-        };
+        let request = GetBlockRequest { block: block_index };
 
         // Timer that tracks how long we have had WatcherBehind error for,
         // if this exceeds watcher_timeout, we log a warning.
         let mut watcher_behind_timer = Instant::now();
         loop {
             match self.client.get_block(&request) {
-                Ok(response) => match response.timestamp_result_code {
+                Ok(response) => match response.timestamp_result_code() {
                     TimestampResultCode::WatcherBehind => {
                         if watcher_behind_timer.elapsed() > watcher_timeout {
                             log::warn!(self.logger, "watcher is still behind on block index = {} after waiting {} seconds, caller will be blocked", block_index, watcher_timeout.as_secs());
@@ -171,8 +174,18 @@ impl BlockProvider for MobilecoindBlockProvider {
         }
 
         let tx_out_with_proof = response.output_list.first().unwrap();
-        let tx_out = TxOut::try_from(tx_out_with_proof.get_output())?;
-        let proof = TxOutMembershipProof::try_from(tx_out_with_proof.get_proof())?;
+        let tx_out = TxOut::try_from(
+            tx_out_with_proof
+                .output
+                .as_ref()
+                .unwrap_or(&Default::default()),
+        )?;
+        let proof = TxOutMembershipProof::try_from(
+            tx_out_with_proof
+                .proof
+                .as_ref()
+                .unwrap_or(&Default::default()),
+        )?;
         Ok((tx_out, proof))
     }
 
@@ -182,14 +195,18 @@ impl BlockProvider for MobilecoindBlockProvider {
     ) -> Result<TxOutInfoByPublicKeyResponse, Error> {
         let request = GetTxOutResultsByPubKeyRequest {
             tx_out_public_keys: tx_out_pub_keys.iter().map(|pk| pk.into()).collect(),
-            ..Default::default()
         };
         let response = self.client.get_tx_out_results_by_pub_key(&request)?;
 
-        let latest_block = Block::try_from(response.get_latest_block())?;
+        let latest_block = Block::try_from(
+            response
+                .latest_block
+                .as_ref()
+                .unwrap_or(&Default::default()),
+        )?;
 
         Ok(TxOutInfoByPublicKeyResponse {
-            results: response.get_results().to_vec(),
+            results: response.results.to_vec(),
             latest_block,
         })
     }

@@ -10,7 +10,7 @@
 use displaydoc::Display;
 use grpcio::{CallOption, ChannelBuilder, Environment, MetadataBuilder};
 use mc_common::logger::{log, o, Logger};
-use mc_fog_report_api::{report::ReportRequest, report_grpc};
+use mc_fog_report_api::{fog_report, fog_report::ReportRequest};
 use mc_fog_report_types::ReportResponse;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, CHAIN_ID_GRPC_HEADER};
 use mc_util_uri::FogUri;
@@ -83,7 +83,7 @@ impl GrpcFogReportConnection {
         // Build channel to this URI
         let ch =
             ChannelBuilder::default_channel_builder(self.env.clone()).connect_to_uri(uri, &logger);
-        let report_grpc_client = report_grpc::ReportApiClient::new(ch);
+        let report_grpc_client = fog_report::ReportApiClient::new(ch);
 
         // Request reports
         let mut metadata_builder = MetadataBuilder::new();
@@ -93,13 +93,13 @@ impl GrpcFogReportConnection {
                 .expect("Could not add chain-id header");
         }
 
-        let req = ReportRequest::new();
+        let req = ReportRequest::default();
         let resp = report_grpc_client.get_reports_opt(
             &req,
             CallOption::default().headers(metadata_builder.build()),
         )?;
 
-        if resp.reports.len() == 0 {
+        if resp.reports.is_empty() {
             log::warn!(
                 self.logger,
                 "Report server at {} has no available reports",

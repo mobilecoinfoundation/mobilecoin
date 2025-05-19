@@ -1,5 +1,5 @@
 use mc_account_keys::{AccountKey, RootIdentity};
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use mc_test_vectors_definitions::b58_encodings::*;
 use mc_util_test_vector::write_jsonl;
 
@@ -9,8 +9,11 @@ fn main() {
             .map(|n| {
                 let account_key = AccountKey::from(&RootIdentity::from(&[n; 32]));
                 let public_address = account_key.default_subaddress();
-                let mut wrapper = PrintableWrapper::new();
-                wrapper.set_public_address((&public_address).into());
+                let wrapper = PrintableWrapper {
+                    wrapper: Some(printable_wrapper::Wrapper::PublicAddress(
+                        (&public_address).into(),
+                    )),
+                };
                 let b58_encoded = wrapper.b58_encode().unwrap();
                 B58EncodePublicAddressWithoutFog {
                     view_public_key: public_address.view_public_key().to_bytes(),
@@ -32,8 +35,11 @@ fn main() {
                     fog_authority_spki: Vec::new(),
                 });
                 let public_address = account_key.default_subaddress();
-                let mut wrapper = PrintableWrapper::new();
-                wrapper.set_public_address((&public_address).into());
+                let wrapper = PrintableWrapper {
+                    wrapper: Some(printable_wrapper::Wrapper::PublicAddress(
+                        (&public_address).into(),
+                    )),
+                };
                 let b58_encoded = wrapper.b58_encode().unwrap();
                 B58EncodePublicAddressWithFog {
                     view_public_key: public_address.view_public_key().to_bytes(),

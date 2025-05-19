@@ -32,10 +32,10 @@ mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
-grpcio = "0.13"
+grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
 mc-attestation-verifier = "0.4.3"
 mockall = "0.12.1"
-protobuf = "2.27.1"
+prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
 rand = "0.8"
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 retry = "2.0"

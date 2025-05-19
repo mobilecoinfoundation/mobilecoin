@@ -204,7 +204,8 @@ where
         // Attempt to restore state from state file if provided
         // NotFound is not an error, but otherwise it is an error.
         if let Some(ref file_data) = state_file_data {
-            let summary = file_data.get_summary();
+            let default_summary = Default::default();
+            let summary = file_data.summary.as_ref().unwrap_or(&default_summary);
             let mut retry_seconds = 1;
             loop {
                 match result.restore_state_from_summary(summary) {
@@ -723,7 +724,7 @@ where
         for conn in peer_connections.iter_mut() {
             match conn.get_status() {
                 Ok(summary) => {
-                    match summary.mode {
+                    match summary.mode() {
                         IngestControllerMode::Active => {
                             let uri = conn.uri();
                             log::error!(
@@ -1016,8 +1017,8 @@ where
             .enclave
             .get_kex_rng_pubkey()
             .expect("Failed to get kex rng pubkey");
-        result.set_ingress_pubkey((&ingress_pubkey).into());
-        result.set_egress_pubkey(kex_rng_pubkey.public_key);
+        result.ingress_pubkey = Some((&ingress_pubkey).into());
+        result.egress_pubkey = kex_rng_pubkey.public_key;
         result.kex_rng_version = kex_rng_pubkey.version;
         result
     }
@@ -1046,9 +1047,13 @@ where
         let new_peers = state_data.get_sorted_peers()?;
 
         let ingress_pubkey = CompressedRistrettoPublic::from(&self.enclave.get_ingress_pubkey()?);
-        if state_data.mode != IngestControllerMode::Idle {
-            let state_data_ingress_pubkey =
-                CompressedRistrettoPublic::try_from(state_data.get_ingress_pubkey())?;
+        if state_data.mode() != IngestControllerMode::Idle {
+            let state_data_ingress_pubkey = CompressedRistrettoPublic::try_from(
+                state_data
+                    .ingress_pubkey
+                    .as_ref()
+                    .unwrap_or(&Default::default()),
+            )?;
             if state_data_ingress_pubkey != ingress_pubkey {
                 return Err(RestoreStateError::IngressKeyMismatch(
                     ingress_pubkey,
@@ -1118,7 +1123,7 @@ where
             .set_next_block_index(state_data.next_block_index)
             .expect("Modification should have been allowed, this is a logic error");
 
-        match state_data.mode {
+        match state_data.mode() {
             IngestControllerMode::Idle => {}
             IngestControllerMode::Active => {
                 state.set_active();
@@ -1282,9 +1287,13 @@ where
             let (summary, sealed_key) = loop {
                 let summary = self.get_ingest_summary_inner(state);
 
-                let ingress_pubkey =
-                    CompressedRistrettoPublic::try_from(summary.get_ingress_pubkey())
-                        .expect("could not interpret ingress pubkey");
+                let ingress_pubkey = CompressedRistrettoPublic::try_from(
+                    summary
+                        .ingress_pubkey
+                        .as_ref()
+                        .unwrap_or(&Default::default()),
+                )
+                .expect("could not interpret ingress pubkey");
                 let mut last_sealed = self.last_sealed_key.lock().expect("mutex poisoned");
 
                 {
@@ -1303,9 +1312,10 @@ where
                 *last_sealed = None;
             };
 
-            let mut state_file_data = IngestStateFile::new();
-            state_file_data.set_summary(summary);
-            state_file_data.set_sealed_ingress_key(sealed_key);
+            let state_file_data = IngestStateFile {
+                summary: Some(summary),
+                sealed_ingress_key: sealed_key,
+            };
 
             log::debug!(self.logger, "Writing state file to {:?}", state_file);
             state_file
@@ -1436,7 +1446,7 @@ where
             None => conn.get_status()?,
         };
 
-        match summary.mode {
+        match summary.mode() {
             IngestControllerMode::Active => {
                 if log_if_wrong {
                     log::error!(
@@ -1460,7 +1470,12 @@ where
             .cloned()
             .unwrap_or_else(|| self.get_state().get_peers());
 
-        let peer_pubkey = CompressedRistrettoPublic::try_from(summary.get_ingress_pubkey())?;
+        let peer_pubkey = CompressedRistrettoPublic::try_from(
+            summary
+                .ingress_pubkey
+                .as_ref()
+                .unwrap_or(&Default::default()),
+        )?;
         if peer_pubkey != our_pubkey {
             if log_if_wrong {
                 log::warn!(
@@ -1475,8 +1490,12 @@ where
             if update_if_wrong {
                 match conn.set_ingress_private_key(&our_pubkey) {
                     Ok(summary) => {
-                        let peer_pubkey =
-                            CompressedRistrettoPublic::try_from(summary.get_ingress_pubkey())?;
+                        let peer_pubkey = CompressedRistrettoPublic::try_from(
+                            summary
+                                .ingress_pubkey
+                                .as_ref()
+                                .unwrap_or(&Default::default()),
+                        )?;
                         if peer_pubkey != our_pubkey {
                             let uri = conn.uri();
                             log::error!(self.logger, "Tried to send our ingress key to peer {}, but despite successful status the key is still wrong! Expected: {}, Found: {}", uri, our_pubkey, peer_pubkey);

@@ -12,7 +12,7 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair};
-use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_api::fog_ledger::TxOutResultCode;
 use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_connection::{
     Error, FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
@@ -784,12 +784,12 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             &result.results[0].tx_out_pubkey.clone().unwrap().data[..],
             &[0u8; 32]
         );
-        assert_eq!(result.results[0].result_code, TxOutResultCode::NotFound);
+        assert_eq!(result.results[0].result_code(), TxOutResultCode::NotFound);
         assert_eq!(
             &result.results[1].tx_out_pubkey.clone().unwrap().data[..],
             &real_tx_out0.public_key.as_bytes()[..]
         );
-        assert_eq!(result.results[1].result_code, TxOutResultCode::Found);
+        assert_eq!(result.results[1].result_code(), TxOutResultCode::Found);
         assert_eq!(result.results[1].tx_out_global_index, 0);
         assert_eq!(result.results[1].block_index, 0);
         assert_eq!(

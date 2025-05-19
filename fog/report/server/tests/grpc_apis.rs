@@ -6,7 +6,7 @@ use grpcio::ChannelBuilder;
 use mc_attest_verifier_types::prost;
 use mc_common::logger::{test_with_logger, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_fog_api::{report::ReportRequest as ProtobufReportRequest, report_grpc};
+use mc_fog_api::{fog_report, fog_report::ReportRequest as ProtobufReportRequest};
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
 use mc_fog_report_server::{Materials, Server};
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
@@ -44,11 +44,11 @@ fn report_server_grpc_tests(logger: Logger) {
 
     let report_client = {
         let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&client_uri, &logger);
-        report_grpc::ReportApiClient::new(ch)
+        fog_report::ReportApiClient::new(ch)
     };
 
     // Request reports
-    let req = ProtobufReportRequest::new();
+    let req = ProtobufReportRequest::default();
     let resp = report_client.get_reports(&req).unwrap();
 
     assert_eq!(resp.reports.len(), 0);
@@ -94,15 +94,17 @@ fn report_server_grpc_tests(logger: Logger) {
     db.set_report(&ingress_key, report_id1, &report1).unwrap();
 
     // Request reports
-    let req = ProtobufReportRequest::new();
+    let req = ProtobufReportRequest::default();
     let resp = report_client.get_reports(&req).unwrap();
 
     assert_eq!(resp.reports.len(), 1);
-    assert_eq!(
-        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
-        dcap_evidence_0
-    );
-    assert_eq!(resp.reports[0].get_pubkey_expiry(), report1.pubkey_expiry);
+    match resp.reports[0].attestation_evidence.as_ref().unwrap() {
+        fog_report::report::AttestationEvidence::DcapEvidence(dcap_evidence) => {
+            assert_eq!(prost::DcapEvidence::from(dcap_evidence), dcap_evidence_0);
+        }
+        _ => panic!("Unexpected attestation evidence type"),
+    }
+    assert_eq!(resp.reports[0].pubkey_expiry, report1.pubkey_expiry);
 
     // Update report
     let updated_report1 = ReportData {
@@ -116,18 +118,17 @@ fn report_server_grpc_tests(logger: Logger) {
         .unwrap();
 
     // Request reports
-    let req = ProtobufReportRequest::new();
+    let req = ProtobufReportRequest::default();
     let resp = report_client.get_reports(&req).unwrap();
 
     assert_eq!(resp.reports.len(), 1);
-    assert_eq!(
-        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
-        dcap_evidence_1
-    );
-    assert_eq!(
-        resp.reports[0].get_pubkey_expiry(),
-        updated_report1.pubkey_expiry
-    );
+    match resp.reports[0].attestation_evidence.as_ref().unwrap() {
+        fog_report::report::AttestationEvidence::DcapEvidence(dcap_evidence) => {
+            assert_eq!(prost::DcapEvidence::from(dcap_evidence), dcap_evidence_1);
+        }
+        _ => panic!("Unexpected attestation evidence type"),
+    }
+    assert_eq!(resp.reports[0].pubkey_expiry, updated_report1.pubkey_expiry);
 
     // Add second report (DB contains report_bytes1 for report_id1)
     let report2 = ReportData {
@@ -140,37 +141,40 @@ fn report_server_grpc_tests(logger: Logger) {
     db.set_report(&ingress_key, report_id2, &report2).unwrap();
 
     // Request reports
-    let req = ProtobufReportRequest::new();
+    let req = ProtobufReportRequest::default();
     let resp = report_client.get_reports(&req).unwrap();
 
     assert_eq!(resp.reports.len(), 2);
 
-    assert_eq!(
-        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
-        dcap_evidence_1
-    );
-    assert_eq!(
-        resp.reports[0].get_pubkey_expiry(),
-        updated_report1.pubkey_expiry
-    );
+    match resp.reports[0].attestation_evidence.as_ref().unwrap() {
+        fog_report::report::AttestationEvidence::DcapEvidence(dcap_evidence) => {
+            assert_eq!(prost::DcapEvidence::from(dcap_evidence), dcap_evidence_1);
+        }
+        _ => panic!("Unexpected attestation evidence type"),
+    }
+    assert_eq!(resp.reports[0].pubkey_expiry, updated_report1.pubkey_expiry);
 
-    assert_eq!(
-        prost::DcapEvidence::from(resp.reports[1].get_dcap_evidence()),
-        dcap_evidence_0
-    );
-    assert_eq!(resp.reports[1].get_pubkey_expiry(), report2.pubkey_expiry);
+    match resp.reports[1].attestation_evidence.as_ref().unwrap() {
+        fog_report::report::AttestationEvidence::DcapEvidence(dcap_evidence) => {
+            assert_eq!(prost::DcapEvidence::from(dcap_evidence), dcap_evidence_0);
+        }
+        _ => panic!("Unexpected attestation evidence type"),
+    }
+    assert_eq!(resp.reports[1].pubkey_expiry, report2.pubkey_expiry);
 
     // Remove (nil) report
     db.remove_report(report_id1).unwrap();
 
     // Request reports
-    let req = ProtobufReportRequest::new();
+    let req = ProtobufReportRequest::default();
     let resp = report_client.get_reports(&req).unwrap();
 
     assert_eq!(resp.reports.len(), 1);
-    assert_eq!(
-        prost::DcapEvidence::from(resp.reports[0].get_dcap_evidence()),
-        dcap_evidence_0
-    );
-    assert_eq!(resp.reports[0].get_pubkey_expiry(), report2.pubkey_expiry);
+    match resp.reports[0].attestation_evidence.as_ref().unwrap() {
+        fog_report::report::AttestationEvidence::DcapEvidence(dcap_evidence) => {
+            assert_eq!(prost::DcapEvidence::from(dcap_evidence), dcap_evidence_0);
+        }
+        _ => panic!("Unexpected attestation evidence type"),
+    }
+    assert_eq!(resp.reports[0].pubkey_expiry, report2.pubkey_expiry);
 }

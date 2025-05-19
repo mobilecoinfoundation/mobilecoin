@@ -4,7 +4,7 @@
 
 use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, UnarySink};
-use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApi};
+use mc_attest_api::attest::{AttestedApi, AuthMessage};
 use mc_attest_enclave_api::{ClientSession, PeerSession, Session};
 use mc_common::{
     logger::{log, Logger},
@@ -143,7 +143,7 @@ mod peer_tests {
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
         ServerCredentials,
     };
-    use mc_attest_api::attest_grpc::{self, AttestedApiClient};
+    use mc_attest_api::attest::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::TokenAuthenticator;
@@ -151,7 +151,7 @@ mod peer_tests {
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: AttestedApiService<PeerSession>) -> (AttestedApiClient, Server) {
-        let service = attest_grpc::create_attested_api(instance);
+        let service = attest::create_attested_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
@@ -207,7 +207,7 @@ mod client_tests {
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
         ServerCredentials,
     };
-    use mc_attest_api::attest_grpc::{self, AttestedApiClient};
+    use mc_attest_api::attest::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::TokenAuthenticator;
@@ -217,7 +217,7 @@ mod client_tests {
     fn get_client_server(
         instance: AttestedApiService<ClientSession>,
     ) -> (AttestedApiClient, Server) {
-        let service = attest_grpc::create_attested_api(instance);
+        let service = attest::create_attested_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)

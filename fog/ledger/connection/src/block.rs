@@ -3,10 +3,9 @@
 use super::Error;
 use grpcio::{ChannelBuilder, Environment};
 use mc_common::{logger::Logger, trace_time};
-use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc, ledger_grpc::FogBlockApiClient};
+use mc_fog_api::{fog_common::BlockRange, fog_ledger, fog_ledger::FogBlockApiClient};
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
-use protobuf::RepeatedField;
 use std::sync::Arc;
 
 /// A unattested connection to the Fog Block service.
@@ -29,7 +28,7 @@ impl FogBlockGrpcClient {
         let creds = BasicCredentials::new(&uri.username(), &uri.password());
 
         let ch = ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger);
-        let blocks_client = ledger_grpc::FogBlockApiClient::new(ch);
+        let blocks_client = FogBlockApiClient::new(ch);
 
         Self {
             uri,
@@ -44,11 +43,12 @@ impl FogBlockGrpcClient {
     pub fn get_missed_block_ranges(
         &mut self,
         missed_block_ranges: Vec<BlockRange>,
-    ) -> Result<ledger::BlockResponse, Error> {
+    ) -> Result<fog_ledger::BlockResponse, Error> {
         trace_time!(self.logger, "FogBlockGrpcClient::get_missed_block_ranges");
 
-        let mut request = ledger::BlockRequest::new();
-        request.ranges = RepeatedField::from_vec(missed_block_ranges);
+        let request = fog_ledger::BlockRequest {
+            ranges: missed_block_ranges,
+        };
 
         self.grpc_retry_config
             .retry(|| {

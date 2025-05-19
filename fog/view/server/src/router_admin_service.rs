@@ -9,12 +9,12 @@ use grpcio::{ChannelBuilder, RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     fog_common::AddShardRequest,
-    view_grpc::{FogViewRouterAdminApi, FogViewStoreApiClient},
+    fog_view::{FogViewRouterAdminApi, FogViewStoreApiClient},
 };
 use mc_fog_uri::FogViewStoreUri;
 use mc_util_grpc::{
     rpc_invalid_arg_error, rpc_logger, rpc_precondition_error, send_result,
-    ConnectionUriGrpcioChannel, Empty,
+    ConnectionUriGrpcioChannel,
 };
 use std::{
     str::FromStr,
@@ -32,7 +32,7 @@ impl FogViewRouterAdminService {
         Self { shards, logger }
     }
 
-    fn add_shard_impl(&mut self, shard_uri: &str, logger: &Logger) -> Result<Empty, RpcStatus> {
+    fn add_shard_impl(&mut self, shard_uri: &str, logger: &Logger) -> Result<(), RpcStatus> {
         let view_store_uri = FogViewStoreUri::from_str(shard_uri).map_err(|_| {
             rpc_invalid_arg_error(
                 "add_shard",
@@ -68,19 +68,19 @@ impl FogViewRouterAdminService {
         let shard = Shard::new(view_store_uri, Arc::new(view_store_client), block_range);
         shards.push(shard);
 
-        Ok(Empty::new())
+        Ok(())
     }
 }
 
 impl FogViewRouterAdminApi for FogViewRouterAdminService {
-    fn add_shard(&mut self, ctx: RpcContext, request: AddShardRequest, sink: UnarySink<Empty>) {
+    fn add_shard(&mut self, ctx: RpcContext, request: AddShardRequest, sink: UnarySink<()>) {
         log::info!(self.logger, "Request received in add_shard fn");
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(
                 ctx,
                 sink,
-                self.add_shard_impl(request.get_shard_uri(), logger),
+                self.add_shard_impl(&request.shard_uri, logger),
                 logger,
             );
         });

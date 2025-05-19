@@ -5,7 +5,7 @@
 use crate::FogContext;
 use clap::{Args, Parser, Subcommand};
 use mc_account_keys::PublicAddress;
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use mc_consensus_mint_client_types::{MintConfigTxFile, TxFile};
 use mc_consensus_service_config::TokensConfig;
 use mc_crypto_keys::{
@@ -546,13 +546,14 @@ fn parse_public_address(b58: &str) -> Result<PublicAddress, String> {
     let printable_wrapper = PrintableWrapper::b58_decode(b58.into())
         .map_err(|err| format!("failed parsing b58 address '{b58}': {err}"))?;
 
-    if printable_wrapper.has_public_address() {
-        let public_address = PublicAddress::try_from(printable_wrapper.get_public_address())
-            .map_err(|err| format!("failed converting b58 public address '{b58}': {err}"))?;
+    match printable_wrapper.wrapper {
+        Some(printable_wrapper::Wrapper::PublicAddress(public_address)) => {
+            let public_address = PublicAddress::try_from(&public_address)
+                .map_err(|err| format!("failed converting b58 public address '{b58}': {err}"))?;
 
-        Ok(public_address)
-    } else {
-        Err(format!("b58 address '{b58}' is not a public address"))
+            Ok(public_address)
+        }
+        _ => Err(format!("b58 address '{b58}' is not a public address")),
     }
 }
 

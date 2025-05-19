@@ -6,10 +6,10 @@ use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     fog_common::BlockRange,
-    view::{
-        MultiViewStoreQueryRequest, MultiViewStoreQueryResponse, MultiViewStoreQueryResponseStatus,
+    fog_view::{
+        FogViewStoreApi, MultiViewStoreQueryRequest, MultiViewStoreQueryResponse,
+        MultiViewStoreQueryResponseStatus,
     },
-    view_grpc::FogViewStoreApi,
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::view::QueryRequestAAD;
@@ -82,16 +82,14 @@ where
 
     fn auth_impl(
         &mut self,
-        mut request: attest::AuthMessage,
+        request: attest::AuthMessage,
         logger: &Logger,
     ) -> Result<attest::AuthMessage, RpcStatus> {
         // TODO: Use the prost message directly, once available
-        match self.enclave.frontend_accept(request.take_data().into()) {
-            Ok((response, _)) => {
-                let mut result = attest::AuthMessage::new();
-                result.set_data(response.into());
-                Ok(result)
-            }
+        match self.enclave.frontend_accept(request.data.into()) {
+            Ok((response, _)) => Ok(attest::AuthMessage {
+                data: response.into(),
+            }),
             Err(frontend_error) => {
                 // This is debug because there's no requirement on the remote party to trigger
                 // it.
@@ -163,16 +161,17 @@ where
 
         tracer.in_span("query_impl", |_cx| {
             let untrusted_query_response =
-                self.create_untrusted_query_response(request.get_aad(), &tracer)?;
+                self.create_untrusted_query_response(request.aad.as_slice(), &tracer)?;
             let data = tracer.in_span("enclave_query", |_cx| {
                 self.enclave
                     .query(request.into(), untrusted_query_response)
                     .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))
             })?;
 
-            let mut resp = attest::Message::new();
-            resp.set_data(data);
-            Ok(resp)
+            Ok(attest::Message {
+                data,
+                ..Default::default()
+            })
         })
     }
 
@@ -184,7 +183,7 @@ where
         let tracer = tracer!();
         tracer.in_span("query_nonce_impl", |_cx| {
             let untrusted_query_response =
-                self.create_untrusted_query_response(request.get_aad(), &tracer)?;
+                self.create_untrusted_query_response(request.aad.as_slice(), &tracer)?;
             let enclave_nonce_message = tracer.in_span("enclave_query_store", |_cx| {
                 self.enclave
                     .query_store(request.into(), untrusted_query_response)
@@ -201,11 +200,11 @@ where
         queries: Vec<attest::NonceMessage>,
         logger: &Logger,
     ) -> MultiViewStoreQueryResponse {
-        let mut response = MultiViewStoreQueryResponse::new();
+        let mut response = MultiViewStoreQueryResponse::default();
         let fog_view_store_uri_string = fog_view_store_uri.url().to_string();
-        response.set_store_uri(fog_view_store_uri_string);
+        response.store_uri = fog_view_store_uri_string;
         let block_range = BlockRange::from(&self.sharding_strategy.get_block_range());
-        response.set_block_range(block_range);
+        response.block_range = Some(block_range);
         for query in queries.into_iter() {
             let result = self.query_nonce_impl(query);
             // Only one of the query messages in an MVSQR is intended for this store
@@ -221,17 +220,17 @@ where
                             "process_queries setting state NOT_READY block count: {}",
                             shared_state.processed_block_count
                         );
-                        response.set_status(MultiViewStoreQueryResponseStatus::NOT_READY);
+                        response.set_status(MultiViewStoreQueryResponseStatus::NotReady);
                     } else {
-                        response.set_query_response(attested_message);
-                        response.set_status(MultiViewStoreQueryResponseStatus::SUCCESS);
+                        response.query_response = Some(attested_message);
+                        response.set_status(MultiViewStoreQueryResponseStatus::Success);
                     }
                 }
                 return response;
             }
         }
 
-        response.set_status(MultiViewStoreQueryResponseStatus::AUTHENTICATION_ERROR);
+        response.set_status(MultiViewStoreQueryResponseStatus::AuthenticationError);
         response
     }
 
@@ -288,8 +287,7 @@ where
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
             }
-            let response =
-                self.process_queries(self.uri.clone(), request.queries.into_vec(), logger);
+            let response = self.process_queries(self.uri.clone(), request.queries, logger);
             send_result(ctx, sink, Ok(response), logger)
         });
     }
