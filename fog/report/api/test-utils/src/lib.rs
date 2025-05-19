@@ -2,7 +2,7 @@
 
 use prost::Message as ProstMessage;
 
-/// Take two  ProstMessage values .
+/// Take two ProstMessage values.
 ///
 /// Try to encode the first prost message, decode as the second prost message,
 /// re-encode that, and decode as first prost again, and check that you got the
