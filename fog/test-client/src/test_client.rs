@@ -1545,10 +1545,15 @@ impl HealthTracker {
         // * there is a failure
         // * the failure happened at least healing_time ago then set ourselves healthy
         //   again
+        // The combination of have_failure + last_failure can be thought of as an
+        // `Option<u64>`, but because there's no Atomic version of
+        // `Option<u64>`, we need to have two atomics. If we had an
+        // AtomicOptionU64 type then we would check for Some(last_failure), and we would
+        // never set last_failure to None, which is also why we don't set have_failure
+        // to false.
         if self.have_failure.load(Ordering::SeqCst)
             && self.last_failure.load(Ordering::SeqCst) + self.healing_time < counter
         {
-            self.have_failure.store(false, Ordering::SeqCst);
             counters::LAST_POLLING_SUCCESSFUL.set(1);
         }
     }
