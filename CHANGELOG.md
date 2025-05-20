@@ -6,12 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [7.0.0]
+
+### Changed
+
+Upgrade Rust and Dependencies
+
+- Upgrade Rust 1.75.0 nightly ([#4018])
+- Upgrade Rust to 1.76.0-nightly ([#4021])
+- Upgrade Rust to 1.77.0 nightly ([#4022])
+- Upgrade Rust to 1.78.0-nightly ([#4023])
+- Upgrade Rust 1.79.0-nightly ([#4024])
+- Upgrade Rust 1.81.0-nightly ([#4025])
+- Upgrade Rust 1.83.0 nightly ([#4027])
+- Update Build/Run OS images to 24.04 - Update Intel SGX SDK to 2.25 ([#4028])
+
+### Fixed
+
+- add balance metrics to fog-test-client ([#4034])
+- Fix off-by-one bug in LAST_POLLING_SUCCESSFUL metric ([#4035])
+
+
+[#4018]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4018
+[#4021]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4021
+[#4022]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4022
+[#4023]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4023
+[#4024]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4024
+[#4025]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4025
+[#4027]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4027
+[#4028]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4028
+[#4034]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4034
+[#4035]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4035
+
 ## [6.1.1]
 
 ### Fixed
 
 - Update grpcio for fog-local-network ([#4014])
 - Fix ledger distribution resync ([#4013])
+
+[#4014]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4014
+[#4013]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4013
 
 ## [6.1.0]
 
@@ -26,6 +61,13 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - clean up deprecated charts ([#4007])
 - configuration for "big" network testing ([#4008])
 - fog-view - blue/green and zone based deployments. ([#4009])
+
+[#4005]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4005
+[#4002]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4002
+[#4006]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4006
+[#4007]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4007
+[#4008]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4008
+[#4009]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4009
 
 ## [6.0.2]
 
