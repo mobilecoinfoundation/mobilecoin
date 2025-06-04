@@ -19,40 +19,31 @@ RUN  apt-get update \
   && apt-get clean \
   && rm -r /var/lib/apt/lists
 
-# Install SGX SDK
-COPY .internal-ci/docker/support/intel-sgx-archive-keyring.gpg /etc/apt/trusted.gpg.d/
-RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ noble main" > /etc/apt/sources.list.d/intel-sgx.list
+# Install SGX/DCAP libraries.
+# Intel is not keeping old packages in their hosted ubuntu repository so
+# download the "repo" tarball from Intel and install the packages from there.
+ARG SGX_VERSION=2.25.100.3-noble1_amd64
+ARG DCAP_VERSION=1.22.100.3-noble1_amd64
+ARG DCAP_PKG_URL=https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/distro/ubuntu24.04-server/sgx_debian_local_repo.tgz
+ARG DCAP_PKG_BASE_PATH=/opt/sgx_debian_local_repo/pool/main
 
-ARG SGX_SDK_VERSION=2.25.100.3-noble1
-ENV SGX_SDK_VERSION=${SGX_SDK_VERSION}
-
-# Explicitly call out *all* dependency versions. This is because the Intel
-# packages don't pin the dependency versions and instead use "<dependency>=<version>"
-RUN  apt-get update \
-  && apt-get --no-install-recommends install -y \
-     libsgx-ae-pce=${SGX_SDK_VERSION} \
-     libsgx-enclave-common=${SGX_SDK_VERSION} \
-     libsgx-urts=${SGX_SDK_VERSION} \
+RUN curl --retry 5 -fL "${DCAP_PKG_URL}" -o /opt/sgx_debian_local_repo.tgz \
+  && tar -xzf /opt/sgx_debian_local_repo.tgz -C /opt \
+  && apt-get update \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/s/sgx-aesm-service/libsgx-ae-pce_${SGX_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-enclave-common/libsgx-enclave-common_${SGX_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-urts/libsgx-urts_${SGX_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-pce-logic/libsgx-pce-logic_${DCAP_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-ae-qe3/libsgx-ae-qe3_${DCAP_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-ae-id-enclave/libsgx-ae-id-enclave_${DCAP_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-qe3-logic/libsgx-qe3-logic_${DCAP_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-dcap-ql/libsgx-dcap-ql_${DCAP_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-dcap-default-qpl/libsgx-dcap-default-qpl_${DCAP_VERSION}.deb" \
+  && apt install -y --no-install-recommends "${DCAP_PKG_BASE_PATH}/libs/libsgx-dcap-quote-verify/libsgx-dcap-quote-verify_${DCAP_VERSION}.deb" \
   && apt-get clean \
-  && rm -r /var/lib/apt/lists
-
-# Install DCAP libraries
-ARG DCAP_VERSION=1.22.100.3-noble1
-ENV DCAP_VERSION=${DCAP_VERSION}
-
-# Explicitly call out *all* dependency versions. This is because the Intel
-# packages don't pin the dependency versions and instead use "<dependency>=<version>"
-RUN  apt-get update \
-  && apt-get --no-install-recommends install -y \
-     libsgx-pce-logic=${DCAP_VERSION} \
-     libsgx-qe3-logic=${DCAP_VERSION} \
-     libsgx-ae-qe3=${DCAP_VERSION} \
-     libsgx-ae-id-enclave=${DCAP_VERSION} \
-     libsgx-dcap-ql=${DCAP_VERSION} \
-     libsgx-dcap-default-qpl=${DCAP_VERSION} \
-     libsgx-dcap-quote-verify=${DCAP_VERSION} \
-  && apt-get clean \
-  && rm -r /var/lib/apt/lists
+  && rm -r /var/lib/apt/lists \
+  && rm /opt/sgx_debian_local_repo.tgz \
+  && rm -rf /opt/sgx_debian_local_repo
 
 # The config installed with `libsgx-dcap-default-qpl` is for a local PCCS service.
 # We copy the Azure PCCS config after installing `libsgx-dcap-default-qpl` to
