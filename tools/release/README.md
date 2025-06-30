@@ -197,17 +197,18 @@ The `02-build-signed.sh` script will check to make sure all the files exist in t
     - `.tmp/${chain_id}-measurements-${tag}.tar.gz`
 
 1. Run `03-populate-release.sh`
+
+    **This step will not be run in the `mob prompt` container.**
+
     You will the need `gh` cli tool installed and write access to the mobilecoin repo. https://github.com/cli/cli#installation
 
     If a release for this tag doesn't exist, this process will create a draft release and upload the build log, measurement, singed enclave artifacts and the "production.json".
 
 ### Build Release
 
-Use the GitHub actions `dispatch_workflow` for "Build TestNet Release" or "Build MainNet Release".
+Use the GitHub actions `dispatch_workflow` for "(Manual) Build MobileCoin Release".
 
 Select `Run workflow` and pick the Tag you want to build.
-
-![need to update this image](images/release_workflow.png)
 
 The build will check to see if the `.tmp/${chain_id}-measurements-${tag}.tar.gz` and `${chain_id}-signed.so-${tag}.tar.gz` tarballs are attached to the GitHub Release for that Tag.
 
