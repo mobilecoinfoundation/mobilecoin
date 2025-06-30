@@ -282,47 +282,31 @@ jobs:
         - go-grpc-gateway
         - node_hw
         - mobilecoind
-        - watcher
     steps:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache rust build binaries
-      id: rust_artifact_cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+    - name: Build runtime docker images
+      uses: ./.github/actions/build-docker-images
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
-        path: ${{ env.RUST_CACHE_PATH }}
-
-    - name: Cache go build binaries
-      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        path: ${{ env.GO_CACHE_PATH }}
-
-    - name: Get short SHA
-      run: echo "GH_SHORT_SHA=sha-$(echo "${GITHUB_SHA}" | cut -c1-7)" >> "${GITHUB_ENV}"
-
-    - name: Docker
-      uses: mobilecoinofficial/gh-actions/docker@v0
-      with:
-        build_args: |
-          REPO_ORG=${{ env.DOCKER_ORG }}
-          BASE_TAG=${{ env.GH_SHORT_SHA }}
-          RUST_BIN_PATH=${{ env.RUST_ARTIFACTS_PATH }}
-          GO_BIN_PATH=${{ env.GO_ARTIFACTS_PATH }}
-        dockerfile: .internal-ci/docker/Dockerfile.${{ matrix.image }}
-        flavor: latest=true
-        images: ${{ env.DOCKER_ORG }}/${{ matrix.image }}
-        tags: ${{ needs.generate-metadata.outputs.docker_tag }}
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        rust_cache_path: ${{ env.RUST_CACHE_PATH }}
+        rust_bin_path: ${{ env.RUST_ARTIFACTS_PATH }}
+        go_cache_path: ${{ env.GO_CACHE_PATH }}
+        go_bin_path: ${{ env.GO_ARTIFACTS_PATH }}
+        artifact_tag: ${{ needs.generate-metadata.outputs.tag }}
+        image_name: mobilecoin/${{ matrix.image }}
+        docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+        docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   charts:
     runs-on: mcf-dev-small-x64
     needs:
     - docker
     - generate-metadata
+    permissions:
+      packages: write
+      contents: read
     strategy:
       matrix:
         chart:
