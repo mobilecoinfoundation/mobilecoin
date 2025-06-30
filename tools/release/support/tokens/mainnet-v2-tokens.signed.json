@@ -1,0 +1,40 @@
+{
+  "governors_signature": "746f8ed1beea476feaaa28efdbf2038f4c28fa9291833e3438756c56a5000975af2c4968cc8c7193193fccaf94e817f31e8584c3fb49ddddb14ba5543ba83701",
+  "tokens": [
+    {
+      "token_id": 0,
+      "minimum_fee": 400000000,
+      "allow_any_fee": false,
+      "signer_identities": {},
+      "governors": null
+    },
+    {
+      "token_id": 1,
+      "minimum_fee": 2560,
+      "allow_any_fee": false,
+      "signer_identities": {},
+      "governors": {
+        "type": "MultiSig",
+        "threshold": 4,
+        "signers": [
+          {
+            "type": "Single",
+            "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAv8JhSEl9wTUWpSRVU/PPAv8HdL/6wYExTHFcE4jUUKo=\n-----END PUBLIC KEY-----\n"
+          },
+          {
+            "type": "Single",
+            "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyPrJDTD7n00YpTVrr6g3GB0u0hYTBqIjuUBNV0mxWTU=\n-----END PUBLIC KEY-----\n"
+          },
+          {
+            "type": "Single",
+            "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAm8OjCYp8YgwYArHDK5Ig9+PW9yCHv0RN6cztnXWgn7A=\n-----END PUBLIC KEY-----\n"
+          },
+          {
+            "type": "Single",
+            "pub_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAWY+3H0GJqmxeMeEWge7A9UMnAyFwyvm+SsOomwMWByU=\n-----END PUBLIC KEY-----\n"
+          }
+        ]
+      }
+    }
+  ]
+}

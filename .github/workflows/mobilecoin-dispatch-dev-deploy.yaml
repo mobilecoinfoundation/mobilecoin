@@ -22,11 +22,20 @@ on:
         type: string
         required: true
         default: '4'
+      tokens_file:
+        description: "Tokens File"
+        type: choice
+        required: false
+        default: 'dev'
+        options:
+        - dev
+        - test
+        - main
       bootstrap_version:
         description: "Bootstrap Blockchain from selected version"
         type: choice
         required: true
-        default: none
+        default: v5.2.3-dev.alpha.6224
         options:
         - none
         - v5.1.1-dev.alpha.5946
@@ -36,7 +45,7 @@ on:
         description: "Minimum block to wait for"
         type: choice
         required: false
-        default: '500'
+        default: '6224'
         options:
         - '500'
         - '5946'
@@ -60,16 +69,6 @@ on:
         options:
         - blue
         - green
-      chart_repo:
-        description: "Chart Repo URL"
-        type: string
-        required: true
-        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
-      docker_image_org:
-        description: "Docker Image Org"
-        type: string
-        required: true
-        default: docker.io/mobilecoin
 
 jobs:
   list-values:
@@ -81,7 +80,6 @@ jobs:
 
     - name: 👾 Print Environment Details 👾
       env:
-        CHART_REPO: ${{ inputs.chart_repo }}
         NAMESPACE: ${{ inputs.namespace }}
         VERSION: ${{ inputs.version }}
       run: |
@@ -94,9 +92,9 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-bootstrap.yaml
     with:
       block_version: '3'
-      chart_repo: ${{ inputs.chart_repo }}
       namespace: ${{ inputs.namespace }}
       bootstrap_version: ${{ inputs.bootstrap_version }}
+      tokens_file: ${{ inputs.tokens_file }}
     secrets: inherit
 
   deploy:
@@ -106,12 +104,11 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
     with:
       block_version: ${{ inputs.block_version }}
-      chart_repo: ${{ inputs.chart_repo }}
-      docker_image_org: ${{ inputs.docker_image_org }}
       ingest_color: ${{ inputs.ingest_color }}
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
       minimum_block: ${{ inputs.minimum_block }}
       shard_size: ${{ inputs.shard_size }}
       shard_exceed_block_height_by: ${{ inputs.shard_exceed_block_height_by }}
+      tokens_file: ${{ inputs.tokens_file }}
     secrets: inherit

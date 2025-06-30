@@ -5,7 +5,6 @@
 name: Mobilecoin CD
 
 env:
-  CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
   RELEASE_5X_TAG: v5.2.3-dev.alpha.6224
   MINIMUM_BLOCK: '6224'
@@ -50,7 +49,6 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
-      chart_repo: ${{ env.CHART_REPO }}
       release_5x_tag: ${{ env.RELEASE_5X_TAG }}
       minimum_block: ${{ env.MINIMUM_BLOCK }}
 
@@ -67,7 +65,6 @@ jobs:
     - name: 👾 Print Environment Details 👾
       shell: bash
       env:
-        CHART_REPO: ${{ env.CHART_REPO }}
         NAMESPACE: ${{ steps.meta.outputs.namespace }}
         VERSION: ${{ steps.meta.outputs.tag }}
       run: |
@@ -333,7 +330,6 @@ jobs:
         - fog-ingest
         - fog-test-client
         - mobilecoind
-        - watcher
         - fog-report
         - fog-view-service
         - fog-view-fsg
@@ -345,13 +341,13 @@ jobs:
     - name: Package and publish chart
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-publish
-        chart_repo_username: ${{ secrets.HARBOR_USERNAME }}
-        chart_repo_password: ${{ secrets.HARBOR_PASSWORD }}
-        chart_repo: ${{ env.CHART_REPO }}
+        action: helm-publish-oci
+        chart_repo: ghcr.io/mobilecoinfoundation
         chart_app_version: ${{ needs.generate-metadata.outputs.tag }}
         chart_version: ${{ needs.generate-metadata.outputs.tag }}
-        chart_path: .internal-ci/helm/${{ matrix.chart }}
+        chart_path: .internal-ci/helm/chart-${{ matrix.chart }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
 ################################################
 # Bootstrap namespace to v5.2.3-dev from backup
@@ -362,9 +358,9 @@ jobs:
     - generate-metadata
     with:
       block_version: 3
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       bootstrap_version: ${{ needs.generate-metadata.outputs.release_5x_tag }}
+      tokens_file: 'dev'
     secrets: inherit
 
 ###############################################
@@ -378,12 +374,12 @@ jobs:
     - generate-metadata
     with:
       block_version: 4
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
       minimum_block: ${{ needs.generate-metadata.outputs.minimum_block }}
+      tokens_file: 'dev'
     secrets: inherit
 
   test-current-bv4-release:
@@ -411,7 +407,6 @@ jobs:
   #   - generate-metadata
   #   with:
   #     block_version: 4
-  #     chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
   #     namespace: ${{ needs.generate-metadata.outputs.namespace }}
   #     version: ${{ needs.generate-metadata.outputs.tag }}
   #   secrets: inherit
