@@ -295,7 +295,7 @@ jobs:
         go_cache_path: ${{ env.GO_CACHE_PATH }}
         go_bin_path: ${{ env.GO_ARTIFACTS_PATH }}
         artifact_tag: ${{ needs.generate-metadata.outputs.tag }}
-        image_name: mobilecoin/${{ matrix.image }}
+        image_name: ${{ matrix.image }}
         docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
         docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
