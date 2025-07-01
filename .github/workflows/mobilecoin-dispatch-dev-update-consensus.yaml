@@ -22,11 +22,15 @@ on:
         type: string
         required: true
         default: '4'
-      chart_repo:
-        description: "Chart Repo URL"
-        type: string
-        required: true
-        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+      tokens_file:
+        description: "tokens file"
+        type: choice
+        required: false
+        default: 'dev'
+        options:
+        - dev
+        - test
+        - main
 
 jobs:
   update-consensus-block-version:
@@ -34,6 +38,6 @@ jobs:
     with:
       namespace: ${{ inputs.namespace }}
       version: ${{ inputs.version }}
-      chart_repo: ${{ inputs.chart_repo }}
       block_version: "${{ inputs.block_version }}"
+      tokens_file: ${{ inputs.tokens_file }}
     secrets: inherit

@@ -24,7 +24,7 @@ on:
         description: "Chart Repo URL"
         type: string
         required: false
-        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+        default: ghcr.io/mobilecoinfoundation
       ingest_color:
         description: "Fog Ingest blue/green"
         type: string
@@ -48,6 +48,10 @@ on:
         type: string
         required: false
         default: "5000"
+      tokens_file:
+        description: "Tokens File"
+        type: string
+        required: true
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -59,6 +63,10 @@ on:
         description: "Rancher access token"
         required: true
 
+permissions:
+  contents: read
+  packages: read
+
 env:
   FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
   VALUES_BASE_PATH: .tmp/values
@@ -68,6 +76,7 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-setup-environment.yaml
     with:
       namespace: ${{ inputs.namespace }}
+      tokens_file: ${{ inputs.tokens_file }}
     secrets: inherit
 
   consensus-deploy:
@@ -114,9 +123,9 @@ jobs:
     - name: Deploy Consensus nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: consensus-node
+        chart_name: chart-consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
         chart_wait_timeout: 60m
@@ -125,6 +134,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
   mobilecoind-deploy:
     needs:
@@ -152,9 +163,9 @@ jobs:
     - name: Mobilecoind nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: mobilecoind
+        chart_name: chart-mobilecoind
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
         chart_wait_timeout: 60m
@@ -163,6 +174,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
   # run two copies of fog-report a/b
   fog-report-deploy-a:
@@ -198,9 +211,9 @@ jobs:
     - name: Deploy fog-report-a
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-report
+        chart_name: chart-fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
@@ -209,6 +222,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
   fog-report-deploy-b:
     needs:
@@ -244,9 +259,9 @@ jobs:
     - name: Deploy fog-report-b
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-report
+        chart_name: chart-fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
@@ -255,6 +270,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
   fog-view-deploy:
     needs:
@@ -287,9 +304,9 @@ jobs:
     - name: Deploy fog-view-service
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-view-service
+        chart_name: chart-fog-view-service
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-service-values.yaml
@@ -298,6 +315,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
     - name: Generate fog-view-fsg-gr-z1 values file
       run: |
@@ -325,9 +344,9 @@ jobs:
     - name: Deploy fog-view-fsg-gr-z1
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-view-fsg
+        chart_name: chart-fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z1.yaml
@@ -336,6 +355,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
     - name: Generate fog-view-fsg-gr-z2 values file
       run: |
@@ -363,9 +384,9 @@ jobs:
     - name: Deploy fog-view-fsg-gr-z2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-view-fsg
+        chart_name: chart-fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z2.yaml
@@ -374,6 +395,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
   fog-ledger-deploy:
     needs:
@@ -416,9 +439,9 @@ jobs:
     - name: Deploy fog-ledger
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-ledger
+        chart_name: chart-fog-ledger
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-values.yaml
@@ -427,6 +450,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
   fog-ingest-deploy:
     needs:
@@ -448,9 +473,9 @@ jobs:
     - name: Deploy fog-ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-ingest
+        chart_name: chart-fog-ingest
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ingest-values.yaml
@@ -459,6 +484,8 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
     - name: Run fog-recovery database migrations
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13

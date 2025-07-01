@@ -1,0 +1,220 @@
+name: (Manual) Build MobileCoin Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain_id:
+        description: 'Chain ID to use for the build'
+        required: true
+        type: choice
+        options:
+          - 'test'
+          - 'main'
+        default: 'test'
+      minimum_enclave_version:
+        description: 'Minimum compatible enclave version for mobilecoind'
+        required: true
+        default: 'v6.0.0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.chain_id }}
+  cancel-in-progress: true
+
+env:
+  TAG: ${{ github.ref_name }}
+  ARTIFACT_TAG: ${{ github.ref_name }}-${{ inputs.chain_id }}
+  CACHE_BUSTER: ${{ vars.CACHE_BUSTER }}-${{ inputs.chain_id }}
+  CHART_REPO: ghcr.io/mobilecoinfoundation
+  # Base cache paths for rust and go
+  GO_CACHE_PATH: .tmp/go-cache
+  RUST_CACHE_PATH: .tmp/rust-cache
+  # bin path is a subdirectory of the cache path for artifact zips
+  GO_BIN_PATH: .tmp/go-cache/go-binaries
+  RUST_BIN_PATH: .tmp/rust-cache/rust-binaries
+  # mrsigner values
+  MRSIGNER_MAIN: 2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e
+  MRSIGNER_TEST: bf7fa957a6a94acb588851bc8767e0ca57706c79f4fc2aa6bcb993012c3c386c
+
+jobs:
+  build-rust-binaries:
+    runs-on: mcf-dev-large-x64
+    container:
+      image: mobilecoin/rust-sgx:v24.4.2
+    outputs:
+      consensus_mrenclave: ${{ steps.build.outputs.consensus_mrenclave }}
+      consensus_mrsigner: ${{ steps.build.outputs.consensus_mrsigner }}
+      ingest_mrenclave: ${{ steps.build.outputs.ingest_mrenclave }}
+      ingest_mrsigner: ${{ steps.build.outputs.ingest_mrsigner }}
+      ledger_mrenclave: ${{ steps.build.outputs.ledger_mrenclave }}
+      ledger_mrsigner: ${{ steps.build.outputs.ledger_mrsigner }}
+      view_mrenclave: ${{ steps.build.outputs.view_mrenclave }}
+      view_mrsigner: ${{ steps.build.outputs.view_mrsigner }}
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Build Release
+      id: build
+      uses: ./.github/actions/rust-build-release
+      with:
+        bin_path: ${{ env.RUST_BIN_PATH }}
+        cache_buster: ${{ env.CACHE_BUSTER }}
+        cache_path: ${{ env.RUST_CACHE_PATH }}
+        chain_id: ${{ inputs.chain_id }}
+        minimum_enclave_version: ${{ inputs.minimum_enclave_version }}
+        current_release_version: ${{ env.TAG }}
+
+  build-go-binaries:
+    runs-on: mcf-dev-small-x64
+    container:
+      image: golang:1.22.2-bullseye
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Build Go
+      uses: ./.github/actions/go-build-release
+      with:
+        cache_buster: ${{ env.CACHE_BUSTER }}
+        cache_path: ${{ env.GO_CACHE_PATH }}
+        bin_path: ${{ env.GO_BIN_PATH }}
+
+  # build base image for runtime containers
+  build-docker-base:
+    runs-on: mcf-dev-small-x64
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Docker
+      uses: mobilecoinofficial/gh-actions/docker@v0
+      with:
+        dockerfile: .internal-ci/docker/Dockerfile.dcap-runtime-base
+        flavor: latest=true
+        images: mobilecoin/dcap-runtime-base
+        tags: |
+          type=sha
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  build-containers:
+    runs-on: mcf-dev-small-x64
+    needs: [build-rust-binaries, build-go-binaries, build-docker-base]
+    strategy:
+      matrix:
+        image:
+        - bootstrap-tools
+        - fogingest
+        - fog-ledger
+        - fogreport
+        - fog-test-client
+        - fogview
+        - go-grpc-gateway
+        - node_hw
+        - mobilecoind
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Build runtime docker images
+      uses: ./.github/actions/build-docker-images
+      with:
+        cache_buster: ${{ env.CACHE_BUSTER }}
+        rust_cache_path: ${{ env.RUST_CACHE_PATH }}
+        rust_bin_path: ${{ env.RUST_BIN_PATH }}
+        go_cache_path: ${{ env.GO_CACHE_PATH }}
+        go_bin_path: ${{ env.GO_BIN_PATH }}
+        artifact_tag: ${{ env.ARTIFACT_TAG }}
+        image_name: ${{ matrix.image }}
+        docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+        docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  build-charts:
+    runs-on: mcf-dev-small-x64
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        chart:
+        - consensus-node
+        - fog-ingest
+        - fog-test-client
+        - mobilecoind
+        - fog-report
+        - fog-view-service
+        - fog-view-fsg
+        - fog-ledger
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Package and Publish Chart (OCI)
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-publish-oci
+        chart_path: .internal-ci/helm/chart-${{ matrix.chart }}
+        chart_version: ${{ env.ARTIFACT_TAG }}
+        chart_app_version: ${{ env.ARTIFACT_TAG }}
+        chart_repo: ${{ env.CHART_REPO }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
+
+  verify-signer:
+    runs-on: mcf-dev-small-x64
+    needs: build-rust-binaries
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Verify Signer
+      uses: ./.github/actions/verify-enclave-signer
+      with:
+        chain_id: ${{ inputs.chain_id }}
+        expected_mrsigner: ${{ inputs.chain_id == 'main' && env.MRSIGNER_MAIN || env.MRSIGNER_TEST }}
+        consensus_mrsigner: ${{ needs.build-rust-binaries.outputs.consensus_mrsigner }}
+        consensus_mrenclave: ${{ needs.build-rust-binaries.outputs.consensus_mrenclave }}
+        ingest_mrsigner: ${{ needs.build-rust-binaries.outputs.ingest_mrsigner }}
+        ingest_mrenclave: ${{ needs.build-rust-binaries.outputs.ingest_mrenclave }}
+        ledger_mrsigner: ${{ needs.build-rust-binaries.outputs.ledger_mrsigner }}
+        ledger_mrenclave: ${{ needs.build-rust-binaries.outputs.ledger_mrenclave }}
+        view_mrsigner: ${{ needs.build-rust-binaries.outputs.view_mrsigner }}
+        view_mrenclave: ${{ needs.build-rust-binaries.outputs.view_mrenclave }}
+
+  # we only need to publish if its an enclave release (tagged with .0.0)
+  enclaves-s3-publish:
+    runs-on: mcf-dev-small-x64
+    needs: [build-rust-binaries, verify-signer]
+    container:
+      image: mobilecoin/gha-s3-pg-helper:v0
+    steps:
+    - name: Checkout
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Publish Enclaves to S3
+      uses: ./.github/actions/enclaves-s3-publish
+      with:
+        tag: ${{ env.TAG }}
+        chain_id: ${{ inputs.chain_id }}
+        aws_access_key_id: ${{ secrets.ENCLAVE_S3_AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.ENCLAVE_S3_AWS_SECRET_ACCESS_KEY }}
+
+  add-mobilecoind-to-release:
+    runs-on: mcf-dev-small-x64
+    needs: [build-rust-binaries, verify-signer]
+    permissions:
+      contents: write
+    steps:
+    - name: Download mobilecoind build step artifact
+      uses: mobilecoinofficial/gh-actions/download-artifact@v0
+      with:
+        name: mobilecoind
+        path: .tmp/mobilecoind
+
+    - name: Add mobilecoind to release
+      uses: mobilecoinofficial/gh-actions/gh-release@v0
+      with:
+        tag_name: ${{ env.TAG }}
+        files: |
+          .tmp/mobilecoind/${{ inputs.chain_id }}net-mobilecoind-linux-${{ env.TAG }}.tar.gz
+        fail_on_unmatched_files: true

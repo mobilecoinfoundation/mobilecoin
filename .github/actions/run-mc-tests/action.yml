@@ -1,10 +1,11 @@
 name: Run MC tests
+description: Run MobileCoin tests using cargo-nextest
 
 inputs:
   args:
     description: Additional args
     required: false
-    default:
+    default: ""
   junit_artifact:
     description: Artifact name to upload JUnit XML files
     required: false

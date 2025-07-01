@@ -15,13 +15,17 @@ on:
         description: "Chart Repo URL"
         type: string
         required: false
-        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+        default: ghcr.io/mobilecoinfoundation
       namespace:
         description: "Target Namespace"
         type: string
         required: true
       version:
         description: "release version"
+        type: string
+        required: true
+      tokens_file:
+        description: "Tokens File"
         type: string
         required: true
     secrets:
@@ -35,6 +39,10 @@ on:
         description: "Rancher access token"
         required: true
 
+permissions:
+  contents: read
+  packages: read
+
 env:
   VALUES_BASE_PATH: .tmp/values
 
@@ -43,6 +51,7 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-setup-environment.yaml
     with:
       namespace: ${{ inputs.namespace }}
+      tokens_file: ${{ inputs.tokens_file }}
     secrets: inherit
 
   consensus-deploy:
@@ -89,9 +98,9 @@ jobs:
     - name: Deploy Consensus nodes
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-deploy
+        action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: consensus-node
+        chart_name: chart-consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
         chart_wait_timeout: 10m
@@ -100,3 +109,5 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
