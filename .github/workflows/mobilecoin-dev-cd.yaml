@@ -5,7 +5,6 @@
 name: Mobilecoin CD
 
 env:
-  CHART_REPO: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
   DOCKER_ORG: mobilecoin
   RELEASE_5X_TAG: v5.2.3-dev.alpha.6224
   MINIMUM_BLOCK: '6224'
@@ -50,7 +49,6 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
       docker_tag: ${{ steps.meta.outputs.docker_tag }}
       docker_org: ${{ env.DOCKER_ORG }}
-      chart_repo: ${{ env.CHART_REPO }}
       release_5x_tag: ${{ env.RELEASE_5X_TAG }}
       minimum_block: ${{ env.MINIMUM_BLOCK }}
 
@@ -67,7 +65,6 @@ jobs:
     - name: 👾 Print Environment Details 👾
       shell: bash
       env:
-        CHART_REPO: ${{ env.CHART_REPO }}
         NAMESPACE: ${{ steps.meta.outputs.namespace }}
         VERSION: ${{ steps.meta.outputs.tag }}
       run: |
@@ -126,29 +123,16 @@ jobs:
       shell: bash
       run: |
         mkdir -p "${RUST_ARTIFACTS_PATH}"
+        mkdir -p "${MEASUREMENTS_ARTIFACTS_PATH}"
         find target/release -maxdepth 1 -executable -type f -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
         find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
+        find target/release -maxdepth 1 -name "*.css" -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
+        find target/release -maxdepth 1 -name "*.css" -exec cp "{}" "${MEASUREMENTS_ARTIFACTS_PATH}" \;
 
         # clean up target directory so the cache hash compute doesn't fail.
         # unable to access ???:
         # target/release/build/mc-crypto-x509-test-vectors-***/out/openssl/ok_intermediate1/private
         rm -rf target/release
-
-    - name: Create css measurements
-      if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        mkdir -p "${MEASUREMENTS_ARTIFACTS_PATH}"
-
-        orig_dir=$(pwd)
-
-        cd "${RUST_ARTIFACTS_PATH}"
-        for i in *.signed.so
-        do
-          css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
-          sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile "${css}.css"
-          cp "${css}.css" "${orig_dir}/${MEASUREMENTS_ARTIFACTS_PATH}"
-        done
 
     - name: Check artifacts
       shell: bash
@@ -207,39 +191,12 @@ jobs:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Add protobuf-compiler
-      run: |
-        apt update
-        apt install -y protobuf-compiler zstd
-
-    - name: Cache go build binaries
-      id: go_cache
-      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+    - name: Build Go binaries
+      uses: ./.github/actions/go-build-release
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
-        path: ${{ env.GO_CACHE_PATH }}
-
-    - name: Build go-grpc-gateway
-      if: steps.go_cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        mkdir -p "${GO_ARTIFACTS_PATH}"
-        pushd go-grpc-gateway
-        ./install_tools.sh
-        ./build.sh
-        popd
-        cp go-grpc-gateway/go-grpc-gateway "${GO_ARTIFACTS_PATH}"
-
-    - name: check artifacts
-      shell: bash
-      run: |
-        ls -alR "${GO_ARTIFACTS_PATH}"
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: go-binaries
-        path: ${{ env.GO_ARTIFACTS_PATH }}
+        cache_path: ${{ env.GO_CACHE_PATH }}
+        bin_path: ${{ env.GO_ARTIFACTS_PATH }}
 
 ########################################
 # Create/Refresh base runtime image
@@ -285,47 +242,31 @@ jobs:
         - go-grpc-gateway
         - node_hw
         - mobilecoind
-        - watcher
     steps:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache rust build binaries
-      id: rust_artifact_cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+    - name: Build runtime docker images
+      uses: ./.github/actions/build-docker-images
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
-        path: ${{ env.RUST_CACHE_PATH }}
-
-    - name: Cache go build binaries
-      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        path: ${{ env.GO_CACHE_PATH }}
-
-    - name: Get short SHA
-      run: echo "GH_SHORT_SHA=sha-$(echo "${GITHUB_SHA}" | cut -c1-7)" >> "${GITHUB_ENV}"
-
-    - name: Docker
-      uses: mobilecoinofficial/gh-actions/docker@v0
-      with:
-        build_args: |
-          REPO_ORG=${{ env.DOCKER_ORG }}
-          BASE_TAG=${{ env.GH_SHORT_SHA }}
-          RUST_BIN_PATH=${{ env.RUST_ARTIFACTS_PATH }}
-          GO_BIN_PATH=${{ env.GO_ARTIFACTS_PATH }}
-        dockerfile: .internal-ci/docker/Dockerfile.${{ matrix.image }}
-        flavor: latest=true
-        images: ${{ env.DOCKER_ORG }}/${{ matrix.image }}
-        tags: ${{ needs.generate-metadata.outputs.docker_tag }}
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        rust_cache_path: ${{ env.RUST_CACHE_PATH }}
+        rust_bin_path: ${{ env.RUST_ARTIFACTS_PATH }}
+        go_cache_path: ${{ env.GO_CACHE_PATH }}
+        go_bin_path: ${{ env.GO_ARTIFACTS_PATH }}
+        artifact_tag: ${{ needs.generate-metadata.outputs.tag }}
+        image_name: ${{ matrix.image }}
+        docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+        docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   charts:
     runs-on: mcf-dev-small-x64
     needs:
     - docker
     - generate-metadata
+    permissions:
+      packages: write
+      contents: read
     strategy:
       matrix:
         chart:
@@ -333,7 +274,6 @@ jobs:
         - fog-ingest
         - fog-test-client
         - mobilecoind
-        - watcher
         - fog-report
         - fog-view-service
         - fog-view-fsg
@@ -345,13 +285,13 @@ jobs:
     - name: Package and publish chart
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-publish
-        chart_repo_username: ${{ secrets.HARBOR_USERNAME }}
-        chart_repo_password: ${{ secrets.HARBOR_PASSWORD }}
-        chart_repo: ${{ env.CHART_REPO }}
+        action: helm-publish-oci
+        chart_repo: ghcr.io/mobilecoinfoundation
         chart_app_version: ${{ needs.generate-metadata.outputs.tag }}
         chart_version: ${{ needs.generate-metadata.outputs.tag }}
-        chart_path: .internal-ci/helm/${{ matrix.chart }}
+        chart_path: .internal-ci/helm/chart-${{ matrix.chart }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
 
 ################################################
 # Bootstrap namespace to v5.2.3-dev from backup
@@ -362,9 +302,9 @@ jobs:
     - generate-metadata
     with:
       block_version: 3
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       bootstrap_version: ${{ needs.generate-metadata.outputs.release_5x_tag }}
+      tokens_file: 'dev'
     secrets: inherit
 
 ###############################################
@@ -378,12 +318,12 @@ jobs:
     - generate-metadata
     with:
       block_version: 4
-      chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
       docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}
       minimum_block: ${{ needs.generate-metadata.outputs.minimum_block }}
+      tokens_file: 'dev'
     secrets: inherit
 
   test-current-bv4-release:
@@ -411,7 +351,6 @@ jobs:
   #   - generate-metadata
   #   with:
   #     block_version: 4
-  #     chart_repo: ${{ needs.generate-metadata.outputs.chart_repo }}
   #     namespace: ${{ needs.generate-metadata.outputs.namespace }}
   #     version: ${{ needs.generate-metadata.outputs.tag }}
   #   secrets: inherit

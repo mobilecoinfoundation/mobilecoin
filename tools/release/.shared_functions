@@ -1,0 +1,154 @@
+#!/bin/bash
+# Copyright 2025 The Sentz Foundation
+# This script contains shared functions for the release process.
+
+yellow()
+{
+    echo -e "\033[1;33m${1}\033[0m"
+}
+
+red()
+{
+    echo -e "\033[1;31m${1}\033[0m"
+}
+
+green()
+{
+    echo -e "\033[1;32m${1}\033[0m"
+}
+
+check_file()
+{
+    if [[ ! -f "${1}" ]]
+    then
+        red "${1} not found"
+        exit 1
+    fi
+}
+
+mrsigner()
+{
+  # shellcheck disable=SC2005 # This command eats new lines, wrap in echo
+  echo "$(sgx_sign dump -enclave "${1}" -dumpfile /dev/stdout 2>&1 | grep -A 2 -m 1 "mrsigner->value" | grep -v "mrsigner->value" | sed -r 's/(0x|\s+)//g' | tr -d "\n")"
+}
+
+mrenclave()
+{
+  # shellcheck disable=SC2005 # This command eats new lines, wrap in echo
+  echo "$(sgx_sign dump -enclave "${1}" -dumpfile /dev/stdout | grep -A 2 -m 1 "enclave_hash.m" | grep -v "enclave_hash.m" | grep 0x | sed -r 's/(0x|\s+)//g' | tr -d "\n")"
+}
+
+usage()
+{
+    echo "Usage:"
+    echo "${0} <--test|--main>"
+    echo "    --test - Set up environment to build testnet enclaves"
+    echo "    --main - Set up environment to build mainnet enclaves"
+}
+
+while (( "$#" ))
+do
+    case "${1}" in
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        --main)
+            export CHAIN_ID="main"
+            shift
+            ;;
+        --test)
+            export CHAIN_ID="test"
+            shift
+        ;;
+        *)
+            echo "${1} unknown option"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "${CHAIN_ID}" ]]
+then
+    red "ERROR: must set --main or --test"
+    usage
+    exit 1
+fi
+
+
+GIT_COMMIT="$(git rev-parse HEAD)"
+export GIT_COMMIT
+
+GIT_TAG="$(git describe --exact-match --tags)"
+export GIT_TAG
+
+# check to see if this is an enclave release
+if [[ "${GIT_TAG}" =~ ^v[0-9]+\.0+\.0$ ]]
+then
+    export ENCLAVE_RELEASE=true
+else
+    export ENCLAVE_RELEASE=false
+fi
+
+# get major, minor, and patch version from the tag
+IFS='.' read -r major minor patch <<< "${GIT_TAG}"
+yellow "tag=${GIT_TAG}, major=${major}, minor=${minor}, patch=${patch}"
+ENCLAVE_TAG="${major}.0.0"
+
+
+# Set up enclave directory and log file
+# root of the mobilecoin repo
+TOP_LEVEL=$(git rev-parse --show-toplevel)
+export TOP_LEVEL
+export TMP_DIR="${TOP_LEVEL}/.tmp"
+export ENCLAVE_DIR="${TMP_DIR}/${CHAIN_ID}net-enclaves-${ENCLAVE_TAG}"
+export ENCLAVE_SIGNED_DIR="${TMP_DIR}/${CHAIN_ID}net-signed.so-${ENCLAVE_TAG}"
+export MEASUREMENTS_DIR="${TMP_DIR}/${CHAIN_ID}net-measurements-${ENCLAVE_TAG}"
+
+# Tarballs
+export ENCLAVE_TAR="${TMP_DIR}/${CHAIN_ID}net-enclaves-${ENCLAVE_TAG}.tar.gz"
+export ENCLAVE_SIGNED_TAR="${TMP_DIR}/${CHAIN_ID}net-signed.so-${ENCLAVE_TAG}.tar.gz"
+export MEASUREMENTS_TAR="${TMP_DIR}/${CHAIN_ID}net-measurements-${ENCLAVE_TAG}.tar.gz"
+export PRODUCTION_JSON="${TMP_DIR}/${CHAIN_ID}net-${GIT_TAG}.json"
+
+# Log file for the build process
+export LOG="${TMP_DIR}/${CHAIN_ID}net-build-${GIT_TAG}.log"
+
+# Set Cargo environment
+export CARGO_TARGET_DIR="${TOP_LEVEL}/target"
+export CARGO_INCREMENTAL=0
+export SGX_MODE=HW
+
+
+if [[ "${CHAIN_ID}" == "test" ]]
+then
+    yellow "Setting test (TestNet) Values"
+    export FEE_SPEND_PUBLIC_KEY=76ffc2b70eaa669bc9f7ab5881685868175a9be55c640ec8c341fb8a2c5f4769
+    export FEE_VIEW_PUBLIC_KEY=68bbd576668ff33427901a6fb83ae69c7cb238aeb8ffa6843daecfda626ec27b
+
+    # NOTE: This is the revision of MOBILECOIN
+    export BOOTSTRAP_REVISION="aa60fcbc62fd7670584fb7649559cc1ba0f7d354"
+    export BOOTSTRAP_DATE="2020-10-15"
+
+    export MINTING_TRUST_ROOT_PUBLIC_KEY_PEM="${TOP_LEVEL}/tools/release/support/minting-trust-root-public/testnet-minting-trust-root-pub.pem"
+
+    # Expected TestNet MRSIGNER hash
+    export MRSIGNER="bf7fa957a6a94acb588851bc8767e0ca57706c79f4fc2aa6bcb993012c3c386c"
+else
+    yellow "Setting main (MainNet) Values"
+    # v7.0.0 keys
+    export FEE_SPEND_PUBLIC_KEY=72ec81d642f0726cc9640d4e32012ffc3152fa0ce8352a026ff7583defd7cb15
+    export FEE_VIEW_PUBLIC_KEY=aa3fec1e628af503258adbf2ada40d39446ca4115800b56635e75c2eca324803
+
+    # NOTE: This is the revision of MOBILECOIN
+    export BOOTSTRAP_REVISION="aa60fcbc62fd7670584fb7649559cc1ba0f7d354"
+    export BOOTSTRAP_DATE="2020-11-23"
+
+    export MINTING_TRUST_ROOT_PUBLIC_KEY_PEM="${TOP_LEVEL}/tools/release/support/minting-trust-root-public/mainnet-minting-trust-root-pub.pem"
+
+    # Expected MainNet MRSIGNER hash
+    export MRSIGNER="2c1a561c4ab64cbc04bfa445cdf7bed9b2ad6f6b04d38d3137f3622b29fdb30e"
+fi
+
+

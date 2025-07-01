@@ -1,0 +1,88 @@
+name: Verify Enclave MRSIGNER
+description: Verify that the MRSIGNER values of the enclaves are correct
+
+inputs:
+  chain_id:
+    description: Chain ID to use for the build
+    required: true
+  expected_mrsigner:
+    description: Expected MRSIGNER value for the chain ID
+    required: true
+  consensus_mrsigner:
+    description: MRSIGNER for the consensus enclave
+    required: true
+  consensus_mrenclave:
+    description: MRENCLAVE for the consensus enclave
+    required: true
+  ingest_mrsigner:
+    description: MRSIGNER for the ingest enclave
+    required: true
+  ingest_mrenclave:
+    description: MRENCLAVE for the ingest enclave
+    required: true
+  ledger_mrsigner:
+    description: MRSIGNER for the ledger enclave
+    required: true
+  ledger_mrenclave:
+    description: MRENCLAVE for the ledger enclave
+    required: true
+  view_mrsigner:
+    description: MRSIGNER for the view enclave
+    required: true
+  view_mrenclave:
+    description: MRENCLAVE for the view enclave
+    required: true
+
+
+runs:
+  using: composite
+  steps:
+  - name: Verify Signer
+    shell: bash
+    run: |
+      allVarEqual() {
+        first="${!1}"
+        shift
+        for name in "$@"; do
+            [ "${!name}" = "$first" ] || return 1
+        done
+      }
+
+      consensus_mrsigner="${{ inputs.consensus_mrsigner }}"
+      consensus_mrenclave="${{ inputs.consensus_mrenclave }}"
+      ingest_mrsigner="${{ inputs.ingest_mrsigner }}"
+      ingest_mrenclave="${{ inputs.ingest_mrenclave }}"
+      ledger_mrsigner="${{ inputs.ledger_mrsigner }}"
+      ledger_mrenclave="${{ inputs.ledger_mrenclave }}"
+      view_mrsigner="${{ inputs.view_mrsigner }}"
+      view_mrenclave="${{ inputs.view_mrenclave }}"
+
+      echo "Consensus Enclave:"
+      echo "  MRSIGNER: ${consensus_mrsigner}"
+      echo "  MRENCLAVE: ${consensus_mrenclave}"
+      echo "Ingest Enclave:"
+      echo "  MRSIGNER: ${ingest_mrsigner}"
+      echo "  MRENCLAVE: ${ingest_mrenclave}"
+      echo "Ledger Enclave:"
+      echo "  MRSIGNER: ${ledger_mrsigner}"
+      echo "  MRENCLAVE: ${ledger_mrenclave}"
+      echo "View Enclave:"
+      echo "  MRSIGNER: ${view_mrsigner}"
+      echo "  MRENCLAVE: ${view_mrenclave}"
+
+      # Check if all MRSIGNER values are equal
+      if allVarEqual consensus_mrsigner ingest_mrsigner ledger_mrsigner view_mrsigner
+      then
+        echo "All MRSIGNER values are equal."
+      else
+        echo "MRSIGNER values are not equal"
+        exit 1
+      fi
+
+      if [[ "${consensus_mrsigner}" == "${{ inputs.expected_mrsigner }}" ]]
+      then
+        echo "MRSIGNER matches expected value for ${{ inputs.chain_id }}"
+      else
+        echo "MRSIGNER mismatch for ${{ inputs.chain_id }}: expected ${expected_mrsigner}, got ${mrsigner}"
+        exit 1
+      fi

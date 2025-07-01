@@ -1,6 +1,0 @@
-apiVersion: v2
-name: fog-report
-description: MobileCoin Fog Report service
-type: application
-version: 0.0.0
-appVersion: "0.0.0"

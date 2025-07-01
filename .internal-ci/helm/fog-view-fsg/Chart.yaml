@@ -1,6 +1,0 @@
-apiVersion: v2
-name: fog-view-fsg
-description: fog-view fogShardGenerator chart
-type: application
-version: 0.0.0
-appVersion: "0.0.0"

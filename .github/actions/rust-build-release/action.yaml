@@ -1,0 +1,296 @@
+name: Build Release from Signed Enclaves
+description: Second half of a production build, build binaries and containers from pre-signed enclaves.
+
+inputs:
+  bin_path:
+    description: path to binaries
+    required: true
+  cache_buster:
+    description: string used to make cache key unique
+    required: true
+  cache_path:
+    description: path to cache restore directory
+    required: true
+  chain_id:
+    description: Chain ID to use for the build
+    required: true
+  minimum_enclave_version:
+    description: Minimum compatible enclave version for mobilecoind
+    required: true
+  current_release_version:
+    description: Current release version for the build
+    required: true
+
+outputs:
+  consensus_mrsigner:
+    value: ${{ steps.consensus_enclave.outputs.mrsigner }}
+    description: Hex value of MRSIGNER measurement
+  consensus_mrenclave:
+    value: ${{ steps.consensus_enclave.outputs.mrenclave }}
+    description: Hex value of MRENCLAVE measurement
+  ingest_mrsigner:
+    value: ${{ steps.ingest_enclave.outputs.mrsigner }}
+    description: Hex value of MRSIGNER measurement
+  ingest_mrenclave:
+    value: ${{ steps.ingest_enclave.outputs.mrenclave }}
+    description: Hex value of MRENCLAVE measurement
+  ledger_mrsigner:
+    value: ${{ steps.ledger_enclave.outputs.mrsigner }}
+    description: Hex value of MRSIGNER measurement
+  ledger_mrenclave:
+    value: ${{ steps.ledger_enclave.outputs.mrenclave }}
+    description: Hex value of MRENCLAVE measurement
+  view_mrsigner:
+    value: ${{ steps.view_enclave.outputs.mrsigner }}
+    description: Hex value of MRSIGNER measurement
+  view_mrenclave:
+    value: ${{ steps.view_enclave.outputs.mrenclave }}
+    description: Hex value of MRENCLAVE measurement
+
+runs:
+  using: composite
+  steps:
+  # Build primary rust binaries
+  - name: Cache rust build binaries
+    id: rust_artifact_cache
+    uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+    with:
+      cache_buster: ${{ inputs.cache_buster }}
+      path: ${{ inputs.cache_path }}
+
+  - name: Download release signed enclaves
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.current_release_version }}
+      fileName: ${{ inputs.chain_id }}net-signed.so*.tar.gz
+      extract: true
+      out-file-path: .tmp
+
+  - name: Download release measurements
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.current_release_version }}
+      fileName: ${{ inputs.chain_id }}net-measurements*.tar.gz
+      extract: true
+      out-file-path: .tmp
+
+  - name: Build Rust
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      enclave_dir="$(pwd)/.tmp/${{ inputs.chain_id }}net-signed.so-${{ inputs.current_release_version }}"
+      measurements_dir="$(pwd)/.tmp/${{ inputs.chain_id }}net-measurements-${{ inputs.current_release_version }}"
+
+      export RUST_BACKTRACE=full
+      export CARGO_INCREMENTAL=0
+      export SGX_MODE=HW
+      export GIT_COMMIT=$(git rev-parse HEAD)
+
+      export CONSENSUS_ENCLAVE_SIGNED="${enclave_dir}/libconsensus-enclave.signed.so"
+      export INGEST_ENCLAVE_SIGNED="${enclave_dir}/libingest-enclave.signed.so"
+      export LEDGER_ENCLAVE_SIGNED="${enclave_dir}/libledger-enclave.signed.so"
+      export VIEW_ENCLAVE_SIGNED="${enclave_dir}/libview-enclave.signed.so"
+      export CONSENSUS_ENCLAVE_CSS="${measurements_dir}/consensus-enclave.css"
+      export INGEST_ENCLAVE_CSS="${measurements_dir}/ingest-enclave.css"
+      export LEDGER_ENCLAVE_CSS="${measurements_dir}/ledger-enclave.css"
+      export VIEW_ENCLAVE_CSS="${measurements_dir}/view-enclave.css"
+
+      cargo build --release --locked
+
+  - name: Copy artifacts to cache
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+
+      mkdir -p "${{ inputs.bin_path }}"
+
+      # Copy the built binaries
+      find target/release -maxdepth 1 -executable -type f -exec cp "{}" "${{ inputs.bin_path }}/" \;
+      find target/release -maxdepth 1 -name "*.css" -exec cp "{}" "${{ inputs.bin_path }}/" \;
+
+      # Copy the signed enclaves
+      enclave_dir=".tmp/${{ inputs.chain_id }}net-signed.so-${{ inputs.current_release_version }}"
+      find "${enclave_dir}" -maxdepth 1 -name "*enclave.signed.so" -exec cp "{}" "${{ inputs.bin_path }}/" \;
+
+  - name: Copy measurements to upload directory
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      measurement_artifacts=${{ inputs.cache_path }}/measurements
+      mkdir -p "${measurement_artifacts}"
+      find target/release -maxdepth 1 -name "*.css" -exec cp "{}" "${measurement_artifacts}/" \;
+
+  - name: consensus - Get enclave MRSIGNER/MRENCLAVE values
+    id: consensus_enclave
+    uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+    with:
+      enclave_so_path: ${{ inputs.bin_path }}/libconsensus-enclave.signed.so
+
+  - name: ingest - Get enclave MRSIGNER/MRENCLAVE values
+    id: ingest_enclave
+    uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+    with:
+      enclave_so_path: ${{ inputs.bin_path }}/libingest-enclave.signed.so
+
+  - name: ledger - Get enclave MRSIGNER/MRENCLAVE values
+    id: ledger_enclave
+    uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+    with:
+      enclave_so_path: ${{ inputs.bin_path }}/libledger-enclave.signed.so
+
+  - name: view - Get enclave MRSIGNER/MRENCLAVE values
+    id: view_enclave
+    uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+    with:
+      enclave_so_path: ${{ inputs.bin_path }}/libview-enclave.signed.so
+
+
+  # Rebuild the mobilecoind binary with the minimum compatible enclave
+  - name: Download minimum compatible signed enclaves
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.minimum_enclave_version }}
+      fileName: ${{ inputs.chain_id }}net-signed.so*.tar.gz
+      extract: true
+      out-file-path: .tmp
+
+  - name: Download minimum compatible measurements
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.minimum_enclave_version }}
+      fileName: ${{ inputs.chain_id }}net-measurements*.tar.gz
+      extract: true
+      out-file-path: .tmp
+
+  - name: Build Rust - mobilecoind with minimum compatible enclaves
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      enclave_dir="$(pwd)/.tmp/${{ inputs.chain_id }}net-signed.so-${{ inputs.minimum_enclave_version }}"
+      measurements_dir="$(pwd)/.tmp/${{ inputs.chain_id }}net-measurements-${{ inputs.minimum_enclave_version }}"
+
+      export RUST_BACKTRACE=full
+      export CARGO_INCREMENTAL=0
+      export SGX_MODE=HW
+      export GIT_COMMIT=$(git rev-parse HEAD)
+
+      export CONSENSUS_ENCLAVE_SIGNED="${enclave_dir}/libconsensus-enclave.signed.so"
+      export INGEST_ENCLAVE_SIGNED="${enclave_dir}/libingest-enclave.signed.so"
+      export LEDGER_ENCLAVE_SIGNED="${enclave_dir}/libledger-enclave.signed.so"
+      export VIEW_ENCLAVE_SIGNED="${enclave_dir}/libview-enclave.signed.so"
+      export CONSENSUS_ENCLAVE_CSS="${measurements_dir}/consensus-enclave.css"
+      export INGEST_ENCLAVE_CSS="${measurements_dir}/ingest-enclave.css"
+      export LEDGER_ENCLAVE_CSS="${measurements_dir}/ledger-enclave.css"
+      export VIEW_ENCLAVE_CSS="${measurements_dir}/view-enclave.css"
+
+      cargo build --release --locked -p mc-mobilecoind -p mc-mobilecoind-dev-faucet
+
+      cp target/release/mobilecoind "${{ inputs.bin_path }}"
+      cp target/release/mobilecoind-dev-faucet "${{ inputs.bin_path }}"
+
+  - name: minimum_consensus - Get enclave MRSIGNER/MRENCLAVE values
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    id: minimum_consensus_enclave
+    uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+    with:
+      enclave_so_path: .tmp/${{ inputs.chain_id }}net-signed.so-${{ inputs.minimum_enclave_version }}/libconsensus-enclave.signed.so
+
+  - name: minimum_ingest - Get enclave MRSIGNER/MRENCLAVE values
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    id: minimum_ingest_enclave
+    uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+    with:
+      enclave_so_path: .tmp/${{ inputs.chain_id }}net-signed.so-${{ inputs.minimum_enclave_version }}/libingest-enclave.signed.so
+
+  # package mobilecoind and mobilecoind-dev-faucet binaries for release
+  - name: Package mobilecoind and mobilecoind-dev-faucet
+    if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      cache_path="${{ inputs.cache_path }}"
+      bin_path="${{ inputs.bin_path }}"
+      chain_id="${{ inputs.chain_id }}"
+      release_tag="${{ inputs.current_release_version }}"
+      release_commit=$(git rev-parse HEAD)
+      minimum_enclave_version="${{ inputs.minimum_enclave_version }}"
+      pkg_path="${cache_path}/mobilecoind/${chain_id}net-mobilecoind-linux-${release_tag}"
+
+      # get enclave measurements for the minimum compatible enclaves
+      consensus_mrsigner="${{ steps.minimum_consensus_enclave.outputs.mrsigner }}"
+      consensus_enclave_hash="${{ steps.minimum_consensus_enclave.outputs.mrenclave }}"
+      ingest_mrsigner="${{ steps.minimum_ingest_enclave.outputs.mrsigner }}"
+      ingest_enclave_hash="${{ steps.minimum_ingest_enclave.outputs.mrenclave }}"
+
+      # Copy the mobilecoind and mobilecoind-dev-faucet binaries
+      mkdir -p "${pkg_path}"
+      cp "${bin_path}/mobilecoind" "${pkg_path}/"
+      cp "${bin_path}/mobilecoind-dev-faucet" "${pkg_path}/"
+      cp ".tmp/${chain_id}net-measurements-${minimum_enclave_version}/ingest-enclave.css" "${pkg_path}/"
+
+      # Create README for package
+      cat << EOF > "${pkg_path}/README.md"
+      mobilecoind-linux - ${release_tag}
+      =================
+
+      * Binary Release Commit: ${release_commit}
+      * Network: ${chain_id}
+      * Consensus Enclave
+          * Earliest Supported Enclave Version: ${minimum_enclave_version}
+          * Signer Hash: ${consensus_mrsigner}
+          * Enclave Hash ${consensus_enclave_hash}
+      * Ingest Enclave
+          * Earliest Supported Enclave Versions: ${minimum_enclave_version}
+          * Signer Hash: ${ingest_mrsigner}
+          * Enclave Hash ${ingest_enclave_hash}
+
+      This package includes
+
+      * The mobilecoind wallet
+      * The mobilecoind-json rpc bridge
+      * A CSS SGX Enclave Measurement file for the fog ingest enclave. ingest-enclave.css
+
+      Usage
+      -----
+
+      See \`mobilecoind --help\` for detailed usage instructions.
+
+      Note: You should use the \`--fog-ingest-enclave-css\` argument to pass the \`ingest_enclave.css\` trust root to mobilecoind.
+      If you don\'t do this, then mobilecoind will not be able to send MobileCoin transactions to accounts that use Fog,
+      and will fail with a configuration error when building the transactions.
+      This means you won\'t be able to transfer funds to mobile wallets.
+      EOF
+
+      pushd "${cache_path}/mobilecoind" 2>/dev/null
+      # Create a tarball of the package
+      tar -czf "${chain_id}net-mobilecoind-linux-${release_tag}.tar.gz" "${chain_id}net-mobilecoind-linux-${release_tag}"
+
+  # Check and upload artifacts
+  - name: Check artifacts
+    shell: bash
+    run: |
+      # Clean up target dir so cache hash compute doesn't fail
+      rm -rf target/release
+
+      ls -alR ${{ inputs.cache_path }}
+
+  - name: Upload rust-binaries build step artifact
+    uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+    with:
+      name: rust-binaries
+      path: ${{ inputs.cache_path }}
+
+  - name: Upload measurements build step artifact
+    uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+    with:
+      name: measurements
+      path: ${{ inputs.cache_path }}/measurements
+
+  - name: Upload mobilecoind build step artifact
+    uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+    with:
+      name: mobilecoind
+      path: ${{ inputs.cache_path }}/mobilecoind

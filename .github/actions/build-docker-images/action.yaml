@@ -1,0 +1,68 @@
+name: Build runtime docker images
+description: build runtime docker images
+
+inputs:
+  cache_buster:
+    description: string used to make cache key unique
+    required: true
+  rust_cache_path:
+    description: path to cache restore directory
+    required: true
+  rust_bin_path:
+    description: path to rust binaries
+    required: true
+  go_cache_path:
+    description: path to cache restore directory for go binaries
+    required: true
+  go_bin_path:
+    description: path to go binaries
+    required: true
+  artifact_tag:
+    description: Tag to use for the built artifacts
+    required: true
+  image_name:
+    description: Name of the docker image to build
+    required: true
+  docker_username:
+    description: Docker Hub username for pushing images
+    required: true
+  docker_password:
+    description: Docker Hub password for pushing images
+    required: true
+
+
+runs:
+  using: composite
+  steps:
+  - name: Cache rust build binaries
+    uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+    with:
+      cache_buster: ${{ inputs.cache_buster }}
+      path: ${{ inputs.rust_cache_path }}
+
+  - name: Cache go build binaries
+    uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+    with:
+      cache_buster: ${{ inputs.cache_buster }}
+      path: ${{ inputs.go_cache_path }}
+
+  - name: Get short SHA
+    id: gh_short_sha
+    uses: mobilecoinofficial/gh-actions/short-sha@v0
+
+  - name: Docker
+    uses: mobilecoinofficial/gh-actions/docker@v0
+    with:
+      build_args: |
+        REPO_ORG=mobilecoin
+        BASE_TAG=${{ steps.gh_short_sha.outputs.short_sha }}
+        RUST_BIN_PATH=${{ inputs.rust_bin_path }}
+        GO_BIN_PATH=${{ inputs.go_bin_path }}
+      dockerfile: .internal-ci/docker/Dockerfile.${{ inputs.image_name }}
+      flavor: latest=true
+      images: mobilecoin/${{ inputs.image_name }}
+      tags: |
+        ${{ inputs.artifact_tag }}
+        type=sha
+      username: ${{ inputs.docker_username }}
+      password: ${{ inputs.docker_password }}

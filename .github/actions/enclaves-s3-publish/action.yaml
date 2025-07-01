@@ -1,0 +1,93 @@
+name: Publish Enclaves to S3
+description: Publish Enclaves to S3 for distribution
+
+inputs:
+  chain_id:
+    description: Chain ID to use for the build
+    required: true
+  aws_access_key_id:
+    description: AWS Access Key ID for S3
+    required: true
+  aws_secret_access_key:
+    description: AWS Secret Access Key for S3
+    required: true
+  tag:
+    description: tag to use for the build
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - name: Download enclave production.json
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.tag }}
+      fileName: ${{ inputs.chain_id }}net-*.json
+      out-file-path: .tmp
+
+  - name: Download release signed enclaves
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.tag }}
+      fileName: ${{ inputs.chain_id }}net-signed.so*.tar.gz
+      extract: true
+      out-file-path: .tmp
+
+  - name: Download release measurements
+    uses: mobilecoinofficial/gh-actions/gh-release-downloader@v0
+    with:
+      tag: ${{ inputs.tag }}
+      fileName: ${{ inputs.chain_id }}net-measurements*.tar.gz
+      extract: true
+      out-file-path: .tmp
+
+  - name: Publish Enclaves to S3
+    shell: bash
+    env:
+      AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+      AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+      AWS_DEFAULT_REGION: us-west-2
+      CHAIN_ID: ${{ inputs.chain_id }}
+      MRSIGNER: ${{ inputs.mrsigner }}
+      TAG: ${{ inputs.tag }}
+    run: |
+      case "${CHAIN_ID}" in
+        test)
+          s3_base="s3://enclave-distribution.test.mobilecoin.com"
+          ;;
+        main)
+          s3_base="s3://enclave-distribution.prod.mobilecoin.com"
+          ;;
+        *)
+          echo "Unknown chain ID: ${CHAIN_ID}"
+          exit 1
+          ;;
+      esac
+
+      measurements_path=".tmp/${CHAIN_ID}net-measurements-${TAG}"
+      enclaves_path=".tmp/${CHAIN_ID}net-signed.so-${TAG}"
+
+      echo "Publishing production-${TAG}.json to S3 path: ${s3_base}"
+      aws s3 cp --acl public-read \
+        ".tmp/${CHAIN_ID}net-${TAG}.json" "${s3_base}/production-${TAG}.json"
+
+      # only publish these artifacts if this is an enclave release (0.0 tag)
+      if [[ "${TAG}" =~ \.0+\.0$ ]]
+      then
+        echo "Enclave release: Publishing production.json to S3 path: ${s3_base}"
+        aws s3 cp --acl public-read \
+          ".tmp/${CHAIN_ID}net-${TAG}.json" "${s3_base}/production.json"
+
+        echo "Publishing enclaves and measurements to S3 path: ${s3_base}"
+        for e in consensus ingest ledger view
+        do
+          enclave=$(jq -r ".${e}.enclave" ".tmp/${CHAIN_ID}net-${TAG}.json")
+          sigstruct=$(jq -r ".${e}.sigstruct" ".tmp/${CHAIN_ID}net-${TAG}.json")
+
+          aws s3 cp --content-type binary/octet-stream --acl public-read \
+            "${enclaves_path}/lib${e}-enclave.signed.so" "${s3_base}/${enclave}"
+
+          aws s3 cp --content-type binary/octet-stream --acl public-read \
+            "${measurements_path}/${e}-enclave.css" "${s3_base}/${sigstruct}"
+        done
+      fi

@@ -11,6 +11,10 @@ on:
         description: "Target Namespace"
         type: string
         required: true
+      tokens_file:
+        description: "Tokens File"
+        type: string
+        required: true
     secrets:
       DEV_FOG_REPORT_B_SIGNING_CA_CERT:
         description: "Fog Report signing CA cert"
@@ -366,13 +370,32 @@ jobs:
 
     ### Consensus setup
 
-    - name: Write tokens.signed.json
+    - name: Write tokens.signed.json - dev
+      if: inputs.tokens_file == 'dev'
       shell: bash
       run: |
         # Create base path
         mkdir -p "${BASE_PATH}"
 
         echo '${{ vars.DEV_TOKENS_CONFIG_JSON_V2 }}' > "${TOKENS_PATH}"
+
+    - name: Write tokens.signed.json - test
+      if: inputs.tokens_file == 'test'
+      shell: bash
+      run: |
+        # Create base path
+        mkdir -p "${BASE_PATH}"
+
+        echo '${{ vars.TEST_TOKENS_CONFIG_JSON_V2 }}' > "${TOKENS_PATH}"
+
+    - name: Write tokens.signed.json - main
+      if: inputs.tokens_file == 'main'
+      shell: bash
+      run: |
+        # Create base path
+        mkdir -p "${BASE_PATH}"
+
+        echo '${{ vars.MAIN_TOKENS_CONFIG_JSON_V2 }}' > "${TOKENS_PATH}"
 
     - name: Create tokens-config configMap
       uses: mobilecoinofficial/gha-k8s-toolbox@v1

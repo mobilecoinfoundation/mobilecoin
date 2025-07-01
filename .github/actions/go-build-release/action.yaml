@@ -1,0 +1,51 @@
+name: Build Go Binaries
+description: Second half of a production build, build binaries and containers from pre-signed enclaves.
+
+inputs:
+  cache_buster:
+    description: string used to make cache key unique
+    required: true
+  cache_path:
+    description: path to cache restore directory
+    required: true
+  bin_path:
+    description: path to binaries
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - name: Add protobuf-compiler
+    shell: bash
+    run: |
+      apt update
+      apt install -y protobuf-compiler zstd
+
+  - name: Cache go build binaries
+    id: go_cache
+    uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+    with:
+      cache_buster: ${{ inputs.cache_buster }}
+      path: ${{ inputs.cache_path }}
+
+  - name: Build go-grpc-gateway
+    if: steps.go_cache.outputs.cache-hit != 'true'
+    shell: bash
+    run: |
+      mkdir -p ${{ inputs.bin_path }}
+      pushd go-grpc-gateway
+      ./install_tools.sh
+      ./build.sh
+      popd
+      cp go-grpc-gateway/go-grpc-gateway ${{ inputs.bin_path }}
+
+  - name: check artifacts
+    shell: bash
+    run: |
+      ls -alR ${{ inputs.cache_path }}
+
+  - name: Upload Artifacts
+    uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+    with:
+      name: go-binaries
+      path: ${{ inputs.cache_path }}

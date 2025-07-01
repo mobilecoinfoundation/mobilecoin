@@ -14,7 +14,7 @@ COPY ${RUST_BIN_PATH}/mobilecoind /usr/bin/
 COPY ${RUST_BIN_PATH}/mobilecoind-json /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
 COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
-COPY ${RUST_BIN_PATH}/libingest-enclave.css /enclaves/libingest-enclave.css
+COPY ${RUST_BIN_PATH}/ingest-enclave.css /enclaves/ingest-enclave.css
 COPY ${RUST_BIN_PATH}/mobilecoind-dev-faucet /usr/bin/
 
 COPY ${RUST_BIN_PATH}/read-pubfile /usr/bin/
@@ -42,7 +42,7 @@ ARG NODE_LEDGER_DIR="/var/lib/mobilecoin/ledger"
 ARG MOBILECOIND_DB_DIR="/var/lib/mobilecoin/mobilecoind_db"
 ENV NODE_LEDGER_DIR=${NODE_LEDGER_DIR}
 ENV MOBILECOIND_DB_DIR=${MOBILECOIND_DB_DIR}
-ENV MC_FOG_INGEST_ENCLAVE_CSS="/enclaves/libingest-enclave.css"
+ENV MC_FOG_INGEST_ENCLAVE_CSS="/enclaves/ingest-enclave.css"
 ENV MC_LEDGER_DB_MIGRATE="true"
 
 # Default Ports

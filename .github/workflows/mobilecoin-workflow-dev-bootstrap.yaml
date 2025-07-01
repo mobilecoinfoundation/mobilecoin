@@ -11,17 +11,16 @@ on:
         description: "block_version"
         type: string
         required: true
-      chart_repo:
-        description: "Chart Repo URL"
-        type: string
-        required: false
-        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
       namespace:
         description: "Target Namespace"
         type: string
         required: true
       bootstrap_version:
         description: "Bootstrap Blockchain from selected version"
+        type: string
+        required: true
+      tokens_file:
+        description: "Tokens File"
         type: string
         required: true
     secrets:
@@ -90,6 +89,7 @@ jobs:
     - reset
     with:
       namespace: ${{ inputs.namespace }}
+      tokens_file: ${{ inputs.tokens_file }}
     secrets: inherit
 
   #  We now have a db with setup-environment
