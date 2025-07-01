@@ -21,6 +21,7 @@ Upgrade Rust and Dependencies
 - Upgrade Rust 1.83.0 nightly ([#4027])
 - Update Build/Run OS images to 24.04 - Update Intel SGX SDK to 2.25 ([#4028])
 - Update mc-attestation-verifier crate ([#4037])
+- Repo integrated release process. ([#4039])
 
 ### Fixed
 
@@ -39,6 +40,7 @@ Upgrade Rust and Dependencies
 [#4034]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4034
 [#4035]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4035
 [#4037]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4037
+[#4039]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4039
 
 ## [6.1.1]
 
