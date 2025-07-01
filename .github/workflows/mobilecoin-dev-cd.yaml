@@ -123,29 +123,16 @@ jobs:
       shell: bash
       run: |
         mkdir -p "${RUST_ARTIFACTS_PATH}"
+        mkdir -p "${MEASUREMENTS_ARTIFACTS_PATH}"
         find target/release -maxdepth 1 -executable -type f -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
         find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
+        find target/release -maxdepth 1 -name "*.css" -exec cp "{}" "${RUST_ARTIFACTS_PATH}" \;
+        find target/release -maxdepth 1 -name "*.css" -exec cp "{}" "${MEASUREMENTS_ARTIFACTS_PATH}" \;
 
         # clean up target directory so the cache hash compute doesn't fail.
         # unable to access ???:
         # target/release/build/mc-crypto-x509-test-vectors-***/out/openssl/ok_intermediate1/private
         rm -rf target/release
-
-    - name: Create css measurements
-      if: steps.rust_artifact_cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        mkdir -p "${MEASUREMENTS_ARTIFACTS_PATH}"
-
-        orig_dir=$(pwd)
-
-        cd "${RUST_ARTIFACTS_PATH}"
-        for i in *.signed.so
-        do
-          css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
-          sgx_sign dump -enclave "${i}" -dumpfile /dev/null -cssfile "${css}.css"
-          cp "${css}.css" "${orig_dir}/${MEASUREMENTS_ARTIFACTS_PATH}"
-        done
 
     - name: Check artifacts
       shell: bash
@@ -204,39 +191,12 @@ jobs:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Add protobuf-compiler
-      run: |
-        apt update
-        apt install -y protobuf-compiler zstd
-
-    - name: Cache go build binaries
-      id: go_cache
-      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+    - name: Build Go binaries
+      uses: ./.github/actions/build-go-release
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
-        path: ${{ env.GO_CACHE_PATH }}
-
-    - name: Build go-grpc-gateway
-      if: steps.go_cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        mkdir -p "${GO_ARTIFACTS_PATH}"
-        pushd go-grpc-gateway
-        ./install_tools.sh
-        ./build.sh
-        popd
-        cp go-grpc-gateway/go-grpc-gateway "${GO_ARTIFACTS_PATH}"
-
-    - name: check artifacts
-      shell: bash
-      run: |
-        ls -alR "${GO_ARTIFACTS_PATH}"
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: go-binaries
-        path: ${{ env.GO_ARTIFACTS_PATH }}
+        cache_path: ${{ env.GO_CACHE_PATH }}
+        bin_path: ${{ env.GO_ARTIFACTS_PATH }}
 
 ########################################
 # Create/Refresh base runtime image
