@@ -192,7 +192,7 @@ jobs:
       uses: mobilecoinofficial/gh-actions/checkout@v0
 
     - name: Build Go binaries
-      uses: ./.github/actions/build-go-release
+      uses: ./.github/actions/go-build-release
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         cache_path: ${{ env.GO_CACHE_PATH }}
