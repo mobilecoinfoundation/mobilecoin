@@ -22,13 +22,13 @@
     This repo uses semver. Enclave updates are considered "breaking" changes. Enclave tags are vX.0.0 tags.  Any minor.patch updates will use the major.0.0 tag for building the enclave.
 
     ```
+    cd mobilecoin
     git checkout v7.0.0
     ```
 
 1. From the root of the `mobilecoin` repo use the `mob` command to start the build container environment.
 
     ```
-    cd mobilecoin
     ./mob prompt
     ```
 
@@ -73,8 +73,8 @@
     The following files will be generated:
 
     ```
-    .tmp/${chain_id}-enclaves-${tag}.tar.gz  # tarball package of ${chain_id}-enclaves-${tag} directory
-    .tmp/${chain_id}-enclaves-${tag}/
+    .tmp/${chain_id}net-enclaves-${tag}.tar.gz  # tarball package of ${chain_id}net-enclaves-${tag} directory
+    .tmp/${chain_id}net-enclaves-${tag}/
       |- build-enclaves.log       # log of the build process
       |- consensus-enclave.dat    # enclave digest file
       |- ingest-enclave.dat       # enclave digest file
@@ -88,7 +88,7 @@
 
 ### Offline Signing
 
-Copy the `${chain_id}-enclaves-${tag}.tar.gz` onto a USB drive and transfer the files over to your offline workstation.
+Copy the `${chain_id}net-enclaves-${tag}.tar.gz` onto a USB drive and transfer the files over to your offline workstation.
 
 Follow KMG process for safe key handling and sign the `.dat` files with `openssl` or an HSM device.
 
@@ -96,9 +96,9 @@ Package original files along with the newly generated `*sig.bin` files and a cop
 
 Your tarball should now include the following:
 
-`${chain_id}-enclaves-${tag}.tar.gz`
+`${chain_id}net-enclaves-${tag}.tar.gz`
 ```
-${chain_id}-enclaves-${tag}/
+${chain_id}net-enclaves-${tag}/
   |- build-enclaves.log
   |- consensus-enclave.dat
   |- ingest-enclave.dat
@@ -116,11 +116,11 @@ ${chain_id}-enclaves-${tag}/
   |- view-sig.bin        # signature file
 ```
 
-Copy the `*sig.bin` and `enclave-public.pem` file back into the `.tmp/${chain_id}-enclaves-${tag}/` directory and complete the Singed Enclave build.
+Copy the `*sig.bin` and `enclave-public.pem` file back into the `.tmp/${chain_id}net-enclaves-${tag}/` directory and complete the Singed Enclave build.
 
 ### Build Signed Enclaves
 
-Place the tarball with the artifacts and signing materials in `.tmp/${chain_id}-enclaves-${tag}.tar.gz`
+Place the tarball with the artifacts and signing materials in `.tmp/${chain_id}net-enclaves-${tag}.tar.gz`
 
 
 The `02-build-signed.sh` script will check to make sure all the files exist in their expected locations.
@@ -187,14 +187,14 @@ The `02-build-signed.sh` script will check to make sure all the files exist in t
     ```
 
 1. The process will create two tarball artifacts that will be attached to the GitHub release in the next step
-    - `.tmp/${chain_id}-signed.so-${tag}.tar.gz`
-    - `.tmp/${chain_id}-measurements-${tag}.tar.gz`
+    - `.tmp/${chain_id}net-signed.so-${tag}.tar.gz`
+    - `.tmp/${chain_id}net-measurements-${tag}.tar.gz`
 
 ### Create GitHub Release
 
 1. Confirm that the tarball artifacts exist
-    - `.tmp/${chain_id}-signed.so-${tag}.tar.gz`
-    - `.tmp/${chain_id}-measurements-${tag}.tar.gz`
+    - `.tmp/${chain_id}net-signed.so-${tag}.tar.gz`
+    - `.tmp/${chain_id}net-measurements-${tag}.tar.gz`
 
 1. Run `03-populate-release.sh`
 
@@ -210,6 +210,6 @@ Use the GitHub actions `dispatch_workflow` for "(Manual) Build MobileCoin Releas
 
 Select `Run workflow` and pick the Tag you want to build.
 
-The build will check to see if the `.tmp/${chain_id}-measurements-${tag}.tar.gz` and `${chain_id}-signed.so-${tag}.tar.gz` tarballs are attached to the GitHub Release for that Tag.
+The build will check to see if the `.tmp/${chain_id}net-measurements-${tag}.tar.gz` and `${chain_id}net-signed.so-${tag}.tar.gz` tarballs are attached to the GitHub Release for that Tag.
 
 If the tarballs exist and contains all the expected files, the process will build the rest of the release artifacts (binaries, containers, charts) and upload the results to the appropriate repositories.
