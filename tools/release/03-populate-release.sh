@@ -91,7 +91,7 @@ then
     echo "${release_sgx}" >> "${TMP_DIR}/release-notes.md"
 
     gh release edit "${GIT_TAG}" \
-        --pre-release \
+        --prerelease \
         --title "MobileCoin Core (Consensus/Fog) ${GIT_TAG}" \
         --notes-file "${TMP_DIR}/release-notes.md"
 
@@ -104,7 +104,7 @@ else
     echo "${release_sgx}" >> "${TMP_DIR}/release-notes.md"
 
     gh release create "${GIT_TAG}" \
-        --pre-release \
+        --prerelease \
         --title "MobileCoin Core (Consensus/Fog) ${GIT_TAG}" \
         --notes-file "${TMP_DIR}/release-notes.md" \
 

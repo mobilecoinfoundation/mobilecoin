@@ -14,9 +14,11 @@ source "$HOME/.cargo/env"
 
 pushd "$(dirname "$0")"
 
-echo "Pulling down TestNet consensus validator signature material"
+ENCLAVE_VERSION_TAG=v6.0.0
 
-SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | awk '/sigstruct.*consensus/ {print $2}' | tr -d \")
+echo "Pulling down TestNet consensus validator signature material for ${ENCLAVE_VERSION_TAG}"
+
+SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production-${ENCLAVE_VERSION_TAG}.json | awk '/sigstruct.*consensus/ {print $2}' | tr -d \")
 curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
 
 TARGETDIR=${CARGO_TARGET_DIR:-./target}/release
