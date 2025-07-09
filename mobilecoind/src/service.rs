@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024 The MobileCoin Foundation
+// Copyright (c) 2018-2025 The MobileCoin Foundation
 
 //! The mobilecoind Service
 //! * provides a GRPC server
@@ -1598,6 +1598,31 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let counter_amount = Amount::new(request.counter_value, request.counter_token_id.into());
 
+        let opt_fee_output = if request.fractional_fee_basis_points != 0 {
+            if request.fractional_fee_basis_points > 10000 {
+                return Err(RpcStatus::with_message(
+                    RpcStatusCode::INVALID_ARGUMENT,
+                    "fractional_fee_basis_points too large".into(),
+                ));
+            }
+
+            let fractional_fee_address =
+                request.fractional_fee_address.as_ref().ok_or_else(|| {
+                    RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        "fractional_fee_address".into(),
+                    )
+                })?;
+            let fractional_fee_address =
+                PublicAddress::try_from(fractional_fee_address).map_err(|err| {
+                    rpc_invalid_arg_error("PublicAddress.try_from", err, &self.logger)
+                })?;
+
+            Some((request.fractional_fee_basis_points, fractional_fee_address))
+        } else {
+            None
+        };
+
         // Attempt to construct an sci
         let sci = self
             .transactions_manager
@@ -1610,6 +1635,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 request.minimum_fill_value,
                 &self.get_last_block_infos(),
                 request.tombstone,
+                opt_fee_output,
                 None, // opt_memo_builder
             )
             .map_err(|err| {
@@ -2284,6 +2310,54 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         })
     }
 
+    fn get_key_images_impl(
+        &mut self,
+        request: api::GetKeyImagesRequest,
+    ) -> Result<api::GetKeyImagesResponse, RpcStatus> {
+        let latest_block_index: u64 = (&self
+            .ledger_db
+            .get_latest_block()
+            .map_err(|err| rpc_internal_error("ledger_db.get_latest_block", err, &self.logger))?)
+            .index;
+
+        let key_images: Vec<KeyImage> = request
+            .key_images
+            .iter()
+            .map(KeyImage::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| rpc_invalid_arg_error("KeyImage::try_from", err, &self.logger))?;
+
+        let results = key_images
+            .iter()
+            .map(|k| match self.ledger_db.check_key_image(k) {
+                Ok(Some(index)) => api::KeyImageResult {
+                    result_code: api::ledger::KeyImageResultCode::Spent,
+                    found_in_block: index,
+                    ..Default::default()
+                },
+                Ok(None) => api::KeyImageResult {
+                    result_code: api::ledger::KeyImageResultCode::NotSpent,
+                    found_in_block: 0,
+                    ..Default::default()
+                },
+                Err(err) => {
+                    log::error!(self.logger, "ledger_db.check_key_image: {err}");
+                    api::KeyImageResult {
+                        result_code: api::ledger::KeyImageResultCode::KeyImageError,
+                        found_in_block: 0,
+                        ..Default::default()
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok(api::GetKeyImagesResponse {
+            results: results.into(),
+            latest_block_index,
+            ..Default::default()
+        })
+    }
+
     fn get_balance_impl(
         &mut self,
         request: api::GetBalanceRequest,
@@ -2689,6 +2763,7 @@ build_api! {
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_block_index_by_tx_pub_key GetBlockIndexByTxPubKeyRequest GetBlockIndexByTxPubKeyResponse get_block_index_by_tx_pub_key_impl,
     get_tx_out_results_by_pub_key GetTxOutResultsByPubKeyRequest GetTxOutResultsByPubKeyResponse get_tx_out_results_by_pub_key_impl,
+    get_key_images GetKeyImagesRequest GetKeyImagesResponse get_key_images_impl,
 
     // Convenience calls
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
