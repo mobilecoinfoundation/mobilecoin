@@ -24,7 +24,7 @@ on:
         description: "Chart Repo URL"
         type: string
         required: false
-        default: ghcr.io/mobilecoinfoundation
+        default: ghcr.io/mobilecoinfoundation/charts
       ingest_color:
         description: "Fog Ingest blue/green"
         type: string
@@ -125,7 +125,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-consensus-node
+        chart_name: consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
         chart_wait_timeout: 60m
@@ -165,7 +165,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-mobilecoind
+        chart_name: mobilecoind
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
         chart_wait_timeout: 60m
@@ -213,7 +213,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-report
+        chart_name: fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
@@ -261,7 +261,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-report
+        chart_name: fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
@@ -306,7 +306,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-view-service
+        chart_name: fog-view-service
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-service-values.yaml
@@ -346,7 +346,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-view-fsg
+        chart_name: fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z1.yaml
@@ -386,7 +386,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-view-fsg
+        chart_name: fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z2.yaml
@@ -441,7 +441,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-ledger
+        chart_name: fog-ledger
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-values.yaml
@@ -475,7 +475,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-fog-ingest
+        chart_name: fog-ingest
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ingest-values.yaml

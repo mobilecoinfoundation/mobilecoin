@@ -1,6 +1,6 @@
 apiVersion: v2
-name: chart-fog-report
-description: MobileCoin Fog Report service
+name: fog-view-fsg
+description: fog-view fogShardGenerator chart
 type: application
 version: 0.0.0
 appVersion: "0.0.0"

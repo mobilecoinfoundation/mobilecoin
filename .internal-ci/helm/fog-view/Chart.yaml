@@ -1,5 +1,5 @@
 apiVersion: v2
-name: chart-fog-view-service
+name: fog-view
 description: MobileCoin Fog View service stack.
 type: application
 version: 0.0.0

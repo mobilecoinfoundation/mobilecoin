@@ -286,10 +286,10 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-publish-oci
-        chart_repo: ghcr.io/mobilecoinfoundation
+        chart_repo: ghcr.io/mobilecoinfoundation/charts
         chart_app_version: ${{ needs.generate-metadata.outputs.tag }}
         chart_version: ${{ needs.generate-metadata.outputs.tag }}
-        chart_path: .internal-ci/helm/chart-${{ matrix.chart }}
+        chart_path: .internal-ci/helm/${{ matrix.chart }}
         chart_repo_password: ${{ github.token }}
         chart_repo_username: ${{ github.actor }}
 

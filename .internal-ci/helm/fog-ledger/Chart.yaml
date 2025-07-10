@@ -1,5 +1,5 @@
 apiVersion: v2
-name: chart-fog-ledger
+name: fog-ledger
 description: MobileCoin Fog Leger services stack.
 type: application
 version: 0.0.0
