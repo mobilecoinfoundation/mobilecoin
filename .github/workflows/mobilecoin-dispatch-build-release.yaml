@@ -24,7 +24,7 @@ env:
   TAG: ${{ github.ref_name }}
   ARTIFACT_TAG: ${{ github.ref_name }}-${{ inputs.chain_id }}
   CACHE_BUSTER: ${{ vars.CACHE_BUSTER }}-${{ inputs.chain_id }}
-  CHART_REPO: ghcr.io/mobilecoinfoundation
+  CHART_REPO: ghcr.io/mobilecoinfoundation/charts
   # Base cache paths for rust and go
   GO_CACHE_PATH: .tmp/go-cache
   RUST_CACHE_PATH: .tmp/rust-cache
@@ -153,7 +153,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-publish-oci
-        chart_path: .internal-ci/helm/chart-${{ matrix.chart }}
+        chart_path: .internal-ci/helm/${{ matrix.chart }}
         chart_version: ${{ env.ARTIFACT_TAG }}
         chart_app_version: ${{ env.ARTIFACT_TAG }}
         chart_repo: ${{ env.CHART_REPO }}

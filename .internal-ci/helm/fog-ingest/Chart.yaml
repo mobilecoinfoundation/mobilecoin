@@ -1,7 +1,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 apiVersion: v2
-name: chart-fog-test-client
-description: fog-test-client - end to end testing of fog.
+name: fog-ingest
+description: MobileCoin Fog Ingest service.
 type: application
 version: 0.0.0
 appVersion: 0.0.0
