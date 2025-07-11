@@ -22,6 +22,9 @@ on:
     paths-ignore:
     - '**.md'
     - '.github/workflows/ci.yml'
+    - '.github/workflows/dependent-repos.yml'
+    - '.github/workflows/refresh-ledger-bootstrap.yaml'
+    - '.github/workflows/android-bindings-dispatch.yml'
   push:
     branches:
     - 'feature/**'

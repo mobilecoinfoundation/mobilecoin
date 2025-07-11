@@ -4,7 +4,10 @@ on:
   pull_request:
     paths-ignore:
     - '**.md'
-    - '.github/workflows/mobilecoin-dev*'
+    - '.github/workflows/mobilecoin-*'
+    - '.github/workflows/dependent-repos.yml'
+    - '.github/workflows/refresh-ledger-bootstrap.yaml'
+    - '.github/workflows/android-bindings-dispatch.yml'
   push:
     branches:
       - main
@@ -45,41 +48,33 @@ jobs:
       shell: bash
       run: |
         cargo build --locked
-
-    - name: Success
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
         cargo clean
         touch .dummy/success
 
+  build-prod:
+    runs-on: mcf-dev-large-x64
+    container: mobilecoin/fat-sgx-builder:v24.4.2
+    steps:
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-  # build-prod:
-  #   runs-on: mcf-dev-large-x64
-  #   container: mobilecoin/fat-sgx-builder:v24.4.2
-  #   steps:
-  #   - name: Check out code
-  #     uses: mobilecoinofficial/gh-actions/checkout@v0
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -build-prod
+        path: .dummy
 
-  #   - name: Cache Rust Binaries
-  #     id: cache
-  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
-  #     with:
-  #       cache_buster: ${{ vars.CACHE_BUSTER }}
-  #       additional_keys: -build-prod
-  #       path: .dummy
-
-  #   - name: Cargo build (HW)
-  #     if: steps.cache.outputs.cache-hit != 'true'
-  #     env:
-  #       SGX_MODE: HW
-  #     shell: bash
-  #     run: cargo build --locked
-
-  #   - name: Success
-  #     if: steps.cache.outputs.cache-hit != 'true'
-  #     shell: bash
-  #     run: touch .dummy/success
+    - name: Cargo build (HW)
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        SGX_MODE: HW
+      shell: bash
+      run: |
+        cargo build --locked
+        cargo clean
+        touch .dummy/success
 
 
   # build-and-test-wasm:
