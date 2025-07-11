@@ -32,358 +32,358 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-dev:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
+  # build-dev:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -build-dev
-        path: .dummy
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -build-dev
+  #       path: .dummy
 
-    - name: Cargo build (SW)
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo build --locked
-        cargo clean
-        touch .dummy/success
-
-
-  build-prod:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
-
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -build-prod
-        path: .dummy
-
-    - name: Cargo build (HW)
-      if: steps.cache.outputs.cache-hit != 'true'
-      env:
-        SGX_MODE: HW
-      shell: bash
-      run: |
-        cargo build --locked
-        cargo clean
-        touch .dummy/success
+  #   - name: Cargo build (SW)
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo build --locked
+  #       cargo clean
+  #       touch .dummy/success
 
 
-  build-and-test-wasm:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
+  # build-prod:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -wasm
-        path: .dummy
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -build-prod
+  #       path: .dummy
 
-    - uses: mobilecoinofficial/gh-actions/setup-node@495a68c822f5d22bd327ddaf1463392bd603fd4a
-      if: steps.cache.outputs.cache-hit != 'true'
-      with:
-        node-version: 18
-
-    - name: Install wasm-pack
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-    - name: Build and test the wasm-test crate
-      if: steps.cache.outputs.cache-hit != 'true'
-      env:
-        SGX_MODE: HW
-      run: |
-        wasm-pack test --node wasm-test
-        cargo clean
-        touch .dummy/success
+  #   - name: Cargo build (HW)
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     env:
+  #       SGX_MODE: HW
+  #     shell: bash
+  #     run: |
+  #       cargo build --locked
+  #       cargo clean
+  #       touch .dummy/success
 
 
-  lint-rust:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
+  # build-and-test-wasm:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -lint-rust
-        path: .dummy
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -wasm
+  #       path: .dummy
 
-    - name: Run lint script
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        ./tools/lint.sh --check
-        cargo clean
-        touch .dummy/success
+  #   - uses: mobilecoinofficial/gh-actions/setup-node@495a68c822f5d22bd327ddaf1463392bd603fd4a
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     with:
+  #       node-version: 18
 
+  #   - name: Install wasm-pack
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-  build-and-test-go:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
-
-    - name: Cache Go Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -test-go
-        path: .dummy
-
-    - name: Build go
-      if: steps.cache.outputs.cache-hit != 'true'
-      working-directory: go-grpc-gateway
-      shell: bash
-      run: ./install_tools.sh && ./build.sh
-
-    - name: Lint Go code
-      if: steps.cache.outputs.cache-hit != 'true'
-      working-directory: go-grpc-gateway
-      shell: bash
-      run: ./lint.sh
-
-    - name: Build rust testing stub
-      if: steps.cache.outputs.cache-hit != 'true'
-      working-directory: go-grpc-gateway/testing
-      shell: bash
-      run: cargo build --locked
-
-    - name: Run curl test
-      if: steps.cache.outputs.cache-hit != 'true'
-      working-directory: go-grpc-gateway
-      shell: bash
-      run: ./test.sh
-
-    - name: Success
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: touch .dummy/success
+  #   - name: Build and test the wasm-test crate
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     env:
+  #       SGX_MODE: HW
+  #     run: |
+  #       wasm-pack test --node wasm-test
+  #       cargo clean
+  #       touch .dummy/success
 
 
-  docs:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
+  # lint-rust:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Generate docs
-      shell: bash
-      run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -lint-rust
+  #       path: .dummy
 
-    - name: Store docs
-      uses: mobilecoinofficial/gh-actions/upload-artifact@v0
-      with:
-        name: doc.tgz
-        path: /tmp/doc.tgz
-
-
-  mc-tests:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    strategy:
-      matrix:
-        num_runners: [2]
-        runner_index: [1, 2]
-      # Run each shard to completion.
-      fail-fast: false
-    env:
-      NUM_RUNNERS: ${{ matrix.num_runners }}
-      RUNNER_INDEX: ${{ matrix.runner_index }}
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
-
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -mc-tests-${{ matrix.runner_index }}
-        path: .dummy
-
-    - name: List packages to test
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
-          grep -v -e mc-fog -e mc-consensus | \
-          awk "{ print \"-p \" \$1 }" | \
-          sort > /tmp/test-packages
-
-        split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
-          tee /tmp/mc-test-packages
-
-        # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
-        # TODO: Replace with artifact deps when that does not require
-        # additional cargo flags.
-        if grep -q generate-sample-ledger /tmp/mc-test-packages
-        then
-          echo '-p mc-util-keyfile' >> /tmp/mc-test-packages
-        fi
-
-    - name: Run tests
-      if: steps.cache.outputs.cache-hit != 'true'
-      uses: ./.github/actions/run-mc-tests
-      with:
-        args: $(cat /tmp/mc-test-packages)
-        junit_artifact: junit-mc-tests-${{matrix.runner_index}}
-
-    - name: Success
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo clean
-        touch .dummy/success
+  #   - name: Run lint script
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       ./tools/lint.sh --check
+  #       cargo clean
+  #       touch .dummy/success
 
 
-  consensus-tests:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    strategy:
-      matrix:
-        num_runners: [2]
-        runner_index: [1, 2]
-      # Run each shard to completion.
-      fail-fast: false
-    env:
-      NUM_RUNNERS: ${{ matrix.num_runners }}
-      RUNNER_INDEX: ${{ matrix.runner_index }}
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
+  # build-and-test-go:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -consensus-tests-${{ matrix.runner_index }}
-        path: .dummy
+  #   - name: Cache Go Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -test-go
+  #       path: .dummy
 
-    - name: List packages to test
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
-          awk "/mc-consensus/ { print \"-p \" \$1 }" | \
-          sort > /tmp/test-packages
-        split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
-          tee /tmp/consensus-test-packages
+  #   - name: Build go
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     working-directory: go-grpc-gateway
+  #     shell: bash
+  #     run: ./install_tools.sh && ./build.sh
 
-    - name: Run tests
-      if: steps.cache.outputs.cache-hit != 'true'
-      uses: ./.github/actions/run-mc-tests
-      with:
-        args: $(cat /tmp/consensus-test-packages)
-        junit_artifact: junit-consensus-tests-${{matrix.runner_index}}
+  #   - name: Lint Go code
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     working-directory: go-grpc-gateway
+  #     shell: bash
+  #     run: ./lint.sh
 
-    - name: Success
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo clean
-        touch .dummy/success
+  #   - name: Build rust testing stub
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     working-directory: go-grpc-gateway/testing
+  #     shell: bash
+  #     run: cargo build --locked
+
+  #   - name: Run curl test
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     working-directory: go-grpc-gateway
+  #     shell: bash
+  #     run: ./test.sh
+
+  #   - name: Success
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: touch .dummy/success
 
 
-  fog-tests:
-    runs-on: mcf-dev-large-x64
-    container: mobilecoin/fat-sgx-builder:v24.4.2
-    strategy:
-      matrix:
-        num_runners: [4]
-        runner_index: [1, 2, 3, 4]
-      # Run each shard to completion.
-      fail-fast: false
-    env:
-      NUM_RUNNERS: ${{ matrix.num_runners }}
-      RUNNER_INDEX: ${{ matrix.runner_index }}
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_HOST_AUTH_METHOD: trust
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-    - name: Check out code
-      uses: mobilecoinofficial/gh-actions/checkout@v0
+  # docs:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Cache Rust Binaries
-      id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-      with:
-        cache_buster: ${{ vars.CACHE_BUSTER }}
-        additional_keys: -fog-tests-${{ matrix.runner_index }}
-        path: .dummy
+  #   - name: Generate docs
+  #     shell: bash
+  #     run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
 
-    - name: List packages to test
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
-          awk "/mc-fog/ { print \"-p \" \$1 }" | \
-          grep -v mc-fog-ingest | \
-          sort > /tmp/test-packages
-        split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
-          tee /tmp/fog-test-packages
+  #   - name: Store docs
+  #     uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+  #     with:
+  #       name: doc.tgz
+  #       path: /tmp/doc.tgz
 
-        # Hack: mc-fog-distribution needs bins from
-        # mc-util-{keyfile,generate-sample-ledger}.
-        # TODO: Replace with artifact deps when that does not require
-        # additional cargo flags.
-        if grep -q fog-distribution /tmp/fog-test-packages
-        then
-          echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages
-        fi
 
-    - name: Run tests
-      if: steps.cache.outputs.cache-hit != 'true'
-      uses: ./.github/actions/run-mc-tests
-      with:
-        args: $(cat /tmp/fog-test-packages)
-        junit_artifact: junit-fog-tests-${{matrix.runner_index}}
-      env:
-        # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-        # create and drop PG databases.
-        TEST_DATABASE_URL: postgres://postgres@postgres
+  # mc-tests:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   strategy:
+  #     matrix:
+  #       num_runners: [2]
+  #       runner_index: [1, 2]
+  #     # Run each shard to completion.
+  #     fail-fast: false
+  #   env:
+  #     NUM_RUNNERS: ${{ matrix.num_runners }}
+  #     RUNNER_INDEX: ${{ matrix.runner_index }}
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
 
-    - name: Success
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        cargo clean
-        touch .dummy/success
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -mc-tests-${{ matrix.runner_index }}
+  #       path: .dummy
+
+  #   - name: List packages to test
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
+  #         grep -v -e mc-fog -e mc-consensus | \
+  #         awk "{ print \"-p \" \$1 }" | \
+  #         sort > /tmp/test-packages
+
+  #       split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
+  #         tee /tmp/mc-test-packages
+
+  #       # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
+  #       # TODO: Replace with artifact deps when that does not require
+  #       # additional cargo flags.
+  #       if grep -q generate-sample-ledger /tmp/mc-test-packages
+  #       then
+  #         echo '-p mc-util-keyfile' >> /tmp/mc-test-packages
+  #       fi
+
+  #   - name: Run tests
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     uses: ./.github/actions/run-mc-tests
+  #     with:
+  #       args: $(cat /tmp/mc-test-packages)
+  #       junit_artifact: junit-mc-tests-${{matrix.runner_index}}
+
+  #   - name: Success
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo clean
+  #       touch .dummy/success
+
+
+  # consensus-tests:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   strategy:
+  #     matrix:
+  #       num_runners: [2]
+  #       runner_index: [1, 2]
+  #     # Run each shard to completion.
+  #     fail-fast: false
+  #   env:
+  #     NUM_RUNNERS: ${{ matrix.num_runners }}
+  #     RUNNER_INDEX: ${{ matrix.runner_index }}
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
+
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -consensus-tests-${{ matrix.runner_index }}
+  #       path: .dummy
+
+  #   - name: List packages to test
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
+  #         awk "/mc-consensus/ { print \"-p \" \$1 }" | \
+  #         sort > /tmp/test-packages
+  #       split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
+  #         tee /tmp/consensus-test-packages
+
+  #   - name: Run tests
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     uses: ./.github/actions/run-mc-tests
+  #     with:
+  #       args: $(cat /tmp/consensus-test-packages)
+  #       junit_artifact: junit-consensus-tests-${{matrix.runner_index}}
+
+  #   - name: Success
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo clean
+  #       touch .dummy/success
+
+
+  # fog-tests:
+  #   runs-on: mcf-dev-large-x64
+  #   container: mobilecoin/fat-sgx-builder:v24.4.2
+  #   strategy:
+  #     matrix:
+  #       num_runners: [4]
+  #       runner_index: [1, 2, 3, 4]
+  #     # Run each shard to completion.
+  #     fail-fast: false
+  #   env:
+  #     NUM_RUNNERS: ${{ matrix.num_runners }}
+  #     RUNNER_INDEX: ${{ matrix.runner_index }}
+  #   services:
+  #     postgres:
+  #       image: postgres
+  #       env:
+  #         POSTGRES_HOST_AUTH_METHOD: trust
+  #       # Set health checks to wait until postgres has started
+  #       options: >-
+  #         --health-cmd pg_isready
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
+  #   steps:
+  #   - name: Check out code
+  #     uses: mobilecoinofficial/gh-actions/checkout@v0
+
+  #   - name: Cache Rust Binaries
+  #     id: cache
+  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+  #     with:
+  #       cache_buster: ${{ vars.CACHE_BUSTER }}
+  #       additional_keys: -fog-tests-${{ matrix.runner_index }}
+  #       path: .dummy
+
+  #   - name: List packages to test
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
+  #         awk "/mc-fog/ { print \"-p \" \$1 }" | \
+  #         grep -v mc-fog-ingest | \
+  #         sort > /tmp/test-packages
+  #       split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
+  #         tee /tmp/fog-test-packages
+
+  #       # Hack: mc-fog-distribution needs bins from
+  #       # mc-util-{keyfile,generate-sample-ledger}.
+  #       # TODO: Replace with artifact deps when that does not require
+  #       # additional cargo flags.
+  #       if grep -q fog-distribution /tmp/fog-test-packages
+  #       then
+  #         echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages
+  #       fi
+
+  #   - name: Run tests
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     uses: ./.github/actions/run-mc-tests
+  #     with:
+  #       args: $(cat /tmp/fog-test-packages)
+  #       junit_artifact: junit-fog-tests-${{matrix.runner_index}}
+  #     env:
+  #       # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+  #       # create and drop PG databases.
+  #       TEST_DATABASE_URL: postgres://postgres@postgres
+
+  #   - name: Success
+  #     if: steps.cache.outputs.cache-hit != 'true'
+  #     shell: bash
+  #     run: |
+  #       cargo clean
+  #       touch .dummy/success
 
 
   fog-ingest-tests:
@@ -432,71 +432,70 @@ jobs:
         touch .dummy/success
 
 
-  # fog-conformance-tests:
-  #   runs-on: mcf-dev-large-x64
-  #   container: mobilecoin/fat-sgx-builder:v24.4.2
-  #   services:
-  #     postgres:
-  #       image: postgres
-  #       env:
-  #         POSTGRES_HOST_AUTH_METHOD: trust
-  #       # Set health checks to wait until postgres has started
-  #       options: >-
-  #         --health-cmd pg_isready
-  #         --health-interval 10s
-  #         --health-timeout 5s
-  #         --health-retries 5
-  #   steps:
-  #   - name: Check out code
-  #     uses: mobilecoinofficial/gh-actions/checkout@v0
+  fog-conformance-tests:
+    runs-on: mcf-dev-large-x64
+    container: mobilecoin/fat-sgx-builder:v24.4.2
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-  #   - name: Cache Rust Binaries
-  #     id: cache
-  #     uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
-  #     with:
-  #       cache_buster: ${{ vars.CACHE_BUSTER }}
-  #       additional_keys: -fog-conformance-tests
-  #       path: .dummy
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -fog-conformance-tests
+        path: .dummy
 
-  #   # - name: Setup Python
-  #   #   if: steps.cache.outputs.cache-hit != 'true'
-  #   #   uses: actions/setup-python@v5
-  #   #   with:
-  #   #     python-version: '3.13'
+    # - name: Setup Python
+    #   if: steps.cache.outputs.cache-hit != 'true'
+    #   uses: actions/setup-python@v5
+    #   with:
+    #     python-version: '3.13'
 
-  #   - name: Set up environment
-  #     if: steps.cache.outputs.cache-hit != 'true'
-  #     working-directory: tools/fog-local-network
-  #     shell: bash
-  #     run: |
-  #       python3 -m venv env
-  #       . ./env/bin/activate
-  #       pip install --upgrade pip
-  #       pip install -r requirements.txt
-  #       ./build.sh
+    - name: Set up environment
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: tools/fog-local-network
+      shell: bash
+      run: |
+        python3 -m venv env
+        . ./env/bin/activate
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        ./build.sh
 
-  #   - name: fog_conformance_tests.py
-  #     if: steps.cache.outputs.cache-hit != 'true'
-  #     working-directory: tools/fog-local-network
-  #     env:
-  #       PGHOST: postgres
-  #       PGUSER: postgres
-  #     shell: bash
-  #     run: |
-  #       . /opt/intel/sgxsdk/environment
-  #       . ./env/bin/activate
-  #       python3 fog_conformance_tests.py --release
+    - name: fog_conformance_tests.py
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: tools/fog-local-network
+      env:
+        PGHOST: postgres
+        PGUSER: postgres
+      shell: bash
+      run: |
+        . ./env/bin/activate
+        python3 fog_conformance_tests.py --release
 
-  #   - name: Upload core dumps
-  #     if: steps.cache.outputs.cache-hit != 'true'
-  #     uses: ./.github/actions/upload-core-dumps
+    - name: Upload core dumps
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/upload-core-dumps
 
-  #   - name: Success
-  #     if: steps.cache.outputs.cache-hit != 'true'
-  #     shell: bash
-  #     run: |
-  #       cargo clean
-  #       touch .dummy/success
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
 
 
   # An end to end test to ensure minting works and that the fog local
@@ -669,22 +668,22 @@ jobs:
   #       touch .dummy/success
 
 
-  publish-test-results:
-    runs-on: mcf-dev-small-x64
-    if: success() || failure()
-    needs:
-      - mc-tests
-      - consensus-tests
-      - fog-tests
-      - fog-ingest-tests
-    steps:
-    - name: Download XML reports
-      if: success() || failure()
-      uses: mobilecoinofficial/gh-actions/download-artifact@v0
+  # publish-test-results:
+  #   runs-on: mcf-dev-small-x64
+  #   if: success() || failure()
+  #   needs:
+  #     - mc-tests
+  #     - consensus-tests
+  #     - fog-tests
+  #     - fog-ingest-tests
+  #   steps:
+  #   - name: Download XML reports
+  #     if: success() || failure()
+  #     uses: mobilecoinofficial/gh-actions/download-artifact@v0
 
-    - name: Publish Test Report
-      if: success() || failure()
-      uses: mobilecoinofficial/gh-actions/junit-report@495a68c822f5d22bd327ddaf1463392bd603fd4a
-      with:
-        check_name: Test Report
-        report_paths: '**/*.xml'
+  #   - name: Publish Test Report
+  #     if: success() || failure()
+  #     uses: mobilecoinofficial/gh-actions/junit-report@495a68c822f5d22bd327ddaf1463392bd603fd4a
+  #     with:
+  #       check_name: Test Report
+  #       report_paths: '**/*.xml'
