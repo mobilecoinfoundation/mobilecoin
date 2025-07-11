@@ -32,7 +32,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -build-dev
@@ -58,7 +58,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -build-prod
@@ -86,7 +86,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -wasm
@@ -123,7 +123,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -lint-rust
@@ -221,7 +221,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -mc-tests-${{ matrix.runner_index }}
@@ -278,7 +278,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -consensus-tests-${{ matrix.runner_index }}
@@ -336,7 +336,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -fog-tests-${{ matrix.runner_index }}
@@ -399,7 +399,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -fog-ingest-tests
@@ -443,7 +443,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -fog-conformance-tests
@@ -512,7 +512,7 @@ jobs:
 
     - name: Cache Rust Binaries
       id: cache
-      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@d57fb9afc692f05658ab8f51c146bc3cd4e1cba2
       with:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         additional_keys: -minting-and-burning-tests
