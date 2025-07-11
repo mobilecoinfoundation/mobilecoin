@@ -21,13 +21,12 @@ on:
     - 'release/**'
     paths-ignore:
     - '**.md'
+    - '.github/workflows/ci.yml'
   push:
     branches:
     - 'feature/**'
     tags:
     - 'v[0-9]+*'
-    paths-ignore:
-    - '**.md'
 
 # don't run more than one at a time for a branch/tag
 concurrency:
