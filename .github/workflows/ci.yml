@@ -97,7 +97,7 @@ jobs:
         additional_keys: -wasm
         path: .dummy
 
-    - uses: actions/setup-node@v4
+    - uses: mobilecoinofficial/gh-actions/setup-node@495a68c822f5d22bd327ddaf1463392bd603fd4a
       if: steps.cache.outputs.cache-hit != 'true'
       with:
         node-version: 18
@@ -680,10 +680,11 @@ jobs:
     steps:
     - name: Download XML reports
       if: success() || failure()
-      uses: actions/download-artifact@v4
+      uses: mobilecoinofficial/gh-actions/download-artifact@v0
+
     - name: Publish Test Report
       if: success() || failure()
-      uses: mikepenz/action-junit-report@v4
+      uses: mobilecoinofficial/gh-actions/junit-report@495a68c822f5d22bd327ddaf1463392bd603fd4a
       with:
         check_name: Test Report
         report_paths: '**/*.xml'
