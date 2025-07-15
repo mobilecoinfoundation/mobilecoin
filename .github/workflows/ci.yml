@@ -2,12 +2,22 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
-      - 'release/**'
     paths-ignore:
     - '**.md'
+    - '.github/workflows/mobilecoin-*'
+    - '.github/workflows/dependent-repos.yml'
+    - '.github/workflows/refresh-ledger-bootstrap.yaml'
+    - '.github/workflows/android-bindings-dispatch.yml'
+  push:
+    branches:
+    - main
+    - 'release/**'
+    paths-ignore:
+    - '**.md'
+    - '.github/workflows/mobilecoin-*'
+    - '.github/workflows/dependent-repos.yml'
+    - '.github/workflows/refresh-ledger-bootstrap.yaml'
+    - '.github/workflows/android-bindings-dispatch.yml'
   workflow_dispatch:
 
 env:
@@ -20,116 +30,223 @@ env:
 permissions:
   checks: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-dev:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Cargo build (SW)
-        shell: bash
-        run: cargo build --locked
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -build-dev
+        path: .dummy
+
+    - name: Cargo build (SW)
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo build --locked
+
+    - name: Check dirty git
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/check-dirty-git
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
+
 
   build-prod:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Cargo build (HW)
-        env:
-          SGX_MODE: HW
-        shell: bash
-        run: cargo build --locked
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -build-prod
+        path: .dummy
+
+    - name: Cargo build (HW)
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        SGX_MODE: HW
+      shell: bash
+      run: |
+        cargo build --locked
+
+    - name: Check dirty git
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/check-dirty-git
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
+
 
   build-and-test-wasm:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Build and test the wasm-test crate
-        env:
-          SGX_MODE: HW
-        run: wasm-pack test --node wasm-test
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -wasm
+        path: .dummy
+
+    - uses: mobilecoinofficial/gh-actions/setup-node@v0
+      if: steps.cache.outputs.cache-hit != 'true'
+      with:
+        node-version: 18
+
+    - name: Install wasm-pack
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+    - name: Build and test the wasm-test crate
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        SGX_MODE: HW
+      run: |
+        wasm-pack test --node wasm-test
+        cargo clean
+        touch .dummy/success
+
 
   lint-rust:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Run lint script
-        run: ./tools/lint.sh --check
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -lint-rust
+        path: .dummy
+
+    - name: Run lint script
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        ./tools/lint.sh --check
+        cargo clean
+        touch .dummy/success
+
 
   build-and-test-go:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Build go
-        working-directory: go-grpc-gateway
-        shell: bash
-        run: ./install_tools.sh && ./build.sh
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
-      - name: Lint Go code
-        working-directory: go-grpc-gateway
-        shell: bash
-        run: ./lint.sh
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
-      - name: Build rust testing stub
-        working-directory: go-grpc-gateway/testing
-        shell: bash
-        run: cargo build --locked
-      - name: Run curl test
-        working-directory: go-grpc-gateway
-        shell: bash
-        run: ./test.sh
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Go Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-go-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -test-go
+        path: .dummy
+
+    - name: Build go
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: go-grpc-gateway
+      shell: bash
+      run: ./install_tools.sh && ./build.sh
+
+    - name: Lint Go code
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: go-grpc-gateway
+      shell: bash
+      run: ./lint.sh
+
+    - name: Build rust testing stub
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: go-grpc-gateway/testing
+      shell: bash
+      run: cargo build --locked
+
+    - name: Run curl test
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: go-grpc-gateway
+      shell: bash
+      run: ./test.sh
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: touch .dummy/success
+
 
   docs:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Generate docs
-        shell: bash
-        run: cargo doc --no-deps && tar -C target -czvf /tmp/doc.tgz doc/
-      - name: Store docs
-        uses: mobilecoinofficial/gh-actions/upload-artifact@v0
-        with:
-          name: doc.tgz
-          path: /tmp/doc.tgz
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -rust-docs
+        path: .dummy
+
+    - name: Generate docs
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo doc --no-deps
+        tar -C target -czvf /tmp/doc.tgz doc/
+
+    - name: Store docs
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: mobilecoinofficial/gh-actions/upload-artifact@v0
+      with:
+        name: doc.tgz
+        path: /tmp/doc.tgz
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
+
 
   mc-tests:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     strategy:
       matrix:
         num_runners: [2]
@@ -139,39 +256,56 @@ jobs:
     env:
       NUM_RUNNERS: ${{ matrix.num_runners }}
       RUNNER_INDEX: ${{ matrix.runner_index }}
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: List packages to test\
-        shell: bash
-        run: |
-          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
-            grep -v -e mc-fog -e mc-consensus | \
-            awk "{ print \"-p \" \$1 }" | \
-            sort > /tmp/test-packages
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-          split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
-            tee /tmp/mc-test-packages
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -mc-tests-${{ matrix.runner_index }}
+        path: .dummy
 
-          # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
-          # TODO: Replace with artifact deps when that does not require
-          # additional cargo flags.
-          if grep -q generate-sample-ledger /tmp/mc-test-packages
-          then
-            echo '-p mc-util-keyfile' >> /tmp/mc-test-packages
-          fi
-      - name: Run tests
-        uses: ./.github/actions/run-mc-tests
-        with:
-          args: $(cat /tmp/mc-test-packages)
-          junit_artifact: junit-mc-tests-${{matrix.runner_index}}
+    - name: List packages to test
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
+          grep -v -e mc-fog -e mc-consensus | \
+          awk "{ print \"-p \" \$1 }" | \
+          sort > /tmp/test-packages
+
+        split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
+          tee /tmp/mc-test-packages
+
+        # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
+        # TODO: Replace with artifact deps when that does not require
+        # additional cargo flags.
+        if grep -q generate-sample-ledger /tmp/mc-test-packages
+        then
+          echo '-p mc-util-keyfile' >> /tmp/mc-test-packages
+        fi
+
+    - name: Run tests
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/run-mc-tests
+      with:
+        args: $(cat /tmp/mc-test-packages)
+        junit_artifact: junit-mc-tests-${{matrix.runner_index}}
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
 
 
   consensus-tests:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     strategy:
       matrix:
         num_runners: [2]
@@ -181,29 +315,46 @@ jobs:
     env:
       NUM_RUNNERS: ${{ matrix.num_runners }}
       RUNNER_INDEX: ${{ matrix.runner_index }}
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: List packages to test
-        shell: bash
-        run: |
-          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
-            awk "/mc-consensus/ { print \"-p \" \$1 }" | \
-            sort > /tmp/test-packages
-          split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
-            tee /tmp/consensus-test-packages
-      - name: Run tests
-        uses: ./.github/actions/run-mc-tests
-        with:
-          args: $(cat /tmp/consensus-test-packages)
-          junit_artifact: junit-consensus-tests-${{matrix.runner_index}}
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -consensus-tests-${{ matrix.runner_index }}
+        path: .dummy
+
+    - name: List packages to test
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
+          awk "/mc-consensus/ { print \"-p \" \$1 }" | \
+          sort > /tmp/test-packages
+        split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
+          tee /tmp/consensus-test-packages
+
+    - name: Run tests
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/run-mc-tests
+      with:
+        args: $(cat /tmp/consensus-test-packages)
+        junit_artifact: junit-consensus-tests-${{matrix.runner_index}}
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
 
 
   fog-tests:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     strategy:
       matrix:
         num_runners: [4]
@@ -213,7 +364,6 @@ jobs:
     env:
       NUM_RUNNERS: ${{ matrix.num_runners }}
       RUNNER_INDEX: ${{ matrix.runner_index }}
-
     services:
       postgres:
         image: postgres
@@ -225,43 +375,60 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: List packages to test
-        shell: bash
-        run: |
-          cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
-            awk "/mc-fog/ { print \"-p \" \$1 }" | \
-            grep -v mc-fog-ingest | \
-            sort > /tmp/test-packages
-          split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
-            tee /tmp/fog-test-packages
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-          # Hack: mc-fog-distribution needs bins from
-          # mc-util-{keyfile,generate-sample-ledger}.
-          # TODO: Replace with artifact deps when that does not require
-          # additional cargo flags.
-          if grep -q fog-distribution /tmp/fog-test-packages
-          then
-            echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages
-          fi
-      - name: Run tests
-        uses: ./.github/actions/run-mc-tests
-        with:
-          args: $(cat /tmp/fog-test-packages)
-          junit_artifact: junit-fog-tests-${{matrix.runner_index}}
-        env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://postgres@postgres
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -fog-tests-${{ matrix.runner_index }}
+        path: .dummy
+
+    - name: List packages to test
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo metadata --no-deps --format-version=1 | jq -r '.packages[].name' | \
+          awk "/mc-fog/ { print \"-p \" \$1 }" | \
+          grep -v mc-fog-ingest | \
+          sort > /tmp/test-packages
+        split -n "l/$RUNNER_INDEX/$NUM_RUNNERS" /tmp/test-packages | \
+          tee /tmp/fog-test-packages
+
+        # Hack: mc-fog-distribution needs bins from
+        # mc-util-{keyfile,generate-sample-ledger}.
+        # TODO: Replace with artifact deps when that does not require
+        # additional cargo flags.
+        if grep -q fog-distribution /tmp/fog-test-packages
+        then
+          echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages
+        fi
+
+    - name: Run tests
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/run-mc-tests
+      with:
+        args: $(cat /tmp/fog-test-packages)
+        junit_artifact: junit-fog-tests-${{matrix.runner_index}}
+      env:
+        # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+        # create and drop PG databases.
+        TEST_DATABASE_URL: postgres://postgres@postgres
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
 
 
   fog-ingest-tests:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     services:
       postgres:
         image: postgres
@@ -273,26 +440,41 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Run tests
-        uses: ./.github/actions/run-mc-tests
-        with:
-          # These tests time out without release mode.
-          args: -p 'mc-fog-ingest-*' --release
-          junit_artifact: junit-fog-ingest-tests
-        env:
-          # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
-          # create and drop PG databases.
-          TEST_DATABASE_URL: postgres://postgres@postgres
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
+
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -fog-ingest-tests
+        path: .dummy
+
+    - name: Run tests
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/run-mc-tests
+      with:
+        # These tests time out without release mode.
+        args: -p 'mc-fog-ingest-*' --release
+        junit_artifact: junit-fog-ingest-tests
+      env:
+        # TEST_DATABASE_URL points at the server, as Fog recovery DB tests
+        # create and drop PG databases.
+        TEST_DATABASE_URL: postgres://postgres@postgres
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
 
 
   fog-conformance-tests:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     services:
       postgres:
         image: postgres
@@ -304,38 +486,52 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Set up environment
-        working-directory: tools/fog-local-network
-        shell: bash
-        run: |
-          python3 -m venv env
-          . ./env/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          ./build.sh
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-      - name: fog_conformance_tests.py
-        working-directory: tools/fog-local-network
-        env:
-          PGHOST: postgres
-          PGUSER: postgres
-        shell: bash
-        run: |
-          . /opt/intel/sgxsdk/environment
-          . ./env/bin/activate
-          python3 fog_conformance_tests.py --release
-      - name: Upload core dumps
-        uses: ./.github/actions/upload-core-dumps
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -fog-conformance-tests
+        path: .dummy
+
+    - name: Set up environment
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: tools/fog-local-network
+      shell: bash
+      run: |
+        apt-get update
+        apt-get install -y python3-venv
+        python3 -m venv env
+        . ./env/bin/activate
+        pip install -r requirements.txt
+        ./build.sh
+
+    - name: fog_conformance_tests.py
+      if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: tools/fog-local-network
+      env:
+        PGHOST: postgres
+        PGUSER: postgres
+      shell: bash
+      run: |
+        . ./env/bin/activate
+        python3 fog_conformance_tests.py --release
+
+    - name: Upload core dumps
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/upload-core-dumps
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
+
 
   # An end to end test to ensure minting works and that the fog local
   # network script continues to work.
@@ -344,7 +540,6 @@ jobs:
   minting-and-burning-tests:
     runs-on: mcf-dev-large-x64
     container: mobilecoin/fat-sgx-builder:v24.4.2
-
     services:
       postgres:
         image: postgres
@@ -356,138 +551,156 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
-      - name: Check out code
-        uses: mobilecoinofficial/gh-actions/checkout@v0
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3'
-      - name: Build and generate sample data
-        shell: bash
-        run: |
-          . /opt/intel/sgxsdk/environment
-          # Generate enclave signing key
-          openssl genrsa -out Enclave_private.pem -3 3072
-          export CONSENSUS_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
-          export INGEST_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
-          export LEDGER_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
-          export VIEW_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
-          export MC_LOG=debug
+    - name: Check out code
+      uses: mobilecoinofficial/gh-actions/checkout@v0
 
-          # Build binaries
-          cargo build \
-              -p mc-admin-http-gateway \
-              -p mc-consensus-mint-client \
-              -p mc-consensus-service \
-              -p mc-consensus-tool \
-              -p mc-crypto-x509-test-vectors \
-              -p mc-fog-distribution \
-              -p mc-fog-ingest-client \
-              -p mc-fog-ingest-server \
-              -p mc-fog-ledger-server \
-              -p mc-fog-report-server \
-              -p mc-fog-sql-recovery-db \
-              -p mc-fog-test-client \
-              -p mc-fog-view-server \
-              -p mc-ledger-distribution \
-              -p mc-mobilecoind \
-              -p mc-mobilecoind-dev-faucet \
-              -p mc-util-generate-sample-ledger \
-              -p mc-util-grpc-admin-tool \
-              -p mc-util-keyfile \
-              -p mc-util-seeded-ed25519-key-gen \
-              --release
+    - name: Cache Rust Binaries
+      id: cache
+      uses: mobilecoinofficial/gh-actions/cache-rust-binaries@v0
+      with:
+        cache_buster: ${{ vars.CACHE_BUSTER }}
+        additional_keys: -minting-and-burning-tests
+        path: .dummy
 
-          BIN_DIR="$PWD/target/release"
+    - name: Build and generate sample data
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # Generate enclave signing key
+        openssl genrsa -out Enclave_private.pem -3 3072
+        export CONSENSUS_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+        export INGEST_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+        export LEDGER_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+        export VIEW_ENCLAVE_PRIVKEY="$PWD/Enclave_private.pem"
+        export MC_LOG=debug
 
-          # Run in temp dir to appease check-dirty-git.
-          mkdir -p /tmp/fog-local-network
-          cd /tmp/fog-local-network || exit 1
+        # Build binaries
+        cargo build \
+            -p mc-admin-http-gateway \
+            -p mc-consensus-mint-client \
+            -p mc-consensus-service \
+            -p mc-consensus-tool \
+            -p mc-crypto-x509-test-vectors \
+            -p mc-fog-distribution \
+            -p mc-fog-ingest-client \
+            -p mc-fog-ingest-server \
+            -p mc-fog-ledger-server \
+            -p mc-fog-report-server \
+            -p mc-fog-sql-recovery-db \
+            -p mc-fog-test-client \
+            -p mc-fog-view-server \
+            -p mc-ledger-distribution \
+            -p mc-mobilecoind \
+            -p mc-mobilecoind-dev-faucet \
+            -p mc-util-generate-sample-ledger \
+            -p mc-util-grpc-admin-tool \
+            -p mc-util-keyfile \
+            -p mc-util-seeded-ed25519-key-gen \
+            --release
 
-          # Generate sample keys and ledger.
-          FOG_AUTHORITY_ROOT=$("$BIN_DIR/mc-crypto-x509-test-vectors" --type=chain --test-name=ok_rsa_head)
-          "$BIN_DIR/sample-keys" --num 10 --seed=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-          "$BIN_DIR/generate-sample-ledger" --txs 100
+        BIN_DIR="$PWD/target/release"
 
-          # Generate sample Fog keys.
-          "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root "$FOG_AUTHORITY_ROOT"
+        # Run in temp dir to appease check-dirty-git.
+        mkdir -p /tmp/fog-local-network
+        cd /tmp/fog-local-network || exit 1
 
-      - name: Run local network
-        env:
-          PGHOST: postgres
-          PGUSER: postgres
-        shell: bash
-        run: |
-          BIN_DIR="$PWD/target/release"
-          SCRIPT_DIR="$PWD/tools/fog-local-network"
-          STRATEGIES_DIR="$PWD/mobilecoind/strategies"
-          export MC_CHAIN_ID="local"
-          export MC_LOG=info
-          # This is needed since we want to capture the output of mc-consensus-tool, and we can't have the
-          # logs getting in the way.
-          export MC_LOG_STDERR=1
+        # Generate sample keys and ledger.
+        FOG_AUTHORITY_ROOT=$("$BIN_DIR/mc-crypto-x509-test-vectors" --type=chain --test-name=ok_rsa_head)
+        "$BIN_DIR/sample-keys" --num 10 --seed=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        "$BIN_DIR/generate-sample-ledger" --txs 100
 
-          # Used by mc-consensus-tool
-          export MC_PEER="insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/"
+        # Generate sample Fog keys.
+        "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root "$FOG_AUTHORITY_ROOT"
 
-          cd /tmp/fog-local-network
-          export LEDGER_BASE="$PWD/ledger"
+    - name: Run local network
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        PGHOST: postgres
+        PGUSER: postgres
+      shell: bash
+      run: |
+        BIN_DIR="$PWD/target/release"
+        SCRIPT_DIR="$PWD/tools/fog-local-network"
+        STRATEGIES_DIR="$PWD/mobilecoind/strategies"
+        export MC_CHAIN_ID="local"
+        export MC_LOG=info
+        # This is needed since we want to capture the output of mc-consensus-tool, and we can't have the
+        # logs getting in the way.
+        export MC_LOG_STDERR=1
 
-          # Run local network in background.
-          MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
-          python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
+        # Used by mc-consensus-tool
+        export MC_PEER="insecure-mc://localhost:3200/,insecure-mc://localhost:3201/,insecure-mc://localhost:3202/,insecure-mc://localhost:3203/,insecure-mc://localhost:3204/"
 
-          # Give it time to spin up
-          for PORT in 3200 3201 3202 3203 3204 4444; do
-            for _unused in $(seq 0 60); do
-              if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
-            done
+        cd /tmp/fog-local-network
+        export LEDGER_BASE="$PWD/ledger"
+
+        # Set up Python environment
+        apt-get update
+        apt-get install -y python3-venv
+        python3 -m venv env
+        . ./env/bin/activate
+
+        # Run local network in background.
+        MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
+        python3 "$SCRIPT_DIR/fog_local_network.py" --network-type dense5 --skip-build &
+
+        # Give it time to spin up
+        for PORT in 3200 3201 3202 3203 3204 4444; do
+          for _unused in $(seq 0 60); do
+            if ss -l | grep -q ":$PORT"; then break; else sleep 1; fi;
           done
+        done
 
-          PRE_AUTH_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet)
+        PRE_AUTH_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet)
 
-          # Authorize minters
-          echo "Authorizing minters"
-          python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
+        # Authorize minters
+        echo "Authorizing minters"
+        python3 "$SCRIPT_DIR/../local-network/authorize-minters.py"
 
-          echo "Waiting for quiet after authorizing minters..."
-          PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block="$PRE_AUTH_BLOCK_INDEX")
-          echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
+        echo "Waiting for quiet after authorizing minters..."
+        PRE_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block="$PRE_AUTH_BLOCK_INDEX")
+        echo "Done waiting, PRE_MINT_BLOCK_INDEX=${PRE_MINT_BLOCK_INDEX}"
 
-          # Mint 1 million token1's to the first 4 accounts
-          echo "Minting"
-          for ACCOUNT_NUM in $(seq 0 3); do
-              "$BIN_DIR/mc-consensus-mint-client" \
-                  generate-and-submit-mint-tx \
-                  --node insecure-mc://localhost:3200/ \
-                  --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
-                  --recipient "$(cat "keys/account_keys_${ACCOUNT_NUM}.b58pub")" \
-                  --token-id 1 \
-                  --amount 1000000
-          done
+        # Mint 1 million token1's to the first 4 accounts
+        echo "Minting"
+        for ACCOUNT_NUM in $(seq 0 3); do
+            "$BIN_DIR/mc-consensus-mint-client" \
+                generate-and-submit-mint-tx \
+                --node insecure-mc://localhost:3200/ \
+                --signing-key "$BIN_DIR/mc-local-network/minting-keys/minter1" \
+                --recipient "$(cat "keys/account_keys_${ACCOUNT_NUM}.b58pub")" \
+                --token-id 1 \
+                --amount 1000000
+        done
 
-          echo "Waiting for quiet after minting"
-          POST_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block "$PRE_MINT_BLOCK_INDEX")
-          echo "Done waiting, POST_MINT_BLOCK_INDEX = ${POST_MINT_BLOCK_INDEX}"
+        echo "Waiting for quiet after minting"
+        POST_MINT_BLOCK_INDEX=$("$BIN_DIR/mc-consensus-tool" wait-for-quiet --beyond-block "$PRE_MINT_BLOCK_INDEX")
+        echo "Done waiting, POST_MINT_BLOCK_INDEX = ${POST_MINT_BLOCK_INDEX}"
 
-          # Use burn.py to burn some token1
-          cd "$STRATEGIES_DIR" || exit 1
-          ./compile_proto.sh
-          python3 burn.py \
-               --mobilecoind-host localhost \
-               --mobilecoind-port 4444 \
-               --key "$LEDGER_BASE/../keys/account_keys_2.json" \
-               --value 550000 \
-               --token-id 1 \
-               --fee 10000 \
-               --burn-redemption-memo "0xf43f5e8C04519efE0f54d7eBAEab20E86b235114"
+        # Use burn.py to burn some token1
+        cd "$STRATEGIES_DIR" || exit 1
+        ./compile_proto.sh
+        python3 burn.py \
+              --mobilecoind-host localhost \
+              --mobilecoind-port 4444 \
+              --key "$LEDGER_BASE/../keys/account_keys_2.json" \
+              --value 550000 \
+              --token-id 1 \
+              --fee 10000 \
+              --burn-redemption-memo "0xf43f5e8C04519efE0f54d7eBAEab20E86b235114"
 
-      - name: Upload core dumps
-        uses: ./.github/actions/upload-core-dumps
-      - name: Check dirty git
-        uses: ./.github/actions/check-dirty-git
+    - name: Upload core dumps
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/upload-core-dumps
+
+    - name: Success
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cargo clean
+        touch .dummy/success
+
 
   publish-test-results:
     runs-on: mcf-dev-small-x64
@@ -500,15 +713,11 @@ jobs:
     steps:
     - name: Download XML reports
       if: success() || failure()
-      uses: actions/download-artifact@v4
+      uses: mobilecoinofficial/gh-actions/download-artifact@v0
+
     - name: Publish Test Report
       if: success() || failure()
-      uses: mikepenz/action-junit-report@v4
+      uses: mobilecoinofficial/gh-actions/junit-report@v0
       with:
         check_name: Test Report
         report_paths: '**/*.xml'
-
-# via https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-cancel-in-progress-jobs-or-runs-for-the-current-workflow
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true

@@ -21,13 +21,15 @@ on:
     - 'release/**'
     paths-ignore:
     - '**.md'
+    - '.github/workflows/ci.yml'
+    - '.github/workflows/dependent-repos.yml'
+    - '.github/workflows/refresh-ledger-bootstrap.yaml'
+    - '.github/workflows/android-bindings-dispatch.yml'
   push:
     branches:
     - 'feature/**'
     tags:
     - 'v[0-9]+*'
-    paths-ignore:
-    - '**.md'
 
 # don't run more than one at a time for a branch/tag
 concurrency:
