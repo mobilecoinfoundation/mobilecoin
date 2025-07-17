@@ -29,7 +29,7 @@ spec:
             name: {{ include "consensusNode.fullname" $ }}
             port:
               name: peer-grpc
-      - path: /build_info
+      - path: /build_info.BuildInfoApi
         pathType: Prefix
         backend:
           service:
@@ -44,13 +44,6 @@ spec:
             port:
               name: peer-grpc
       - path: /consensus_peer.ConsensusPeerAPI
-        pathType: Prefix
-        backend:
-          service:
-            name: {{ include "consensusNode.fullname" $ }}
-            port:
-              name: peer-grpc
-      - path: /grpc.health.v1.Health
         pathType: Prefix
         backend:
           service:

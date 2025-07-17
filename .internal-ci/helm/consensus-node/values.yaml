@@ -4,10 +4,6 @@ fullnameOverride: ''
 imagePullSecrets:
 - name: docker-credentials
 
-image:
-  org: mobilecoin
-  tag: ''
-
 # disable client ports on the service
 acceptClientConnections: true
 
@@ -16,11 +12,11 @@ mobilecoin:
   network: ''
   partner: ''
 
-node:
-  image:
-    org: ''
-    name: node_hw
+image:
+  org: mobilecoin
+  tag: ''
 
+node:
   podAnnotations:
     fluentbit.io/include: 'true'
     fluentbit.io/exclude-jaeger-agent: 'true'
@@ -47,8 +43,8 @@ node:
   initContainers: []
 
   startupProbe:
-    # wait 2 hours on startup
-    failureThreshold: 240
+    # wait 6 hours on startup
+    failureThreshold: 720
 
   persistence:
     enabled: true
@@ -127,7 +123,6 @@ node:
       ### required keys:
       #  network.json:
 
-
   # override the name of the required secrets
   externalSecrets:
     ledgerDistribution:
@@ -144,13 +139,3 @@ node:
       # "{{ include "consensusNode.fullname" . }}-msg-signer-key"
       ### required keys:
       # MC_MSG_SIGNER_KEY:
-
-# GRPC Gateway settings
-grpcGateway:
-  image:
-    org: ''
-    name: go-grpc-gateway
-  nodeSelector: {}
-
-jaegerTracing:
-  enabled: false
