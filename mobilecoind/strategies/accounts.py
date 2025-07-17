@@ -87,14 +87,16 @@ def register_random_key(stub, outdir) -> AccountData:
 
 def wait_for_accounts_sync(stub, accounts, wait_secs):
     logging.debug("accounts = %s", accounts[0])
-    block_count = stub.GetLedgerInfo(Empty()).block_count
     synced_ids = {a: False for a in accounts}
     while not all(synced_ids.values()):
         logging.info("Waiting for accounts to sync")
         for a in synced_ids:
+            logging.info("Checking monitor %s", a)
             request = mobilecoind_api_pb2.GetMonitorStatusRequest(monitor_id=a)
             monitor_block = stub.GetMonitorStatus(request).status.next_block
-            if monitor_block == block_count:
+            block_count = stub.GetLedgerInfo(Empty()).block_count
+            logging.info("monitor block %d, ledger block %d", a.decode('utf-8'), monitor_block, block_count)
+            if monitor_block >= block_count:
                 synced_ids[a] = True
         time.sleep(wait_secs)
     logging.info("All accounts synced")
