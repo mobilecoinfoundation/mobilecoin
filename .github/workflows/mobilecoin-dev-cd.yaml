@@ -81,7 +81,6 @@ jobs:
     runs-on: mcf-dev-large-x64
     container:
       image: mobilecoin/rust-sgx:v24.4.2
-
     env:
       # build cannot use relative paths for singing and minting trust root.
       ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
@@ -153,14 +152,8 @@ jobs:
         name: measurements
         path: ${{ env.MEASUREMENTS_ARTIFACTS_PATH }}
 
+
   mrenclave-values:
-    strategy:
-      matrix:
-        enclave:
-        - libconsensus-enclave.signed.so
-        - libledger-enclave.signed.so
-        - libview-enclave.signed.so
-        - libingest-enclave.signed.so
     runs-on: mcf-dev-small-x64
     needs:
     - build-rust-hardware-projects
@@ -177,11 +170,26 @@ jobs:
         cache_buster: ${{ vars.CACHE_BUSTER }}
         path: ${{ env.RUST_CACHE_PATH }}
 
-    - name: Get enclave MRSIGNER/MRENCLAVE values
-      id: enclave
+    - name: Get enclave MRSIGNER/MRENCLAVE values - libconsensus-enclave.signed.so
       uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
       with:
-        enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/${{ matrix.enclave }}
+        enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/libconsensus-enclave.signed.so
+
+    - name: Get enclave MRSIGNER/MRENCLAVE values - libledger-enclave.signed.so
+      uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+      with:
+        enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/libledger-enclave.signed.so
+
+    - name: Get enclave MRSIGNER/MRENCLAVE values - libingest-enclave.signed.so
+      uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+      with:
+        enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/libingest-enclave.signed.so
+
+    - name: Get enclave MRSIGNER/MRENCLAVE values - libview-enclave.signed.so
+      uses: mobilecoinofficial/gh-actions/enclave-measurements@v0
+      with:
+        enclave_so_path: ${{ env.RUST_ARTIFACTS_PATH }}/libview-enclave.signed.so
+
 
   build-go-projects:
     runs-on: mcf-dev-small-x64
@@ -261,10 +269,10 @@ jobs:
         docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
         docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+
   charts:
     runs-on: mcf-dev-small-x64
     needs:
-    - docker
     - generate-metadata
     permissions:
       packages: write
@@ -317,6 +325,7 @@ jobs:
     needs:
     - bootstrap-v5-bv3
     - charts
+    - docker
     - generate-metadata
     with:
       block_version: 4
