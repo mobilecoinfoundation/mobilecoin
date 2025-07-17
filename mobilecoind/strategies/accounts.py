@@ -95,7 +95,7 @@ def wait_for_accounts_sync(stub, accounts, wait_secs):
             request = mobilecoind_api_pb2.GetMonitorStatusRequest(monitor_id=a)
             monitor_block = stub.GetMonitorStatus(request).status.next_block
             block_count = stub.GetLedgerInfo(Empty()).block_count
-            logging.info("monitor block %d, ledger block %d", a.decode('utf-8'), monitor_block, block_count)
+            logging.info("monitor block %d, ledger block %d", monitor_block, block_count)
             if monitor_block >= block_count:
                 synced_ids[a] = True
         time.sleep(wait_secs)
