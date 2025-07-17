@@ -231,7 +231,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --token-id 8192
+            --json --token-id 8192
 
     - name: Test - Minting tx
       if: inputs.fog_and_minting
