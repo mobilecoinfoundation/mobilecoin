@@ -108,8 +108,8 @@ jobs:
             peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
             blockVersion: ${{ inputs.block_version }}
 
-          # persistence:
-          #   enabled: false
+          persistence:
+            enabled: false
 
           ingress:
             common:

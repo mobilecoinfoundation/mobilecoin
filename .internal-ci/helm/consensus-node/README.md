@@ -110,6 +110,6 @@ node:
 Launch Helm chart
 
 ```sh
-helm upgrade consensus-node-1 mcf-public/consensus-node -i -n <namespace> --version <semver> \
-  -f values.yaml
+helm upgrade consensus-node-1 oci://ghcr.io/mobilecoin/charts/consensus-node \
+  -i -n <namespace> --version <semver> -f values.yaml
 ```
