@@ -425,8 +425,6 @@ jobs:
             hosts:
             - partner: a
               responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
-            - partner: b
-              responderID: fog-b.${{ inputs.namespace }}.development.mobilecoin.com
             ingress:
               common:
                 blocklist:

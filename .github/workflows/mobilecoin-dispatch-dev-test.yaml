@@ -26,18 +26,13 @@ on:
         type: boolean
         required: false
         default: false
-      testing_block_v0:
-        description: "Run block v0 tests"
+      fog_and_minting:
+        description: "Run fog-test-client and minting tests"
         type: boolean
         required: false
         default: true
-      testing_block_v2:
-        description: "Run block v2 tests"
-        type: boolean
-        required: false
-        default: true
-      testing_block_v3:
-        description: "Run block v3 tests"
+      mobilecoind:
+        description: "Run mobilecoind tests"
         type: boolean
         required: false
         default: true
@@ -49,8 +44,6 @@ jobs:
       namespace: ${{ inputs.namespace }}
       ingest_color: ${{ inputs.ingest_color }}
       fog_distribution: ${{ inputs.fog_distribution }}
-      testing_block_v0 : ${{ inputs.testing_block_v0 }}
-      testing_block_v2: ${{ inputs.testing_block_v2 }}
-      testing_block_v3: ${{ inputs.testing_block_v3 }}
-      generate_and_submit_mint_config_tx_uses_json: true
+      fog_and_minting: ${{ inputs.fog_and_minting }}
+      mobilecoind: ${{ inputs.mobilecoind }}
     secrets: inherit
