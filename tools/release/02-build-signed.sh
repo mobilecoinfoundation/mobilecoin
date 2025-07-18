@@ -147,6 +147,35 @@ do
 done
 
 echo "----------------" | tee -a "${LOG}"
+yellow "Writing ${PRODUCTION_JSON}" | tee -a "${LOG}"
+pushd "${TMP_DIR}" >/dev/null
+
+cat << EOF > "${PRODUCTION_JSON}"
+{
+    "consensus": {
+        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libconsensus-enclave.signed.so",
+        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/consensus-enclave.css",
+        "mrenclave": "$(mrenclave "${ENCLAVE_SIGNED_DIR}/libconsensus-enclave.signed.so")"
+    },
+    "ingest": {
+        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libingest-enclave.signed.so",
+        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/ingest-enclave.css",
+        "mrenclave": "$(mrenclave "${ENCLAVE_SIGNED_DIR}/libingest-enclave.signed.so")"
+    },
+    "ledger": {
+        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libledger-enclave.signed.so",
+        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/ledger-enclave.css",
+        "mrenclave": "$(mrenclave "${ENCLAVE_SIGNED_DIR}/libledger-enclave.signed.so")"
+    },
+    "view": {
+        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libview-enclave.signed.so",
+        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/view-enclave.css",
+        "mrenclave": "$(mrenclave "${ENCLAVE_SIGNED_DIR}/libview-enclave.signed.so")"
+    }
+}
+EOF
+
+echo "----------------" | tee -a "${LOG}"
 yellow "Zipping artifacts" | tee -a "${LOG}"
 
 pushd "${TMP_DIR}" >/dev/null

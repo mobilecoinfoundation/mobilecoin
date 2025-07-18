@@ -14,30 +14,12 @@ command -v gh >/dev/null 2>&1 || { red "GitHub CLI (gh) is not installed. Aborti
 
 if [[ "${ENCLAVE_RELEASE}" == "true" ]]
 then
-    yellow "Enclave release generating production.json file"
+    yellow "Using local artifact files to create a release"
 
-# Create production.json file
-cat << EOF > "${PRODUCTION_JSON}"
-{
-    "consensus": {
-        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libconsensus-enclave.signed.so",
-        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/consensus-enclave.css"
-    },
-    "ingest": {
-        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libingest-enclave.signed.so",
-        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/ingest-enclave.css"
-    },
-    "ledger": {
-        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libledger-enclave.signed.so",
-        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/ledger-enclave.css"
-    },
-    "view": {
-        "enclave": "pool/${GIT_COMMIT}/${MRSIGNER}/libview-enclave.signed.so",
-        "sigstruct": "pool/${GIT_COMMIT}/${MRSIGNER}/view-enclave.css"
-    }
-}
-EOF
-
+    check_file "${ENCLAVE_SIGNED_TAR}"
+    check_file "${MEASUREMENTS_TAR}"
+    check_file "${PRODUCTION_JSON}"
+    check_file "${LOG}"
 else
     yellow "Downloading artifacts from the latest enclave release"
     # download artifacts from the latest enclave release
@@ -47,13 +29,18 @@ else
         --pattern "$(basename "${PRODUCTION_JSON}")" \
         --pattern "$(basename "${LOG}")" \
         "${ENCLAVE_TAG}" -D "${TMP_DIR}"
-
-    # extract the signed enclaves
-    pushd "${TMP_DIR}" >/dev/null
-    tar xvzf "${ENCLAVE_SIGNED_TAR}"
-    popd >/dev/null
 fi
 
+yellow "extract the signed enclaves"
+pushd "${TMP_DIR}" >/dev/null
+tar xvzf "${ENCLAVE_SIGNED_TAR}"
+popd >/dev/null
+
+# get mrenclave from production.json
+mrenclave_consensus=$(jq -r '.consensus.mrenclave' "${PRODUCTION_JSON}")
+mrenclave_ingest=$(jq -r '.ingest.mrenclave' "${PRODUCTION_JSON}")
+mrenclave_ledger=$(jq -r '.ledger.mrenclave' "${PRODUCTION_JSON}")
+mrenclave_view=$(jq -r '.view.mrenclave' "${PRODUCTION_JSON}")
 
 # Create release notes
 release_base=$(cat <<EOF
@@ -73,10 +60,10 @@ release_sgx=$(cat <<EOF
 
 ### Enclave Measurements (MRENCLAVE)
 
-- libconsensus-enclave.signed.so: \`$(mrenclave "${ENCLAVE_SIGNED_DIR}/libconsensus-enclave.signed.so")\`
-- libingest-enclave.signed.so: \`$(mrenclave "${ENCLAVE_SIGNED_DIR}/libingest-enclave.signed.so")\`
-- libview-enclave.signed.so: \`$(mrenclave "${ENCLAVE_SIGNED_DIR}/libview-enclave.signed.so")\`
-- libledger-enclave.signed.so: \`$(mrenclave "${ENCLAVE_SIGNED_DIR}/libledger-enclave.signed.so")\`
+- libconsensus-enclave.signed.so: \`${mrenclave_consensus}\`
+- libingest-enclave.signed.so: \`${mrenclave_ingest}\`
+- libview-enclave.signed.so: \`${mrenclave_view}\`
+- libledger-enclave.signed.so: \`${mrenclave_ledger}\`
 
 EOF
 )
@@ -86,7 +73,7 @@ then
     yellow "Release ${GIT_TAG} already exists, adding new release notes"
 
     # download existing release notes
-    gh release download "${GIT_TAG}" --clobber --notes "${TMP_DIR}/release-notes.md"
+    gh release view "${GIT_TAG}" --json body -t '{{.body}}' > "${TMP_DIR}/release-notes.md"
     echo "" >> "${TMP_DIR}/release-notes.md"
     echo "${release_sgx}" >> "${TMP_DIR}/release-notes.md"
 
