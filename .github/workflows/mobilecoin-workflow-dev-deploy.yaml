@@ -416,7 +416,7 @@ jobs:
           network: ${{ inputs.namespace }}
           partner: dev
 
-        fogView:
+        fogLedger:
           responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
           color: green
 
