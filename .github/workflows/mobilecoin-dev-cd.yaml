@@ -287,7 +287,8 @@ jobs:
         - fog-report
         - fog-view-service
         - fog-view-fsg
-        - fog-ledger
+        - fog-ledger-service
+        - fog-ledger-fsg
     steps:
     - name: Checkout
       uses: mobilecoinofficial/gh-actions/checkout@v0

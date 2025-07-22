@@ -46,7 +46,7 @@ mrenclave_view=$(jq -r '.view.mrenclave' "${PRODUCTION_JSON}")
 release_base=$(cat <<EOF
 ## Changelog
 
-### [Full Chanagelog](https://github.com/mobilecoinfoundation/mobilecoin/blob/${GIT_TAG}/CHANGELOG.md)
+### [Full Changelog](https://github.com/mobilecoinfoundation/mobilecoin/blob/${GIT_TAG}/CHANGELOG.md)
 
 EOF
 )
