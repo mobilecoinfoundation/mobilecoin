@@ -10,7 +10,7 @@ spec:
   type: ClusterIP
   selector:
     app: fog-ledger-router
-    color: {{ .Values.fogView.color }}
+    color: {{ .Values.fogLedger.color }}
   ports:
   - name: ledger-grpc
     port: 3228

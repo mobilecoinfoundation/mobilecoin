@@ -1,13 +1,13 @@
 # Copyright (c) 2018-2023 The MobileCoin Foundation
 {{- if .Values.fogLedger.router.ingress.enabled }}
-{{- $responderId := .Values.fogLedger.responderID | required "fogLEdger.responderID is required." }}
+{{- $responderID := .Values.fogLedger.responderID | required "fogLedger.responderID is required." }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "fog-ledger.fullname" . }}-router-grpc
+  name: {{ include "fog-ledger-service.fullname" . }}-router-grpc
   labels:
     app: fog-ledger
-    {{- include "fog-ledger.labels" . | nindent 4 }}
+    {{- include "fog-ledger-service.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.fogLedger.router.ingress.common.blocklist.enabled }}
     haproxy.org/blacklist: {{ .Values.fogLedger.router.ingress.common.blocklist.pattern }}
@@ -18,7 +18,7 @@ spec:
   tls:
   - hosts:
     - {{ $responderID }}
-    secretName: {{ include "fog-ledger.fullname" . }}-tls
+    secretName: {{ include "fog-ledger-service.fullname" . }}-tls
   rules:
   - host: {{ $responderID }}
     http:
@@ -27,28 +27,28 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fog-ledger.fullname" . }}-router
+            name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
               name: ledger-grpc
       - path: /fog_ledger.FogKeyImageAPI
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fog-ledger.fullname" . }}-router
+            name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
               name: ledger-grpc
       - path: /fog_ledger.FogMerkleProofAPI
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fog-ledger.fullname" . }}-router
+            name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
               name: ledger-grpc
       - path: /fog_ledger.FogUntrustedTxOutApi
         pathType: Prefix
         backend:
           service:
-            name: {{ include "fog-ledger.fullname" . }}-router
+            name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
               name: ledger-grpc
 ---
