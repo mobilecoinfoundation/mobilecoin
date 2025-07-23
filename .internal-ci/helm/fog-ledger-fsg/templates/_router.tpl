@@ -30,6 +30,8 @@
     value: insecure-fog-ledger://0.0.0.0:3228/
   - name: MC_ADMIN_LISTEN_URI
     value: insecure-mca://127.0.0.1:8001/
+  - name: MC_MOBILECOIND_URI
+    value: insecure-mobilecoind://mobilecoind:3229
   {{- if eq .Values.jaegerTracing.enabled true }}
   - name: MC_TELEMETRY
     value: "true"
