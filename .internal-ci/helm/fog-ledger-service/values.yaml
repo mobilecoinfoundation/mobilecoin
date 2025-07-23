@@ -3,11 +3,18 @@ mobilecoin:
   network: ''
   partner: ''
 
+
+
 fogLedger:
   # external hostname for the fog-ledger service
   responderID: ''
   # color label of the fogShardGenerator stack. blue|green
   color: blue
+
+  ports:
+    grpc: 3228
+    http: 8228
+    mgmt: 8000
 
   router:
     ingress:

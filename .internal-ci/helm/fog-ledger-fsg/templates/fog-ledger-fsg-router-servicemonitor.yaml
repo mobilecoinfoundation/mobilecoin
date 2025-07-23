@@ -4,18 +4,20 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "fog-ledger-service.fullname" . }}-router
+  name: {{ include "fog-ledger-fsg.fullname" . }}-router
   labels:
     publish: grafana-cloud
     app: fog-ledger-router
-    {{- include "fog-ledger-service.labels" . | nindent 4 }}
+    {{- include "fog-ledger-fsg.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
       app: fog-ledger-router
-      {{- include "fog-ledger-service.selectorLabels" . | nindent 6 }}
+      color: {{ .Values.fogLedger.color }}
+      zone: {{ .Values.fogLedger.zone }}
+      {{- include "fog-ledger-fsg.selectorLabels" . | nindent 6 }}
   endpoints:
-  - port: mgmt-http
+  - port: mgmt
     relabelings:
     - targetLabel: network
       replacement: {{ $network }}

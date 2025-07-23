@@ -34,9 +34,10 @@ spec:
           matchLabels:
             app: fog-ledger-router
             color: {{ $color }}
+            zone: {{ $zone }}
             stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
             {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 12 }}
-        serviceName: {{ include "fog-ledger-fsg.fullname" $ }}-router
+        serviceName: {{ include "fog-ledger-fsg.fullname" $ }}-router-headless
         template:
           metadata:
             annotations:
@@ -44,6 +45,7 @@ spec:
             labels:
               app: fog-ledger-router
               color: {{ $color }}
+              zone: {{ $zone }}
               stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
               {{- include "fog-ledger-fsg.labels" $ | nindent 14 }}
           spec:
@@ -90,8 +92,9 @@ spec:
           app: fog-ledger-store
           stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
           color: {{ $color }}
+          zone: {{ $zone }}
           {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 10 }}
-      serviceName: {{ include "fog-ledger-fsg.fullname" $ }}-store
+      serviceName: {{ include "fog-ledger-fsg.fullname" $ }}-store-headless
       template:
         metadata:
           annotations:
@@ -100,6 +103,8 @@ spec:
             app: fog-ledger-store
             stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
             color: {{ $color }}
+            zone: {{ $zone }}
+            {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 12 }}
             {{- include "fog-ledger-fsg.labels" $ | nindent 12 }}
         spec:
           {{- if $store.affinityEnabled }}

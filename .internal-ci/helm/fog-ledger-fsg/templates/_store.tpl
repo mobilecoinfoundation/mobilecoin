@@ -6,8 +6,8 @@
   imagePullPolicy: Always
   args: [ "/usr/bin/key_image_store" ]
   ports:
-  - name: ledger-grpc
-    containerPort: 3228
+  - name: grpc
+    containerPort: {{ $ledger.grpc }}
   livenessProbe:
     {{- $store.livenessProbe | toYaml | nindent 4 }}
   startupProbe:
@@ -32,13 +32,11 @@
     value: {{ $store.rust.log | quote }}
   - name: MC_CHAIN_ID
     value: {{ .Values.mobilecoin.network }}
-  - name: MC_ADMIN_LISTEN_URI
-    value: insecure-mca://127.0.0.1:8001/
   # This is looking for the fqdn of the svc that is in front of the store.
   - name: MC_CLIENT_LISTEN_URI
-    value: "insecure-key-image-store://0.0.0.0:3228/?responder-id=$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):3228"
+    value: "insecure-key-image-store://0.0.0.0:3228/?responder-id=$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):{{ $ledger.grpc }}/"
   - name: MC_CLIENT_RESPONDER_ID
-    value: "$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):3228"
+    value: "$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):{{ $ledger.grpc }}"
   - name: MC_ADMIN_LISTEN_URI
     value: insecure-mca://127.0.0.1:8001/
   - name: MC_MOBILECOIND_URI

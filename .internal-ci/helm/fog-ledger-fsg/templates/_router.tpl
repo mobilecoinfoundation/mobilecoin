@@ -6,8 +6,8 @@
   imagePullPolicy: Always
   args: [ "/usr/bin/ledger_router" ]
   ports:
-  - name: ledger-grpc
-    containerPort: 3228
+  - name: grpc
+    containerPort: {{ $ledger.grpc }}
   startupProbe:
     {{- $router.startupProbe | toYaml | nindent 4 }}
   livenessProbe:
@@ -27,7 +27,7 @@
   - name: MC_CHAIN_ID
     value: {{ .Values.mobilecoin.network }}
   - name: MC_CLIENT_LISTEN_URI
-    value: insecure-fog-ledger://0.0.0.0:3228/
+    value: insecure-fog-ledger://0.0.0.0:{{ $ledger.grpc }}/
   - name: MC_ADMIN_LISTEN_URI
     value: insecure-mca://127.0.0.1:8001/
   - name: MC_MOBILECOIND_URI

@@ -29,27 +29,27 @@ spec:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: gateway-http
+              name: http
       - path: /gw/fog_ledger.FogKeyImageAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: gateway-http
+              name: http
       - path: /gw/fog_ledger.FogMerkleProofAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: gateway-http
+              name: http
       - path: /gw/fog_ledger.FogUntrustedTxOutApi
         pathType: Prefix
         backend:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: gateway-http
+              name: http
 ---
 {{- end }}

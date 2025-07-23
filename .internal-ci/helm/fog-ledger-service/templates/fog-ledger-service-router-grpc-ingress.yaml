@@ -29,28 +29,28 @@ spec:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: ledger-grpc
+              name: grpc
       - path: /fog_ledger.FogKeyImageAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: ledger-grpc
+              name: grpc
       - path: /fog_ledger.FogMerkleProofAPI
         pathType: Prefix
         backend:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: ledger-grpc
+              name: grpc
       - path: /fog_ledger.FogUntrustedTxOutApi
         pathType: Prefix
         backend:
           service:
             name: {{ include "fog-ledger-service.fullname" . }}-router
             port:
-              name: ledger-grpc
+              name: grpc
 ---
 {{- end }}
 

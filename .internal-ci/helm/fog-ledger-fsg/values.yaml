@@ -12,6 +12,7 @@ mobilecoin:
   network: ''
   partner: ''
 
+
 fogLedger:
   # Affinity to a specific topology.kubernetes.io/zone= label value.
   # zone will be "region-zoneId" format like "italynorth-1"
@@ -54,6 +55,11 @@ fogLedger:
           responseJQ: '.index'
           queryInterval: 5m
           requestBody: ''
+
+  ports:
+    grpc: 3228
+    http: 8228
+    mgmt: 8000
 
   router:
     replicaCount: 1

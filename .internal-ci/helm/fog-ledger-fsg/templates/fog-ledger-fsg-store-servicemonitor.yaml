@@ -13,9 +13,11 @@ spec:
   selector:
     matchLabels:
       app: fog-view-store
+      color: {{ .Values.fogLedger.color }}
+      zone: {{ .Values.fogLedger.zone }}
       {{- include "fog-ledger-fsg.selectorLabels" . | nindent 6 }}
   endpoints:
-  - port: mgmt-http
+  - port: mgmt
     relabelings:
     - targetLabel: network
       replacement: {{ $network }}
