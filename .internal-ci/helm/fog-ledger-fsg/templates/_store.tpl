@@ -36,7 +36,7 @@
     value: insecure-mca://127.0.0.1:8001/
   # This is looking for the fqdn of the svc that is in front of the store.
   - name: MC_CLIENT_LISTEN_URI
-    value: "insecure-fog-ledger-store://0.0.0.0:3228/?responder-id=$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):3228"
+    value: "insecure-key-image-store://0.0.0.0:3228/?responder-id=$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):3228"
   - name: MC_CLIENT_RESPONDER_ID
     value: "$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):3228"
   - name: MC_ADMIN_LISTEN_URI
