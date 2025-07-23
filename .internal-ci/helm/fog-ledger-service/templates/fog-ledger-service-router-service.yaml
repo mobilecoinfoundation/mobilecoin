@@ -14,12 +14,12 @@ spec:
     zone: {{ .Values.fogLedger.zone }}
   ports:
   - name: grpc
-    port: {{ .Values.ports.fogLedger.grpc }}
+    port: {{ .Values.fogLedger.ports.grpc }}
     targetPort: grpc
   - name: mgmt
-    port: {{ .Values.ports.fogLedger.mgmt }}
+    port: {{ .Values.fogLedger.ports.mgmt }}
     targetPort: mgmt
   - name: http
-    port: {{ .Values.ports.fogLedger.http }}
+    port: {{ .Values.fogLedger.ports.http }}
     targetPort: http
 ---
