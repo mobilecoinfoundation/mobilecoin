@@ -27,7 +27,7 @@
   - name: MC_CHAIN_ID
     value: {{ .Values.mobilecoin.network }}
   - name: MC_CLIENT_LISTEN_URI
-    value: insecure-fog-view://0.0.0.0:3228/
+    value: insecure-fog-ledger://0.0.0.0:3228/
   - name: MC_ADMIN_LISTEN_URI
     value: insecure-mca://127.0.0.1:8001/
   {{- if eq .Values.jaegerTracing.enabled true }}
