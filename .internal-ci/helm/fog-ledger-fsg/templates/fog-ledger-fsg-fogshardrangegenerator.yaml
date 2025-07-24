@@ -24,6 +24,8 @@ spec:
   blockCountResponseJQ: {{ $stack.blockHeightRetrieval.responseJQ | quote }}
   blockCountReqBody: {{ $stack.blockHeightRetrieval.requestBody | quote }}
   router:
+    shardingScheme: insecure-key-image-store
+    shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
     templates:
     - templateID: ledger
       containerName: fog-ledger-router

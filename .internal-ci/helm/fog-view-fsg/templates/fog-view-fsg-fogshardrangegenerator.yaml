@@ -24,6 +24,8 @@ spec:
   blockCountResponseJQ: {{ $stack.blockHeightRetrieval.responseJQ | quote }}
   blockCountReqBody: {{ $stack.blockHeightRetrieval.requestBody | quote }}
   router:
+    shardingScheme: insecure-fog-view-store
+    shardingStrategyEnvName: MC_VIEW_SHARD_URIS
     templates:
     - templateID: view
       containerName: fog-view-router
