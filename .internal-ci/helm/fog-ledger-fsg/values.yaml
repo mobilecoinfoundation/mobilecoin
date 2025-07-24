@@ -193,8 +193,5 @@ fogLedger:
       ### required keys:
       #   fog-ledger-sentry-dsn
 
-grpcGateway:
-  grpcServicePort: 3228
-
 jaegerTracing:
   enabled: false
