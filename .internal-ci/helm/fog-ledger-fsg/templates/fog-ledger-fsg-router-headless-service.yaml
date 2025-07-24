@@ -4,13 +4,13 @@ kind: Service
 metadata:
   name: {{ include "fog-ledger-fsg.fullname" . }}-router-headless
   labels:
-    app: fog-view-router
+    app: fog-ledger-router
     {{- include "fog-ledger-fsg.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
   clusterIP: None
   selector:
-    app: fog-view-router
+    app: fog-ledger-router
     color: {{ .Values.fogLedger.color }}
     zone: {{ .Values.fogLedger.zone }}
     {{- include "fog-ledger-fsg.selectorLabels" . | nindent 4 }}

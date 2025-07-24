@@ -12,7 +12,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: fog-view-store
+      app: fog-ledger-store
       color: {{ .Values.fogLedger.color }}
       zone: {{ .Values.fogLedger.zone }}
       {{- include "fog-ledger-fsg.selectorLabels" . | nindent 6 }}
