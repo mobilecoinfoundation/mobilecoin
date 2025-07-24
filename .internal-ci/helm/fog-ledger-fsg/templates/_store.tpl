@@ -34,9 +34,9 @@
     value: {{ .Values.mobilecoin.network }}
   # This is looking for the fqdn of the svc that is in front of the store.
   - name: MC_CLIENT_LISTEN_URI
-    value: "insecure-key-image-store://0.0.0.0:3228/?responder-id=$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):{{ $ledger.ports.grpc }}/"
+    value: "insecure-key-image-store://0.0.0.0:3228/?responder-id=$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store-headless.$(POD_NAMESPACE):{{ $ledger.ports.grpc }}/"
   - name: MC_CLIENT_RESPONDER_ID
-    value: "$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store.$(POD_NAMESPACE):{{ $ledger.ports.grpc }}"
+    value: "$(POD_NAME).{{ include "fog-ledger-fsg.fullname" . }}-store-headless.$(POD_NAMESPACE):{{ $ledger.ports.grpc }}"
   - name: MC_ADMIN_LISTEN_URI
     value: insecure-mca://127.0.0.1:8001/
   - name: MC_MOBILECOIND_URI
