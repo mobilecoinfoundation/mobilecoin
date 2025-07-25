@@ -38,7 +38,7 @@ spec:
             color: {{ $color }}
             stack: {{ include "fog-view-fsg.fullname" $ }}-{{ $stackCount }}
             {{- include "fog-view-fsg.selectorLabels" $ | nindent 12 }}
-        serviceName: {{ include "fog-view-fsg.fullname" $ }}-router
+        serviceName: {{ include "fog-view-fsg.fullname" $ }}-router-headless
         template:
           metadata:
             annotations:
@@ -93,7 +93,7 @@ spec:
           stack: {{ include "fog-view-fsg.fullname" $ }}-{{ $stackCount }}
           color: {{ $.Values.fogView.color }}
           {{- include "fog-view-fsg.selectorLabels" $ | nindent 10 }}
-      serviceName: {{ include "fog-view-fsg.fullname" $ }}-store
+      serviceName: {{ include "fog-view-fsg.fullname" $ }}-store-headless
       template:
         metadata:
           annotations:
