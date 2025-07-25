@@ -29,6 +29,6 @@ spec:
           service:
             name: {{ include "fog-view-service.fullname" . }}-router
             port:
-              name: gateway-http
+              name: http
 ---
 {{- end }}

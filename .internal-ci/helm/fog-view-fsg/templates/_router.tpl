@@ -6,8 +6,8 @@
   imagePullPolicy: Always
   args: [ "/usr/bin/fog_view_router" ]
   ports:
-  - name: view-grpc
-    containerPort: 3225
+  - name: grpc
+    containerPort: {{ $view.ports.grpc }}
   startupProbe:
     {{- $router.startupProbe | toYaml | nindent 4 }}
   livenessProbe:
@@ -27,7 +27,7 @@
   - name: MC_CHAIN_ID
     value: {{ .Values.mobilecoin.network }}
   - name: MC_CLIENT_LISTEN_URI
-    value: insecure-fog-view://0.0.0.0:3225/
+    value: insecure-fog-view://0.0.0.0:{{ $view.ports.grpc }}/
   - name: MC_ADMIN_LISTEN_URI
     value: insecure-mca://127.0.0.1:8001/
   {{- if eq .Values.jaegerTracing.enabled true }}

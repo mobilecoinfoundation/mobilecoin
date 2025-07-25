@@ -83,7 +83,7 @@ spec:
   store:
     containerName: fog-view-store
     servicePort: 80
-    targetPort: view-grpc
+    targetPort: grpc
     spec:
       podManagementPolicy: {{ $store.podManagementPolicy }}
       replicas: {{ $store.replicaCount }}

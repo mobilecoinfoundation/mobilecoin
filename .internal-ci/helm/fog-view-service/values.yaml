@@ -9,6 +9,11 @@ fogView:
   # color label of the fogShardGenerator stack. blue|green
   color: blue
 
+  ports:
+    grpc: 3225
+    http: 8225
+    mgmt: 8000
+
   router:
     ingress:
       enabled: true

@@ -21,6 +21,11 @@ fogView:
   ### fog-ledger-router public hostnames (client responder ID)
   responderID: ''
 
+  ports:
+    grpc: 3225
+    http: 8225
+    mgmt: 8000
+
   stackConfig:
     network:
       # Assume default is a dev network. We can always define a "network" value if needed.
