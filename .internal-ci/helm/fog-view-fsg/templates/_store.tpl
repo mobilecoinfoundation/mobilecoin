@@ -6,8 +6,8 @@
   imagePullPolicy: Always
   args: [ "/usr/bin/fog_view_server" ]
   ports:
-  - name: view-grpc
-    containerPort: 3225
+  - name: grpc
+    containerPort: {{ $view.ports.grpc }}
   livenessProbe:
     {{- $store.livenessProbe | toYaml | nindent 4 }}
   startupProbe:
@@ -36,11 +36,9 @@
     value: insecure-mca://127.0.0.1:8001/
   # This is looking for the fqdn of the svc that is in front of the store.
   - name: MC_CLIENT_LISTEN_URI
-    value: "insecure-fog-view-store://0.0.0.0:3225/?responder-id=$(POD_NAME).{{ include "fog-view-fsg.fullname" . }}-store.$(POD_NAMESPACE):3225"
+    value: "insecure-fog-view-store://0.0.0.0:{{ $view.ports.grpc }}/?responder-id=$(POD_NAME).{{ include "fog-view-fsg.fullname" . }}-store-headless.$(POD_NAMESPACE):{{ $view.ports.grpc }}/"
   - name: MC_CLIENT_RESPONDER_ID
-    value: "$(POD_NAME).{{ include "fog-view-fsg.fullname" . }}-store.$(POD_NAMESPACE):3225"
-  - name: MC_ADMIN_LISTEN_URI
-    value: insecure-mca://127.0.0.1:8001/
+    value: "$(POD_NAME).{{ include "fog-view-fsg.fullname" . }}-store-headless.$(POD_NAMESPACE):{{ $view.ports.grpc }}"
   - name: FOGDB_HOST
     valueFrom:
       configMapKeyRef:

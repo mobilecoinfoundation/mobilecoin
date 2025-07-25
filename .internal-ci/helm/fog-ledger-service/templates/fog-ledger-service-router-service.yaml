@@ -1,0 +1,24 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fog-ledger-service.fullname" . }}-router
+  labels:
+    app: fog-ledger-router
+    {{- include "fog-ledger-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: fog-ledger-router
+    color: {{ .Values.fogLedger.color }}
+  ports:
+  - name: grpc
+    port: {{ .Values.fogLedger.ports.grpc }}
+    targetPort: grpc
+  - name: mgmt
+    port: {{ .Values.fogLedger.ports.mgmt }}
+    targetPort: mgmt
+  - name: http
+    port: {{ .Values.fogLedger.ports.http }}
+    targetPort: http
+---

@@ -398,16 +398,17 @@ jobs:
         chart_repo_password: ${{ github.token }}
         chart_repo_username: ${{ github.actor }}
 
+
   fog-ledger-deploy:
     needs:
     - consensus-deploy
     - mobilecoind-deploy
     runs-on: mcf-dev-small-x64
     steps:
-    - name: Generate fog-ledger values file
+    - name: Generate fog-ledger-service values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
-        cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-values.yaml"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-service-values.yaml"
         image:
           org: ${{ inputs.docker_image_org }}
 
@@ -416,15 +417,10 @@ jobs:
           partner: dev
 
         fogLedger:
-          stackConfig:
-            network:
-              default:
-                shardSize: ${{ inputs.shard_size }}
-                exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          color: green
+
           router:
-            hosts:
-            - partner: a
-              responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
             ingress:
               common:
                 blocklist:
@@ -432,18 +428,96 @@ jobs:
                 tls:
                   clusterIssuer: google-public-ca
         EOF
-
-
-    - name: Deploy fog-ledger
+    - name: Deploy fog-ledger-service
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: fog-ledger
+        chart_name: fog-ledger-service
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
-        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-values.yaml
-        release_name: fog-ledger
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-service-values.yaml
+        release_name: fog-ledger-service
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
+
+    - name: Generate fog-ledger-fsg-gr-z1 values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-fsg-values-gr-z1.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogLedger:
+          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          color: green
+          zone: westeurope-1
+
+          stackConfig:
+            network:
+              default:
+                shardSize: ${{ inputs.shard_size }}
+                exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+        EOF
+
+    - name: Deploy fog-ledger-fsg-gr-z1
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy-oci
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ledger-fsg
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-fsg-values-gr-z1.yaml
+        release_name: fog-ledger-fsg-gr-z1
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo_username: ${{ github.actor }}
+
+    - name: Generate fog-ledger-fsg-gr-z2 values file
+      run: |
+        mkdir -p "${VALUES_BASE_PATH}"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-fsg-values-gr-z2.yaml"
+        image:
+          org: ${{ inputs.docker_image_org }}
+
+        mobilecoin:
+          network: ${{ inputs.namespace }}
+          partner: dev
+
+        fogLedger:
+          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          color: green
+          zone: westeurope-2
+
+          stackConfig:
+            network:
+              default:
+                shardSize: ${{ inputs.shard_size }}
+                exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+        EOF
+
+    - name: Deploy fog-ledger-fsg-gr-z2
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy-oci
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: fog-ledger-fsg
+        chart_version: ${{ inputs.version }}
+        chart_wait_timeout: 10m
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-fsg-values-gr-z2.yaml
+        release_name: fog-ledger-fsg-gr-z2
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}

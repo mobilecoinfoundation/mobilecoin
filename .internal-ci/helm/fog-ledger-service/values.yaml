@@ -3,15 +3,17 @@ mobilecoin:
   network: ''
   partner: ''
 
-fogView:
-  # external hostname for the fog-view service
+
+
+fogLedger:
+  # external hostname for the fog-ledger service
   responderID: ''
   # color label of the fogShardGenerator stack. blue|green
   color: blue
 
   ports:
-    grpc: 3225
-    http: 8225
+    grpc: 3228
+    http: 8228
     mgmt: 8000
 
   router:
@@ -33,8 +35,8 @@ fogView:
           haproxy.org/abortonclose: "true"
           haproxy.org/backend-config-snippet: |-
             http-reuse aggressive
-            dynamic-cookie-key {{ include "fog-view-service.grpcCookieSalt" . }}
-            cookie VIEW insert indirect nocache dynamic
+            dynamic-cookie-key {{ include "fog-ledger-service.grpcCookieSalt" . }}
+            cookie LEDGER insert indirect nocache dynamic
 
       grpc:
         annotations: |-

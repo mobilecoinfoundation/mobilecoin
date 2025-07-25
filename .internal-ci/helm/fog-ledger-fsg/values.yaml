@@ -4,7 +4,7 @@ imagePullSecrets:
 # Pods share the image tag.
 image:
   org: mobilecoin
-  name: fogview
+  name: fog-ledger
   tag: '' # Overrides the image tag whose default is the chart appVersion.
 
 # Mobilecoin network instance
@@ -12,7 +12,8 @@ mobilecoin:
   network: ''
   partner: ''
 
-fogView:
+
+fogLedger:
   # Affinity to a specific topology.kubernetes.io/zone= label value.
   # zone will be "region-zoneId" format like "italynorth-1"
   zone: ''
@@ -20,11 +21,6 @@ fogView:
   color: 'blue'
   ### fog-ledger-router public hostnames (client responder ID)
   responderID: ''
-
-  ports:
-    grpc: 3225
-    http: 8225
-    mgmt: 8000
 
   stackConfig:
     network:
@@ -60,16 +56,21 @@ fogView:
           queryInterval: 5m
           requestBody: ''
 
+  ports:
+    grpc: 3228
+    http: 8228
+    mgmt: 8000
+
   router:
     replicaCount: 1
 
     resources:
       limits:
         sgx.intel.com/epc: 512Ki
-        memory: 3Gi
+        memory: 2Gi
       requests:
         sgx.intel.com/epc: 512Ki
-        memory: 3Gi
+        memory: 2Gi
         cpu: 1100m
 
     nodeSelector:
@@ -91,7 +92,7 @@ fogView:
     podAnnotations:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       # This is the container name that needs to use sgx resources
-      sgx.intel.com/quote-provider: fog-view-router
+      sgx.intel.com/quote-provider: fog-ledger-router
 
     configMap:
       data:
@@ -99,7 +100,7 @@ fogView:
 
     startupProbe:
       grpc:
-        port: 3225
+        port: 3228
       failureThreshold: 240
       periodSeconds: 30
       timeoutSeconds: 1
@@ -107,7 +108,7 @@ fogView:
 
     livenessProbe:
       grpc:
-        port: 3225
+        port: 3228
       failureThreshold: 5
       periodSeconds: 30
       successThreshold: 1
@@ -115,7 +116,7 @@ fogView:
 
     readinessProbe:
       grpc:
-        port: 3225
+        port: 3228
       failureThreshold: 2
       periodSeconds: 10
       successThreshold: 1
@@ -131,7 +132,7 @@ fogView:
     podAnnotations:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       # This is the container name that needs to use sgx resources
-      sgx.intel.com/quote-provider: fog-view-store
+      sgx.intel.com/quote-provider: fog-ledger-store
 
     # disable affinity rules for single node testing
     podManagementPolicy: Parallel
@@ -140,10 +141,10 @@ fogView:
     resources:
       limits:
         sgx.intel.com/epc: 512Ki
-        memory: 5Gi
+        memory: 3Gi
       requests:
         sgx.intel.com/epc: 512Ki
-        memory: 5Gi
+        memory: 3Gi
         cpu: 1100m
 
     nodeSelector:
@@ -157,16 +158,11 @@ fogView:
 
     configMap:
       data:
-        # https://docs.diesel.rs/diesel/r2d2/struct.Builder.html
-        # POSTGRES_IDLE_TIMEOUT: '60'
-        # POSTGRES_MAX_LIFETIME: '120'
-        POSTGRES_CONNECTION_TIMEOUT: '5'
-        POSTGRES_MAX_CONNECTIONS: '3'
         MC_OMAP_CAPACITY: '4194304'
 
     livenessProbe:
       grpc:
-        port: 3225
+        port: 3228
       failureThreshold: 5
       periodSeconds: 30
       timeoutSeconds: 1
@@ -174,15 +170,15 @@ fogView:
 
     startupProbe:
       grpc:
-        port: 3225
-      failureThreshold: 480
+        port: 3228
+      failureThreshold: 240
       periodSeconds: 30
       timeoutSeconds: 1
       successThreshold: 1
 
     readinessProbe:
       grpc:
-        port: 3225
+        port: 3228
       failureThreshold: 2
       periodSeconds: 10
       timeoutSeconds: 1
@@ -195,24 +191,7 @@ fogView:
     sentry:
       name: sentry
       ### required keys:
-      #   fog-view-sentry-dsn
-    postgresReader:
-      name: fog-recovery-reader-0-postgresql
-      ### required keys:
-      #   postgresql-ssl-options
-      #   postgresql-database
-      #   postgresql-username
-      #   postgresql-hostname
-
-  # override the name of the required secrets
-  externalSecrets:
-    postgresReader:
-      name: fog-recovery-reader-0-postgresql
-      ### required keys:
-      #   postgresql-password
-
-grpcGateway:
-  grpcServicePort: 3225
+      #   fog-ledger-sentry-dsn
 
 jaegerTracing:
   enabled: false

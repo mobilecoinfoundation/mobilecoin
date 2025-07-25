@@ -20,11 +20,18 @@
   args:
   - /usr/bin/mc-admin-http-gateway
   - --listen-host=0.0.0.0
-  - --listen-port={{ .Values.fogView.ports.mgmt }}
+  - --listen-port={{ .Values.fogLedger.ports.mgmt }}
   - --admin-uri=insecure-mca://127.0.0.1:8001/
   ports:
   - name: mgmt
-    containerPort: {{ .Values.fogView.ports.mgmt }}
+    containerPort: {{ .Values.fogLedger.ports.mgmt }}
+  resources:
+    limits:
+      cpu: 1
+      memory: 256Mi
+    requests:
+      cpu: 256m
+      memory: 256Mi
   # securityContext:
   #   runAsUser: 1000
   #   runAsGroup: 1000
@@ -41,13 +48,13 @@
   imagePullPolicy: Always
   command:
   - /usr/bin/go-grpc-gateway
-  - -grpc-server-endpoint=127.0.0.1:{{ .Values.fogView.ports.grpc }}
+  - -grpc-server-endpoint=127.0.0.1:{{ .Values.fogLedger.ports.grpc }}
   - -grpc-insecure
-  - -http-server-listen=:{{ .Values.fogView.ports.http }}
+  - -http-server-listen=:{{ .Values.fogLedger.ports.http }}
   - -logtostderr
   ports:
   - name: http
-    containerPort: {{ .Values.fogView.ports.http }}
+    containerPort: {{ .Values.fogLedger.ports.http }}
   resources:
     limits:
       cpu: 1

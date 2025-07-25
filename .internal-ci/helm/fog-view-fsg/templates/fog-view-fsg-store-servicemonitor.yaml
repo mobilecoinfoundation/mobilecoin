@@ -15,7 +15,7 @@ spec:
       app: fog-view-store
       {{- include "fog-view-fsg.selectorLabels" . | nindent 6 }}
   endpoints:
-  - port: mgmt-http
+  - port: mgmt
     relabelings:
     - targetLabel: network
       replacement: {{ $network }}
