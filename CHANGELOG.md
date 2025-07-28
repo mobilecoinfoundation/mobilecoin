@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [7.0.1]
+
+### Changed
+
+- consensus with statefulsets ([#4046])
+- fog-ledger service and fsg charts ([#4049])
+
+### Fixed
+
+- use versioned measurements download ([#4042])
+- revert chart rename, use /charts oci/package repo namespace ([#4044])
+- add cache for CI jobs. Improve ignore lists. Use warper actions. ([#4045])
+- update Integration tests. ([#4047])
+- fix release scripts. Do not require sgx tools to run 03 ([#4048])
+
+[#4042]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4042
+[#4043]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4043
+[#4044]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4044
+[#4045]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4045
+[#4046]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4046
+[#4047]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4047
+[#4048]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4048
+[#4049]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4049
+
 ## [7.0.0]
 
 ### Changed
