@@ -85,19 +85,18 @@ do
 done
 
 # check ledger
-for l in fog fog-b
-do
-    counter=0
-    block_height=0
-    echo "Waiting for fog-ledger fog://${l}.${namespace}.development.mobilecoin.com"
-    while [[ ${block_height} -lt ${minimum_block} ]]
-    do
-        block_info=$(check https://${l}.${namespace}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks)
-        block_height=$(jq -r -n --argjson data "${block_info}" '$data.numBlocks')
-        echo "  current: ${block_height} minimum: ${minimum_block}"
 
-        check_timeout $(( counter++ ))
-    done
+counter=0
+block_height=0
+echo "Waiting for fog-ledger fog://fog.${namespace}.development.mobilecoin.com"
+while [[ ${block_height} -lt ${minimum_block} ]]
+do
+    block_info=$(check "https://fog.${namespace}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks")
+    block_height=$(jq -r -n --argjson data "${block_info}" '$data.numBlocks')
+    echo "  current: ${block_height} minimum: ${minimum_block}"
+
+    check_timeout $(( counter++ ))
 done
+
 
 # no way to check view right now :(

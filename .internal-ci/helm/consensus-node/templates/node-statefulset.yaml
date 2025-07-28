@@ -1,0 +1,176 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "consensusNode.fullname" . }}
+  annotations:
+    sgx.intel.com/quote-provider: node
+  labels:
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consensus-node
+      {{- include "consensusNode.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "consensusNode.fullname" . }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.node.podAnnotations | nindent 8 }}
+      labels:
+        app: consensus-node
+        {{- include "consensusNode.labels" . | nindent 8 }}
+    spec:
+      topologySpreadConstraints:
+      - topologyKey: topology.kubernetes.io/zone
+        maxSkew: 1
+        # Wait until we have nodes
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            # match app and helm chart version
+            app: consensus-node
+            helm.sh/chart: {{ include "consensusNode.chart" . }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          # Require pods to be on separate nodes.
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                # match all consensus-nodes deployed by the same chart version
+                app: consensus-node
+                helm.sh/chart: {{ include "consensusNode.chart" . }}
+      nodeSelector:
+        {{- toYaml .Values.node.nodeSelector | nindent 8 }}
+      tolerations:
+      {{- toYaml .Values.node.tolerations | nindent 6 }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      {{- if .Values.node.initContainers }}
+      initContainers:
+      {{- tpl (toYaml .Values.node.initContainers) . | nindent 6 }}
+      {{- end }}
+      containers:
+      - name: node
+        image: '{{ .Values.image.org }}/node_hw:{{ .Values.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        ports:
+        - name: client-grpc
+          containerPort: 3223
+        - name: peer-grpc
+          containerPort: 8443
+        - name: mgmt-http
+          containerPort: 8000
+        livenessProbe:
+          grpc:
+            port: 8443
+          failureThreshold: 3
+          periodSeconds: 30
+        readinessProbe:
+          grpc:
+            port: 8443
+          failureThreshold: 2
+          periodSeconds: 10
+        startupProbe:
+          grpc:
+            port: 8443
+          failureThreshold: {{ .Values.node.startupProbe.failureThreshold }}
+          periodSeconds: 30
+          initialDelaySeconds: 30
+        envFrom:
+        - secretRef:
+            name: {{ include "consensusNode.fullname" . }}-ledger-distribution
+        - secretRef:
+            name: {{ include "consensusNode.fullname" . }}-msg-signer-key
+        - configMapRef:
+            name: {{ include "consensusNode.fullname" . }}
+        - secretRef:
+            name: sample-keys-seeds
+            optional: true
+        env:
+        - name: RUST_BACKTRACE
+          value: '1'
+        - name: RUST_LOG
+          value: 'info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn'
+        - name: CONSENSUS_SERVICE_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: consensus-sentry-dsn
+              optional: true
+        - name: LEDGER_DISTRIBUTION_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: ledger-distribution-sentry-dsn
+              optional: true
+        - name: MC_BRANCH
+          value: {{ .Values.mobilecoin.network }}
+        - name: MC_CHAIN_ID
+          value: {{ .Values.mobilecoin.network }}
+        volumeMounts:
+        - name: sealed-signing-key
+          mountPath: /sealed
+        - name: aesm-socket-dir
+          mountPath: /var/run/aesmd
+        - name: config-dir
+          mountPath: /config
+        - name: ledger
+          mountPath: /ledger
+        - name: keys-dir
+          mountPath: /keys
+        - name: node-cert
+          mountPath: /certs
+          readOnly: true
+        - name: wallet-seeds
+          mountPath: /wallet-seeds
+          readOnly: true
+        resources:
+          {{- toYaml .Values.node.resources | nindent 10 }}
+      - name: http-gateway
+        image: '{{ .Values.image.org }}/go-grpc-gateway:{{ .Values.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        command:
+        - /usr/bin/go-grpc-gateway
+        - -grpc-server-endpoint=127.0.0.1:3223
+        - -grpc-insecure
+        - -http-server-listen=:8223
+        - -logtostderr
+        ports:
+        - name: client-http
+          containerPort: 8223
+      volumes:
+      - name: sealed-signing-key
+        emptyDir: {}
+      - name: keys-dir
+        emptyDir: {}
+      - name: aesm-socket-dir
+        emptyDir: {}
+      {{- if eq .Values.node.persistence.enabled false }}
+      - name: ledger
+        emptyDir: {}
+      {{- end }}
+      - name: config-dir
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "consensusNode.fullname" . }}-network-config
+          - configMap:
+              name: tokens-config
+      - name: node-cert
+        secret:
+          secretName: {{ include "consensusNode.fullname" . }}-internal-tls
+      - name: wallet-seeds
+        secret:
+          secretName: sample-keys-seeds
+          optional: true
+  {{- if .Values.node.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: ledger
+    spec:
+      {{- toYaml .Values.node.persistence.spec | nindent 6 }}
+  {{- end }}

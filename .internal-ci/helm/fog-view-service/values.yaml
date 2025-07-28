@@ -1,0 +1,45 @@
+# Mobilecoin network instance
+mobilecoin:
+  network: ''
+  partner: ''
+
+fogView:
+  # external hostname for the fog-view service
+  responderID: ''
+  # color label of the fogShardGenerator stack. blue|green
+  color: blue
+
+  ports:
+    grpc: 3225
+    http: 8225
+    mgmt: 8000
+
+  router:
+    ingress:
+      enabled: true
+      common:
+        # Set a static salt for the dynamic cookie. See helpers for more info.
+        # cookieSalt: ''
+        tls:
+          clusterIssuer: letsencrypt-production-http
+        blocklist:
+          enabled: true
+          pattern: patterns/blocked-countries
+        annotations: |-
+          haproxy.org/server-ssl: "false"             # The backend (server) is http
+          haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+          haproxy.org/timeout-server: 239s
+          haproxy.org/timeout-http-keep-alive: 120s
+          haproxy.org/abortonclose: "true"
+          haproxy.org/backend-config-snippet: |-
+            http-reuse aggressive
+            dynamic-cookie-key {{ include "fog-view-service.grpcCookieSalt" . }}
+            cookie VIEW insert indirect nocache dynamic
+
+      grpc:
+        annotations: |-
+          haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+
+      http:
+        annotations: |-
+          haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix

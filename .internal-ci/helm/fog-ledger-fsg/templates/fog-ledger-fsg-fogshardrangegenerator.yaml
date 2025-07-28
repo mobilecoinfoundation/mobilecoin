@@ -1,0 +1,139 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- $stack := (include "fog-ledger-fsg.stackConfig" $ | fromYaml) }}
+{{- $ledger := .Values.fogLedger }}
+{{- $zone := $ledger.zone | required "fogLedger.zone is required." }}
+{{- $color := $ledger.color | required "fogLedger.color is required." }}
+{{- $responderId := $ledger.responderID | required "fogLedger.responderID is required." }}
+{{- $router := $ledger.router }}
+{{- $store := $ledger.store }}
+{{- range $stackCount := until (int $stack.count) }}
+apiVersion: mc.mobilecoin.com/v1
+kind: FogShardRangeGenerator
+metadata:
+  name: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+  labels:
+    stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+    color: {{ $color }}
+    {{- include "fog-ledger-fsg.labels" $ | nindent 4 }}
+spec:
+  shardSize: {{ $stack.shardSize }}
+  exceedBlockHeightBy: {{ $stack.exceedBlockHeightBy }}
+  shardOverlap: {{ $stack.shardOverlap }}
+  blockCountURL: {{ tpl $stack.blockHeightRetrieval.blockCountURL $ | quote }}
+  blockCountQueryInterval: {{ $stack.blockHeightRetrieval.queryInterval | quote }}
+  blockCountResponseJQ: {{ $stack.blockHeightRetrieval.responseJQ | quote }}
+  blockCountReqBody: {{ $stack.blockHeightRetrieval.requestBody | quote }}
+  router:
+    shardingScheme: insecure-key-image-store
+    shardingStrategyEnvName: MC_KEY_IMAGE_SHARD_URIS
+    templates:
+    - templateID: ledger
+      containerName: fog-ledger-router
+      spec:
+        podManagementPolicy: {{ $router.podManagementPolicy }}
+        replicas: {{ $router.replicaCount }}
+        selector:
+          matchLabels:
+            app: fog-ledger-router
+            color: {{ $color }}
+            zone: {{ $zone }}
+            stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+            {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 12 }}
+        serviceName: {{ include "fog-ledger-fsg.fullname" $ }}-router-headless
+        template:
+          metadata:
+            annotations:
+              {{- toYaml $router.podAnnotations | nindent 14 }}
+            labels:
+              app: fog-ledger-router
+              color: {{ $color }}
+              zone: {{ $zone }}
+              stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+              {{- include "fog-ledger-fsg.labels" $ | nindent 14 }}
+          spec:
+            readinessGates:
+            - conditionType: mobilecoin.com/shards-ready
+            {{- if $router.affinityEnabled }}
+            affinity:
+              podAffinity:
+                # Prefer Pods to be scheduled on nodes with pods from the same stack.
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: stack
+                        operator: In
+                        values:
+                        - {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+                    topologyKey: "kubernetes.io/hostname"
+                  weight: 1
+            {{- end }}
+            imagePullSecrets:
+            {{- toYaml $.Values.imagePullSecrets | nindent 12 }}
+            initContainers:
+            {{- include "containers.sysctl" $ | nindent 12 }}
+            containers:
+            {{- include "fog-ledger-fsg.router" $ | nindent 12 }}
+            {{- include "containers.go-grpc-gateway" $ | nindent 12 }}
+            {{- include "containers.admin-http-gateway" $ | nindent 12 }}
+            nodeSelector:
+              topology.kubernetes.io/zone: {{ $zone }}
+              {{- toYaml $router.nodeSelector | nindent 14 }}
+            tolerations:
+            {{- toYaml $router.tolerations | nindent 12 }}
+
+  store:
+    containerName: fog-ledger-store
+    servicePort: 80
+    targetPort: grpc
+    spec:
+      podManagementPolicy: {{ $store.podManagementPolicy }}
+      replicas: {{ $store.replicaCount }}
+      selector:
+        matchLabels:
+          app: fog-ledger-store
+          stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+          color: {{ $color }}
+          zone: {{ $zone }}
+          {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 10 }}
+      serviceName: {{ include "fog-ledger-fsg.fullname" $ }}-store-headless
+      template:
+        metadata:
+          annotations:
+            {{- toYaml $store.podAnnotations | nindent 12 }}
+          labels:
+            app: fog-ledger-store
+            stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+            color: {{ $color }}
+            zone: {{ $zone }}
+            {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 12 }}
+            {{- include "fog-ledger-fsg.labels" $ | nindent 12 }}
+        spec:
+          {{- if $store.affinityEnabled }}
+          affinity:
+            podAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: stack
+                      operator: In
+                      values:
+                      - {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
+                  topologyKey: "kubernetes.io/hostname"
+                weight: 1
+          {{- end }}
+          imagePullSecrets:
+          {{- toYaml $.Values.imagePullSecrets | nindent 10 }}
+          initContainers:
+          {{- include "containers.sysctl" $ | nindent 12 }}
+          containers:
+          {{- include "fog-ledger-fsg.store" $ | nindent 12 }}
+          {{- include "containers.admin-http-gateway" $ | nindent 12 }}
+          nodeSelector:
+            topology.kubernetes.io/zone: {{ $zone }}
+            {{- toYaml $store.nodeSelector | nindent 12 }}
+          tolerations:
+          {{- toYaml $store.tolerations | nindent 10 }}
+---
+{{- end }}

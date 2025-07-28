@@ -15,7 +15,7 @@ on:
         description: "Chart Repo URL"
         type: string
         required: false
-        default: ghcr.io/mobilecoinfoundation
+        default: ghcr.io/mobilecoinfoundation/charts
       namespace:
         description: "Target Namespace"
         type: string
@@ -100,7 +100,7 @@ jobs:
       with:
         action: helm-deploy-oci
         chart_repo: ${{ inputs.chart_repo }}
-        chart_name: chart-consensus-node
+        chart_name: consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
         chart_wait_timeout: 10m

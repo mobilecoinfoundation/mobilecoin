@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fog-ledger-fsg
+description: MobileCoin Fog Ledger services stack.
+type: application
+version: 0.0.0
+appVersion: "0.0.0"

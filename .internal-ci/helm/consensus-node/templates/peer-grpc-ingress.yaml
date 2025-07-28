@@ -1,0 +1,54 @@
+# Copyright (c) 2018-2024 The MobileCoin Foundation
+{{- with .Values.node.ingress }}
+{{- if .enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "consensusNode.fullname" $ }}-peer-grpc
+  annotations:
+    {{- if .common.blocklist.enabled }}
+    haproxy.org/blacklist: {{ .common.blocklist.pattern | quote }}
+    {{- end }}
+    {{- toYaml .common.annotations | nindent 4 }}
+    {{- toYaml .grpc.annotations | nindent 4 }}
+  labels:
+    {{- include "consensusNode.labels" $ | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ $.Values.node.config.peerHostname }}
+    secretName: {{ include "consensusNode.fullname" $ }}-ingress-tls
+  rules:
+  - host: {{ $.Values.node.config.peerHostname }}
+    http:
+      paths:
+      - path: /attest.AttestedApi
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" $ }}
+            port:
+              name: peer-grpc
+      - path: /build_info.BuildInfoApi
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" $ }}
+            port:
+              name: peer-grpc
+      - path: /consensus_common.BlockchainAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" $ }}
+            port:
+              name: peer-grpc
+      - path: /consensus_peer.ConsensusPeerAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" $ }}
+            port:
+              name: peer-grpc
+{{- end }}
+{{- end }}

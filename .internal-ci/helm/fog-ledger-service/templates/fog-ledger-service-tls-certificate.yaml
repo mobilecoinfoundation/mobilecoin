@@ -1,0 +1,21 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- if .Values.fogLedger.router.ingress.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "fog-ledger-service.fullname" . }}-tls
+  labels:
+    {{- include "fog-ledger-service.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "fog-ledger-service.fullname" . }}-tls
+  privateKey:
+    size: 2048
+    algorithm: RSA
+    encoding: PKCS1
+  dnsNames:
+  - {{ .Values.fogLedger.responderID }}
+  issuerRef:
+    name: {{ .Values.fogLedger.router.ingress.common.tls.clusterIssuer }}
+    kind: ClusterIssuer
+---
+{{- end }}

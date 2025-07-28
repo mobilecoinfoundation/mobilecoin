@@ -1,0 +1,34 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- if .Values.fogView.router.ingress.enabled }}
+{{- $responderId := .Values.fogView.responderID | required "fogView.responderID is required." }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fog-view-service.fullname" . }}-router-grpc
+  labels:
+    app: fog-view
+    {{- include "fog-view-service.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.fogView.router.ingress.common.blocklist.enabled }}
+    haproxy.org/blacklist: {{ .Values.fogView.router.ingress.common.blocklist.pattern }}
+    {{- end }}
+    {{ toYaml (tpl .Values.fogView.router.ingress.common.annotations . | fromYaml) | nindent 4 }}
+    {{ toYaml (tpl .Values.fogView.router.ingress.grpc.annotations . | fromYaml) | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ $responderId }}
+    secretName: {{ include "fog-view-service.fullname" . }}-tls
+  rules:
+  - host: {{ $responderId }}
+    http:
+      paths:
+      - path: /fog_view.FogViewAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-view-service.fullname" . }}-router
+            port:
+              name: grpc
+---
+{{- end }}

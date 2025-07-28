@@ -36,7 +36,7 @@ on:
         required: true
 
 jobs:
-  reset-helm:
+  reset-k8s:
     runs-on: mcf-dev-small-x64
     strategy:
       matrix:
@@ -47,12 +47,7 @@ jobs:
         - fog-ingest-blue
         - fog-ingest-green
         - fog-recovery-postgresql
-        - fog-services
         - mobilecoind
-        - mc-core-common-config
-        - mc-core-dev-env-setup
-        - fog-report-a
-        - fog-report-b
     steps:
     - name: Delete release
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -64,11 +59,6 @@ jobs:
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
-  reset-k8s:
-    runs-on: mcf-dev-small-x64
-    needs:
-    - reset-helm
-    steps:
     - name: Delete PersistentVolumeClaims
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
@@ -87,6 +77,7 @@ jobs:
         rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+
 
   reset-s3:
     runs-on: mcf-dev-large-x64

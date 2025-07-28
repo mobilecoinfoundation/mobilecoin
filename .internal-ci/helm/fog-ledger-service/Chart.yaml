@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fog-ledger-service
+description: MobileCoin Fog Ledger shared services stack.
+type: application
+version: 0.0.0
+appVersion: "0.0.0"

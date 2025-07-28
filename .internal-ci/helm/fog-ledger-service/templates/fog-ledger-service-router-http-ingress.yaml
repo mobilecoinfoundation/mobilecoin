@@ -1,0 +1,55 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+{{- if .Values.fogLedger.router.ingress.enabled }}
+{{- $responderID := .Values.fogLedger.responderID | required "fogLedger.responderID is required." }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fog-ledger-service.fullname" . }}-router-http
+  labels:
+    app: fog-ledger
+    {{- include "fog-ledger-service.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.fogLedger.router.ingress.common.blocklist.enabled }}
+    haproxy.org/blacklist: {{ .Values.fogLedger.router.ingress.common.blocklist.pattern }}
+    {{- end }}
+    {{ toYaml (tpl .Values.fogLedger.router.ingress.common.annotations . | fromYaml) | nindent 4 }}
+    {{ toYaml (tpl .Values.fogLedger.router.ingress.http.annotations . | fromYaml) | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ $responderID }}
+    secretName: {{ include "fog-ledger-service.fullname" . }}-tls
+  rules:
+  - host: {{ $responderID }}
+    http:
+      paths:
+      - path: /gw/fog_ledger.FogBlockAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger-service.fullname" . }}-router
+            port:
+              name: http
+      - path: /gw/fog_ledger.FogKeyImageAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger-service.fullname" . }}-router
+            port:
+              name: http
+      - path: /gw/fog_ledger.FogMerkleProofAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger-service.fullname" . }}-router
+            port:
+              name: http
+      - path: /gw/fog_ledger.FogUntrustedTxOutApi
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fog-ledger-service.fullname" . }}-router
+            port:
+              name: http
+---
+{{- end }}

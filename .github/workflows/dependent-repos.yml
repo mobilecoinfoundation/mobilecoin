@@ -1,4 +1,5 @@
-name: Check that repositories submoduling us will still build after this PR
+name: Check Dependent Repos
+# Check repositories that are using mobilecoin as a submodule will still build after this PR
 
 on:
   pull_request:
@@ -7,6 +8,7 @@ on:
     - 'release/**'
     paths-ignore:
     - '**.md'
+    - '.github/**'
 
 env:
   CARGO_TERM_COLOR: always

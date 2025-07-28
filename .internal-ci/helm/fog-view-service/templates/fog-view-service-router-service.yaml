@@ -1,0 +1,24 @@
+# Copyright (c) 2018-2023 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fog-view-service.fullname" . }}-router
+  labels:
+    app: fog-view-router
+    {{- include "fog-view-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: fog-view-router
+    color: {{ .Values.fogView.color }}
+  ports:
+  - name: grpc
+    port: {{ .Values.fogView.ports.grpc }}
+    targetPort: grpc
+  - name: mgmt
+    port: {{ .Values.fogView.ports.mgmt }}
+    targetPort: mgmt
+  - name: http
+    port: {{ .Values.fogView.ports.http }}
+    targetPort: http
+---

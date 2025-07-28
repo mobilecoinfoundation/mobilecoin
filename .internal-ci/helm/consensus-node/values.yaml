@@ -1,0 +1,141 @@
+# Copyright (c) 2018-2024 The MobileCoin Foundation
+fullnameOverride: ''
+
+imagePullSecrets:
+- name: docker-credentials
+
+# disable client ports on the service
+acceptClientConnections: true
+
+# Mobilecoin network instance
+mobilecoin:
+  network: ''
+  partner: ''
+
+image:
+  org: mobilecoin
+  tag: ''
+
+node:
+  podAnnotations:
+    fluentbit.io/include: 'true'
+    fluentbit.io/exclude-jaeger-agent: 'true'
+    # This is the container name that needs to use sgx resources
+    sgx.intel.com/quote-provider: node
+
+  nodeSelector:
+    dcap: 'true'
+
+  resources:
+    limits:
+      sgx.intel.com/epc: 512Ki
+    requests:
+      cpu: 1
+      memory: 10Gi
+      sgx.intel.com/epc: 512Ki
+
+  tolerations:
+  - key: dcap
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+  initContainers: []
+
+  startupProbe:
+    # wait 6 hours on startup
+    failureThreshold: 720
+
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: fast
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 512Gi
+
+  config:
+    clientHostname: ''
+    peerHostname: ''
+    blockVersion: '4'
+    # When true we don't start the consensus or ledger-distribution services,
+    # just run ledger-from-archive and wait.
+    ledgerFromArchiveOnly: false
+
+  ingress:
+    enabled: true
+    common:
+      tls:
+        clusterIssuer: letsencrypt-production-http
+      blocklist:
+        enabled: true
+        pattern: patterns/blocked-countries
+      annotations:
+        haproxy.org/server-ssl: 'false'             # The backend (server) is http
+        haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+        haproxy.org/timeout-server: 239s
+        haproxy.org/timeout-http-keep-alive: 120s
+        haproxy.org/abortonclose: 'true'
+        haproxy.org/backend-config-snippet: |-
+          http-reuse aggressive
+
+    grpc:
+      annotations:
+        haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
+
+    http:
+      annotations:
+        haproxy.org/path-rewrite: '/gw/(.*) /\1'    # Strip the /gw prefix
+
+    clientAttest:
+      rateLimits:
+        enabled: true
+        # Assume 2 ingress controllers.
+        # Since this version of haproxy ingress doesn't have peering support we need to divide the
+        # total requests we want to allow by the number of nodes.  Its a little bit funky since
+        # we also need to assume that load-balancing between ingest nodes is even (or close enough).
+        # Another limitation is this stick-table is shared across all ingresses that use the same
+        # rate-limit-period.
+        # rate limit attest endpoint to 60 requests/min from any single IP.
+        annotations:
+          haproxy.org/rate-limit-status-code: "429"
+          haproxy.org/rate-limit-requests: "60"
+          # rate-limit-period is defined in _helpers.tpl based on the consensus node instance number
+
+  ### These configmaps and secrets must be deployed by external process to the namespace.
+  # override the name of the required configmaps
+  externalConfigMaps:
+    # Sentry is Optional
+    sentry:
+      name: sentry
+      ### required keys:
+      #   consensus-sentry-dsn:
+      #   ledger-distribution-sentry-dsn:
+    tokensConfig:
+      name: tokens-config
+      ### required keys:
+      #  tokens.signed.json:
+    networkConfig:
+      # The name will be be set unique to the instance
+      # "{{ include "consensusNode.fullname" . }}-network-config"
+      ### required keys:
+      #  network.json:
+
+  # override the name of the required secrets
+  externalSecrets:
+    ledgerDistribution:
+      # The name will be be set unique to the instance
+      # "{{ include "consensusNode.fullname" . }}-ledger-distribution"
+      ### required keys:
+      # AWS_ACCESS_KEY_ID:
+      # AWS_SECRET_ACCESS_KEY:
+      # AWS_REGION:
+      # LEDGER_DISTRIBUTION_S3_BUCKET:
+      # MC_DEST:
+    msgSignerKey:
+      # The name will be be set unique to the instance
+      # "{{ include "consensusNode.fullname" . }}-msg-signer-key"
+      ### required keys:
+      # MC_MSG_SIGNER_KEY:

@@ -1,0 +1,7 @@
+# Copyright (c) 2018-2024 The MobileCoin Foundation
+apiVersion: v2
+name: consensus-node
+description: MobileCoin consensus node
+type: application
+version: 0.0.0
+appVersion: 0.0.0
