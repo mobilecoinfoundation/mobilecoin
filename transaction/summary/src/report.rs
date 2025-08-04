@@ -152,8 +152,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     fn input_add(&mut self, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
 
-        // Ensure value will not overflow
-        let value = i128::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = value as i128;
 
         // Check for existing total entry for this token
         match self
@@ -177,8 +176,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     fn change_sub(&mut self, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
 
-        // Ensure value will not overflow
-        let value = i128::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = value as i128;
 
         // Check for existing total entry for this token
         match self
@@ -202,8 +200,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     fn sci_add(&mut self, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
 
-        // Ensure value will not overflow
-        let value = i128::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = value as i128;
 
         // Check for existing total entry for this token
         match self
@@ -226,8 +223,7 @@ impl<const RECORDS: usize, const TOTALS: usize> TransactionReport
     fn output_add(&mut self, entity: TransactionEntity, amount: Amount) -> Result<(), Error> {
         let Amount { token_id, value } = amount;
 
-        // Ensure value will not overflow
-        let value = u128::try_from(value).map_err(|_| Error::NumericOverflow)?;
+        let value = value as u128;
 
         // Check for existing output for this address
         match self
@@ -395,9 +391,15 @@ mod tests {
 
     use super::*;
 
+    // The purpose of this test is to ensure TxSummaryUnblindingReport does not grow
+    // unexpectedly. This is used in the Ledger firmware, where memory
+    // constraints prohibit large objects. The exact upper threshold hasn't been
+    // determined which is why this is asserting an exact value. It is possible
+    // that this will need to be changed if the struct layout or contents
+    // change.
     #[test]
     fn test_report_size() {
-        assert_eq!(core::mem::size_of::<TxSummaryUnblindingReport>(), 1704);
+        assert_eq!(core::mem::size_of::<TxSummaryUnblindingReport>(), 1728);
     }
 
     #[test]

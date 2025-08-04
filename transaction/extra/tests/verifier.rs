@@ -539,7 +539,7 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
                 (value + value2 + Mob::MINIMUM_FEE) as i128
             ),]
         );
-        let mut outputs = vec![
+        let mut outputs = [
             (
                 TransactionEntity::OtherAddress(recipient_hash),
                 token_id,
@@ -670,7 +670,7 @@ fn test_sci_tx_summary_verification() {
             (Mob::ID, TotalKind::Sci, value as i128),
         ]
     );
-    let mut outputs = vec![
+    let mut outputs = [
         // Output to swap counterparty
         (TransactionEntity::Swap, token2, value2 as u128),
         // Converted output to ourself
@@ -801,7 +801,7 @@ fn test_sci_three_way_tx_summary_verification() {
             (Mob::ID, TotalKind::Sci, value as i128),
         ]
     );
-    let mut outputs = vec![
+    let mut outputs = [
         // Converted output to charlie, - fee paid from Mob input
         (
             TransactionEntity::OtherAddress(charlie_hash),
