@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! Tests of the streaming verifier
 
@@ -18,7 +18,7 @@ use mc_transaction_core::{
     Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_extra::UnsignedTx;
-use mc_transaction_summary::{verify_tx_summary, TransactionEntity};
+use mc_transaction_summary::{verify_tx_summary, TotalKind, TransactionEntity};
 use mc_util_from_random::FromRandom;
 use mc_util_serial::encode;
 use rand::{rngs::StdRng, SeedableRng};
@@ -204,6 +204,7 @@ fn test_max_size_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *sender.view_private_key(),
+        sender.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -212,17 +213,19 @@ fn test_max_size_tx_summary_verification() {
     );
 
     let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
-    let balance_changes: Vec<_> = report.balance_changes.iter().collect();
     assert_eq!(
-        balance_changes,
-        vec![
-            (&(TransactionEntity::Ourself, TokenId::from(0)), &-16000),
-            (
-                &(TransactionEntity::Address(recipient_hash), TokenId::from(0)),
-                &160
-            )
-        ]
+        &report.outputs,
+        &[(
+            TransactionEntity::OtherAddress(recipient_hash),
+            TokenId::from(0),
+            160
+        )]
     );
+    assert_eq!(
+        &report.totals,
+        &[(TokenId::from(0), TotalKind::Ours, 16000),]
+    );
+
     assert_eq!(report.network_fee, Amount::new(15840, TokenId::from(0)));
 }
 
@@ -239,6 +242,7 @@ fn test_min_size_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *sender.view_private_key(),
+        sender.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -247,16 +251,17 @@ fn test_min_size_tx_summary_verification() {
     );
 
     let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
-    let balance_changes: Vec<_> = report.balance_changes.iter().collect();
     assert_eq!(
-        balance_changes,
-        vec![
-            (&(TransactionEntity::Ourself, TokenId::from(0)), &-1000),
-            (
-                &(TransactionEntity::Address(recipient_hash), TokenId::from(0)),
-                &10
-            )
-        ]
+        &report.outputs,
+        &[(
+            TransactionEntity::OtherAddress(recipient_hash),
+            TokenId::from(0),
+            10
+        )]
+    );
+    assert_eq!(
+        &report.totals,
+        &[(TokenId::from(0), TotalKind::Ours, 1000),]
     );
     assert_eq!(report.network_fee, Amount::new(990, TokenId::from(0)));
 }
@@ -333,6 +338,7 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
             &tx_summary,
             &tx_summary_unblinding_data,
             *sender.view_private_key(),
+            sender.change_subaddress(),
         )
         .unwrap();
         assert_eq!(
@@ -341,23 +347,22 @@ fn test_two_input_tx_with_change_tx_summary_verification() {
         );
 
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
-        let balance_changes: Vec<_> = report
-            .balance_changes
-            .iter()
-            .map(|(x, y)| (x.clone(), *y))
-            .collect();
-        let expected = vec![
-            (
-                (TransactionEntity::Ourself, token_id),
-                -((value + value2 - change_value) as i64),
-            ),
-            (
-                (TransactionEntity::Address(recipient_hash), token_id),
-                (value + value2 - change_value - Mob::MINIMUM_FEE) as i64,
-            ),
-        ];
-
-        assert_eq!(balance_changes, expected);
+        assert_eq!(
+            &report.totals,
+            &[(
+                token_id,
+                TotalKind::Ours,
+                (value + value2 - change_value) as i128
+            ),]
+        );
+        assert_eq!(
+            &report.outputs,
+            &[(
+                TransactionEntity::OtherAddress(recipient_hash),
+                token_id,
+                (value + value2 - change_value - Mob::MINIMUM_FEE) as u128
+            ),]
+        );
         assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
     }
 }
@@ -425,6 +430,7 @@ fn test_simple_tx_with_change_tx_summary_verification() {
             &tx_summary,
             &tx_summary_unblinding_data,
             *sender.view_private_key(),
+            sender.change_subaddress(),
         )
         .unwrap();
         assert_eq!(
@@ -433,23 +439,18 @@ fn test_simple_tx_with_change_tx_summary_verification() {
         );
 
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
-        let balance_changes: Vec<_> = report
-            .balance_changes
-            .iter()
-            .map(|(x, y)| (x.clone(), *y))
-            .collect();
-        let expected = vec![
-            (
-                (TransactionEntity::Ourself, token_id),
-                -((value - change_value) as i64),
-            ),
-            (
-                (TransactionEntity::Address(recipient_hash), token_id),
-                (value - change_value - Mob::MINIMUM_FEE) as i64,
-            ),
-        ];
-
-        assert_eq!(balance_changes, expected);
+        assert_eq!(
+            &report.totals,
+            &[(token_id, TotalKind::Ours, ((value - change_value) as i128)),]
+        );
+        assert_eq!(
+            &report.outputs,
+            &[(
+                TransactionEntity::OtherAddress(recipient_hash),
+                token_id,
+                (value - change_value - Mob::MINIMUM_FEE) as u128
+            ),]
+        );
         assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
     }
 }
@@ -520,6 +521,7 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
             &tx_summary,
             &tx_summary_unblinding_data,
             *sender.view_private_key(),
+            sender.change_subaddress(),
         )
         .unwrap();
         assert_eq!(
@@ -529,28 +531,28 @@ fn test_two_output_tx_with_change_tx_summary_verification() {
 
         let recipient_hash = ShortAddressHash::from(&recipient.default_subaddress());
         let recipient2_hash = ShortAddressHash::from(&recipient2.default_subaddress());
-        let balance_changes: Vec<_> = report
-            .balance_changes
-            .iter()
-            .map(|(x, y)| (x.clone(), *y))
-            .collect();
-        let mut expected = vec![
+        assert_eq!(
+            &report.totals,
+            &[(
+                token_id,
+                TotalKind::Ours,
+                (value + value2 + Mob::MINIMUM_FEE) as i128
+            ),]
+        );
+        let mut outputs = vec![
             (
-                (TransactionEntity::Ourself, token_id),
-                -((value + value2 + Mob::MINIMUM_FEE) as i64),
+                TransactionEntity::OtherAddress(recipient_hash),
+                token_id,
+                value as u128,
             ),
             (
-                (TransactionEntity::Address(recipient_hash), token_id),
-                (value as i64),
-            ),
-            (
-                (TransactionEntity::Address(recipient2_hash), token_id),
-                (value2 as i64),
+                TransactionEntity::OtherAddress(recipient2_hash),
+                token_id,
+                value2 as u128,
             ),
         ];
-        expected.sort();
-
-        assert_eq!(balance_changes, expected);
+        outputs.sort();
+        assert_eq!(&report.outputs[..], &outputs[..]);
         assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, token_id));
     }
 }
@@ -637,6 +639,7 @@ fn test_sci_tx_summary_verification() {
             &mut rng,
         )
         .unwrap();
+    let bob_hash = ShortAddressHash::from(&bob.default_subaddress());
 
     let unsigned_tx = builder
         .build_unsigned::<DefaultTxOutputsOrdering>()
@@ -650,6 +653,7 @@ fn test_sci_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *bob.view_private_key(),
+        bob.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -657,23 +661,28 @@ fn test_sci_tx_summary_verification() {
         &signing_data.mlsag_signing_digest[..]
     );
 
-    let balance_changes: Vec<_> = report
-        .balance_changes
-        .iter()
-        .map(|(x, y)| (x.clone(), *y))
-        .collect();
-    let mut expected = vec![
+    assert_eq!(
+        &report.totals,
+        &[
+            // Bob sends 100_000 of token id 2 to the swap counterparty
+            (token2, TotalKind::Ours, value2 as i128),
+            // SCI inputs used in the transaction (fully consumed)
+            (Mob::ID, TotalKind::Sci, value as i128),
+        ]
+    );
+    let mut outputs = vec![
+        // Output to swap counterparty
+        (TransactionEntity::Swap, token2, value2 as u128),
+        // Converted output to ourself
         (
-            (TransactionEntity::Ourself, Mob::ID),
-            ((value - Mob::MINIMUM_FEE) as i64),
+            TransactionEntity::OurAddress(bob_hash),
+            Mob::ID,
+            (value - Mob::MINIMUM_FEE) as u128,
         ),
-        ((TransactionEntity::Ourself, token2), -(value2 as i64)),
-        ((TransactionEntity::Swap, Mob::ID), -(value as i64)),
-        ((TransactionEntity::Swap, token2), (value2 as i64)),
     ];
-    expected.sort();
+    outputs.sort();
+    assert_eq!(&report.outputs[..], &outputs[..]);
 
-    assert_eq!(balance_changes, expected);
     assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, Mob::ID));
 }
 
@@ -773,6 +782,7 @@ fn test_sci_three_way_tx_summary_verification() {
         &tx_summary,
         &tx_summary_unblinding_data,
         *bob.view_private_key(),
+        bob.change_subaddress(),
     )
     .unwrap();
     assert_eq!(
@@ -780,24 +790,29 @@ fn test_sci_three_way_tx_summary_verification() {
         &signing_data.mlsag_signing_digest[..]
     );
 
-    let balance_changes: Vec<_> = report
-        .balance_changes
-        .iter()
-        .map(|(x, y)| (x.clone(), *y))
-        .collect();
-
     let charlie_hash = ShortAddressHash::from(&charlie.default_subaddress());
-    let mut expected = vec![
-        ((TransactionEntity::Ourself, token2), -(value2 as i64)),
-        (
-            (TransactionEntity::Address(charlie_hash), Mob::ID),
-            ((value - Mob::MINIMUM_FEE) as i64),
-        ),
-        ((TransactionEntity::Swap, Mob::ID), -(value as i64)),
-        ((TransactionEntity::Swap, token2), (value2 as i64)),
-    ];
-    expected.sort();
 
-    assert_eq!(balance_changes, expected);
+    assert_eq!(
+        &report.totals,
+        &[
+            // Bob's spend to create the transaction
+            (token2, TotalKind::Ours, value2 as i128),
+            // SCI inputs used in the transaction
+            (Mob::ID, TotalKind::Sci, value as i128),
+        ]
+    );
+    let mut outputs = vec![
+        // Converted output to charlie, - fee paid from Mob input
+        (
+            TransactionEntity::OtherAddress(charlie_hash),
+            Mob::ID,
+            (value - Mob::MINIMUM_FEE) as u128,
+        ),
+        // Output to swap counterparty
+        (TransactionEntity::Swap, token2, value2 as u128),
+    ];
+    outputs.sort();
+    assert_eq!(&report.outputs[..], &outputs[..]);
+
     assert_eq!(report.network_fee, Amount::new(Mob::MINIMUM_FEE, Mob::ID));
 }
