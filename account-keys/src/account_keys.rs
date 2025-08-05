@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2023 The MobileCoin Foundation
 
 //! MobileCoin account keys.
 //!
@@ -37,6 +37,7 @@ use mc_util_from_random::FromRandom;
 #[cfg(feature = "prost")]
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -49,10 +50,9 @@ pub use mc_core::{
 };
 
 /// A MobileCoin user's public subaddress.
-#[derive(
-    Clone, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
-)]
+#[derive(Clone, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize)]
 #[cfg_attr(feature = "prost", derive(Message))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PublicAddress {
     /// The user's public subaddress view key 'C'.
     #[cfg_attr(feature = "prost", prost(message, required, tag = "1"))]
