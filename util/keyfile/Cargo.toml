@@ -29,7 +29,7 @@ path = "src/bin/read_pubfile.rs"
 [dependencies]
 mc-account-keys = { workspace = true }
 mc-api = { workspace = true }
-mc-core = { workspace = true }
+mc-core = { workspace = true, features = ["bip39"] }
 mc-rand = { workspace = true }
 mc-util-from-random = { workspace = true }
 mc-util-parse = { workspace = true }
@@ -38,14 +38,14 @@ mc-util-serial = { workspace = true, features = ["std"] }
 base64 = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-hex = { workspace = true }
+hex = { workspace = true, features = ["std"] }
 pem = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
 rand_hc = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 tiny-bip39 = { workspace = true }
 x509-signature = { workspace = true }
 
