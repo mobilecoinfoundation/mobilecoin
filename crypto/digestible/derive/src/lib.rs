@@ -83,7 +83,6 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
             if attr.path().is_ident("digestible") {
                 attr.parse_nested_meta(|meta| {
                     if let Some(value) = meta.value().ok() {
-                        // Handle name=value syntax
                         result
                             .apply_name_value(
                                 &meta.path,
@@ -93,7 +92,6 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
                             )
                             .map_err(|e| meta.error(e))
                     } else {
-                        // Handle bare path syntax
                         result.apply_path(&meta.path).map_err(|e| meta.error(e))
                     }
                 })
