@@ -238,6 +238,7 @@ generic-array = { version = "0.14.7", default-features = false }
 getrandom = "0.2"
 grpcio = "0.13.0"
 hashbrown = { version = "0.14.3", default-features = false }
+heapless = { version = "0.8.0", default-features = false }
 hex = { version = "0.4.3", default-features = false }
 hex-literal = "0.4.1"
 hex_fmt = "0.3"
@@ -331,6 +332,7 @@ slog-term = "2.9"
 static_assertions = "1.1.0"
 stdext = "0.3"
 subtle = { version = "2.4.1", default-features = false }
+syn = "2.0"
 tempfile = "3.10.1"
 textwrap = "0.16"
 tiny-bip39 = "1.0"
@@ -344,10 +346,8 @@ x25519-dalek = { version = "2.0.1", default-features = false }
 x509-cert = { version = "0.2.5", default-features = false }
 x509-signature = "0.5"
 yaml-rust = "0.4"
-zeroize = { version = "1.8", default-features = false }
-heapless = { version = "0.8.0", default-features = false }
-syn = "2.0"
 yare = "2.0.0"
+zeroize = { version = "1.8", default-features = false }
 
 mc-account-keys = { path = "account-keys", default-features = false }
 mc-account-keys-types = { path = "account-keys/types" }
