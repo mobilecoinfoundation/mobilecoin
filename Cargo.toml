@@ -503,7 +503,6 @@ mc-util-zip-exact = { path = "util/zip-exact", default-features = false }
 mc-watcher = { path = "watcher" }
 mc-watcher-api = { path = "watcher/api" }
 
-
 [profile.dev]
 opt-level = 0
 rpath = true
