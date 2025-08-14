@@ -27,7 +27,7 @@ zeroize = { workspace = true }
 # MobileCoin dependencies
 mc-account-keys = { workspace = true }
 mc-common = { workspace = true, features = ["loggers"] }
-mc-core = { workspace = true, features = ["serde"] }
+mc-core = { workspace = true, features = ["serde", "bip39"] }
 mc-core-types = { workspace = true, features = ["serde"] }
 mc-crypto-keys = { workspace = true }
 mc-crypto-ring-signature = { workspace = true }

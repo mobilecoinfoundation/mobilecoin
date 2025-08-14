@@ -19,4 +19,4 @@ displaydoc = { workspace = true }
 mbedtls = { workspace = true, default-features = true }
 mbedtls-sys-auto = { workspace = true }
 pkg-config = { workspace = true }
-rand = { workspace = true }
+rand = { workspace = true, default-features = true }
