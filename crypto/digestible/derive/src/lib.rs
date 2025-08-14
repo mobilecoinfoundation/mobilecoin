@@ -82,7 +82,7 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
         for attr in src {
             if attr.path().is_ident("digestible") {
                 attr.parse_nested_meta(|meta| {
-                    if let Some(value) = meta.value().ok() {
+                    if let Ok(value) = meta.value() {
                         result
                             .apply_name_value(
                                 &meta.path,
@@ -199,7 +199,7 @@ impl TryFrom<&[Attribute]> for FieldAttributeConfig {
         for attr in src {
             if attr.path().is_ident("digestible") {
                 attr.parse_nested_meta(|meta| {
-                    if let Some(value) = meta.value().ok() {
+                    if let Ok(value) = meta.value() {
                         result
                             .apply_name_value(
                                 &meta.path,
