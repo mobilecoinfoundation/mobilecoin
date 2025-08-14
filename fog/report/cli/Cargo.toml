@@ -11,21 +11,21 @@ name = "fog-report-cli"
 path = "src/main.rs"
 
 [dependencies]
-mc-account-keys = { path = "../../../account-keys" }
-mc-attest-core = { path = "../../../attest/core" }
-mc-common = { path = "../../../common", features = ["loggers"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-fog-api = { path = "../../api" }
-mc-fog-ingest-enclave-measurement = { path = "../../ingest/enclave/measurement" }
-mc-fog-report-connection = { path = "../connection" }
-mc-fog-report-resolver = { path = "../resolver" }
-mc-fog-report-types = { path = "../types" }
-mc-fog-report-validation = { path = "../validation" }
-mc-util-cli = { path = "../../../util/cli" }
-mc-util-keyfile = { path = "../../../util/keyfile" }
-mc-util-uri = { path = "../../../util/uri" }
+mc-account-keys = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-crypto-keys = { workspace = true }
+mc-fog-api = { workspace = true }
+mc-fog-ingest-enclave-measurement = { workspace = true }
+mc-fog-report-connection = { workspace = true }
+mc-fog-report-resolver = { workspace = true }
+mc-fog-report-types = { workspace = true }
+mc-fog-report-validation = { workspace = true }
+mc-util-cli = { workspace = true }
+mc-util-keyfile = { workspace = true }
+mc-util-uri = { workspace = true }
 
-base64 = "0.21"
-clap = { version = "4.5", features = ["derive", "env"] }
-grpcio = "0.13"
-hex = "0.4"
+base64 = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+grpcio = { workspace = true }
+hex = { workspace = true }

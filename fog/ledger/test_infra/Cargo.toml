@@ -9,17 +9,17 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
-mc-attest-core = { path = "../../../attest/core" }
-mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
-mc-attest-untrusted = { path = "../../../attest/untrusted" }
-mc-blockchain-types = { path = "../../../blockchain/types" }
-mc-common = { path = "../../../common" }
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-ledger-db = { path = "../../../ledger/db" }
-mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
-mc-transaction-core = { path = "../../../transaction/core" }
+mc-attest-core = { workspace = true }
+mc-attest-enclave-api = { workspace = true }
+mc-attest-untrusted = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-sgx-report-cache-api = { workspace = true }
+mc-transaction-core = { workspace = true }
 
 # fog
-mc-fog-ledger-enclave = { path = "../enclave" }
-mc-fog-ledger-enclave-api = { path = "../enclave/api" }
-mc-fog-types = { path = "../../types" }
+mc-fog-ledger-enclave = { workspace = true }
+mc-fog-ledger-enclave-api = { workspace = true }
+mc-fog-types = { workspace = true }

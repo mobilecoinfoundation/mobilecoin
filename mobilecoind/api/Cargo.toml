@@ -10,24 +10,24 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-api = { path = "../../api" }
-mc-attest-api = { path = "../../attest/api" }
-mc-fog-api = { path = "../../fog/api" }
-mc-util-uri = { path = "../../util/uri" }
+mc-api = { workspace = true }
+mc-attest-api = { workspace = true }
+mc-fog-api = { workspace = true }
+mc-util-uri = { workspace = true }
 
-futures = "0.3"
-grpcio = "0.13"
-protobuf = "2.27.1"
+futures = { workspace = true }
+grpcio = { workspace = true }
+protobuf = { workspace = true }
 
 [dev-dependencies]
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-transaction-builder = { path = "../../transaction/builder" }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-transaction-builder = { workspace = true }
 
-hex_fmt = "0.3"
-rand = "0.8"
+hex_fmt = { workspace = true }
+rand = { workspace = true }
 
 [build-dependencies]
-mc-util-build-grpc = { path = "../../util/build/grpc" }
-mc-util-build-script = { path = "../../util/build/script" }
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2.1"
+cargo-emit = { workspace = true }

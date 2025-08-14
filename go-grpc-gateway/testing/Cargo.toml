@@ -17,21 +17,21 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # mobilecoin
-mc-attest-core = { path = "../../attest/core" }
-mc-common = { path = "../../common", features = ["log"] }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-util-grpc = { path = "../../util/grpc" }
-mc-util-metrics = { path = "../../util/metrics" }
-mc-util-uri = { path = "../../util/uri" }
+mc-attest-core = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-crypto-keys = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-metrics = { workspace = true }
+mc-util-uri = { workspace = true }
 
 # fog
-mc-fog-report-api = { path = "../../fog/report/api" }
-mc-fog-report-server = { path = "../../fog/report/server" }
-mc-fog-report-types = { path = "../../fog/report/types" }
+mc-fog-report-api = { workspace = true }
+mc-fog-report-server = { workspace = true }
+mc-fog-report-types = { workspace = true }
 
 # third-party
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = "0.2"
-futures = "0.3"
-grpcio = "0.13"
-serde = { version = "1.0", features = ["derive"] }
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+futures = { workspace = true }
+grpcio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

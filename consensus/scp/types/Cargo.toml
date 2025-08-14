@@ -12,20 +12,20 @@ std = ["mc-common/std", "serde/std"]
 test_utils = ["mc-util-test-helper", "rand", "rand_hc"]
 
 [dependencies]
-mc-common = { path = "../../../common", default-features = false }
-mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["derive"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-util-test-helper = { path = "../../../util/test-helper", optional = true }
+mc-common = { workspace = true }
+mc-crypto-digestible = { workspace = true, features = ["derive"] }
+mc-crypto-keys = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-test-helper = { workspace = true, optional = true }
 
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-rand = { version = "0.8", default-features = false, optional = true }
-rand_hc = { version = "0.3", default-features = false, optional = true }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+prost = { workspace = true, features = ["prost-derive"] }
+rand = { workspace = true, optional = true }
+rand_hc = { workspace = true, optional = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
 
 [dev-dependencies]
-mc-util-serial = { path = "../../../util/serial", features = ["std"] }
-mc-util-test-helper = { path = "../../../util/test-helper" }
+mc-util-serial = { workspace = true, features = ["std"] }
+mc-util-test-helper = { workspace = true }
 
-rand = "0.8"
-rand_hc = "0.3"
+rand = { workspace = true }
+rand_hc = { workspace = true }

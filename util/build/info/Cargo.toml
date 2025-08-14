@@ -16,7 +16,7 @@ name = "show-build-info"
 path = "src/bin/main.rs"
 
 [dev-dependencies]
-json = "0.12"
+json = { workspace = true }
 
 [build-dependencies]
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }

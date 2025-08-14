@@ -7,23 +7,23 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-hex = "0.4"
-mc-test-vectors-definitions = { path = "../definitions" }
-rand = { version = "0.8", default-features = false }
+hex = { workspace = true }
+mc-test-vectors-definitions = { workspace = true }
+rand = { workspace = true }
 
 [build-dependencies]
-hex = "0.4"
-mc-account-keys = { path = "../../account-keys" }
-mc-common = { path = "../../common" }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-fog-ingest-enclave-api = { path = "../../fog/ingest/enclave/api" }
-mc-fog-ingest-enclave-impl = { path = "../../fog/ingest/enclave/impl" }
-mc-fog-types = { path = "../../fog/types" }
-mc-fog-view-protocol = { path = "../../fog/view/protocol" }
-mc-oblivious-traits = "2.3"
-mc-test-vectors-definitions = { path = "../definitions" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-serial = { path = "../../util/serial", default-features = false }
-mc-util-test-vector = { path = "../../util/test-vector" }
-rand = { version = "0.8", default-features = false }
+hex = { workspace = true }
+mc-account-keys = { workspace = true }
+mc-common = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-fog-ingest-enclave-api = { workspace = true }
+mc-fog-ingest-enclave-impl = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-view-protocol = { workspace = true }
+mc-oblivious-traits = { workspace = true }
+mc-test-vectors-definitions = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-test-vector = { workspace = true }
+rand = { workspace = true }

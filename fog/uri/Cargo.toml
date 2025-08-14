@@ -8,7 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-util-uri = { path = "../../util/uri" }
+mc-util-uri = { workspace = true }
 
 [dev-dependencies]
-mc-common = { path = "../../common" }
+mc-common = { workspace = true }

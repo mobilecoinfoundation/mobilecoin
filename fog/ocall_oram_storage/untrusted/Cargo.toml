@@ -8,6 +8,6 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-common = { path = "../../../common", features = ["log"] }
+mc-common = { workspace = true, features = ["log"] }
 
-lazy_static = "1.4"
+lazy_static = { workspace = true }

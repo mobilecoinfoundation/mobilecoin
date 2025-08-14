@@ -8,6 +8,6 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [build-dependencies]
-mc-util-build-script = { path = "../../../../util/build/script" }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }

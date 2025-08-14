@@ -8,22 +8,22 @@ rust-version = { workspace = true }
 
 [dependencies]
 # MC Dependencies
-mc-test-vectors-definitions = { path = "../definitions" }
+mc-test-vectors-definitions = { workspace = true }
 
 # External Dependencies
-hex = "0.4"
-rand = { version = "0.8", default-features = false }
+hex = { workspace = true }
+rand = { workspace = true }
 
 [build-dependencies]
 # MC Dependencies
-mc-account-keys = { path = "../../account-keys" }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-test-vectors-definitions = { path = "../definitions" }
-mc-transaction-extra = { path = "../../transaction/extra" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-serial = { path = "../../util/serial", default-features = false }
-mc-util-test-vector = { path = "../../util/test-vector" }
+mc-account-keys = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-test-vectors-definitions = { workspace = true }
+mc-transaction-extra = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-test-vector = { workspace = true }
 
 # External Dependencies
-hex = "0.4"
-rand = { version = "0.8", default-features = false }
+hex = { workspace = true }
+rand = { workspace = true }

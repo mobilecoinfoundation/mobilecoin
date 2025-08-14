@@ -16,37 +16,37 @@ default = ["alloc", "serde", "prost", "mc-util-repr-bytes/default", "curve25519-
 
 [dependencies]
 
-base64 = { version = "0.21", default-features = false }
-curve25519-dalek = { version = "4.1.3", default-features = false, features = ["rand_core"] }
-digest = "0.10"
-displaydoc = { version = "0.2", default-features = false }
-ed25519 = { version = "2.2.3", default-features = false }
-ed25519-dalek = { version = "2.1.1", default-features = false, features = ["rand_core", "digest"] }
-hex = { version = "0.4", default-features = false }
-hex_fmt = "0.3"
+base64 = { workspace = true }
+curve25519-dalek = { workspace = true, features = ["rand_core"] }
+digest = { workspace = true }
+displaydoc = { workspace = true }
+ed25519 = { workspace = true }
+ed25519-dalek = { workspace = true, features = ["rand_core", "digest"] }
+hex = { workspace = true }
+hex_fmt = { workspace = true }
 
-mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
-mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false }
-mc-util-serial = { path = "../../util/serial", optional = true }
-rand_core = { version = "0.6", default-features = false }
-rand_hc = "0.3"
-schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
-serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
-sha2 = { version = "0.10", default-features = false }
-signature = { version = "2.1.0", default-features = false, features = ["digest"] }
-static_assertions = "1.1.0"
-subtle = { version = "2", default-features = false }
-x25519-dalek = { version = "2.0.1", default-features = false, features = ["static_secrets"] }
-zeroize = { version = "1.8", default-features = false }
+mc-crypto-digestible = { workspace = true, features = ["dalek", "derive"] }
+mc-crypto-digestible-signature = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-repr-bytes = { workspace = true }
+mc-util-serial = { workspace = true, optional = true }
+rand_core = { workspace = true }
+rand_hc = { workspace = true }
+schnorrkel-og = { workspace = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+sha2 = { workspace = true }
+signature = { workspace = true, features = ["digest"] }
+static_assertions = { workspace = true }
+subtle = { workspace = true }
+x25519-dalek = { workspace = true, features = ["static_secrets"] }
+zeroize = { workspace = true }
 
 [dev-dependencies]
-mc-crypto-hashes = { path = "../hashes" }
-mc-util-test-helper = { path = "../../util/test-helper", default-features = false }
+mc-crypto-hashes = { workspace = true }
+mc-util-test-helper = { workspace = true }
 
-pem = "3.0"
-rand_hc = "0.3"
-semver = "1.0"
-serde_json = "1.0"
-tempfile = "3.10"
+pem = { workspace = true }
+rand_hc = { workspace = true }
+semver = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }

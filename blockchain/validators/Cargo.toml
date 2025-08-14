@@ -9,20 +9,20 @@ rust-version = { workspace = true }
 
 [dependencies]
 # MobileCoin dependencies
-mc-blockchain-types = { path = "../types" }
-mc-crypto-keys = { path = "../../crypto/keys" }
+mc-blockchain-types = { workspace = true }
+mc-crypto-keys = { workspace = true }
 
 # External dependencies
-displaydoc = "0.2"
-hex = "0.4"
-pem = "3.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-toml = "0.8"
+displaydoc = { workspace = true }
+hex = { workspace = true }
+pem = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+toml = { workspace = true }
 
 [dev-dependencies]
-mc-blockchain-test-utils = { path = "../test-utils" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-blockchain-test-utils = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-test-helper = { workspace = true }
 
-tempfile = "3.10"
+tempfile = { workspace = true }

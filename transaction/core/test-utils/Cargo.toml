@@ -8,12 +8,12 @@ rust-version = { workspace = true }
 
 [dependencies]
 # MobileCoin dependencies
-mc-account-keys = { path = "../../../account-keys" }
-mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-crypto-multisig = { path = "../../../crypto/multisig" }
-mc-crypto-ring-signature-signer = { path = "../../../crypto/ring-signature/signer" }
-mc-fog-report-validation-test-utils = { path = "../../../fog/report/validation/test-utils" }
-mc-rand = "1.0"
-mc-transaction-core = { path = "../../../transaction/core" }
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-util-serial = { path = "../../../util/serial", features = ["std", "test_utils"] }
+mc-account-keys = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-multisig = { workspace = true }
+mc-crypto-ring-signature-signer = { workspace = true }
+mc-fog-report-validation-test-utils = { workspace = true }
+mc-rand = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std", "test_utils"] }

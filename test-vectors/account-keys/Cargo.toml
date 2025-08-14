@@ -7,13 +7,13 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-test-vectors-definitions = { path = "../definitions" }
+mc-test-vectors-definitions = { workspace = true }
 
 [build-dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-core = { path = "../../core" }
-mc-test-vectors-definitions = { path = "../definitions" }
-mc-util-test-vector = { path = "../../util/test-vector" }
+mc-account-keys = { workspace = true }
+mc-core = { workspace = true, features = ["bip39"] }
+mc-test-vectors-definitions = { workspace = true }
+mc-util-test-vector = { workspace = true }
 
-hex = "0.4"
-tiny-bip39 = "1.0"
+hex = { workspace = true }
+tiny-bip39 = { workspace = true }

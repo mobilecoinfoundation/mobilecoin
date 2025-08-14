@@ -8,17 +8,17 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-cfg-if = "1.0"
+cfg-if = { workspace = true }
 
 # Built-in support for dalek primitives
-curve25519-dalek = { version = "4.1.3", default-features = false, optional = true }
-ed25519-dalek = { version = "2.1.1", default-features = false, optional = true }
-generic-array = "0.14"
+curve25519-dalek = { workspace = true, optional = true }
+ed25519-dalek = { workspace = true, optional = true }
+generic-array = { workspace = true }
 
 # For derive support
-mc-crypto-digestible-derive = { path = "./derive", optional = true, default-features = false }
-merlin = { version = "3.0", default-features = false }
-x25519-dalek = { version = "2.0.1", default-features = false, optional = true }
+mc-crypto-digestible-derive = { workspace = true, optional = true }
+merlin = { workspace = true }
+x25519-dalek = { workspace = true, optional = true }
 
 [features]
 default = ["alloc", "derive", "dalek", "curve25519-dalek/default"]
