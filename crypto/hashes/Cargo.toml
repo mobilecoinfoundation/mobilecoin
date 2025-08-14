@@ -11,8 +11,8 @@ rust-version = { workspace = true }
 default = ["mc-crypto-digestible/default"]
 
 [dependencies]
-mc-crypto-digestible = { path = "../digestible", default-features = false }
+mc-crypto-digestible = { workspace = true }
 
-digest = { version = "0.10.1", default-features = false }
+digest = { workspace = true }
 
-blake2 = { version = "0.10.6", default-features = false }
+blake2 = { workspace = true }

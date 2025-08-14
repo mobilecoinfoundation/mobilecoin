@@ -9,10 +9,10 @@ readme = "README.md"
 rust-version = "1.83.0"
 
 [dependencies]
-mc-sgx-debug-edl = { path = "../debug-edl" }
-mc-sgx-panic-edl = { path = "../panic-edl" }
+mc-sgx-debug-edl = { workspace = true }
+mc-sgx-panic-edl = { workspace = true }
 
 [build-dependencies]
-cargo-emit = "0.2"
-mc-sgx-debug-edl = { path = "../debug-edl" }
-mc-sgx-panic-edl = { path = "../panic-edl" }
+cargo-emit = { workspace = true }
+mc-sgx-debug-edl = { workspace = true }
+mc-sgx-panic-edl = { workspace = true }

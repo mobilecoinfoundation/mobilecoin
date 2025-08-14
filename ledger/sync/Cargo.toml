@@ -16,39 +16,39 @@ required-features = ["mc-consensus-enclave-measurement"]
 test_utils = []
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-api = { path = "../../api" }
-mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", features = ["log"] }
-mc-connection = { path = "../../connection" }
-mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement", optional = true }
-mc-consensus-scp = { path = "../../consensus/scp" }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-util-telemetry = { path = "../../util/telemetry" }
-mc-util-uri = { path = "../../util/uri" }
+mc-account-keys = { workspace = true }
+mc-api = { workspace = true }
+mc-blockchain-test-utils = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-connection = { workspace = true }
+mc-consensus-enclave-measurement = { workspace = true, optional = true }
+mc-consensus-scp = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-transaction-core-test-utils = { workspace = true }
+mc-util-telemetry = { workspace = true }
+mc-util-uri = { workspace = true }
 
-crossbeam-channel = "0.5"
-displaydoc = "0.2"
-grpcio = "0.13"
-mc-attestation-verifier = "0.4.4"
-mockall = "0.12.1"
-protobuf = "2.27.1"
-rand = "0.8"
-reqwest = { version = "0.11", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
-retry = "2.0"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-tempfile = "3.10"
-url = "2.5"
+crossbeam-channel = { workspace = true }
+displaydoc = { workspace = true }
+grpcio = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+mockall = { workspace = true }
+protobuf = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["blocking", "rustls-tls", "gzip"] }
+retry = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+tempfile = { workspace = true }
+url = { workspace = true }
 
 [dev-dependencies]
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-connection-test-utils = { path = "../../connection/test-utils" }
-mc-consensus-scp = { path = "../../consensus/scp", features = ["test_utils"] }
-mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
-mc-peers-test-utils = { path = "../../peers/test-utils" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-connection-test-utils = { workspace = true }
+mc-consensus-scp = { workspace = true, features = ["test_utils"] }
+mc-ledger-db = { workspace = true, features = ["test_utils"] }
+mc-peers-test-utils = { workspace = true }
+mc-util-test-helper = { workspace = true }
 
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde = { workspace = true, features = ["alloc", "derive"] }

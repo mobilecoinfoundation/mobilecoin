@@ -9,8 +9,8 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-cargo-emit = "0.2.1"
-displaydoc = { version = "0.2", default-features = false }
-lazy_static = "1.4"
-url = "2.5"
-walkdir = "2.4"
+cargo-emit = { workspace = true }
+displaydoc = { workspace = true }
+lazy_static = { workspace = true }
+url = { workspace = true }
+walkdir = { workspace = true }

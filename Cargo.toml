@@ -193,6 +193,317 @@ resolver = "2"
 [workspace.package]
 rust-version = "1.83.0"
 
+[workspace.dependencies]
+aead = { version = "0.5", default-features = false }
+aes = "0.8.4"
+aes-gcm = "0.10.3"
+aligned-cmov = "2.3"
+anyhow = "1.0.80"
+assert_cmd = "2.0.14"
+assert_matches = "1.5.0"
+async-channel = "2"
+backtrace = "0.3"
+balanced-tree-index = "2.3"
+base64 = { version = "0.21", default-features = false }
+bincode = "1.3"
+bitflags = { version = "2.4", default-features = false }
+blake2 = { version = "0.10.6", default-features = false }
+bs58 = "0.4.0"
+bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
+cargo-emit = "0.2.1"
+cargo_metadata = "0.18"
+cc = "1"
+cfg-if = "1.0"
+chrono = { version = "0.4.34", default-features = false }
+clap = "4.5.1"
+clio = "0.3.5"
+cookie = "0.18"
+crc = { version = "3.0.1", default-features = false }
+criterion = "0.5"
+crossbeam-channel = "0.5"
+ctr = "0.9.2"
+ctrlc = "3.4"
+curve25519-dalek = { version = "4.1.3", default-features = false }
+der = { version = "0.7.8", default-features = false }
+diesel = "2.1.4"
+diesel-derive-enum = "2.1.0"
+diesel_migrations = "2.1.0"
+digest = { version = "0.10.1", default-features = false }
+dirs = "5.0"
+displaydoc = { version = "0.2", default-features = false }
+dyn-clone = "1.0.17"
+ed25519 = { version = "2.2.3", default-features = false }
+ed25519-dalek = { version = "2.1.1", default-features = false }
+fs_extra = "1.3"
+futures = "0.3"
+generic-array = { version = "0.14.7", default-features = false }
+getrandom = "0.2"
+grpcio = "0.13.0"
+hashbrown = { version = "0.14.3", default-features = false }
+hex = { version = "0.4.3", default-features = false }
+hex-literal = "0.4.1"
+hex_fmt = "0.3"
+hkdf = "0.12.4"
+hmac = "0.12"
+hostname = "0.3.1"
+itertools = "0.12.1"
+json = "0.12"
+lazy_static = "1.4.0"
+libc = "0.2"
+libz-sys = "1.1.15"
+link-cplusplus = "1.0"
+lmdb-rkv = "0.14.0"
+log = "0.4.21"
+maplit = "1.0.2"
+mbedtls = { version = "0.8.1", default-features = false }
+mbedtls-sys-auto = "2.26.1"
+mc-attestation-verifier = "0.4.4"
+mc-oblivious-aes-gcm = { version = "0.10.1", default-features = false }
+mc-oblivious-map = "2.3"
+mc-oblivious-ram = "2.3"
+mc-oblivious-traits = "2.3"
+mc-rand = "1.1.0"
+mc-sgx-core-sys-types = "0.12.0"
+mc-sgx-core-types = "0.12.0"
+mc-sgx-dcap-ql = "0.12.0"
+mc-sgx-dcap-quoteverify = "0.12.0"
+mc-sgx-dcap-sys-types = { version = "0.12.0", default-features = false }
+mc-sgx-dcap-types = { version = "0.12.0", default-features = false }
+merlin = { version = "3.0", default-features = false }
+mockall = "0.12.1"
+more-asserts = "0.3"
+num_cpus = "1.16"
+once_cell = { version = "1.19", default-features = false }
+opentelemetry = "0.21.0"
+opentelemetry-jaeger = "0.20.0"
+opentelemetry_sdk = "0.21.2"
+p256 = { version = "0.13.0", default-features = false }
+pem = "3.0"
+percent-encoding = "2.3.1"
+pkg-config = "0.3"
+portpicker = "0.1.1"
+predicates = "3"
+primitive-types = "0.12.2"
+proc-macro2 = "1.0.8"
+prometheus = "0.13.3"
+proptest = { version = "1.4", default-features = false }
+prost = { version = "0.12", default-features = false }
+prost-build = "0.12"
+protobuf = "2.27.1"
+protoc-grpcio = "3.0.0"
+quote = "1.0.2"
+r2d2 = "0.8.10"
+rand = { version = "0.8.5", default-features = false }
+rand_chacha = "0.3"
+rand_core = { version = "0.6.4", default-features = false }
+rand_hc = { version = "0.3", default-features = false }
+rayon = "1.9"
+regex = "1"
+reqwest = { version = "0.11", default-features = false }
+retry = "2.0"
+rjson = "0.3.1"
+rocket = "0.5.1"
+rusoto_core = { version = "0.48.0", default-features = false }
+rusoto_s3 = { version = "0.48.0", default-features = false }
+schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
+scoped_threadpool = "0.1.*"
+secrecy = "0.8"
+semver = "1.0"
+sentry = { version = "0.32", default-features = false }
+serde = { version = "1.0.197", default-features = false }
+serde_cbor = { version = "0.11.1", default-features = false }
+serde_derive = "1.0"
+serde_json = { version = "1.0.114", default-features = false }
+serde_with = { version = "3.6", default-features = false }
+serial_test = "3.0"
+sha2 = { version = "0.10.8", default-features = false }
+sha3 = { version = "0.10", default-features = false }
+signal-hook = "0.3"
+signature = { version = "2.1.0", default-features = false }
+siphasher = "1.0"
+slip10_ed25519 = "0.1"
+slog = { version = "2.7", default-features = false }
+slog-async = "2.8"
+slog-atomic = "3.1"
+slog-envlogger = "2.2"
+slog-json = "2.6"
+slog-scope = "4.4.0"
+slog-stdlog = "4.1.1"
+slog-term = "2.9"
+static_assertions = "1.1.0"
+stdext = "0.3"
+subtle = { version = "2.4.1", default-features = false }
+tempfile = "3.10.1"
+textwrap = "0.16"
+tiny-bip39 = "1.0"
+tokio = "1.36"
+toml = "0.8"
+url = "2.5.0"
+walkdir = "2.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"
+x25519-dalek = { version = "2.0.1", default-features = false }
+x509-cert = { version = "0.2.5", default-features = false }
+x509-signature = "0.5"
+yaml-rust = "0.4"
+zeroize = { version = "1.8", default-features = false }
+heapless = { version = "0.8.0", default-features = false }
+syn = "2.0"
+yare = "2.0.0"
+
+mc-account-keys = { path = "account-keys", default-features = false }
+mc-account-keys-types = { path = "account-keys/types" }
+mc-api = { path = "api" }
+mc-attest-ake = { path = "attest/ake", default-features = false }
+mc-attest-api = { path = "attest/api" }
+mc-attest-core = { path = "attest/core", default-features = false }
+mc-attest-enclave-api = { path = "attest/enclave-api", default-features = false }
+mc-attest-trusted = { path = "attest/trusted", default-features = false }
+mc-attest-untrusted = { path = "attest/untrusted", default-features = false }
+mc-attest-verifier = { path = "attest/verifier", default-features = false }
+mc-attest-verifier-types = { path = "attest/verifier/types", default-features = false }
+mc-blockchain-test-utils = { path = "blockchain/test-utils" }
+mc-blockchain-types = { path = "blockchain/types" }
+mc-common = { path = "common", default-features = false }
+mc-connection = { path = "connection" }
+mc-connection-test-utils = { path = "connection/test-utils" }
+mc-consensus-api = { path = "consensus/api" }
+mc-consensus-enclave = { path = "consensus/enclave" }
+mc-consensus-enclave-api = { path = "consensus/enclave/api", default-features = false }
+mc-consensus-enclave-edl = { path = "consensus/enclave/edl" }
+mc-consensus-enclave-measurement = { path = "consensus/enclave/measurement" }
+mc-consensus-enclave-mock = { path = "consensus/enclave/mock" }
+mc-consensus-mint-client-types = { path = "consensus/mint-client/types" }
+mc-consensus-scp = { path = "consensus/scp" }
+mc-consensus-scp-types = { path = "consensus/scp/types" }
+mc-consensus-service-config = { path = "consensus/service/config" }
+mc-core = { path = "core", default-features = false }
+mc-core-types = { path = "core/types", default-features = false }
+mc-crypto-ake-enclave = { path = "crypto/ake/enclave", default-features = false }
+mc-crypto-box = { path = "crypto/box" }
+mc-crypto-digestible = { path = "crypto/digestible", default-features = false }
+mc-crypto-digestible-derive = { path = "crypto/digestible/derive", default-features = false }
+mc-crypto-digestible-signature = { path = "crypto/digestible/signature", default-features = false }
+mc-crypto-digestible-test-utils = { path = "crypto/digestible/test-utils" }
+mc-crypto-hashes = { path = "crypto/hashes", default-features = false }
+mc-crypto-keys = { path = "crypto/keys", default-features = false }
+mc-crypto-memo-mac = { path = "crypto/memo-mac" }
+mc-crypto-message-cipher = { path = "crypto/message-cipher" }
+mc-crypto-multisig = { path = "crypto/multisig", default-features = false }
+mc-crypto-noise = { path = "crypto/noise", default-features = false }
+mc-crypto-ring-signature = { path = "crypto/ring-signature", default-features = false }
+mc-crypto-ring-signature-signer = { path = "crypto/ring-signature/signer", default-features = false }
+mc-crypto-x509-test-vectors = { path = "crypto/x509/test-vectors" }
+mc-crypto-x509-utils = { path = "crypto/x509/utils" }
+mc-enclave-boundary = { path = "enclave-boundary" }
+mc-fog-api = { path = "fog/api" }
+mc-fog-block-provider = { path = "fog/block_provider" }
+mc-fog-enclave-connection = { path = "fog/enclave_connection" }
+mc-fog-ingest-client = { path = "fog/ingest/client" }
+mc-fog-ingest-enclave = { path = "fog/ingest/enclave" }
+mc-fog-ingest-enclave-api = { path = "fog/ingest/enclave/api", default-features = false }
+mc-fog-ingest-enclave-edl = { path = "fog/ingest/enclave/edl" }
+mc-fog-ingest-enclave-impl = { path = "fog/ingest/enclave/impl" }
+mc-fog-ingest-enclave-measurement = { path = "fog/ingest/enclave/measurement" }
+mc-fog-ingest-report = { path = "fog/ingest/report" }
+mc-fog-ingest-server = { path = "fog/ingest/server" }
+mc-fog-ingest-server-test-utils = { path = "fog/ingest/server/test-utils" }
+mc-fog-kex-rng = { path = "fog/kex_rng" }
+mc-fog-ledger-connection = { path = "fog/ledger/connection" }
+mc-fog-ledger-enclave = { path = "fog/ledger/enclave" }
+mc-fog-ledger-enclave-api = { path = "fog/ledger/enclave/api", default-features = false }
+mc-fog-ledger-enclave-edl = { path = "fog/ledger/enclave/edl" }
+mc-fog-ledger-enclave-measurement = { path = "fog/ledger/enclave/measurement" }
+mc-fog-ledger-test-infra = { path = "fog/ledger/test_infra" }
+mc-fog-ocall-oram-storage-edl = { path = "fog/ocall_oram_storage/edl" }
+mc-fog-ocall-oram-storage-trusted = { path = "fog/ocall_oram_storage/trusted" }
+mc-fog-ocall-oram-storage-untrusted = { path = "fog/ocall_oram_storage/untrusted" }
+mc-fog-recovery-db-iface = { path = "fog/recovery_db_iface", default-features = false }
+mc-fog-report-api = { path = "fog/report/api" }
+mc-fog-report-api-test-utils = { path = "fog/report/api/test-utils" }
+mc-fog-report-connection = { path = "fog/report/connection" }
+mc-fog-report-resolver = { path = "fog/report/resolver" }
+mc-fog-report-server = { path = "fog/report/server" }
+mc-fog-report-types = { path = "fog/report/types", default-features = false }
+mc-fog-report-validation = { path = "fog/report/validation" }
+mc-fog-report-validation-test-utils = { path = "fog/report/validation/test-utils" }
+mc-fog-sample-paykit = { path = "fog/sample-paykit" }
+mc-fog-sig = { path = "fog/sig", default-features = false }
+mc-fog-sig-authority = { path = "fog/sig/authority" }
+mc-fog-sig-report = { path = "fog/sig/report" }
+mc-fog-sql-recovery-db = { path = "fog/sql_recovery_db" }
+mc-fog-test-infra = { path = "fog/test_infra" }
+mc-fog-types = { path = "fog/types", default-features = false }
+mc-fog-uri = { path = "fog/uri" }
+mc-fog-view-connection = { path = "fog/view/connection" }
+mc-fog-view-enclave = { path = "fog/view/enclave" }
+mc-fog-view-enclave-api = { path = "fog/view/enclave/api" }
+mc-fog-view-enclave-edl = { path = "fog/view/enclave/edl" }
+mc-fog-view-enclave-measurement = { path = "fog/view/enclave/measurement" }
+mc-fog-view-protocol = { path = "fog/view/protocol" }
+mc-fog-view-server = { path = "fog/view/server" }
+mc-fog-view-server-test-utils = { path = "fog/view/server/test-utils" }
+mc-ledger-db = { path = "ledger/db" }
+mc-ledger-migration = { path = "ledger/migration" }
+mc-ledger-sync = { path = "ledger/sync" }
+mc-light-client-verifier = { path = "light-client/verifier" }
+mc-mobilecoind-api = { path = "mobilecoind/api" }
+mc-peers = { path = "peers" }
+mc-peers-test-utils = { path = "peers/test-utils" }
+mc-sgx-build = { path = "sgx/build" }
+mc-sgx-compat = { path = "sgx/compat", default-features = false }
+mc-sgx-css = { path = "sgx/css", default-features = false }
+mc-sgx-debug-edl = { path = "sgx/debug-edl" }
+mc-sgx-panic-edl = { path = "sgx/panic-edl" }
+mc-sgx-report-cache-api = { path = "sgx/report-cache/api" }
+mc-sgx-report-cache-untrusted = { path = "sgx/report-cache/untrusted" }
+mc-sgx-slog = { path = "sgx/slog" }
+mc-sgx-slog-edl = { path = "sgx/slog-edl" }
+mc-sgx-types = { path = "sgx/types", default-features = false }
+mc-sgx-urts = { path = "sgx/urts" }
+mc-t3-api = { path = "t3/api" }
+mc-t3-connection = { path = "t3/connection" }
+mc-test-vectors-account-keys = { path = "test-vectors/account-keys" }
+mc-test-vectors-b58-encodings = { path = "test-vectors/b58-encodings" }
+mc-test-vectors-definitions = { path = "test-vectors/definitions" }
+mc-test-vectors-tx-out-records = { path = "test-vectors/tx-out-records" }
+mc-transaction-builder = { path = "transaction/builder" }
+mc-transaction-core = { path = "transaction/core", default-features = false }
+mc-transaction-core-test-utils = { path = "transaction/core/test-utils" }
+mc-transaction-extra = { path = "transaction/extra" }
+mc-transaction-summary = { path = "transaction/summary" }
+mc-transaction-types = { path = "transaction/types", default-features = false }
+mc-util-build-enclave = { path = "util/build/enclave" }
+mc-util-build-grpc = { path = "util/build/grpc" }
+mc-util-build-info = { path = "util/build/info" }
+mc-util-build-script = { path = "util/build/script" }
+mc-util-build-sgx = { path = "util/build/sgx" }
+mc-util-cli = { path = "util/cli" }
+mc-util-encodings = { path = "util/encodings", default-features = false }
+mc-util-from-random = { path = "util/from-random", default-features = false }
+mc-util-generate-sample-ledger = { path = "util/generate-sample-ledger" }
+mc-util-grpc = { path = "util/grpc" }
+mc-util-host-cert = { path = "util/host-cert", default-features = false }
+mc-util-keyfile = { path = "util/keyfile" }
+mc-util-lmdb = { path = "util/lmdb" }
+mc-util-logger-macros = { path = "util/logger-macros" }
+mc-util-metered-channel = { path = "util/metered-channel" }
+mc-util-metrics = { path = "util/metrics" }
+mc-util-parse = { path = "util/parse" }
+mc-util-repr-bytes = { path = "util/repr-bytes", default-features = false }
+mc-util-serial = { path = "util/serial", default-features = false }
+mc-util-telemetry = { path = "util/telemetry" }
+mc-util-test-helper = { path = "util/test-helper", default-features = false }
+mc-util-test-vector = { path = "util/test-vector" }
+mc-util-test-with-data = { path = "util/test-with-data" }
+mc-util-u64-ratio = { path = "util/u64-ratio" }
+mc-util-uri = { path = "util/uri" }
+mc-util-vec-map = { path = "util/vec-map" }
+mc-util-zip-exact = { path = "util/zip-exact", default-features = false }
+mc-watcher = { path = "watcher" }
+mc-watcher-api = { path = "watcher/api" }
+
+
 [profile.dev]
 opt-level = 0
 rpath = true

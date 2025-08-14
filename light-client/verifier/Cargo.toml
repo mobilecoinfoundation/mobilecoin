@@ -7,20 +7,20 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
-base64 = "0.21"
-displaydoc = "0.2"
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_with = { version = "3.6", default-features = false, features = ["hex"] }
+base64 = { workspace = true }
+displaydoc = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+serde = { workspace = true, features = ["alloc", "derive"] }
+serde_with = { workspace = true, features = ["hex"] }
 
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common" }
-mc-consensus-scp-types = { path = "../../consensus/scp/types" }
-mc-crypto-digestible = { path = "../../crypto/digestible" }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true }
+mc-consensus-scp-types = { workspace = true }
+mc-crypto-digestible = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-transaction-core = { workspace = true }
 
 [dev-dependencies]
-mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-consensus-scp-types = { workspace = true, features = ["test_utils"] }
+mc-util-from-random = { workspace = true }
+mc-util-test-helper = { workspace = true }

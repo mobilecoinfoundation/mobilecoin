@@ -11,15 +11,15 @@ name = "mc-ledger-migration"
 path = "src/main.rs"
 
 [dependencies]
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-ledger-db = { path = "../../ledger/db", features = ["migration_support"] }
-mc-util-lmdb = { path = "../../util/lmdb" }
-mc-util-serial = { path = "../../util/serial" }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-ledger-db = { workspace = true, features = ["migration_support"] }
+mc-util-lmdb = { workspace = true }
+mc-util-serial = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-lmdb-rkv = "0.14.0"
+clap = { workspace = true, features = ["derive", "env"] }
+lmdb-rkv = { workspace = true }
 
 [build-dependencies]
 # Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
 # Go figure ¯\_(ツ)_/¯
-serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+serde = { workspace = true, features = ["alloc", "derive"] }

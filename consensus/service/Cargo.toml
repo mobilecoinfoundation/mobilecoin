@@ -15,72 +15,72 @@ name = "consensus-service"
 path = "src/bin/main.rs"
 
 [dependencies]
-mc-attest-api = { path = "../../attest/api" }
-mc-attest-core = { path = "../../attest/core" }
-mc-attest-enclave-api = { path = "../../attest/enclave-api" }
-mc-attest-verifier = { path = "../../attest/verifier" }
-mc-attest-verifier-types = { path = "../../attest/verifier/types" }
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", features = ["log"] }
-mc-connection = { path = "../../connection" }
-mc-consensus-api = { path = "../../consensus/api" }
-mc-consensus-enclave = { path = "../../consensus/enclave" }
-mc-consensus-scp = { path = "../../consensus/scp" }
-mc-consensus-service-config = { path = "config" }
-mc-crypto-digestible = { path = "../../crypto/digestible" }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-crypto-multisig = { path = "../../crypto/multisig" }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-ledger-sync = { path = "../../ledger/sync" }
-mc-peers = { path = "../../peers" }
-mc-sgx-report-cache-api = { path = "../../sgx/report-cache/api" }
-mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
-mc-transaction-builder = { path = "../../transaction/builder" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-cli = { path = "../../util/cli" }
-mc-util-grpc = { path = "../../util/grpc" }
-mc-util-metered-channel = { path = "../../util/metered-channel" }
-mc-util-metrics = { path = "../../util/metrics" }
-mc-util-serial = { path = "../../util/serial" }
-mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
-mc-util-uri = { path = "../../util/uri" }
+mc-attest-api = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-attest-enclave-api = { workspace = true }
+mc-attest-verifier = { workspace = true }
+mc-attest-verifier-types = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-connection = { workspace = true }
+mc-consensus-api = { workspace = true }
+mc-consensus-enclave = { workspace = true }
+mc-consensus-scp = { workspace = true }
+mc-consensus-service-config = { workspace = true }
+mc-crypto-digestible = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-multisig = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-ledger-sync = { workspace = true }
+mc-peers = { workspace = true }
+mc-sgx-report-cache-api = { workspace = true }
+mc-sgx-report-cache-untrusted = { workspace = true }
+mc-transaction-builder = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-cli = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-metered-channel = { workspace = true }
+mc-util-metrics = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-telemetry = { workspace = true, features = ["jaeger"] }
+mc-util-uri = { workspace = true }
 
-base64 = "0.21"
-chrono = "0.4"
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
-fs_extra = "1.3"
-futures = "0.3"
-grpcio = "0.13"
-hex = "0.4"
-lazy_static = "1.4"
-once_cell = "1.19"
-protobuf = "2.27.1"
-rand = "0.8"
-rayon = "1.9"
-retry = "2.0"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_json = "1.0"
+base64 = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+fs_extra = { workspace = true }
+futures = { workspace = true }
+grpcio = { workspace = true }
+hex = { workspace = true }
+lazy_static = { workspace = true }
+once_cell = { workspace = true }
+protobuf = { workspace = true }
+rand = { workspace = true }
+rayon = { workspace = true }
+retry = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+serde_json = { workspace = true }
 
 [build-dependencies]
-mc-sgx-build = { path = "../../sgx/build" }
+mc-sgx-build = { workspace = true }
 
 [dev-dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-consensus-enclave-mock = { path = "../../consensus/enclave/mock" }
-mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
-mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
-mc-peers-test-utils = { path = "../../peers/test-utils" }
-mc-sgx-report-cache-api = { path = "../../sgx/report-cache/api" }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-logger-macros = { path = "../../util/logger-macros" }
+mc-account-keys = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-consensus-enclave-mock = { workspace = true }
+mc-crypto-ring-signature-signer = { workspace = true }
+mc-ledger-db = { workspace = true, features = ["test_utils"] }
+mc-peers-test-utils = { workspace = true }
+mc-sgx-report-cache-api = { workspace = true }
+mc-transaction-core-test-utils = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-logger-macros = { workspace = true }
 
-mockall = "0.12.1"
-rand_core = { version = "0.6", default-features = false }
-rand_hc = "0.3"
-serial_test = "3.0"
-tempfile = "3.10"
+mockall = { workspace = true }
+rand_core = { workspace = true }
+rand_hc = { workspace = true }
+serial_test = { workspace = true }
+tempfile = { workspace = true }
 
-curve25519-dalek = { version = "4.1.3", default-features = false }
+curve25519-dalek = { workspace = true }

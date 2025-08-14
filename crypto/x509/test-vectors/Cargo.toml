@@ -16,11 +16,11 @@ name = "mc-crypto-x509-test-vectors"
 path = "src/main.rs"
 
 [build-dependencies]
-cargo-emit = "0.2.1"
-mc-util-build-script = { path = "../../../util/build/script" }
+cargo-emit = { workspace = true }
+mc-util-build-script = { workspace = true }
 
 [dependencies]
-mc-crypto-keys = { path = "../../keys" }
+mc-crypto-keys = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-pem = "3.0"
+clap = { workspace = true, features = ["derive", "env"] }
+pem = { workspace = true }

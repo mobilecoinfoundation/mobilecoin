@@ -8,22 +8,22 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-crypto-x509-utils = { path = "../../crypto/x509/utils" }
-mc-fog-report-types = { path = "../report/types" }
-mc-fog-sig-authority = { path = "./authority" }
-mc-fog-sig-report = { path = "./report" }
+mc-account-keys = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-x509-utils = { workspace = true }
+mc-fog-report-types = { workspace = true }
+mc-fog-sig-authority = { workspace = true }
+mc-fog-sig-report = { workspace = true }
 
-displaydoc = "0.2"
-pem = "3.0"
-signature = { version = "2.1.0" }
-x509-signature = "0.5"
+displaydoc = { workspace = true }
+pem = { workspace = true }
+signature = { workspace = true }
+x509-signature = { workspace = true }
 
 [dev-dependencies]
-mc-attest-verifier-types = { path = "../../attest/verifier/types" }
-mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
-mc-util-from-random = { path = "../../util/from-random" }
+mc-attest-verifier-types = { workspace = true }
+mc-crypto-x509-test-vectors = { workspace = true }
+mc-util-from-random = { workspace = true }
 
-rand_core = "0.6"
-rand_hc = "0.3"
+rand_core = { workspace = true }
+rand_hc = { workspace = true }

@@ -9,42 +9,42 @@ rust-version = { workspace = true }
 
 [dependencies]
 # External dependencies
-cfg-if = "1.0"
-displaydoc = { version = "0.2", default-features = false }
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-rand = { version = "0.8", default-features = false }
-rand_core = { version = "0.6", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-subtle = { version = "2", default-features = false }
-zeroize = "1.8"
+cfg-if = { workspace = true }
+displaydoc = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+rand = { workspace = true }
+rand_core = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+subtle = { workspace = true }
+zeroize = { workspace = true }
 
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
-mc-core = { path = "../../core" }
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
-mc-crypto-hashes = { path = "../../crypto/hashes" }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-memo-mac = { path = "../../crypto/memo-mac" }
-mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
-mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-transaction-summary = { path = "../../transaction/summary" }
-mc-transaction-types = { path = "../../transaction/types" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes" }
-mc-util-serial = { path = "../../util/serial" }
-mc-util-u64-ratio = { path = "../../util/u64-ratio" }
-mc-util-vec-map = { path = "../../util/vec-map" }
-mc-util-zip-exact = { path = "../../util/zip-exact" }
+mc-account-keys = { workspace = true }
+mc-core = { workspace = true }
+mc-crypto-digestible = { workspace = true, features = ["dalek"] }
+mc-crypto-hashes = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-memo-mac = { workspace = true }
+mc-crypto-ring-signature = { workspace = true }
+mc-crypto-ring-signature-signer = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-transaction-summary = { workspace = true }
+mc-transaction-types = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-repr-bytes = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-u64-ratio = { workspace = true }
+mc-util-vec-map = { workspace = true }
+mc-util-zip-exact = { workspace = true }
 
-curve25519-dalek = { version = "4.1.3", default-features = false }
+curve25519-dalek = { workspace = true }
 
 [dev-dependencies]
-assert_matches = "1.5"
-maplit = "1.0"
-yaml-rust = "0.4"
+assert_matches = { workspace = true }
+maplit = { workspace = true }
+yaml-rust = { workspace = true }
 
-mc-fog-report-validation-test-utils = { path = "../../fog/report/validation/test-utils" }
-mc-transaction-builder = { path = "../../transaction/builder", features = ["test-only"] }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-fog-report-validation-test-utils = { workspace = true }
+mc-transaction-builder = { workspace = true, features = ["test-only"] }
+mc-util-from-random = { workspace = true }
+mc-util-test-helper = { workspace = true }

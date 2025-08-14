@@ -18,33 +18,33 @@ sgx-sim = [
 ]
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core", default-features = false }
-mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
-mc-attest-verifier-types = { path = "../../attest/verifier/types", default-features = false }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
+mc-attest-core = { workspace = true }
+mc-attest-verifier = { workspace = true }
+mc-attest-verifier-types = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-noise = { workspace = true }
 
-aead = "0.5"
-der = "0.7.8"
-digest = "0.10"
-displaydoc = { version = "0.2", default-features = false }
-mc-attestation-verifier = "0.4.4"
-mc-sgx-dcap-types = "0.12.0"
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-rand_core = "0.6"
-serde = { version = "1.0", default-features = false, features = ["alloc"] }
+aead = { workspace = true }
+der = { workspace = true }
+digest = { workspace = true }
+displaydoc = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+mc-sgx-dcap-types = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+rand_core = { workspace = true }
+serde = { workspace = true, features = ["alloc"] }
 
 [dev-dependencies]
-mc-attest-untrusted = { path = "../untrusted" }
-mc-util-encodings = { path = "../../util/encodings" }
-mc-util-from-random = { path = "../../util/from-random" }
+mc-attest-untrusted = { workspace = true }
+mc-util-encodings = { workspace = true }
+mc-util-from-random = { workspace = true }
 
-aes-gcm = "0.10.3"
-rand_hc = "0.3"
-sha2 = { version = "0.10", default-features = false }
+aes-gcm = { workspace = true }
+rand_hc = { workspace = true }
+sha2 = { workspace = true }
 
 [build-dependencies]
-mc-util-build-script = { path = "../../util/build/script" }
-mc-util-build-sgx = { path = "../../util/build/sgx" }
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
 
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }

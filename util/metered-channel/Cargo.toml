@@ -7,6 +7,6 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-util-metrics = { path = "../../util/metrics" }
+mc-util-metrics = { workspace = true }
 
-crossbeam-channel = "0.5"
+crossbeam-channel = { workspace = true }

@@ -9,7 +9,7 @@ readme = "README.md"
 rust-version = "1.83.0"
 
 [dependencies]
-mc-sgx-css = { path = "../css" }
+mc-sgx-css = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-hex_fmt = "0.3"
+clap = { workspace = true, features = ["derive", "env"] }
+hex_fmt = { workspace = true }

@@ -7,6 +7,6 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-util-test-vector = { path = "../../util/test-vector" }
+mc-util-test-vector = { workspace = true }
 
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }

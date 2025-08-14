@@ -9,11 +9,11 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dev-dependencies]
-mc-crypto-x509-test-vectors = { path = "../test-vectors" }
+mc-crypto-x509-test-vectors = { workspace = true }
 
 [dependencies]
-mc-crypto-keys = { path = "../../keys" }
+mc-crypto-keys = { workspace = true }
 
-displaydoc = { version = "0.2", default-features = false }
-pem = "3.0"
-x509-signature = "0.5"
+displaydoc = { workspace = true }
+pem = { workspace = true }
+x509-signature = { workspace = true }

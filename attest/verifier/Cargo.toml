@@ -24,42 +24,42 @@ std = [
 sgx-sim = []
 
 [dependencies]
-mc-attest-core = { path = "../core", default-features = false }
-mc-attest-verifier-types = { path = "types", default-features = false }
-mc-common = { path = "../../common", default-features = false }
-mc-sgx-core-types = "0.12.0"
-mc-sgx-css = { path = "../../sgx/css", default-features = false }
-mc-sgx-dcap-types = "0.12.0"
-mc-sgx-types = { path = "../../sgx/types", default-features = false }
+mc-attest-core = { workspace = true }
+mc-attest-verifier-types = { workspace = true }
+mc-common = { workspace = true }
+mc-sgx-core-types = { workspace = true }
+mc-sgx-css = { workspace = true }
+mc-sgx-dcap-types = { workspace = true }
+mc-sgx-types = { workspace = true }
 
-cfg-if = "1.0"
-der = { version = "0.7.8", default-features = false }
-displaydoc = { version = "0.2", default-features = false }
-hex_fmt = "0.3"
-mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
-mc-attestation-verifier = { version = "0.4.4", features = ["mbedtls"] }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = { version = "0.10", default-features = false }
+cfg-if = { workspace = true }
+der = { workspace = true }
+displaydoc = { workspace = true }
+hex_fmt = { workspace = true }
+mbedtls = { workspace = true, features = ["no_std_deps"] }
+mc-attestation-verifier = { workspace = true, features = ["mbedtls"] }
+serde = { workspace = true, features = ["alloc", "derive"] }
+sha2 = { workspace = true }
 
 [dev-dependencies]
-mc-attest-untrusted = { path = "../untrusted", default-features = false }
-mc-util-encodings = { path = "../../util/encodings", default-features = false }
-p256 = { version = "0.13.0", default-features = false }
-textwrap = "0.16"
+mc-attest-untrusted = { workspace = true }
+mc-util-encodings = { workspace = true }
+p256 = { workspace = true }
+textwrap = { workspace = true }
 
 [build-dependencies]
-mc-sgx-core-sys-types = "0.12.0"
-mc-util-build-script = { path = "../../util/build/script" }
-mc-util-build-sgx = { path = "../../util/build/sgx" }
+mc-sgx-core-sys-types = { workspace = true }
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
 
-cargo-emit = "0.2"
-chrono = "0.4"
-hex = "0.4"
-lazy_static = "1.4"
-p256 = { version = "0.13.0", default-features = false, features = ["ecdsa", "pem"] }
-rand = "0.8"
-rand_hc = "0.3"
+cargo-emit = { workspace = true }
+chrono = { workspace = true, features = ["now"] }
+hex = { workspace = true, features = ["std"] }
+lazy_static = { workspace = true }
+p256 = { workspace = true, features = ["ecdsa", "pem"] }
+rand = { workspace = true }
+rand_hc = { workspace = true }
 
 # We use mbedtls to generate certificates for simulation mode
-mbedtls = "0.8.1"
-mbedtls-sys-auto = "2.26.1"
+mbedtls = { workspace = true, default-features = true }
+mbedtls-sys-auto = { workspace = true }

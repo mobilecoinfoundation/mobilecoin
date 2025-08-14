@@ -8,5 +8,5 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-account-keys = { path = "../../../../account-keys" }
-mc-fog-report-validation = { path = ".." }
+mc-account-keys = { workspace = true }
+mc-fog-report-validation = { workspace = true }
