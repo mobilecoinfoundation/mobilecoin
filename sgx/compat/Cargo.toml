@@ -25,7 +25,7 @@ sgx = [
 
 # All dependencies are optional
 [dependencies]
-cfg-if = "1.0"
+cfg-if = { workspace = true }
 mc-sgx-alloc = { path = "../alloc", optional = true }
 mc-sgx-debug = { path = "../debug", optional = true }
 mc-sgx-panic = { path = "../panic", optional = true }
