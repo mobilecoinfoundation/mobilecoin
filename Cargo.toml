@@ -119,25 +119,14 @@ members = [
     "mobilecoind/api",
     "peers",
     "peers/test-utils",
-    "sgx/alloc",
-    "sgx/build",
-    "sgx/compat",
     "sgx/compat-edl",
     "sgx/css",
     "sgx/css-dump",
-    "sgx/debug",
     "sgx/debug-edl",
-    "sgx/enclave-id",
-    "sgx/panic",
     "sgx/panic-edl",
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
-    "sgx/service",
-    "sgx/slog",
     "sgx/slog-edl",
-    "sgx/sync",
-    "sgx/types",
-    "sgx/urts",
     "t3/api",
     "t3/connection",
     "test-vectors/account-keys",
@@ -192,6 +181,9 @@ exclude = [
     "fog/ingest/enclave/trusted",
     "fog/ledger/enclave/trusted",
     "fog/view/enclave/trusted",
+    "sgx",
+    # mc-util-serial should only be accessed via the `common` crate.
+    "util/serial",
 ]
 
 resolver = "2"
@@ -508,11 +500,6 @@ mc-util-vec-map = { path = "util/vec-map" }
 mc-util-zip-exact = { path = "util/zip-exact", default-features = false }
 mc-watcher = { path = "watcher" }
 mc-watcher-api = { path = "watcher/api" }
-mc-sgx-alloc = { path = "sgx/alloc" }
-mc-sgx-debug = { path = "sgx/debug" }
-mc-sgx-panic = { path = "sgx/panic" }
-mc-sgx-service = { path = "sgx/service" }
-mc-sgx-sync = { path = "sgx/sync" }
 
 [profile.dev]
 opt-level = 0
