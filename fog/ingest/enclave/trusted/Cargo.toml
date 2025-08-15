@@ -50,7 +50,7 @@ sha2 = { version = "0.10", default-features = false }
 mc-util-build-script = { path = "../../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../../util/build/sgx" }
 
-cargo-emit = "0.2.1"
+cargo-emit = "0.2"
 pkg-config = "0.3"
 
 [profile.dev]

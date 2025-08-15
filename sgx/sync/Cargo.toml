@@ -12,5 +12,5 @@ default = ["mc-sgx-panic"]
 sgx_panic = []
 
 [dependencies]
-mc-sgx-panic = { path = "../panic", optional = true }
-mc-sgx-types = { path = "../types" }
+mc-sgx-panic = { workspace = true, optional = true }
+mc-sgx-types = { workspace = true }

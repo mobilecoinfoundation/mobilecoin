@@ -57,9 +57,10 @@ mc-fog-types = { path = "../../../types" }
 [build-dependencies]
 
 cargo-emit = "0.2"
+pkg-config = "0.3"
+
 mc-util-build-script = { path = "../../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../../util/build/sgx" }
-pkg-config = "0.3"
 
 [profile.dev]
 opt-level = 0

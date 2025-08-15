@@ -14,10 +14,10 @@ sgx = []
 sgx-sim = []
 
 [dependencies]
-cfg-if = "1.0"
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
+cfg-if = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
 
-mc-common = { path = "../../common", default-features = false }
+mc-common = { workspace = true }
 
 [build-dependencies]
-mc-sgx-build = { path = "../build" }
+mc-sgx-build = { workspace = true }
