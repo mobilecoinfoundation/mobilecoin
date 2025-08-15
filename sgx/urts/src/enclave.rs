@@ -300,7 +300,6 @@ impl SgxEnclave {
             id: eid,
         })?;
 
-        enclave.init();
         Ok(enclave)
     }
 
@@ -313,15 +312,10 @@ impl SgxEnclave {
     pub fn geteid(&self) -> sgx_enclave_id_t {
         self.id
     }
-
-    fn exit(&self) {}
-
-    fn init(&self) {}
 }
 
 impl Drop for SgxEnclave {
     fn drop(&mut self) {
-        self.exit();
         let _ = rsgx_destroy_enclave(self.id);
     }
 }
