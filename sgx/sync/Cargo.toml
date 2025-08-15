@@ -14,4 +14,4 @@ sgx_panic = []
 
 [dependencies]
 mc-sgx-panic = { path = "../panic", optional = true }
-mc-sgx-types = { path = "../types" }
+mc-sgx-types = { workspace = true }

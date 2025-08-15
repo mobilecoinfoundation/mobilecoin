@@ -31,4 +31,4 @@ mc-sgx-debug = { path = "../debug", optional = true }
 mc-sgx-panic = { path = "../panic", optional = true }
 mc-sgx-service = { path = "../service", optional = true }
 mc-sgx-sync = { path = "../sync", optional = true }
-mc-sgx-types = { path = "../types" }
+mc-sgx-types = { workspace = true }
