@@ -13,7 +13,7 @@ der = { workspace = true }
 mc-attest-ake = { workspace = true }
 mc-attest-api = { workspace = true }
 mc-attest-core = { workspace = true }
-mc-attest-verifier = { workspace = true }
+mc-attest-verifier = { workspace = true, features = ["std"] }
 mc-blockchain-types = { workspace = true }
 mc-common = { workspace = true }
 mc-consensus-api = { workspace = true }

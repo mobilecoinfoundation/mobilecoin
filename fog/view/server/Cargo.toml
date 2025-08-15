@@ -59,7 +59,7 @@ serde = { workspace = true, features = ["alloc", "derive"] }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-mc-attest-verifier = { workspace = true }
+mc-attest-verifier = { workspace = true , features = ["std"]}
 mc-attest-verifier-types = { workspace = true }
 mc-blockchain-types = { workspace = true }
 mc-common = { workspace = true, features = ["loggers"] }

@@ -10,7 +10,7 @@ rust-version = { workspace = true }
 # mobilecoin
 mc-attest-core = { workspace = true }
 mc-attest-enclave-api = { workspace = true }
-mc-attest-verifier = { workspace = true }
+mc-attest-verifier = { workspace = true, features = ["std"] }
 mc-common = { workspace = true, features = ["log"] }
 mc-crypto-keys = { workspace = true }
 mc-enclave-boundary = { workspace = true }
