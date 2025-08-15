@@ -41,12 +41,6 @@ mc-attestation-verifier = { workspace = true, features = ["mbedtls"] }
 serde = { workspace = true, features = ["alloc", "derive"] }
 sha2 = { workspace = true }
 
-[dev-dependencies]
-mc-attest-untrusted = { workspace = true }
-mc-util-encodings = { workspace = true }
-p256 = { workspace = true }
-textwrap = { workspace = true }
-
 [build-dependencies]
 mc-sgx-core-sys-types = { workspace = true }
 mc-util-build-script = { workspace = true }
@@ -63,3 +57,9 @@ rand_hc = { workspace = true }
 # We use mbedtls to generate certificates for simulation mode
 mbedtls = { workspace = true, default-features = true }
 mbedtls-sys-auto = { workspace = true }
+
+[dev-dependencies]
+mc-attest-untrusted = { workspace = true }
+mc-util-encodings = { workspace = true }
+p256 = { workspace = true }
+textwrap = { workspace = true }

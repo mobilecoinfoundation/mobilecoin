@@ -7,15 +7,15 @@ license = "Apache-2.0"
 readme = "README.md"
 rust-version = { workspace = true }
 
+[features]
+default = ["alloc", "prost", "serde", "hex_fmt"]
+alloc = []
+
 [dependencies]
 generic-array = { workspace = true }
 hex_fmt = { workspace = true, optional = true }
 prost = { workspace = true, features = ["prost-derive"], optional = true }
 serde = { workspace = true, features = ["alloc"], optional = true }
-
-[features]
-default = ["alloc", "prost", "serde", "hex_fmt"]
-alloc = []
 
 [dev-dependencies]
 serde_cbor = { workspace = true, features = ["alloc"] }

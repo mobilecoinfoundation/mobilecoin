@@ -10,10 +10,7 @@ rust-version = { workspace = true }
 [features]
 serde = ["dep:serde", "mc-crypto-keys/serde", "mc-crypto-ring-signature/serde"]
 prost = ["dep:prost", "mc-crypto-keys/prost", "mc-crypto-ring-signature/prost"]
-alloc = [
-    "serde?/alloc",
-    "mc-crypto-digestible/alloc",
-]
+alloc = ["serde?/alloc", "mc-crypto-digestible/alloc"]
 
 default = ["alloc", "serde", "prost"]
 

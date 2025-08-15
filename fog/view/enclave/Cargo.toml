@@ -34,15 +34,15 @@ mc-fog-view-enclave-measurement = { workspace = true }
 # third-party
 serde = { workspace = true, features = ["alloc", "derive"] }
 
-[dev-dependencies]
-criterion = { workspace = true }
-
-mc-fog-test-infra = { workspace = true }
-mc-util-from-random = { workspace = true }
-
 [build-dependencies]
 mc-util-build-script = { workspace = true }
 mc-util-build-sgx = { workspace = true }
 
 cargo-emit = { workspace = true }
 pkg-config = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+mc-fog-test-infra = { workspace = true }
+mc-util-from-random = { workspace = true }

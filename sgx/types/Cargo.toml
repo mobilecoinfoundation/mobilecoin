@@ -19,7 +19,7 @@ include = [
     "src/types.rs",
     "src/error.rs",
     "src/macros.rs",
-    "src/lib.rs"
+    "src/lib.rs",
 ]
 
 [lib]

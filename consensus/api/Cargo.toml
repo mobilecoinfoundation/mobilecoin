@@ -19,6 +19,12 @@ futures = { workspace = true }
 grpcio = { workspace = true }
 protobuf = { workspace = true }
 
+[build-dependencies]
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
+
+cargo-emit = { workspace = true }
+
 [dev-dependencies]
 mc-crypto-multisig = { workspace = true }
 mc-transaction-core-test-utils = { workspace = true }
@@ -26,9 +32,3 @@ mc-util-serial = { workspace = true }
 
 rand_core = { workspace = true }
 rand_hc = { workspace = true }
-
-[build-dependencies]
-mc-util-build-grpc = { workspace = true }
-mc-util-build-script = { workspace = true }
-
-cargo-emit = { workspace = true }

@@ -4,17 +4,18 @@ version = "7.0.1"
 authors = ["MobileCoin"]
 description = "gRPC APIs for encrypted communications with an enclave"
 edition = "2021"
-keywords = ["SIGMA", "Cryptography", "Key Exchange", "Diffie-Hellman", "SGX", "Attestation"]
+keywords = [
+    "SIGMA",
+    "Cryptography",
+    "Key Exchange",
+    "Diffie-Hellman",
+    "SGX",
+    "Attestation",
+]
 license = "Apache-2.0"
 links = "mc-attest-api"
 readme = "README.md"
 rust-version = { workspace = true }
-
-[build-dependencies]
-mc-util-build-grpc = { workspace = true }
-mc-util-build-script = { workspace = true }
-
-cargo-emit = { workspace = true }
 
 [dependencies]
 mc-attest-ake = { workspace = true }
@@ -31,6 +32,12 @@ digest = { workspace = true }
 futures = { workspace = true }
 grpcio = { workspace = true }
 protobuf = { workspace = true }
+
+[build-dependencies]
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
+
+cargo-emit = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }

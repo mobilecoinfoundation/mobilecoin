@@ -8,9 +8,7 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-sgx-sim = [
-    "mc-attest-verifier/sgx-sim"
-]
+sgx-sim = ["mc-attest-verifier/sgx-sim"]
 
 [dependencies]
 cfg-if = { workspace = true }
@@ -29,8 +27,8 @@ mc-sgx-types = { workspace = true }
 p256 = { workspace = true, features = ["ecdsa", "pem"] }
 sha2 = { workspace = true }
 
-[dev-dependencies]
-x509-cert = { workspace = true, features = ["pem"] }
-
 [build-dependencies]
 mc-sgx-build = { workspace = true }
+
+[dev-dependencies]
+x509-cert = { workspace = true, features = ["pem"] }

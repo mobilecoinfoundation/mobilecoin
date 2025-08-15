@@ -8,7 +8,12 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-serde = ["dep:serde", "mc-crypto-ring-signature/serde", "mc-transaction-types/serde", "curve25519-dalek/serde"]
+serde = [
+    "dep:serde",
+    "mc-crypto-ring-signature/serde",
+    "mc-transaction-types/serde",
+    "curve25519-dalek/serde",
+]
 alloc = ["serde/alloc", "mc-crypto-ring-signature/alloc", "curve25519-dalek/alloc"]
 
 default = ["serde", "alloc", "curve25519-dalek/default"]

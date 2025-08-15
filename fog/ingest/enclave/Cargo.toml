@@ -34,6 +34,13 @@ mc-util-serial = { workspace = true }
 # third-party
 displaydoc = { workspace = true }
 
+[build-dependencies]
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
+
+cargo-emit = { workspace = true }
+pkg-config = { workspace = true }
+
 [dev-dependencies]
 mc-common = { workspace = true, features = ["loggers"] }
 mc-fog-test-infra = { workspace = true }
@@ -41,10 +48,3 @@ mc-rand = { workspace = true }
 mc-util-from-random = { workspace = true }
 
 criterion = { workspace = true }
-
-[build-dependencies]
-mc-util-build-script = { workspace = true }
-mc-util-build-sgx = { workspace = true }
-
-cargo-emit = { workspace = true }
-pkg-config = { workspace = true }

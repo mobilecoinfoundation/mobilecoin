@@ -19,15 +19,15 @@ futures = { workspace = true }
 grpcio = { workspace = true }
 protobuf = { workspace = true }
 
+[build-dependencies]
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
+
+cargo-emit = { workspace = true }
+
 [dev-dependencies]
 mc-common = { workspace = true, features = ["loggers"] }
 mc-transaction-builder = { workspace = true }
 
 hex_fmt = { workspace = true }
 rand = { workspace = true }
-
-[build-dependencies]
-mc-util-build-grpc = { workspace = true }
-mc-util-build-script = { workspace = true }
-
-cargo-emit = { workspace = true }

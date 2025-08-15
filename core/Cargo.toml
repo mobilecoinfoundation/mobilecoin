@@ -10,7 +10,7 @@ rust-version = { workspace = true }
 
 [features]
 bip39 = ["dep:tiny-bip39", "dep:slip10_ed25519"]
-internals = [ ]
+internals = []
 serde = ["dep:serde", "mc-core-types/serde"]
 
 default = ["bip39"]

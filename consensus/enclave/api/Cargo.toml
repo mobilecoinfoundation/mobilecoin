@@ -17,7 +17,7 @@ std = [
     "mc-attest-core/std",
     "mc-attest-ake/std",
     "mc-util-serial/std",
-    "serde/std"
+    "serde/std",
 ]
 
 [dependencies]

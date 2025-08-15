@@ -32,15 +32,15 @@ mc-util-grpc = { workspace = true }
 mc-util-serial = { workspace = true }
 mc-watcher-api = { workspace = true }
 
+[build-dependencies]
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
+
+cargo-emit = { workspace = true }
+
 [dev-dependencies]
 mc-fog-kex-rng = { workspace = true }
 mc-fog-report-api-test-utils = { workspace = true }
 mc-fog-types = { workspace = true }
 mc-transaction-core = { workspace = true }
 mc-util-test-helper = { workspace = true }
-
-[build-dependencies]
-mc-util-build-grpc = { workspace = true }
-mc-util-build-script = { workspace = true }
-
-cargo-emit = { workspace = true }
