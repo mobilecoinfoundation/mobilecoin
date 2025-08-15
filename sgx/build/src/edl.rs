@@ -66,8 +66,7 @@ impl Edger8r {
             edl_path.canonicalize().expect(&expect_str)
         };
 
-        let output_dir = PathBuf::try_from(var("OUT_DIR").expect("Could not read OUT_DIR"))
-            .expect("Could not convert OUT_DIR to PathBuf")
+        let output_dir = PathBuf::from(var("OUT_DIR").expect("Could not read OUT_DIR"))
             .canonicalize()
             .expect("Could not canonicalize OUT_DIR path");
 
@@ -83,9 +82,9 @@ impl Edger8r {
 
             let stat = Command::new(edger8r_path)
                 .args(&self.search_paths)
-                .arg(&"--trusted")
+                .arg("--trusted")
                 .arg(&edl_path)
-                .arg(&"--trusted-dir")
+                .arg("--trusted-dir")
                 .arg(&output_dir)
                 .status()
                 .expect("Could not start sgx edger8r");
@@ -95,9 +94,9 @@ impl Edger8r {
 
             let stat = Command::new(edger8r_path)
                 .args(&self.search_paths)
-                .arg(&"--untrusted")
+                .arg("--untrusted")
                 .arg(&edl_path)
-                .arg(&"--untrusted-dir")
+                .arg("--untrusted-dir")
                 .arg(&output_dir)
                 .status()
                 .expect("Could not start sgx edger8r");
@@ -129,9 +128,9 @@ impl Edger8r {
         let edger8r_path = &*conf::SDK_BIN_DIR.join("sgx_edger8r");
         let stat = Command::new(edger8r_path)
             .args(&self.search_paths)
-            .arg(&"--trusted")
+            .arg("--trusted")
             .arg(self.edl_path.as_ref().expect("no edl file was specified"))
-            .arg(&"--trusted-dir")
+            .arg("--trusted-dir")
             .arg(output_dir)
             .status()
             .expect("Could not start sgx edger8r");
@@ -144,9 +143,9 @@ impl Edger8r {
         let edger8r_path = &*conf::SDK_BIN_DIR.join("sgx_edger8r");
         let stat = Command::new(edger8r_path)
             .args(&self.search_paths)
-            .arg(&"--untrusted")
+            .arg("--untrusted")
             .arg(self.edl_path.as_ref().expect("no edl file was specified"))
-            .arg(&"--untrusted-dir")
+            .arg("--untrusted-dir")
             .arg(output_dir)
             .status()
             .expect("Could not start sgx edger8r");
@@ -162,10 +161,9 @@ impl Default for Edger8r {
             edl_path: None,
             search_paths: Default::default(),
         };
-        result.search_path(&*conf::SDK_INCLUDE_DIR);
+        result.search_path(&conf::SDK_INCLUDE_DIR);
         result.search_path(
-            &PathBuf::try_from(&var("OUT_DIR").expect("Could not read OUT_DIR variable"))
-                .expect("Could not convert OUT_DIR variable to a path")
+            &PathBuf::from(&var("OUT_DIR").expect("Could not read OUT_DIR variable"))
                 .canonicalize()
                 .expect("Could not canonicalize OUT_DIR path"),
         );

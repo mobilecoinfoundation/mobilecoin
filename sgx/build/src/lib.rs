@@ -121,18 +121,18 @@ pub fn run_edger8r_and_build_trusted(
     // create-remove-create the untrusted dir, this makes sure the directory is
     // cleared and that if there is a permissions error, it fails at create step
     // and gives the best error message
-    std::fs::create_dir_all(&untrusted_dir)
+    std::fs::create_dir_all(untrusted_dir)
         .expect("could not create directory for untrusted code-gen");
-    std::fs::remove_dir_all(&untrusted_dir)
+    std::fs::remove_dir_all(untrusted_dir)
         .expect("could not remove directory for untrusted code-gen");
-    std::fs::create_dir_all(&untrusted_dir)
+    std::fs::create_dir_all(untrusted_dir)
         .expect("could not create directory for untrusted code-gen");
     // Run edger8r
     edl::Edger8r::default()
         .edl(enclave_edl)
         .search_path(edl_search_path)
-        .trusted(&*conf::OUT_DIR)
-        .untrusted(&untrusted_dir);
+        .trusted(&conf::OUT_DIR)
+        .untrusted(untrusted_dir);
     // Now build trusted
-    edl::build_generated_code(&*conf::OUT_DIR, "Enclave_t");
+    edl::build_generated_code(&conf::OUT_DIR, "Enclave_t");
 }
