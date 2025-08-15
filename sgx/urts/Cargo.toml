@@ -6,16 +6,17 @@ license = "GPL-3.0"
 readme = "README.md"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
 rust-version = "1.83.0"
+edition = "2015"
 
 [features]
 backtrace = []
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
+mc-common = { workspace = true, features = ["log"] }
 mc-sgx-slog = { path = "../slog" }
 mc-sgx-types = { path = "../types" }
 
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
+prost = { workspace = true, features = ["prost-derive"] }
 
 [build-dependencies]
 mc-sgx-build = { path = "../build" }
