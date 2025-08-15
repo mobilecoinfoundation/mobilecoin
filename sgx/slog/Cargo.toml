@@ -20,4 +20,4 @@ prost = { workspace = true, features = ["prost-derive"] }
 mc-common = { workspace = true }
 
 [build-dependencies]
-mc-sgx-build = { path = "../build" }
+mc-sgx-build = { workspace = true }

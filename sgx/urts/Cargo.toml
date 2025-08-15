@@ -13,10 +13,10 @@ backtrace = []
 
 [dependencies]
 mc-common = { workspace = true, features = ["log"] }
-mc-sgx-slog = { path = "../slog" }
-mc-sgx-types = { path = "../types" }
+mc-sgx-slog = { workspace = true }
+mc-sgx-types = { workspace = true }
 
 prost = { workspace = true, features = ["prost-derive"] }
 
 [build-dependencies]
-mc-sgx-build = { path = "../build" }
+mc-sgx-build = { workspace = true }
