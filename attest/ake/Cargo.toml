@@ -9,6 +9,7 @@ rust-version = { workspace = true }
 [features]
 default = ["std"]
 std = [
+    "mc-attest-verifier/std",
     "mc-attest-core/std",
     "digest/std",
     "serde/std",

@@ -18,7 +18,7 @@ path = "src/bin/main.rs"
 mc-attest-api = { workspace = true }
 mc-attest-core = { workspace = true }
 mc-attest-enclave-api = { workspace = true }
-mc-attest-verifier = { workspace = true }
+mc-attest-verifier = { workspace = true, features = ["std"] }
 mc-attest-verifier-types = { workspace = true }
 mc-blockchain-types = { workspace = true }
 mc-common = { workspace = true, features = ["log"] }

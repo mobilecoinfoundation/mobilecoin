@@ -16,7 +16,7 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-account-keys = { workspace = true }
 mc-api = { workspace = true }
-mc-attest-verifier = { workspace = true }
+mc-attest-verifier = { workspace = true, features = ["std"] }
 mc-common = { workspace = true, features = ["log"] }
 mc-consensus-api = { workspace = true }
 mc-consensus-enclave-api = { workspace = true }

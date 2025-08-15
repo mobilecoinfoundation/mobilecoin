@@ -11,7 +11,7 @@ rust-version = { workspace = true }
 [dependencies]
 mc-attest-core = { workspace = true }
 mc-attest-enclave-api = { workspace = true }
-mc-attest-verifier = { workspace = true }
+mc-attest-verifier = { workspace = true, features = ["std"] }
 mc-blockchain-types = { workspace = true }
 mc-common = { workspace = true }
 mc-consensus-enclave-api = { workspace = true }
