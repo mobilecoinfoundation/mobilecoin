@@ -22,10 +22,7 @@ rust-version = { workspace = true }
 
 [features]
 default = ["std"]
-std = [
-    "mc-consensus-enclave-api/std",
-    "mbedtls/std",
-]
+std = ["mc-consensus-enclave-api/std", "mbedtls/std"]
 
 [dependencies]
 mc-account-keys = { workspace = true }
@@ -52,6 +49,14 @@ prost = { workspace = true, features = ["prost-derive"] }
 rand_core = { workspace = true }
 subtle = { workspace = true, features = ["i128"] }
 
+[build-dependencies]
+mc-crypto-keys = { workspace = true }
+mc-util-build-script = { workspace = true }
+
+cargo-emit = { workspace = true }
+hex = { workspace = true }
+pem = { workspace = true }
+
 [dev-dependencies]
 mc-common = { workspace = true, features = ["loggers"] }
 mc-crypto-multisig = { workspace = true }
@@ -60,11 +65,3 @@ mc-transaction-core-test-utils = { workspace = true }
 
 rand = { workspace = true }
 rand_hc = { workspace = true }
-
-[build-dependencies]
-mc-crypto-keys = { workspace = true }
-mc-util-build-script = { workspace = true }
-
-cargo-emit = { workspace = true }
-hex = { workspace = true }
-pem = { workspace = true }

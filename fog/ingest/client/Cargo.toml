@@ -15,22 +15,6 @@ path = "src/lib.rs"
 name = "fog_ingest_client"
 path = "src/main.rs"
 
-[dev-dependencies]
-mc-fog-ingest-enclave = { workspace = true }
-mc-fog-ingest-server = { workspace = true }
-mc-fog-ingest-server-test-utils = { workspace = true }
-mc-fog-recovery-db-iface = { workspace = true }
-mc-fog-sql-recovery-db = { workspace = true }
-mc-fog-test-infra = { workspace = true }
-mc-ledger-db = { workspace = true }
-mc-util-from-random = { workspace = true }
-mc-watcher = { workspace = true }
-
-# third party
-assert_cmd = { workspace = true }
-predicates = { workspace = true }
-rand = { workspace = true }
-
 [dependencies]
 # third party
 clap = { workspace = true, features = ["derive", "env"] }
@@ -55,3 +39,19 @@ mc-util-uri = { workspace = true }
 mc-fog-api = { workspace = true }
 mc-fog-types = { workspace = true }
 mc-fog-uri = { workspace = true }
+
+[dev-dependencies]
+mc-fog-ingest-enclave = { workspace = true }
+mc-fog-ingest-server = { workspace = true }
+mc-fog-ingest-server-test-utils = { workspace = true }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+mc-fog-test-infra = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-watcher = { workspace = true }
+
+# third party
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+rand = { workspace = true }

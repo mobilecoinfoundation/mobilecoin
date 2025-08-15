@@ -48,6 +48,12 @@ serde = { workspace = true, features = ["alloc", "derive"] }
 sha2 = { workspace = true }
 subtle = { workspace = true, features = ["i128"] }
 
+[build-dependencies]
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
+
+cargo-emit = { workspace = true }
+
 [dev-dependencies]
 mc-util-serial = { workspace = true }
 
@@ -56,9 +62,3 @@ hex = { workspace = true }
 pem = { workspace = true }
 rand = { workspace = true }
 rand_hc = { workspace = true }
-
-[build-dependencies]
-mc-util-build-script = { workspace = true }
-mc-util-build-sgx = { workspace = true }
-
-cargo-emit = { workspace = true }

@@ -46,7 +46,7 @@ mc-fog-ledger-enclave-measurement = { workspace = true }
 mc-fog-report-connection = { workspace = true }
 mc-fog-report-resolver = { workspace = true }
 mc-fog-report-validation = { workspace = true }
-mc-fog-types =  { workspace = true }
+mc-fog-types = { workspace = true }
 mc-fog-uri = { workspace = true }
 mc-fog-view-connection = { workspace = true }
 mc-fog-view-enclave-measurement = { workspace = true }
@@ -62,13 +62,13 @@ protobuf = { workspace = true }
 rand = { workspace = true }
 serde_json = { workspace = true, features = ["alloc"] }
 
-[dev-dependencies]
-mc-common = { workspace = true, features = ["loggers"] }
-mc-transaction-core-test-utils = { workspace = true }
-mc-util-test-helper = { workspace = true }
-
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }
 mc-util-build-script = { workspace = true }
 
 cargo-emit = { workspace = true }
+
+[dev-dependencies]
+mc-common = { workspace = true, features = ["loggers"] }
+mc-transaction-core-test-utils = { workspace = true }
+mc-util-test-helper = { workspace = true }

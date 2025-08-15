@@ -25,10 +25,10 @@ serde = { workspace = true, features = ["alloc", "derive"] }
 sha2 = { workspace = true }
 x509-cert = { workspace = true, features = ["pem"] }
 
+[build-dependencies]
+prost-build = { workspace = true }
+
 [dev-dependencies]
 assert_matches = { workspace = true }
 mc-attest-untrusted = { workspace = true }
 mc-util-test-helper = { workspace = true }
-
-[build-dependencies]
-prost-build = { workspace = true }

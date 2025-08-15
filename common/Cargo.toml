@@ -7,10 +7,7 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [features]
-std = [
-    "displaydoc/std",
-    "mc-util-serial/std",
-]
+std = ["displaydoc/std", "mc-util-serial/std"]
 log = [
     "backtrace",
     "chrono/clock",
@@ -21,7 +18,6 @@ loggers = [
     # Features
     "log",
     "std",
-
     # Dependencies
     "hostname",
     "lazy_static",

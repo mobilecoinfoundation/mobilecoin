@@ -19,13 +19,13 @@ mc-attest-verifier-types = { workspace = true }
 mc-consensus-api = { workspace = true }
 mc-fog-report-types = { workspace = true }
 
-[dev-dependencies]
-mc-attest-core = { workspace = true }
-mc-fog-report-api-test-utils = { workspace = true }
-prost = { workspace = true, features = ["prost-derive"] }
-
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }
 mc-util-build-script = { workspace = true }
 
 cargo-emit = { workspace = true }
+
+[dev-dependencies]
+mc-attest-core = { workspace = true }
+mc-fog-report-api-test-utils = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }

@@ -14,9 +14,7 @@ std = [
     "digest/std",
     "serde/std",
 ]
-sgx-sim = [
-    "mc-attest-verifier/sgx-sim",
-]
+sgx-sim = ["mc-attest-verifier/sgx-sim"]
 
 [dependencies]
 mc-attest-core = { workspace = true }
@@ -35,6 +33,12 @@ prost = { workspace = true, features = ["prost-derive"] }
 rand_core = { workspace = true }
 serde = { workspace = true, features = ["alloc"] }
 
+[build-dependencies]
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
+
+cargo-emit = { workspace = true }
+
 [dev-dependencies]
 mc-attest-untrusted = { workspace = true }
 mc-util-encodings = { workspace = true }
@@ -43,9 +47,3 @@ mc-util-from-random = { workspace = true }
 aes-gcm = { workspace = true }
 rand_hc = { workspace = true }
 sha2 = { workspace = true }
-
-[build-dependencies]
-mc-util-build-script = { workspace = true }
-mc-util-build-sgx = { workspace = true }
-
-cargo-emit = { workspace = true }

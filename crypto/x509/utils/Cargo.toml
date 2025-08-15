@@ -8,12 +8,12 @@ license = "Apache-2.0"
 readme = "README.md"
 rust-version = { workspace = true }
 
-[dev-dependencies]
-mc-crypto-x509-test-vectors = { workspace = true }
-
 [dependencies]
 mc-crypto-keys = { workspace = true }
 
 displaydoc = { workspace = true }
 pem = { workspace = true }
 x509-signature = { workspace = true }
+
+[dev-dependencies]
+mc-crypto-x509-test-vectors = { workspace = true }

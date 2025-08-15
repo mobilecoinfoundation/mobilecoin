@@ -7,6 +7,10 @@ license = "Apache-2.0"
 readme = "README.md"
 rust-version = { workspace = true }
 
+[[bin]]
+name = "transaction-signer"
+path = "src/main.rs"
+
 [features]
 serde = []
 
@@ -36,7 +40,3 @@ mc-transaction-core = { workspace = true }
 mc-transaction-summary = { workspace = true }
 mc-util-repr-bytes = { workspace = true }
 mc-util-serial = { workspace = true }
-
-[[bin]]
-name = "transaction-signer"
-path = "src/main.rs"

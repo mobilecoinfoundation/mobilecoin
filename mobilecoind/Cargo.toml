@@ -76,6 +76,10 @@ retry = { workspace = true }
 serde_json = { workspace = true }
 tiny-bip39 = { workspace = true }
 
+[build-dependencies]
+# Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25
+libz-sys = { workspace = true }
+
 [dev-dependencies]
 mc-blockchain-test-utils = { workspace = true }
 mc-common = { workspace = true, features = ["loggers"] }
@@ -91,7 +95,3 @@ portpicker = { workspace = true }
 rand_chacha = { workspace = true }
 rand_core = { workspace = true }
 tempfile = { workspace = true }
-
-[build-dependencies]
-# Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25
-libz-sys = { workspace = true }

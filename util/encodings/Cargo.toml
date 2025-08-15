@@ -7,6 +7,10 @@ edition = "2021"
 license = "Apache-2.0"
 rust-version = { workspace = true }
 
+[features]
+default = []
+std = []
+
 [dependencies]
 mc-util-repr-bytes = { workspace = true }
 
@@ -14,7 +18,3 @@ base64 = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
-
-[features]
-default = []
-std = []

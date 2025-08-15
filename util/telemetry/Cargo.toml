@@ -7,11 +7,11 @@ license = "GPL-3.0"
 readme = "README.md"
 rust-version = { workspace = true }
 
-[features]
-jaeger = ["dep:opentelemetry-jaeger"]
-
 [lib]
 path = "src/lib.rs"
+
+[features]
+jaeger = ["dep:opentelemetry-jaeger"]
 
 [dependencies]
 cfg-if = { workspace = true }

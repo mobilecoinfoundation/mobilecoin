@@ -9,7 +9,7 @@ rust-version = { workspace = true }
 
 [dependencies]
 mc-common = { workspace = true, features = ["log"] }
-mc-connection =  { workspace = true }
+mc-connection = { workspace = true }
 mc-consensus-api = { workspace = true }
 mc-util-grpc = { workspace = true }
 mc-util-uri = { workspace = true }
