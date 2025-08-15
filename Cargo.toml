@@ -120,6 +120,7 @@ members = [
     "peers",
     "peers/test-utils",
     "sgx/build",
+    "sgx/compat",
     "sgx/compat-edl",
     "sgx/css",
     "sgx/css-dump",
