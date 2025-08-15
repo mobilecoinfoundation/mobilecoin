@@ -129,6 +129,7 @@ members = [
     "sgx/report-cache/untrusted",
     "sgx/slog",
     "sgx/slog-edl",
+    "sgx/types",
     "sgx/urts",
     "t3/api",
     "t3/connection",
