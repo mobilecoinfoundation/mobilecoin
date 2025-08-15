@@ -10,8 +10,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{
-    Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, FieldsNamed, FieldsUnnamed,
-    Generics, Ident, Lit, Meta, NestedMeta,
+    Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed,
+    Generics, Ident, Lit,
 };
 
 /// These are configuration options that are selected by #[digestible(..)]
@@ -30,44 +30,43 @@ struct AttributeConfig {
 }
 
 impl AttributeConfig {
-    // Apply a nested meta item from syn to the current config state
-    pub fn apply_meta(&mut self, nested_meta: &NestedMeta) -> Result<(), &'static str> {
-        match nested_meta {
-            NestedMeta::Lit(_) => {
-                return Err("Unexpected digestible literal attribute");
+    pub fn apply_path(&mut self, path: &syn::Path) -> Result<(), &'static str> {
+        if path.is_ident("transparent") {
+            if !self.transparent {
+                self.transparent = true;
+            } else {
+                return Err("transparent cannot appear twice as an attribute");
             }
-            NestedMeta::Meta(meta) => match meta {
-                Meta::Path(path) => {
-                    if path.is_ident("transparent") {
-                        if !self.transparent {
-                            self.transparent = true;
+        } else {
+            return Err("unexpected digestible path attribute");
+        }
+        Ok(())
+    }
+
+    pub fn apply_name_value(&mut self, path: &syn::Path, value: &Expr) -> Result<(), &'static str> {
+        if path.is_ident("name") {
+            if self.rename.is_some() {
+                return Err("name = cannot appear twice in digestible attributes");
+            } else {
+                match value {
+                    Expr::Lit(expr_lit) => {
+                        if let Lit::Str(litstr) = &expr_lit.lit {
+                            self.rename = Some(litstr.value());
                         } else {
-                            return Err("transparent cannot appear twice as an attribute");
+                            return Err(
+                                "name = must be set to string literal in digestible attributes",
+                            );
                         }
-                    } else {
-                        return Err("unexpected digestible path attribute");
+                    }
+                    _ => {
+                        return Err(
+                            "name = must be set to string literal in digestible attributes",
+                        );
                     }
                 }
-                Meta::NameValue(mnv) => {
-                    if mnv.path.is_ident("name") {
-                        if self.rename.is_some() {
-                            return Err("name = cannot appear twice in digestible attributes");
-                        } else {
-                            self.rename = match &mnv.lit {
-                                Lit::Str(litstr) => Some(litstr.value()),
-                                _ => {
-                                    return Err("name = must be set to string literal in digestible attributes");
-                                }
-                            }
-                        }
-                    } else {
-                        return Err("unexpected digestible feature attribute");
-                    }
-                }
-                _ => {
-                    return Err("unexpected digestible attribute");
-                }
-            },
+            }
+        } else {
+            return Err("unexpected digestible feature attribute");
         }
         Ok(())
     }
@@ -81,12 +80,22 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
         let mut result = AttributeConfig::default();
 
         for attr in src {
-            if attr.path.is_ident("digestible") {
-                if let Meta::List(meta) = attr.parse_meta().unwrap() {
-                    for meta_item in meta.nested.iter() {
-                        result.apply_meta(meta_item)?;
+            if attr.path().is_ident("digestible") {
+                attr.parse_nested_meta(|meta| {
+                    if let Ok(value) = meta.value() {
+                        result
+                            .apply_name_value(
+                                &meta.path,
+                                &value
+                                    .parse::<Expr>()
+                                    .map_err(|_| meta.error("invalid value"))?,
+                            )
+                            .map_err(|e| meta.error(e))
+                    } else {
+                        result.apply_path(&meta.path).map_err(|e| meta.error(e))
                     }
-                }
+                })
+                .map_err(|_| "Failed to parse digestible attribute")?;
             }
         }
 
@@ -121,62 +130,66 @@ struct FieldAttributeConfig {
 }
 
 impl FieldAttributeConfig {
-    // Apply a nested meta item from syn to the current config state
-    pub fn apply_meta(&mut self, nested_meta: &NestedMeta) -> Result<(), &'static str> {
-        match nested_meta {
-            NestedMeta::Lit(_) => {
-                return Err("Unexpected digestible literal attribute");
+    pub fn apply_path(&mut self, path: &syn::Path) -> Result<(), &'static str> {
+        if path.is_ident("never_omit") {
+            if self.omit_when.is_some() {
+                return Err("never_omit cannot be used together with omit_when");
+            } else {
+                self.never_omit = true;
             }
-            NestedMeta::Meta(meta) => match meta {
-                Meta::NameValue(mnv) => {
-                    if mnv.path.is_ident("omit_when") {
-                        if self.never_omit {
-                            return Err("omit_when cannot be used together with never_omit");
-                        } else if self.omit_when.is_some() {
-                            return Err("omit_when cannot appear twice as an attribute");
-                        } else {
-                            self.omit_when = Some(mnv.lit.clone());
-                        }
-                    } else if mnv.path.is_ident("name") {
-                        if self.rename.is_some() {
-                            return Err("name = cannot appear twice in digestible attributes");
-                        } else {
-                            self.rename = match &mnv.lit {
-                                Lit::Str(litstr) => Some(litstr.value()),
-                                _ => {
-                                    return Err("name = must be set to string literal in digestible attributes");
-                                }
-                            }
-                        }
-                    } else {
-                        return Err("unexpected digestible feature attribute");
-                    }
-                }
+        } else {
+            return Err("unexpected digestible attribute (unrecognized \"path\" element)");
+        }
+        Ok(())
+    }
 
-                Meta::Path(path) => {
-                    if path.is_ident("never_omit") {
-                        if self.omit_when.is_some() {
-                            return Err("never_omit cannot be used together with omit_when");
-                        } else {
-                            self.never_omit = true;
-                        }
-                    } else {
+    pub fn apply_name_value(&mut self, path: &syn::Path, value: &Expr) -> Result<(), &'static str> {
+        if path.is_ident("omit_when") {
+            if self.never_omit {
+                return Err("omit_when cannot be used together with never_omit");
+            } else if self.omit_when.is_some() {
+                return Err("omit_when cannot appear twice as an attribute");
+            } else {
+                match value {
+                    Expr::Lit(expr_lit) => {
+                        self.omit_when = Some(expr_lit.lit.clone());
+                    }
+                    _ => {
                         return Err(
-                            "unexpected digestible attribute (unrecognized \"path\" element)",
+                            "omit_when must be set to a literal value in digestible attributes",
                         );
                     }
                 }
-
-                _ => {
-                    return Err("unexpected digestible attribute");
+            }
+        } else if path.is_ident("name") {
+            if self.rename.is_some() {
+                return Err("name = cannot appear twice in digestible attributes");
+            } else {
+                match value {
+                    Expr::Lit(expr_lit) => {
+                        if let Lit::Str(litstr) = &expr_lit.lit {
+                            self.rename = Some(litstr.value());
+                        } else {
+                            return Err(
+                                "name = must be set to string literal in digestible attributes",
+                            );
+                        }
+                    }
+                    _ => {
+                        return Err(
+                            "name = must be set to string literal in digestible attributes",
+                        );
+                    }
                 }
-            },
+            }
+        } else {
+            return Err("unexpected digestible feature attribute");
         }
         Ok(())
     }
 }
 
-// Parse AttributeConfig from syn attribute list
+// Parse FieldAttributeConfig from syn attribute list
 impl TryFrom<&[Attribute]> for FieldAttributeConfig {
     type Error = &'static str;
 
@@ -184,12 +197,22 @@ impl TryFrom<&[Attribute]> for FieldAttributeConfig {
         let mut result = FieldAttributeConfig::default();
 
         for attr in src {
-            if attr.path.is_ident("digestible") {
-                if let Meta::List(meta) = attr.parse_meta().unwrap() {
-                    for meta_item in meta.nested.iter() {
-                        result.apply_meta(meta_item)?;
+            if attr.path().is_ident("digestible") {
+                attr.parse_nested_meta(|meta| {
+                    if let Ok(value) = meta.value() {
+                        result
+                            .apply_name_value(
+                                &meta.path,
+                                &value
+                                    .parse::<Expr>()
+                                    .map_err(|_| meta.error("invalid value"))?,
+                            )
+                            .map_err(|e| meta.error(e))
+                    } else {
+                        result.apply_path(&meta.path).map_err(|e| meta.error(e))
                     }
-                }
+                })
+                .map_err(|_| "Failed to parse digestible attribute")?;
             }
         }
 
