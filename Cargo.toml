@@ -131,6 +131,7 @@ members = [
     "sgx/service",
     "sgx/slog",
     "sgx/slog-edl",
+    "sgx/sync",
     "sgx/types",
     "sgx/urts",
     "t3/api",
