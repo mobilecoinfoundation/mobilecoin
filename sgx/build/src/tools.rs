@@ -32,16 +32,16 @@ pub fn link_enclave(static_archive: &Path, lds_file: &Path, shared_output: &Path
     // https://github.com/intel/linux-sgx/blob/master/SampleCode/SampleEnclave/Makefile#L148
     let mut command = Command::new((*conf::LD).clone());
     let stat = command
-        .args(&[
+        .args([
             "-o",
             shared_output
                 .to_str()
                 .expect("Shared object output path contains invalid UTF-8"),
         ])
-        .args(&["--no-undefined", "-nostdlib"])
+        .args(["--no-undefined", "-nostdlib"])
         .arg(format!("-L{}", conf::SDK_LIB_DIR.display()))
-        .args(&["--whole-archive", &trts_name, "--no-whole-archive"])
-        .args(&[
+        .args(["--whole-archive", &trts_name, "--no-whole-archive"])
+        .args([
             "--start-group",
             "-lsgx_tstdc",
             "-lsgx_tcxx",
@@ -52,9 +52,9 @@ pub fn link_enclave(static_archive: &Path, lds_file: &Path, shared_output: &Path
                 .expect("Archive input path contains invalid UTF-8"),
             "--end-group",
         ])
-        .args(&["-Bstatic", "-Bsymbolic", "--no-undefined"])
-        .args(&["-pie", "-eenclave_entry", "--export-dynamic"])
-        .args(&["--defsym", "__ImageBase=0"])
+        .args(["-Bstatic", "-Bsymbolic", "--no-undefined"])
+        .args(["-pie", "-eenclave_entry", "--export-dynamic"])
+        .args(["--defsym", "__ImageBase=0"])
         .arg("--gc-sections")
         .arg(format!("--version-script={}", lds_file.to_str().unwrap()))
         .status()
@@ -103,9 +103,9 @@ fn parse_hex_after(mut text: &str, key: &str) -> String {
     text = &text[key.len()..];
     // Skip any whitespace
     for chunk in text.split_ascii_whitespace() {
-        if chunk.starts_with("0x") {
+        if let Some(stripped) = chunk.strip_prefix("0x") {
             // We got another 0xAB pattern, add AB to result
-            result.push_str(&chunk[2..]);
+            result.push_str(stripped);
         } else {
             // Got something other than 0x..., we're done
             return result;

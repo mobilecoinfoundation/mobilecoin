@@ -12,16 +12,11 @@ use std::{
 };
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum TcsPolicy {
     Bound = 0,
+    #[default]
     Unbound = 1,
-}
-
-impl Default for TcsPolicy {
-    fn default() -> Self {
-        TcsPolicy::Unbound
-    }
 }
 
 /// This builder creates the Enclave.config.xml config file used by sgx_sign.
@@ -247,7 +242,7 @@ impl SgxSign {
             .arg("-enclave")
             .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-key")
             .arg(private_key)
             .arg("-out")
@@ -288,7 +283,7 @@ impl SgxSign {
             .arg("-enclave")
             .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-out")
             .arg(output_datfile);
 
@@ -328,17 +323,17 @@ impl SgxSign {
         let cmd = cmd
             .arg("catsig")
             .arg("-enclave")
-            .arg(&unsigned_enclave)
+            .arg(unsigned_enclave)
             .arg("-config")
-            .arg(&config_path)
+            .arg(config_path)
             .arg("-key")
-            .arg(&public_key_pem)
+            .arg(public_key_pem)
             .arg("-unsigned")
-            .arg(&gendata_output)
+            .arg(gendata_output)
             .arg("-sig")
-            .arg(&signature)
+            .arg(signature)
             .arg("-out")
-            .arg(&output_enclave);
+            .arg(output_enclave);
 
         let cmd = if self.ignore_rel_error {
             cmd.arg("-ignore-rel-error")
