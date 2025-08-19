@@ -9,4 +9,4 @@ readme = "README.md"
 rust-version = "1.83.0"
 
 [dependencies]
-mc-sgx-types = { workspace = true }
+mc-sgx-types = { path = "../types" }
