@@ -9,32 +9,32 @@ rust-version = { workspace = true }
 
 [dependencies]
 
-der = "0.7.8"
-mc-attest-ake = { path = "../attest/ake" }
-mc-attest-api = { path = "../attest/api" }
-mc-attest-core = { path = "../attest/core" }
-mc-attest-verifier = { path = "../attest/verifier" }
-mc-blockchain-types = { path = "../blockchain/types" }
-mc-common = { path = "../common" }
-mc-consensus-api = { path = "../consensus/api" }
-mc-crypto-keys = { path = "../crypto/keys" }
-mc-crypto-noise = { path = "../crypto/noise" }
-mc-transaction-core = { path = "../transaction/core" }
-mc-util-grpc = { path = "../util/grpc" }
-mc-util-serial = { path = "../util/serial" }
-mc-util-uri = { path = "../util/uri" }
+der = { workspace = true }
+mc-attest-ake = { workspace = true }
+mc-attest-api = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-attest-verifier = { workspace = true, features = ["std"] }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true }
+mc-consensus-api = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-noise = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-uri = { workspace = true }
 
-aes-gcm = "0.10.3"
-cookie = "0.18"
-displaydoc = "0.2"
-grpcio = "0.13"
-mc-attestation-verifier = "0.4.4"
-mc-rand = "1"
-retry = "2.0"
-secrecy = "0.8"
-serde = "1.0"
-sha2 = "0.10"
+aes-gcm = { workspace = true }
+cookie = { workspace = true }
+displaydoc = { workspace = true }
+grpcio = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+mc-rand = { workspace = true }
+retry = { workspace = true }
+secrecy = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
 
 [dev-dependencies]
-rand = "0.8"
-rand_hc = "0.3"
+rand = { workspace = true }
+rand_hc = { workspace = true }

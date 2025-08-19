@@ -9,14 +9,14 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-sgx-css = { path = "../../../sgx/css" }
-mc-util-build-script = { path = "../script" }
-mc-util-build-sgx = { path = "../sgx" }
+mc-sgx-css = { workspace = true }
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
 
-cargo-emit = "0.2.1"
-cargo_metadata = "0.18"
-displaydoc = { version = "0.2", default-features = false }
-mbedtls = "0.8.1"
-mbedtls-sys-auto = "2.26.1"
-pkg-config = "0.3"
-rand = "0.8"
+cargo-emit = { workspace = true }
+cargo_metadata = { workspace = true }
+displaydoc = { workspace = true }
+mbedtls = { workspace = true, default-features = true }
+mbedtls-sys-auto = { workspace = true }
+pkg-config = { workspace = true }
+rand = { workspace = true, default-features = true }

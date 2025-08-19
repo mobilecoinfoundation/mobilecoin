@@ -8,19 +8,19 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-common = { path = "../../common", default-features = false }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-util-host-cert = { path = "../../util/host-cert", default-features = false }
+mc-common = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-util-host-cert = { workspace = true }
 
-base64 = "0.21"
-displaydoc = { version = "0.2", default-features = false }
-hex = "0.4"
-percent-encoding = "2.3.1"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-url = "2.5"
+base64 = { workspace = true }
+displaydoc = { workspace = true }
+hex = { workspace = true }
+percent-encoding = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+url = { workspace = true }
 
 [dev-dependencies]
-mc-util-from-random = { path = "../../util/from-random" }
+mc-util-from-random = { workspace = true }
 
-rand = "0.8"
-rand_hc = "0.3"
+rand = { workspace = true }
+rand_hc = { workspace = true }

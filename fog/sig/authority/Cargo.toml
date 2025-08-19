@@ -9,10 +9,10 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-crypto-keys = { workspace = true }
 
 [dev-dependencies]
-mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-from-random = { workspace = true }
 
-rand_core = "0.6"
-rand_hc = "0.3"
+rand_core = { workspace = true }
+rand_hc = { workspace = true }

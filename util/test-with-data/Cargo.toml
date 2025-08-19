@@ -10,6 +10,6 @@ rust-version = { workspace = true }
 proc-macro = true
 
 [dependencies]
-proc-macro2 = { version = "1.0", features = ["nightly"] }
-quote = "1.0"
-syn = { version = "2.0", features = ["full", "extra-traits"] }
+proc-macro2 = { workspace = true, features = ["nightly"] }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full", "extra-traits"] }

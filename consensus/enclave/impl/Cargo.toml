@@ -22,49 +22,46 @@ rust-version = { workspace = true }
 
 [features]
 default = ["std"]
-std = [
-    "mc-consensus-enclave-api/std",
-    "mbedtls/std",
-]
+std = ["mc-consensus-enclave-api/std", "mbedtls/std"]
 
 [dependencies]
-mc-account-keys = { path = "../../../account-keys" }
-mc-attest-core = { path = "../../../attest/core", default-features = false }
-mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
-mc-attest-trusted = { path = "../../../attest/trusted", default-features = false }
-mc-blockchain-types = { path = "../../../blockchain/types" }
-mc-common = { path = "../../../common", default-features = false }
-mc-consensus-enclave-api = { path = "../api", default-features = false }
-mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
-mc-crypto-digestible = { path = "../../../crypto/digestible" }
-mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
-mc-rand = "1.0"
-mc-sgx-compat = { path = "../../../sgx/compat" }
-mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
-mc-transaction-core = { path = "../../../transaction/core" }
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-util-serial = { path = "../../../util/serial" }
+mc-account-keys = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-attest-enclave-api = { workspace = true }
+mc-attest-trusted = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true }
+mc-consensus-enclave-api = { workspace = true }
+mc-crypto-ake-enclave = { workspace = true }
+mc-crypto-digestible = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-crypto-message-cipher = { workspace = true }
+mc-rand = { workspace = true }
+mc-sgx-compat = { workspace = true }
+mc-sgx-report-cache-api = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-serial = { workspace = true }
 
-mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
-once_cell = { version = "1.19", default-features = false, features = ["alloc", "race"] }
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-rand_core = { version = "0.6", default-features = false }
-subtle = { version = "2.4", default-features = false, features = ["i128"] }
-
-[dev-dependencies]
-mc-common = { path = "../../../common", features = ["loggers"] }
-mc-crypto-multisig = { path = "../../../crypto/multisig" }
-mc-ledger-db = { path = "../../../ledger/db", features = ["test_utils"] }
-mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
-
-rand = "0.8"
-rand_hc = "0.3"
+mbedtls = { workspace = true, features = ["no_std_deps"] }
+once_cell = { workspace = true, features = ["alloc", "race"] }
+prost = { workspace = true, features = ["prost-derive"] }
+rand_core = { workspace = true }
+subtle = { workspace = true, features = ["i128"] }
 
 [build-dependencies]
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-util-build-script = { path = "../../../util/build/script" }
+mc-crypto-keys = { workspace = true }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2"
-hex = "0.4"
-pem = "3.0"
+cargo-emit = { workspace = true }
+hex = { workspace = true }
+pem = { workspace = true }
+
+[dev-dependencies]
+mc-common = { workspace = true, features = ["loggers"] }
+mc-crypto-multisig = { workspace = true }
+mc-ledger-db = { workspace = true, features = ["test_utils"] }
+mc-transaction-core-test-utils = { workspace = true }
+
+rand = { workspace = true }
+rand_hc = { workspace = true }

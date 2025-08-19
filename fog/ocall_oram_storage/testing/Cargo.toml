@@ -8,15 +8,15 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-fog-ocall-oram-storage-untrusted = { path = "../untrusted" }
+mc-fog-ocall-oram-storage-untrusted = { workspace = true }
 
 [dev-dependencies]
 # mc-oblivious
-aligned-cmov = "2.3"
-mc-oblivious-traits = "2.3"
+aligned-cmov = { workspace = true }
+mc-oblivious-traits = { workspace = true }
 
 # fog
-mc-fog-ocall-oram-storage-trusted = { path = "../trusted" }
+mc-fog-ocall-oram-storage-trusted = { workspace = true }
 
 # mobilecoin
-mc-util-test-helper = { path = "../../../util/test-helper" }
+mc-util-test-helper = { workspace = true }

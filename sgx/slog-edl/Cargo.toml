@@ -9,4 +9,4 @@ links = "sgx_slog_edl"
 rust-version = "1.83.0"
 
 [build-dependencies]
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }

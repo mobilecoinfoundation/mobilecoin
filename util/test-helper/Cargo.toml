@@ -13,15 +13,15 @@ path = "src/bin/generate_account_keys.rs"
 
 [dependencies]
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
+mc-account-keys = { workspace = true }
 
 # External dependencies
-clap = { version = "4.5", features = ["derive", "env"] }
-lazy_static = "1.4"
-rand = "0.8"
-rand_hc = "0.3"
+clap = { workspace = true, features = ["derive", "env"] }
+lazy_static = { workspace = true }
+rand = { workspace = true }
+rand_hc = { workspace = true }
 
 [dev-dependencies]
-mc-common = { path = "../../common", features = ["loggers"] }
+mc-common = { workspace = true, features = ["loggers"] }
 
-itertools = "0.12.1"
+itertools = { workspace = true }

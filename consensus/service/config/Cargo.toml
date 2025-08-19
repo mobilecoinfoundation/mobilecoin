@@ -7,26 +7,26 @@ license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-attest-core = { path = "../../../attest/core" }
-mc-blockchain-types = { path = "../../../blockchain/types" }
-mc-common = { path = "../../../common" }
-mc-consensus-enclave-api = { path = "../../enclave/api" }
-mc-consensus-scp = { path = "../../scp" }
-mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["derive"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-crypto-multisig = { path = "../../../crypto/multisig" }
-mc-transaction-core = { path = "../../../transaction/core" }
-mc-util-parse = { path = "../../../util/parse" }
-mc-util-serial = { path = "../../../util/serial", features = ["std"] }
-mc-util-uri = { path = "../../../util/uri" }
+mc-attest-core = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true }
+mc-consensus-enclave-api = { workspace = true }
+mc-consensus-scp = { workspace = true }
+mc-crypto-digestible = { workspace = true, features = ["derive"] }
+mc-crypto-keys = { workspace = true }
+mc-crypto-multisig = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-parse = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std"] }
+mc-util-uri = { workspace = true }
 
-base64 = "0.21"
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
-hex = "0.4"
-pem = "3.0"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_json = "1.0"
-serde_with = { version = "3.6", default-features = false }
-toml = "0.8"
+base64 = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+hex = { workspace = true }
+pem = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+toml = { workspace = true }
 

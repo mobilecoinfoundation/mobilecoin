@@ -13,45 +13,45 @@ path = "src/bin/main.rs"
 
 [dependencies]
 # third-party
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.13"
-lazy_static = "1.4"
-prometheus = "0.13.3"
-retry = "2.0"
-rocket = { version = "0.5.0", features = ["json"] }
-serde = "1"
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+grpcio = { workspace = true }
+lazy_static = { workspace = true }
+prometheus = { workspace = true }
+retry = { workspace = true }
+rocket = { workspace = true, features = ["json"] }
+serde = { workspace = true }
 
 # mc
-mc-api = { path = "../../../api" }
-mc-common = { path = "../../../common", features = ["loggers"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-transaction-core = { path = "../../../transaction/core" }
-mc-util-cli = { path = "../../../util/cli" }
-mc-util-metrics = { path = "../../../util/metrics" }
+mc-api = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-crypto-keys = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-cli = { workspace = true }
+mc-util-metrics = { workspace = true }
 
 # fog
-mc-fog-api = { path = "../../api" }
-mc-fog-ingest-client = { path = "../../ingest/client" }
-mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
-mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
-mc-fog-types = { path = "../../types" }
-mc-fog-uri = { path = "../../uri" }
+mc-fog-api = { workspace = true }
+mc-fog-ingest-client = { workspace = true }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-uri = { workspace = true }
 
 [dev-dependencies]
 # third-party
-rand_core = "0.6"
-rand_hc = "0.3"
-regex = "1"
-url = "2.5.0"
+rand_core = { workspace = true }
+rand_hc = { workspace = true }
+regex = { workspace = true }
+url = { workspace = true }
 
 # mc
-mc-ledger-db = { path = "../../../ledger/db" }
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-watcher = { path = "../../../watcher" }
+mc-ledger-db = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-watcher = { workspace = true }
 
 # fog
-mc-fog-ingest-enclave = { path = "../../ingest/enclave" }
-mc-fog-ingest-server = { path = "../../ingest/server" }
-mc-fog-ingest-server-test-utils = { path = "../../ingest/server/test-utils" }
-mc-fog-test-infra = { path = "../../test_infra" }
+mc-fog-ingest-enclave = { workspace = true }
+mc-fog-ingest-server = { workspace = true }
+mc-fog-ingest-server-test-utils = { workspace = true }
+mc-fog-test-infra = { workspace = true }

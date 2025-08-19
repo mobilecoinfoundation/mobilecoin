@@ -13,36 +13,36 @@ migration_support = []
 test_utils = [
     "mc-blockchain-test-utils",
     "mc-transaction-core-test-utils",
-    "mc-transaction-builder/test-only"
+    "mc-transaction-builder/test-only",
 ]
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-blockchain-test-utils = { path = "../../blockchain/test-utils", optional = true }
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", features = ["log"] }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-transaction-builder = { path = "../../transaction/builder" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils", optional = true }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-lmdb = { path = "../../util/lmdb" }
-mc-util-metrics = { path = "../../util/metrics" }
-mc-util-serial = { path = "../../util/serial", features = ["std"] }
-mc-util-telemetry = { path = "../../util/telemetry" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-account-keys = { workspace = true }
+mc-blockchain-test-utils = { workspace = true, optional = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-crypto-keys = { workspace = true }
+mc-transaction-builder = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-transaction-core-test-utils = { workspace = true, optional = true }
+mc-util-from-random = { workspace = true }
+mc-util-lmdb = { workspace = true }
+mc-util-metrics = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std"] }
+mc-util-telemetry = { workspace = true }
+mc-util-test-helper = { workspace = true }
 
-displaydoc = "0.2"
-lazy_static = "1.4"
-lmdb-rkv = "0.14"
-mockall = "0.12"
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-rand = "0.8"
-tempfile = "3.10.1"
+displaydoc = { workspace = true }
+lazy_static = { workspace = true }
+lmdb-rkv = { workspace = true }
+mockall = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+rand = { workspace = true }
+tempfile = { workspace = true }
 
 [dev-dependencies]
-mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
-mc-crypto-multisig = { path = "../../crypto/multisig" }
-mc-rand = "1.0"
-mc-transaction-builder = { path = "../../transaction/builder", features = ["test-only"] }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-blockchain-test-utils = { workspace = true }
+mc-crypto-multisig = { workspace = true }
+mc-rand = { workspace = true }
+mc-transaction-builder = { workspace = true, features = ["test-only"] }
+mc-transaction-core-test-utils = { workspace = true }

@@ -7,10 +7,10 @@ readme = "README.md"
 # TODO: Consider making sgx a self-contained workspace and get the value from there.
 rust-version = "1.83.0"
 
-[dependencies]
-mc-sgx-panic = { path = "../panic", optional = true }
-mc-sgx-types = { path = "../types" }
-
 [features]
 default = ["mc-sgx-panic"]
 sgx_panic = []
+
+[dependencies]
+mc-sgx-panic = { path = "../panic", optional = true }
+mc-sgx-types = { path = "../types" }

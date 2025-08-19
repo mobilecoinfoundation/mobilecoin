@@ -12,9 +12,9 @@ name = "ledger-from-archive"
 path = "src/main.rs"
 
 [dependencies]
-mc-api = { path = "../../api" }
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-ledger-sync = { path = "../../ledger/sync" }
+mc-api = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-ledger-db = { workspace = true }
+mc-ledger-sync = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
+clap = { workspace = true, features = ["derive", "env"] }

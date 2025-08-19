@@ -9,23 +9,23 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-futures = "0.3"
-grpcio = "0.13"
-protobuf = "2.27.1"
+futures = { workspace = true }
+grpcio = { workspace = true }
+protobuf = { workspace = true }
 
-mc-api = { path = "../../../api" }
-mc-attest-api = { path = "../../../attest/api" }
-mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
-mc-consensus-api = { path = "../../../consensus/api" }
-mc-fog-report-types = { path = "../types" }
-
-[dev-dependencies]
-mc-attest-core = { path = "../../../attest/core", default-features = false }
-mc-fog-report-api-test-utils = { path = "test-utils" }
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
+mc-api = { workspace = true }
+mc-attest-api = { workspace = true }
+mc-attest-verifier-types = { workspace = true }
+mc-consensus-api = { workspace = true }
+mc-fog-report-types = { workspace = true }
 
 [build-dependencies]
-mc-util-build-grpc = { path = "../../../util/build/grpc" }
-mc-util-build-script = { path = "../../../util/build/script" }
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2.1"
+cargo-emit = { workspace = true }
+
+[dev-dependencies]
+mc-attest-core = { workspace = true }
+mc-fog-report-api-test-utils = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }

@@ -12,26 +12,26 @@ name = "mobilecoind-json"
 path = "src/bin/main.rs"
 
 [dependencies]
-mc-api = { path = "../api" }
-mc-common = { path = "../common", features = ["loggers"] }
-mc-mobilecoind-api = { path = "../mobilecoind/api" }
-mc-util-grpc = { path = "../util/grpc" }
-mc-util-serial = { path = "../util/serial", features = ["std"] }
+mc-api = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-mobilecoind-api = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std"] }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-grpcio = "0.13"
-hex = "0.4"
-protobuf = "2.27.1"
-rocket = { version = "0.5.0", features = ["json"] }
-serde = "1.0"
-serde_derive = "1.0"
+clap = { workspace = true, features = ["derive", "env"] }
+grpcio = { workspace = true }
+hex = { workspace = true }
+protobuf = { workspace = true }
+rocket = { workspace = true, features = ["json"] }
+serde = { workspace = true }
+serde_derive = { workspace = true }
 
 [dev-dependencies]
-mc-crypto-keys = { path = "../crypto/keys" }
-mc-ledger-db = { path = "../ledger/db", features = ["test_utils"] }
-mc-transaction-core = { path = "../transaction/core" }
-mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
-mc-transaction-extra = { path = "../transaction/extra" }
-mc-util-from-random = { path = "../util/from-random" }
+mc-crypto-keys = { workspace = true }
+mc-ledger-db = { workspace = true, features = ["test_utils"] }
+mc-transaction-core = { workspace = true }
+mc-transaction-core-test-utils = { workspace = true }
+mc-transaction-extra = { workspace = true }
+mc-util-from-random = { workspace = true }
 
-rand = "0.8"
+rand = { workspace = true }

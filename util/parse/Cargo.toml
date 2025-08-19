@@ -9,6 +9,6 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-hex = { version = "0.4", default-features = false }
-itertools = "0.12"
-mc-sgx-css = { path = "../../sgx/css" }
+hex = { workspace = true }
+itertools = { workspace = true }
+mc-sgx-css = { workspace = true }

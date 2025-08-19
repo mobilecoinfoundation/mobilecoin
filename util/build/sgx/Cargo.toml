@@ -9,9 +9,9 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-util-build-script = { path = "../script" }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2.1"
-cc = "1"
-displaydoc = { version = "0.2", default-features = false }
-pkg-config = "0.3"
+cargo-emit = { workspace = true }
+cc = { workspace = true }
+displaydoc = { workspace = true }
+pkg-config = { workspace = true }

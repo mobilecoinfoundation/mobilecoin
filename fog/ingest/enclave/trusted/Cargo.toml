@@ -16,9 +16,7 @@ rust-version = "1.83.0"
 crate-type = ["staticlib"]
 
 [features]
-sgx-sim = [
-    "mc-attest-verifier/sgx-sim"
-]
+sgx-sim = ["mc-attest-verifier/sgx-sim"]
 
 [dependencies]
 # fog

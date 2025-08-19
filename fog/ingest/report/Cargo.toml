@@ -7,14 +7,14 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-attest-core = { path = "../../../attest/core", default-features = false }
-mc-attest-verifier = { path = "../../../attest/verifier", default-features = false }
-mc-attest-verifier-types = { path = "../../../attest/verifier/types", default-features = false }
-mc-attestation-verifier = "0.4.4"
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-fog-report-types = { path = "../../../fog/report/types", default-features = false }
-mc-util-encodings = { path = "../../../util/encodings" }
+mc-attest-core = { workspace = true }
+mc-attest-verifier = { workspace = true }
+mc-attest-verifier-types = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-fog-report-types = { workspace = true }
+mc-util-encodings = { workspace = true }
 
-der = { version = "0.7.8", default-features = false, features = ["std"] }
-displaydoc = { version = "0.2", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+der = { workspace = true, features = ["std"] }
+displaydoc = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }

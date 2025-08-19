@@ -12,19 +12,19 @@ name = "generate-sample-ledger"
 path = "src/bin/generate_sample_ledger.rs"
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
-mc-common = { path = "../../common", features = ["log", "loggers"] }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-build-info = { path = "../../util/build/info" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-keyfile = { path = "../../util/keyfile" }
-mc-util-parse = { path = "../../util/parse" }
+mc-account-keys = { workspace = true }
+mc-blockchain-test-utils = { workspace = true }
+mc-common = { workspace = true, features = ["log", "loggers"] }
+mc-ledger-db = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-build-info = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-keyfile = { workspace = true }
+mc-util-parse = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-rand = "0.8"
-rand_hc = "0.3"
+clap = { workspace = true, features = ["derive", "env"] }
+rand = { workspace = true }
+rand_hc = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.10"
+tempfile = { workspace = true }

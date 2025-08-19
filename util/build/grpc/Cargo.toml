@@ -8,6 +8,6 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-util-build-script = { path = "../../build/script" }
+mc-util-build-script = { workspace = true }
 
-protoc-grpcio = "3.0.0"
+protoc-grpcio = { workspace = true }

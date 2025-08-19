@@ -15,43 +15,43 @@ path = "src/lib.rs"
 name = "fog_ingest_client"
 path = "src/main.rs"
 
-[dev-dependencies]
-mc-fog-ingest-enclave = { path = "../enclave" }
-mc-fog-ingest-server = { path = "../server" }
-mc-fog-ingest-server-test-utils = { path = "../server/test-utils" }
-mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
-mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
-mc-fog-test-infra = { path = "../../test_infra" }
-mc-ledger-db = { path = "../../../ledger/db" }
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-watcher = { path = "../../../watcher" }
-
-# third party
-assert_cmd = "2.0.14"
-predicates = "3"
-rand = "0.8"
-
 [dependencies]
 # third party
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.13"
-hex = "0.4"
-protobuf = "2.27.1"
-retry = "2.0"
-serde_json = "1.0"
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+grpcio = { workspace = true }
+hex = { workspace = true }
+protobuf = { workspace = true }
+retry = { workspace = true }
+serde_json = { workspace = true }
 
 # root
-mc-account-keys = { path = "../../../account-keys" }
-mc-api = { path = "../../../api" }
-mc-common = { path = "../../../common", features = ["log"] }
-mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-util-cli = { path = "../../../util/cli" }
-mc-util-grpc = { path = "../../../util/grpc" }
-mc-util-parse = { path = "../../../util/parse" }
-mc-util-uri = { path = "../../../util/uri" }
+mc-account-keys = { workspace = true }
+mc-api = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-crypto-keys = { workspace = true }
+mc-util-cli = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-parse = { workspace = true }
+mc-util-uri = { workspace = true }
 
 # fog
-mc-fog-api = { path = "../../api" }
-mc-fog-types = { path = "../../types" }
-mc-fog-uri = { path = "../../uri" }
+mc-fog-api = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-uri = { workspace = true }
+
+[dev-dependencies]
+mc-fog-ingest-enclave = { workspace = true }
+mc-fog-ingest-server = { workspace = true }
+mc-fog-ingest-server-test-utils = { workspace = true }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+mc-fog-test-infra = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-watcher = { workspace = true }
+
+# third party
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+rand = { workspace = true }
