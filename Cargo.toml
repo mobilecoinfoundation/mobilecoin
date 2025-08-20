@@ -228,7 +228,7 @@ curve25519-dalek = { version = "4", default-features = false }
 der = { version = "0.7", default-features = false }
 diesel = "2"
 diesel-derive-enum = "2"
-diesel_migrations = "2.1.0"
+diesel_migrations = "2"
 digest = { version = "0.10", default-features = false }
 dirs = "5"
 displaydoc = { version = "0.2", default-features = false }
@@ -342,7 +342,7 @@ tiny-bip39 = "1"
 tokio = "1"
 toml = "0.8"
 url = "2"
-walkdir = "2.4"
+walkdir = "2"
 wasm-bindgen = "0.2"
 wasm-bindgen-test = "0.3"
 x25519-dalek = { version = "2", default-features = false }
