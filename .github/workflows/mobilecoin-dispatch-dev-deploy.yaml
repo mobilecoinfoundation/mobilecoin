@@ -69,6 +69,11 @@ on:
         options:
         - blue
         - green
+      deployment_region:
+        description: "cloud deployment region"
+        type: string
+        required: true
+        default: italynorth
 
 jobs:
   list-values:
@@ -111,4 +116,5 @@ jobs:
       shard_size: ${{ inputs.shard_size }}
       shard_exceed_block_height_by: ${{ inputs.shard_exceed_block_height_by }}
       tokens_file: ${{ inputs.tokens_file }}
+      deployment_region: ${{ inputs.deployment_region }}
     secrets: inherit
