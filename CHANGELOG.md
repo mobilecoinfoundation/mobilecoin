@@ -8,6 +8,14 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [7.0.1]
 
+### Fixed
+
+- Make CD deployment region configurable ([#4059])
+
+[#4059]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4059
+
+## [7.0.1]
+
 ### Changed
 
 - consensus with statefulsets ([#4046])
