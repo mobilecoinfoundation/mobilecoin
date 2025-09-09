@@ -3,8 +3,6 @@
 //! Convert to/from external:MintTx/MintTxPrefix.
 
 use crate::{external, ConversionError};
-use mc_crypto_keys::RistrettoPublic;
-use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     mint::{MintTx, MintTxPrefix},
@@ -13,18 +11,20 @@ use mc_transaction_core::{
 /// Convert MintTxPrefix --> external::MintTxPrefix.
 impl From<&MintTxPrefix> for external::MintTxPrefix {
     fn from(src: &MintTxPrefix) -> Self {
-        let mut dst = external::MintTxPrefix::new();
-        dst.set_token_id(src.token_id);
-        dst.set_amount(src.amount);
-        dst.set_view_public_key((&src.view_public_key).into());
-        dst.set_spend_public_key((&src.spend_public_key).into());
-        dst.set_nonce(src.nonce.clone());
-        dst.set_tombstone_block(src.tombstone_block);
-        if let Some(e_fog_hint) = &src.e_fog_hint {
-            let hint_bytes = e_fog_hint.as_ref().to_vec();
-            dst.mut_e_fog_hint().set_data(hint_bytes);
+        Self {
+            token_id: src.token_id,
+            amount: src.amount,
+            view_public_key: Some((&src.view_public_key).into()),
+            spend_public_key: Some((&src.spend_public_key).into()),
+            nonce: src.nonce.clone(),
+            tombstone_block: src.tombstone_block,
+            e_fog_hint: src
+                .e_fog_hint
+                .as_ref()
+                .map(|hint| external::EncryptedFogHint {
+                    data: hint.as_ref().to_vec(),
+                }),
         }
-        dst
     }
 }
 
@@ -33,25 +33,32 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintTxPrefix) -> Result<Self, Self::Error> {
-        let view_public_key = RistrettoPublic::try_from(source.get_view_public_key())?;
-        let spend_public_key = RistrettoPublic::try_from(source.get_spend_public_key())?;
-        let e_fog_hint_data = source.get_e_fog_hint().get_data();
-        let e_fog_hint = if e_fog_hint_data.is_empty() {
-            None
-        } else {
-            Some(
-                EncryptedFogHint::try_from(e_fog_hint_data)
-                    .map_err(|_| ConversionError::ArrayCastError)?,
-            )
-        };
+        let view_public_key = source
+            .view_public_key
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let spend_public_key = source
+            .spend_public_key
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let e_fog_hint = source
+            .e_fog_hint
+            .as_ref()
+            .map(|hint| {
+                EncryptedFogHint::try_from(hint.data.as_slice())
+                    .map_err(|_| ConversionError::ArrayCastError)
+            })
+            .transpose()?;
 
         Ok(Self {
-            token_id: source.get_token_id(),
-            amount: source.get_amount(),
+            token_id: source.token_id,
+            amount: source.amount,
             view_public_key,
             spend_public_key,
-            nonce: source.get_nonce().to_vec(),
-            tombstone_block: source.get_tombstone_block(),
+            nonce: source.nonce.clone(),
+            tombstone_block: source.tombstone_block,
             e_fog_hint,
         })
     }
@@ -60,10 +67,10 @@ impl TryFrom<&external::MintTxPrefix> for MintTxPrefix {
 /// Convert MintTx --> external::MintTx.
 impl From<&MintTx> for external::MintTx {
     fn from(src: &MintTx) -> Self {
-        let mut dst = external::MintTx::new();
-        dst.set_prefix((&src.prefix).into());
-        dst.set_signature((&src.signature).into());
-        dst
+        Self {
+            prefix: Some((&src.prefix).into()),
+            signature: Some((&src.signature).into()),
+        }
     }
 }
 
@@ -72,8 +79,16 @@ impl TryFrom<&external::MintTx> for MintTx {
     type Error = ConversionError;
 
     fn try_from(source: &external::MintTx) -> Result<Self, Self::Error> {
-        let prefix = MintTxPrefix::try_from(source.get_prefix())?;
-        let signature = MultiSig::try_from(source.get_signature())?;
+        let prefix = source
+            .prefix
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let signature = source
+            .signature
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
 
         Ok(Self { prefix, signature })
     }
@@ -83,9 +98,10 @@ impl TryFrom<&external::MintTx> for MintTx {
 mod tests {
     use super::*;
     use crate::convert::ed25519_multisig::tests::test_multi_sig;
+    use mc_crypto_keys::RistrettoPublic;
     use mc_util_from_random::FromRandom;
     use mc_util_serial::{decode, encode};
-    use protobuf::Message;
+    use prost::Message;
     use rand_core::{RngCore, SeedableRng};
     use rand_hc::Hc128Rng;
 
@@ -127,14 +143,14 @@ mod tests {
         // function.
         {
             let bytes = encode(&source);
-            let recovered = external::MintTx::parse_from_bytes(&bytes).unwrap();
+            let recovered = external::MintTx::decode(bytes.as_slice()).unwrap();
             assert_eq!(recovered, external::MintTx::from(&source));
         }
 
         // Encoding with protobuf, decoding with prost should be the identity function.
         {
             let external = external::MintTx::from(&source);
-            let bytes = external.write_to_bytes().unwrap();
+            let bytes = external.encode_to_vec();
             let recovered: MintTx = decode(&bytes).unwrap();
             assert_eq!(source, recovered);
         }

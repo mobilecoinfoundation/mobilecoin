@@ -115,11 +115,19 @@ pub struct JsonReceiverTxReceipt {
 impl From<&api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &api::ReceiverTxReceipt) -> Self {
         Self {
-            recipient: JsonPublicAddress::from(src.get_recipient()),
-            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
-            tx_out_hash: hex::encode(src.get_tx_out_hash()),
-            tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(src.get_confirmation_number()),
+            recipient: JsonPublicAddress::from(
+                src.recipient.as_ref().unwrap_or(&Default::default()),
+            ),
+            tx_public_key: hex::encode(
+                src.tx_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            tx_out_hash: hex::encode(src.tx_out_hash.as_slice()),
+            tombstone: src.tombstone,
+            confirmation_number: hex::encode(src.confirmation_number.as_slice()),
         }
     }
 }
@@ -146,11 +154,23 @@ pub struct JsonPublicAddress {
 impl From<&PublicAddress> for JsonPublicAddress {
     fn from(src: &PublicAddress) -> Self {
         Self {
-            view_public_key: hex::encode(src.get_view_public_key().get_data()),
-            spend_public_key: hex::encode(src.get_spend_public_key().get_data()),
-            fog_report_url: src.get_fog_report_url().into(),
-            fog_report_id: src.get_fog_report_id().into(),
-            fog_authority_sig: hex::encode(src.get_fog_authority_sig()),
+            view_public_key: hex::encode(
+                src.view_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            spend_public_key: hex::encode(
+                src.spend_public_key
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+                    .data
+                    .as_slice(),
+            ),
+            fog_report_url: src.fog_report_url.clone(),
+            fog_report_id: src.fog_report_id.clone(),
+            fog_authority_sig: hex::encode(src.fog_authority_sig.as_slice()),
         }
     }
 }
@@ -179,11 +199,11 @@ pub struct JsonSubmitTxResponse {
 impl From<Result<api::SubmitTxResponse, String>> for JsonSubmitTxResponse {
     fn from(src: Result<api::SubmitTxResponse, String>) -> Self {
         match src {
-            Ok(mut resp) => Self {
+            Ok(resp) => Self {
                 success: true,
                 err_str: String::default(),
                 receiver_tx_receipt_list: resp
-                    .take_receiver_tx_receipt_list()
+                    .receiver_tx_receipt_list
                     .iter()
                     .map(JsonReceiverTxReceipt::from)
                     .collect(),

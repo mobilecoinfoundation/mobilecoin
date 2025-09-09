@@ -51,11 +51,10 @@ clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 fs_extra = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 lazy_static = { workspace = true }
 once_cell = { workspace = true }
-protobuf = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 retry = { workspace = true }

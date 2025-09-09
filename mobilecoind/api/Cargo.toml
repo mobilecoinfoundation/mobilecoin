@@ -16,8 +16,8 @@ mc-fog-api = { workspace = true }
 mc-util-uri = { workspace = true }
 
 futures = { workspace = true }
-grpcio = { workspace = true }
-protobuf = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
+prost = { workspace = true, features = ["prost-derive"] }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }

@@ -4,11 +4,9 @@ use grpcio::RpcStatus;
 use mc_attest_api::{attest, attest::AuthMessage};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{
-    ledger::{
-        MultiKeyImageStoreRequest, MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus,
-    },
-    ledger_grpc::KeyImageStoreApi,
+use mc_fog_api::fog_ledger::{
+    KeyImageStoreApi, MultiKeyImageStoreRequest, MultiKeyImageStoreResponse,
+    MultiKeyImageStoreResponseStatus,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
@@ -53,16 +51,14 @@ impl<E: LedgerEnclaveProxy> KeyImageService<E> {
 
     pub fn auth_store(
         &mut self,
-        mut req: AuthMessage,
+        req: AuthMessage,
         logger: &Logger,
     ) -> Result<attest::AuthMessage, RpcStatus> {
         // TODO: Use the prost message directly, once available
-        match self.enclave.frontend_accept(req.take_data().into()) {
-            Ok((response, _)) => {
-                let mut result = attest::AuthMessage::new();
-                result.set_data(response.into());
-                Ok(result)
-            }
+        match self.enclave.frontend_accept(req.data.into()) {
+            Ok((response, _)) => Ok(attest::AuthMessage {
+                data: response.into(),
+            }),
             Err(client_error) => {
                 // There's no requirement on the remote party to trigger this, so it's debug.
                 log::debug!(
@@ -129,11 +125,13 @@ impl<E: LedgerEnclaveProxy> KeyImageService<E> {
         fog_ledger_store_uri: KeyImageStoreUri,
         queries: Vec<attest::NonceMessage>,
     ) -> MultiKeyImageStoreResponse {
-        let mut response = MultiKeyImageStoreResponse::new();
-        // The router needs our own URI, in case auth fails / hasn't been started yet.
-        response.set_store_uri(fog_ledger_store_uri.url().to_string());
-        // Default status of AUTHENTICATION_ERROR in case of empty queries
-        response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
+        let mut response = MultiKeyImageStoreResponse {
+            // The router needs our own URI, in case auth fails / hasn't been started yet.
+            store_uri: fog_ledger_store_uri.url().to_string(),
+            // Default status of AUTHENTICATION_ERROR in case of empty queries
+            status: MultiKeyImageStoreResponseStatus::AuthenticationError.into(),
+            ..Default::default()
+        };
 
         for query in queries.into_iter() {
             // Only one of the query messages in the multi-store query is intended for this
@@ -142,19 +140,19 @@ impl<E: LedgerEnclaveProxy> KeyImageService<E> {
             // for them.
             match self.check_key_image_store_auth(query) {
                 Ok(attested_message) => {
-                    response.set_query_response(attested_message);
-                    response.set_status(MultiKeyImageStoreResponseStatus::SUCCESS);
+                    response.query_response = Some(attested_message);
+                    response.set_status(MultiKeyImageStoreResponseStatus::Success);
                 }
                 Err(EnclaveError::ProstDecode) => {
-                    response.set_status(MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT);
+                    response.set_status(MultiKeyImageStoreResponseStatus::InvalidArgument);
                 }
                 Err(EnclaveError::Attest(_)) => {
-                    response.set_status(MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR);
+                    response.set_status(MultiKeyImageStoreResponseStatus::AuthenticationError);
                     // All other conditions are early exit but we expect several of these
                     continue;
                 }
                 Err(_) => {
-                    response.set_status(MultiKeyImageStoreResponseStatus::UNKNOWN);
+                    response.set_status(MultiKeyImageStoreResponseStatus::Unknown);
                 }
             }
 
@@ -213,7 +211,7 @@ impl<E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<E> {
             let start_time = Instant::now();
 
             let response =
-                self.process_queries(self.client_listen_uri.clone(), req.queries.into_vec());
+                self.process_queries(self.client_listen_uri.clone(), req.queries.to_vec());
 
             let status_str = format!("{:?}", response.status);
             let subdomain = self.client_listen_uri.subdomain().unwrap_or_default();

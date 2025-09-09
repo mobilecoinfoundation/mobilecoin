@@ -4,10 +4,7 @@ use crate::SVC_COUNTERS;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_api::{
-    ledger::{TxOutRequest, TxOutResponse},
-    ledger_grpc::FogUntrustedTxOutApi,
-};
+use mc_fog_api::fog_ledger::{FogUntrustedTxOutApi, TxOutRequest, TxOutResponse};
 use mc_fog_block_provider::{BlockProvider, TxOutInfoByPublicKeyResponse};
 use mc_util_grpc::{
     check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result,
@@ -58,13 +55,11 @@ impl UntrustedTxOutService {
                 rpc_internal_error("get_tX_out_info_by_public_key", err, &self.logger)
             })?;
 
-        let mut response = TxOutResponse::new();
-
-        response.num_blocks = latest_block.index + 1;
-        response.global_txo_count = latest_block.cumulative_txo_count;
-        response.results = results.into();
-
-        Ok(response)
+        Ok(TxOutResponse {
+            num_blocks: latest_block.index + 1,
+            global_txo_count: latest_block.cumulative_txo_count,
+            results,
+        })
     }
 }
 

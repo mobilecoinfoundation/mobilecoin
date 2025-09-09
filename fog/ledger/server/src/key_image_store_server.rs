@@ -9,7 +9,7 @@ use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
 };
-use mc_fog_api::ledger_grpc;
+use mc_fog_api::fog_ledger;
 use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
@@ -135,7 +135,7 @@ where
         // Build our store server.
         // Init ledger store service.
         let ledger_store_service =
-            ledger_grpc::create_key_image_store_api(key_image_service.clone());
+            fog_ledger::create_key_image_store_api(key_image_service.clone());
         log::debug!(logger, "Constructed Key Image Store GRPC Service");
 
         // Package service into grpc server

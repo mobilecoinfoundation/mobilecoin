@@ -24,7 +24,7 @@ path = "src/bin/router.rs"
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
 

@@ -8,14 +8,14 @@ rust-version = { workspace = true }
 
 [features]
 default = []
-service_metrics = ["dep:grpcio"]
+service_metrics = ["dep:grpcio", "dep:prost"]
 
 [dependencies]
 mc-common = { workspace = true, features = ["log"] }
 
 chrono = { workspace = true }
-grpcio = { workspace = true, optional = true }
+grpcio = { workspace = true, features = ["prost-codec"], optional = true }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
-protobuf = { workspace = true }
+prost = { workspace = true, optional = true }
 serde_json = { workspace = true }

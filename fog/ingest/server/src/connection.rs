@@ -8,7 +8,7 @@ use crate::{
 };
 use core::fmt::{Display, Formatter, Result as FmtResult};
 use grpcio::{ChannelBuilder, Environment};
-use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
+use mc_attest_api::attest::{AttestedApiClient, Message};
 use mc_attest_core::EvidenceKind;
 use mc_attest_enclave_api::PeerSession;
 use mc_common::{
@@ -19,8 +19,7 @@ use mc_connection::{AttestedConnection, Connection};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
-    ingest_peer::GetPrivateKeyRequest,
-    ingest_peer_grpc::AccountIngestPeerApiClient,
+    ingest_peer::{AccountIngestPeerApiClient, GetPrivateKeyRequest},
 };
 use mc_fog_ingest_enclave_api::IngestEnclaveProxy;
 use mc_fog_uri::IngestPeerUri;
@@ -181,17 +180,16 @@ impl<Enclave: IngestEnclaveProxy> IngestConnection for PeerConnection<Enclave> {
         trace_time!(self.logger, "PeerConnection::get_status");
 
         // This call is not attested
-        let request = Default::default();
-        Ok(self.ingest_peer_api_client.get_status(&request)?)
+        Ok(self.ingest_peer_api_client.get_status(&())?)
     }
 
     fn set_peers(&mut self, peers: BTreeSet<IngestPeerUri>) -> Result<IngestSummary> {
         trace_time!(self.logger, "PeerConnection::set_peers");
 
         // This call is not attested
-        let mut request = SetPeersRequest::new();
-        request.ingest_peer_uris =
-            protobuf::RepeatedField::from_vec(peers.iter().map(|x| x.to_string()).collect());
+        let request = SetPeersRequest {
+            ingest_peer_uris: peers.iter().map(|x| x.to_string()).collect(),
+        };
         Ok(self.ingest_peer_api_client.set_peers(&request)?)
     }
 
@@ -204,8 +202,9 @@ impl<Enclave: IngestEnclaveProxy> IngestConnection for PeerConnection<Enclave> {
 
         match self.channel_id.clone() {
             Some(peer_session) => {
-                let mut request = GetPrivateKeyRequest::new();
-                request.set_channel_id(peer_session.into());
+                let request = GetPrivateKeyRequest {
+                    channel_id: peer_session.into(),
+                };
 
                 let message = self.attested_call(|this| {
                     this.ingest_peer_api_client

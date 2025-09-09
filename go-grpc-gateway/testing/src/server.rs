@@ -2,7 +2,7 @@ use crate::service::Service;
 use futures::executor::block_on;
 use grpcio::{Server as GrpcioServer, ServerBuilder};
 use mc_common::logger::{log, Logger};
-use mc_fog_report_api::report_grpc;
+use mc_fog_report_api::fog_report;
 use mc_util_grpc::{ConnectionUriGrpcioServer, HealthService};
 use mc_util_uri::{ConnectionUri, FogUri};
 use std::sync::Arc;
@@ -25,7 +25,7 @@ impl Server {
 
         let service = Service::new(chain_id, logger.clone());
 
-        let report_service = report_grpc::create_report_api(service);
+        let report_service = fog_report::create_report_api(service);
         log::debug!(logger, "Constructed Report GRPC Service");
 
         // Health check service

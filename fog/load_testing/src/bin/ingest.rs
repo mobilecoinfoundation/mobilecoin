@@ -28,7 +28,7 @@ use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
 use mc_rand::McRng;
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
+use mc_util_grpc::{admin::AdminApiClient, ConnectionUriGrpcioChannel};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
 use retry::{delay, retry, OperationResult};
@@ -259,7 +259,7 @@ fn load_test(config: &TestConfig, test_params: TestParams, logger: Logger) -> Te
             let info = retry(delay::Fixed::from_millis(5000).map(delay::jitter), || {
                 ingest_server.assert_not_stopped();
 
-                match admin_client.get_info(&Empty::default()) {
+                match admin_client.get_info(&()) {
                     Ok(info) => OperationResult::Ok(info),
                     Err(GrpcioError::RpcFailure(err)) => {
                         log::info!(&logger, "Waiting for ingest server to become available");

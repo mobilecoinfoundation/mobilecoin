@@ -4,7 +4,7 @@
 //! MobileCoin Fog View Router target
 use grpcio::ChannelBuilder;
 use mc_common::{logger::log, time::SystemTimeProvider};
-use mc_fog_api::view_grpc::FogViewStoreApiClient;
+use mc_fog_api::fog_view::FogViewStoreApiClient;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{
     config::FogViewRouterConfig,

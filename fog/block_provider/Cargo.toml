@@ -22,6 +22,6 @@ mc-watcher-api = { workspace = true }
 
 displaydoc = { workspace = true }
 dyn-clone = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 
 [dev-dependencies]

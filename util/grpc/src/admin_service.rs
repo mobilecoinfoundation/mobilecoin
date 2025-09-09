@@ -3,10 +3,11 @@
 //! Customizable implementation of the AdminApi service.
 
 use crate::{
-    admin::{GetInfoResponse, GetPrometheusMetricsResponse, SetRustLogRequest},
-    admin_grpc::{create_admin_api, AdminApi},
+    admin::{
+        create_admin_api, AdminApi, GetInfoResponse, GetPrometheusMetricsResponse,
+        SetRustLogRequest,
+    },
     build_info_service::get_build_info,
-    empty::Empty,
     rpc_logger, send_result, SVC_COUNTERS,
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
@@ -63,7 +64,7 @@ impl AdminService {
 
     fn get_prometheus_metrics_impl(
         &mut self,
-        _request: Empty,
+        _request: (),
         logger: &Logger,
     ) -> Result<GetPrometheusMetricsResponse, RpcStatus> {
         log::trace!(logger, "get_prometheus_metrics_impl");
@@ -73,16 +74,16 @@ impl AdminService {
         let mut buffer = vec![];
         encoder.encode(&metric_families, &mut buffer).unwrap();
 
-        let mut response = GetPrometheusMetricsResponse::new();
-        response.set_metrics(String::from_utf8(buffer).map_err(|err| {
-            RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("from_utf8 failed: {err}"))
-        })?);
-        Ok(response)
+        Ok(GetPrometheusMetricsResponse {
+            metrics: String::from_utf8(buffer).map_err(|err| {
+                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("from_utf8 failed: {err}"))
+            })?,
+        })
     }
 
     fn get_info_impl(
         &mut self,
-        _request: Empty,
+        _request: (),
         logger: &Logger,
     ) -> Result<GetInfoResponse, RpcStatus> {
         log::trace!(logger, "get_info_impl");
@@ -105,36 +106,32 @@ impl AdminService {
 
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "".to_string());
 
-        let mut response = GetInfoResponse::new();
-        response.set_name(self.name.clone());
-        response.set_id(self.id.clone());
-        response.set_build_info_json(build_info_json);
-        response.set_build_info(build_info);
-        response.set_config_json(config_json);
-        response.set_rust_log(rust_log);
-        Ok(response)
+        Ok(GetInfoResponse {
+            name: self.name.clone(),
+            id: self.id.clone(),
+            build_info_json,
+            build_info: Some(build_info),
+            config_json,
+            rust_log,
+        })
     }
 
     fn set_rust_log_impl(
         &mut self,
         request: SetRustLogRequest,
         logger: &Logger,
-    ) -> Result<Empty, RpcStatus> {
+    ) -> Result<(), RpcStatus> {
         log::info!(logger, "Updating RUST_LOG to '{}'", request.rust_log);
         env::set_var("RUST_LOG", request.rust_log);
         mc_common::logger::recreate_app_logger();
 
-        Ok(Empty::new())
+        Ok(())
     }
 
-    fn test_log_error_impl(
-        &mut self,
-        _request: Empty,
-        logger: &Logger,
-    ) -> Result<Empty, RpcStatus> {
+    fn test_log_error_impl(&mut self, _request: (), logger: &Logger) -> Result<(), RpcStatus> {
         log::error!(logger, "Test log message admin admin interface");
 
-        Ok(Empty::new())
+        Ok(())
     }
 }
 
@@ -142,7 +139,7 @@ impl AdminApi for AdminService {
     fn get_prometheus_metrics(
         &mut self,
         ctx: RpcContext,
-        request: Empty,
+        request: (),
         sink: UnarySink<GetPrometheusMetricsResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
@@ -156,26 +153,21 @@ impl AdminApi for AdminService {
         });
     }
 
-    fn get_info(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<GetInfoResponse>) {
+    fn get_info(&mut self, ctx: RpcContext, request: (), sink: UnarySink<GetInfoResponse>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.get_info_impl(request, logger), logger)
         });
     }
 
-    fn set_rust_log(
-        &mut self,
-        ctx: RpcContext,
-        request: SetRustLogRequest,
-        sink: UnarySink<Empty>,
-    ) {
+    fn set_rust_log(&mut self, ctx: RpcContext, request: SetRustLogRequest, sink: UnarySink<()>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.set_rust_log_impl(request, logger), logger)
         });
     }
 
-    fn test_log_error(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<Empty>) {
+    fn test_log_error(&mut self, ctx: RpcContext, request: (), sink: UnarySink<()>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.test_log_error_impl(request, logger), logger)

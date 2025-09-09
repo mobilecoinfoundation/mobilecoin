@@ -8,6 +8,6 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
+grpcio-compiler = { workspace = true, features = ["prost-codec"] }
 mc-util-build-script = { workspace = true }
-
-protoc-grpcio = { workspace = true }
+prost-build = "0.11"

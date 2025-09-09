@@ -90,11 +90,13 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
             let primary_pubkey = primary_ingest_client
                 .get_status()
                 .unwrap()
-                .take_ingress_pubkey();
+                .ingress_pubkey
+                .unwrap();
             let mut backup_pubkey = backup_ingest_client
                 .get_status()
                 .unwrap()
-                .take_ingress_pubkey();
+                .ingress_pubkey
+                .unwrap();
 
             for _ in 0..30 {
                 if primary_pubkey == backup_pubkey {
@@ -106,7 +108,8 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
                 backup_pubkey = backup_ingest_client
                     .get_status()
                     .unwrap()
-                    .take_ingress_pubkey();
+                    .ingress_pubkey
+                    .unwrap();
             }
 
             assert_eq!(primary_pubkey, backup_pubkey);
@@ -121,7 +124,8 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
                 backup_pubkey = backup_ingest_client
                     .get_status()
                     .unwrap()
-                    .take_ingress_pubkey();
+                    .ingress_pubkey
+                    .unwrap();
                 if primary_pubkey != backup_pubkey {
                     break;
                 }
@@ -143,7 +147,8 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
                 backup_pubkey = backup_ingest_client
                     .get_status()
                     .unwrap()
-                    .take_ingress_pubkey();
+                    .ingress_pubkey
+                    .unwrap();
             }
 
             // Lets confirm that new_keys doesn't work on the primary
@@ -155,7 +160,8 @@ fn test_ingest_pool_integration(db_test_context: Arc<SqlRecoveryDbTestContext>, 
             let final_primary_key = primary_ingest_client
                 .get_status()
                 .unwrap()
-                .take_ingress_pubkey();
+                .ingress_pubkey
+                .unwrap();
             assert_eq!(
                 primary_pubkey, final_primary_key,
                 "active server's pubkey should not have changed"

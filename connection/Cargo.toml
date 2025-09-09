@@ -10,6 +10,7 @@ rust-version = { workspace = true }
 [dependencies]
 
 der = { workspace = true }
+mc-api = { path = "../api" }
 mc-attest-ake = { workspace = true }
 mc-attest-api = { workspace = true }
 mc-attest-core = { workspace = true }
@@ -27,9 +28,10 @@ mc-util-uri = { workspace = true }
 aes-gcm = { workspace = true }
 cookie = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 mc-rand = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
 retry = { workspace = true }
 secrecy = { workspace = true }
 serde = { workspace = true }

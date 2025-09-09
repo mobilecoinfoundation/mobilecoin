@@ -24,8 +24,7 @@ mc-util-uri = { workspace = true }
 
 clap = { workspace = true, features = ["derive", "env"] }
 clio = { workspace = true, features = ["clap-parse"] }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
-protobuf = { workspace = true }
 rayon = { workspace = true }
 serde_json = { workspace = true }

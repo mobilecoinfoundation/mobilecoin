@@ -30,7 +30,7 @@ mc-util-uri = { workspace = true }
 async-channel = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 mc-attestation-verifier = { workspace = true }
 rand = { workspace = true }

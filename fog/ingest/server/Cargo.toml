@@ -17,11 +17,10 @@ clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 itertools = { workspace = true }
 lazy_static = { workspace = true }
-protobuf = { workspace = true }
 retry = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 serde_json = { workspace = true }

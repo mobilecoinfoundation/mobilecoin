@@ -8,9 +8,9 @@ use futures::{FutureExt, TryFutureExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext, UnarySink};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{
-    ledger::{LedgerRequest, LedgerResponse},
-    ledger_grpc::{self, FogKeyImageApi, KeyImageStoreApiClient, LedgerApi},
+use mc_fog_api::fog_ledger::{
+    self, ledger_response, FogKeyImageApi, KeyImageStoreApiClient, LedgerApi, LedgerRequest,
+    LedgerResponse,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
@@ -29,7 +29,7 @@ where
     E: LedgerEnclaveProxy,
 {
     enclave: E,
-    shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
+    shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<fog_ledger::KeyImageStoreApiClient>>>>,
     query_retries: usize,
     logger: Logger,
 }
@@ -39,7 +39,7 @@ impl<E: LedgerEnclaveProxy> LedgerRouterService<E> {
     /// fulfill gRPC requests.
     pub fn new(
         enclave: E,
-        shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<ledger_grpc::KeyImageStoreApiClient>>>>,
+        shards: Arc<RwLock<HashMap<KeyImageStoreUri, Arc<fog_ledger::KeyImageStoreApiClient>>>>,
         query_retries: usize,
         logger: Logger,
     ) -> Self {
@@ -116,19 +116,20 @@ where
     .await;
 
     match result {
-        Ok(mut response) => {
-            if response.has_check_key_image_response() {
-                sink.success(response.take_check_key_image_response()).await
-            } else {
+        Ok(response) => match response.response_data {
+            Some(ledger_response::ResponseData::CheckKeyImageResponse(key_images)) => {
+                sink.success(key_images).await
+            }
+            _ => {
                 let error = rpc_internal_error(
-                    "Inavlid LedgerRequest response",
+                    "Invalid LedgerRequest response",
                     "Cannot provide a check key image response to the client's key image request."
                         .to_string(),
                     &scope_logger,
                 );
                 sink.fail(error).await
             }
-        }
+        },
         Err(rpc_status) => sink.fail(rpc_status).await,
     }
 }
@@ -163,19 +164,18 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
             let logger = logger.clone();
             let result = handle_auth_request(self.enclave.clone(), request, logger.clone());
             let future = match result {
-                Ok(mut response) => {
-                    if response.has_auth() {
-                        sink.success(response.take_auth())
-                    } else {
+                Ok(response) => match response.response_data {
+                    Some(ledger_response::ResponseData::Auth(auth)) => sink.success(auth),
+                    _ => {
                         let error = rpc_internal_error(
-                            "Inavlid LedgerRequest response",
+                            "Invalid LedgerRequest response",
                             "Response to client's auth request did not contain an auth response."
                                 .to_string(),
                             &logger,
                         );
                         sink.fail(error)
                     }
-                }
+                },
                 Err(rpc_status) => sink.fail(rpc_status),
             }
             .map_err(move |err| log::error!(&logger, "failed to reply: {}", err))

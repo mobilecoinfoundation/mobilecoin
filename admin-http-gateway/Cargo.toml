@@ -13,7 +13,7 @@ mc-util-grpc = { workspace = true }
 mc-util-uri = { workspace = true }
 
 clap = { workspace = true, features = ["derive", "env"] }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 rocket = { workspace = true, features = ["json"] }
 serde = { workspace = true }
 serde_derive = { workspace = true }

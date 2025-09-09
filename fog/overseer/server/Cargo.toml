@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 # third-party
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
 retry = { workspace = true }

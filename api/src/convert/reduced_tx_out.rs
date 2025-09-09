@@ -7,11 +7,11 @@ use mc_transaction_core::ring_signature::ReducedTxOut;
 
 impl From<&ReducedTxOut> for external::ReducedTxOut {
     fn from(source: &ReducedTxOut) -> Self {
-        let mut reduced_tx_out = external::ReducedTxOut::new();
-        reduced_tx_out.set_public_key((&source.public_key).into());
-        reduced_tx_out.set_target_key((&source.target_key).into());
-        reduced_tx_out.set_commitment((&source.commitment).into());
-        reduced_tx_out
+        Self {
+            public_key: Some((&source.public_key).into()),
+            target_key: Some((&source.target_key).into()),
+            commitment: Some((&source.commitment).into()),
+        }
     }
 }
 
@@ -19,10 +19,25 @@ impl TryFrom<&external::ReducedTxOut> for ReducedTxOut {
     type Error = ConversionError;
 
     fn try_from(source: &external::ReducedTxOut) -> Result<Self, Self::Error> {
+        let public_key = source
+            .public_key
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let target_key = source
+            .target_key
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let commitment = source
+            .commitment
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
         Ok(ReducedTxOut {
-            public_key: source.get_public_key().try_into()?,
-            target_key: source.get_target_key().try_into()?,
-            commitment: source.get_commitment().try_into()?,
+            public_key,
+            target_key,
+            commitment,
         })
     }
 }

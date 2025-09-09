@@ -18,7 +18,7 @@ use base64::{engine::general_purpose::URL_SAFE as URL_SAFE_BASE64_ENGINE, Engine
 use displaydoc::Display;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
-use mc_attest_api::attest_grpc::create_attested_api;
+use mc_attest_api::attest::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
 use mc_common::{
     logger::{log, Logger},
@@ -26,7 +26,7 @@ use mc_common::{
     LruCache, NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager};
-use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
+use mc_consensus_api::{consensus_client, consensus_common, consensus_peer};
 use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
 use mc_consensus_service_config::{Config, Error as ConfigError};
 use mc_crypto_keys::DistinguishedEncoding;
@@ -334,19 +334,18 @@ impl<
         // Setup GRPC services.
         let enclave = Arc::new(self.enclave.clone());
 
-        let client_service =
-            consensus_client_grpc::create_consensus_client_api(ClientApiService::new(
-                self.config.clone(),
-                enclave.clone(),
-                self.create_scp_client_value_sender_fn(),
-                Arc::new(self.ledger_db.clone()),
-                self.tx_manager.clone(),
-                self.mint_tx_manager.clone(),
-                self.create_is_serving_user_requests_fn(),
-                self.client_authenticator.clone(),
-                self.logger.clone(),
-                self.tracked_sessions.clone(),
-            ));
+        let client_service = consensus_client::create_consensus_client_api(ClientApiService::new(
+            self.config.clone(),
+            enclave.clone(),
+            self.create_scp_client_value_sender_fn(),
+            Arc::new(self.ledger_db.clone()),
+            self.tx_manager.clone(),
+            self.mint_tx_manager.clone(),
+            self.create_is_serving_user_requests_fn(),
+            self.client_authenticator.clone(),
+            self.logger.clone(),
+            self.tracked_sessions.clone(),
+        ));
 
         let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(
             self.config.chain_id.clone(),
@@ -356,7 +355,7 @@ impl<
         ));
 
         let blockchain_service =
-            consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
+            consensus_common::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
                 self.config.tokens().fee_map()?,
@@ -368,9 +367,9 @@ impl<
         let health_check_callback: Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send> =
             Arc::new(move |_| {
                 if is_serving_user_requests() {
-                    HealthCheckStatus::SERVING
+                    HealthCheckStatus::Serving
                 } else {
-                    HealthCheckStatus::NOT_SERVING
+                    HealthCheckStatus::NotServing
                 }
             });
         let health_service =
@@ -455,7 +454,7 @@ impl<
         });
 
         let blockchain_service =
-            consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
+            consensus_common::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
                 self.config.tokens().fee_map()?,
@@ -463,7 +462,7 @@ impl<
                 self.logger.clone(),
             ));
 
-        let peer_service = consensus_peer_grpc::create_consensus_peer_api(PeerApiService::new(
+        let peer_service = consensus_peer::create_consensus_peer_api(PeerApiService::new(
             Arc::new(self.enclave.clone()),
             Arc::new(self.ledger_db.clone()),
             self.tx_manager.clone(),

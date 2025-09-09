@@ -22,7 +22,7 @@ mc-util-telemetry = { workspace = true, features = ["jaeger"] }
 clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
 displaydoc = { workspace = true }
-protobuf = { workspace = true }
+prost = { workspace = true }
 retry = { workspace = true }
 # TODO: Replace with https://github.com/awslabs/aws-sdk-rust when it is ready.
 rusoto_core = { workspace = true, features = ["rustls"] }

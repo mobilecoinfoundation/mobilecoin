@@ -3,7 +3,7 @@
 //! Utility functions for printing objects in a human-friendly way.
 
 use mc_account_keys::PublicAddress;
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_transaction_core::mint::{
@@ -62,8 +62,11 @@ pub fn print_mint_tx(tx: &MintTx, indent: usize) {
 
 pub fn print_mint_tx_prefix(prefix: &MintTxPrefix, indent: usize) {
     let recipient = PublicAddress::new(&prefix.spend_public_key, &prefix.view_public_key);
-    let mut wrapper = PrintableWrapper::new();
-    wrapper.set_public_address((&recipient).into());
+    let wrapper = PrintableWrapper {
+        wrapper: Some(printable_wrapper::Wrapper::PublicAddress(
+            (&recipient).into(),
+        )),
+    };
     let b58_recipient = wrapper.b58_encode().expect("failed encoding b58 address");
 
     let mut indent_str = INDENT_STR.repeat(indent);

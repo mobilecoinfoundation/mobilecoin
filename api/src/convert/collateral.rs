@@ -6,16 +6,13 @@ use crate::{external, ConversionError};
 use mc_attest_verifier_types::prost;
 use mc_sgx_dcap_types::Collateral;
 use mc_util_serial::Message;
-use protobuf::Message as ProtoMessage;
 
 impl TryFrom<&Collateral> for external::Collateral {
     type Error = ConversionError;
     fn try_from(src: &Collateral) -> Result<Self, Self::Error> {
         let prost = prost::Collateral::try_from(src)?;
         let bytes = prost.encode_to_vec();
-        let mut proto = Self::default();
-        proto
-            .merge_from_bytes(&bytes)
+        let proto = Self::decode(bytes.as_slice())
             .expect("failure to merge means prost and protobuf are out of sync");
         Ok(proto)
     }
@@ -32,12 +29,12 @@ impl TryFrom<&external::Collateral> for Collateral {
 impl From<&external::Collateral> for prost::Collateral {
     fn from(src: &external::Collateral) -> Self {
         Self {
-            pck_crl_issuer_chain: src.pck_crl_issuer_chain.clone().into_vec(),
+            pck_crl_issuer_chain: src.pck_crl_issuer_chain.clone(),
             root_ca_crl: src.root_ca_crl.clone(),
             pck_crl: src.pck_crl.clone(),
-            tcb_info_issuer_chain: src.tcb_info_issuer_chain.clone().into_vec(),
+            tcb_info_issuer_chain: src.tcb_info_issuer_chain.clone(),
             tcb_info: src.tcb_info.clone(),
-            qe_identity_issuer_chain: src.qe_identity_issuer_chain.clone().into_vec(),
+            qe_identity_issuer_chain: src.qe_identity_issuer_chain.clone(),
             qe_identity: src.qe_identity.clone(),
         }
     }

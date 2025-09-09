@@ -12,14 +12,15 @@ use crate::{
     worker::{IngestWorker, PeerCheckupWorker, ReportCacheWorker},
 };
 use futures::executor::block_on;
-use mc_attest_api::attest_grpc::create_attested_api;
+use mc_attest_api::attest::create_attested_api;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
 use mc_fog_api::{
+    account_ingest,
     ingest_common::{IngestControllerMode, IngestSummary},
-    ingest_grpc, ingest_peer_grpc,
+    ingest_peer,
 };
 use mc_fog_block_provider::BlockProvider;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
@@ -188,7 +189,7 @@ where
     fn start_ingest_rpc_server(&mut self) -> Result<(), IngestServiceError> {
         log::info!(self.logger, "Starting RPC server.");
         // Package it into grpc service
-        let ingest_service = ingest_grpc::create_account_ingest_api(IngestService::new(
+        let ingest_service = account_ingest::create_account_ingest_api(IngestService::new(
             self.controller.clone(),
             self.block_provider.clone(),
             self.logger.clone(),
@@ -232,7 +233,7 @@ where
     fn start_peer_rpc_server(&mut self) -> Result<(), IngestServiceError> {
         log::info!(self.logger, "Starting Peer RPC server.");
 
-        let ingest_peer_service = ingest_peer_grpc::create_account_ingest_peer_api(
+        let ingest_peer_service = ingest_peer::create_account_ingest_peer_api(
             IngestPeerService::new(self.controller.clone(), self.logger.clone()),
         );
 
@@ -342,13 +343,13 @@ where
     /// Ask if the server is active
     /// This is a convenience wrapper used in tests
     pub fn is_active(&self) -> bool {
-        self.get_ingest_summary().mode == IngestControllerMode::Active
+        self.get_ingest_summary().mode() == IngestControllerMode::Active
     }
 
     /// Ask if the server is idle.
     /// This is a convenience wrapper used in tests.
     pub fn is_idle(&self) -> bool {
-        self.get_ingest_summary().mode == IngestControllerMode::Idle
+        self.get_ingest_summary().mode() == IngestControllerMode::Idle
     }
 
     /// Set new keys.

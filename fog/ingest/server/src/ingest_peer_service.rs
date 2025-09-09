@@ -10,7 +10,6 @@ use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
     ingest_peer::*,
-    Empty,
 };
 use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
@@ -74,7 +73,7 @@ where
     ) -> Result<Message, RpcStatus> {
         log::debug!(&self.logger, "Now getting private key",);
 
-        let peer_session = PeerSession::from(request.get_channel_id());
+        let peer_session = PeerSession::from(request.channel_id);
 
         let (private_key, _) = self
             .controller
@@ -109,11 +108,11 @@ where
 }
 
 impl<DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static>
-    mc_fog_api::ingest_peer_grpc::AccountIngestPeerApi for IngestPeerService<DB>
+    mc_fog_api::ingest_peer::AccountIngestPeerApi for IngestPeerService<DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {
-    fn get_status(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
+    fn get_status(&mut self, ctx: RpcContext, _request: (), sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.get_status_impl(), logger)

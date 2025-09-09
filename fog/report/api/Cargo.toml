@@ -10,8 +10,8 @@ rust-version = { workspace = true }
 
 [dependencies]
 futures = { workspace = true }
-grpcio = { workspace = true }
-protobuf = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
+prost = { workspace = true, features = ["prost-derive"] }
 
 mc-api = { workspace = true }
 mc-attest-api = { workspace = true }

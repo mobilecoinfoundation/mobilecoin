@@ -16,8 +16,8 @@ mc-ledger-db = { workspace = true }
 mc-transaction-core = { workspace = true }
 
 futures = { workspace = true }
-grpcio = { workspace = true }
-protobuf = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
+prost = { workspace = true }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }

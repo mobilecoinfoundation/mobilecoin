@@ -35,7 +35,7 @@ mc-fog-uri = { workspace = true }
 # third-party
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex_fmt = { workspace = true }
 lazy_static = { workspace = true }
 maplit = { workspace = true }

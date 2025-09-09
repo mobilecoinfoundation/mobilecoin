@@ -10,4 +10,3 @@ rust-version = { workspace = true }
 [dependencies]
 mc-util-serial = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
-protobuf = { workspace = true }
