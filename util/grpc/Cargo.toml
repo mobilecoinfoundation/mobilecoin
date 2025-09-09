@@ -25,8 +25,8 @@ hex = { workspace = true }
 hex_fmt = { workspace = true }
 hmac = { workspace = true }
 lazy_static = { workspace = true }
-prost = { workspace = true }
 prometheus = { workspace = true }
+prost = { workspace = true }
 rand = { workspace = true }
 retry = { workspace = true }
 serde = { workspace = true }
