@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-validation-test-utils"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -8,5 +8,5 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-account-keys = { path = "../../../../account-keys" }
-mc-fog-report-validation = { path = ".." }
+mc-account-keys = { workspace = true }
+mc-fog-report-validation = { workspace = true }

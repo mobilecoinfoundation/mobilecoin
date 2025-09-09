@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind-dev-faucet"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -12,30 +12,30 @@ name = "mobilecoind-dev-faucet"
 path = "src/bin/main.rs"
 
 [dependencies]
-mc-account-keys = { path = "../account-keys" }
-mc-api = { path = "../api" }
-mc-common = { path = "../common", features = ["loggers"] }
-mc-connection = { path = "../connection" }
-mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
-mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
-mc-fog-report-resolver = { path = "../fog/report/resolver" }
-mc-mobilecoind-api = { path = "../mobilecoind/api" }
-mc-transaction-builder = { path = "../transaction/builder" }
-mc-transaction-core = { path = "../transaction/core" }
-mc-util-grpc = { path = "../util/grpc" }
-mc-util-keyfile = { path = "../util/keyfile" }
-mc-util-serial = { path = "../util/serial", features = ["std"] }
-mc-util-uri = { path = "../util/uri" }
+mc-account-keys = { workspace = true }
+mc-api = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-connection = { workspace = true }
+mc-consensus-enclave-measurement = { workspace = true }
+mc-crypto-ring-signature-signer = { workspace = true }
+mc-fog-report-resolver = { workspace = true }
+mc-mobilecoind-api = { workspace = true }
+mc-transaction-builder = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-keyfile = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std"] }
+mc-util-uri = { workspace = true }
 
-async-channel = { version = "2" }
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = "0.2"
-grpcio = "0.13"
-hex = "0.4"
-mc-attestation-verifier = "0.4.4"
-rand = "0.8"
-rocket = { version = "0.5.0", features = ["json"] }
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
-tokio = "1"
+async-channel = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+grpcio = { workspace = true }
+hex = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+rand = { workspace = true }
+rocket = { workspace = true, features = ["json"] }
+serde = { workspace = true }
+serde_derive = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }

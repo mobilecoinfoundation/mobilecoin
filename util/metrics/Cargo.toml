@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-metrics"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,11 +11,11 @@ default = []
 service_metrics = ["dep:grpcio"]
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
+mc-common = { workspace = true, features = ["log"] }
 
-chrono = "0.4"
-grpcio = { version = "0.13", optional = true }
-lazy_static = "1.4"
-prometheus = "0.13"
-protobuf = "2.27.1"
-serde_json = "1.0"
+chrono = { workspace = true }
+grpcio = { workspace = true, optional = true }
+lazy_static = { workspace = true }
+prometheus = { workspace = true }
+protobuf = { workspace = true }
+serde_json = { workspace = true }

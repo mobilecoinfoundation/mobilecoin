@@ -1,19 +1,19 @@
 [package]
 name = "mc-crypto-sig"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-crypto-keys = { path = "../keys", default-features = false }
+mc-crypto-keys = { workspace = true }
 
-merlin = { version = "3.0", default-features = false }
-rand_core = { version = "0.6", default-features = false }
-rand_hc = "0.3"
-schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
+merlin = { workspace = true }
+rand_core = { workspace = true }
+rand_hc = { workspace = true }
+schnorrkel-og = { workspace = true }
 
 [dev-dependencies]
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-util-from-random = { workspace = true }
+mc-util-test-helper = { workspace = true }

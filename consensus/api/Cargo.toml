@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-api"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -10,25 +10,25 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-api = { path = "../../api" }
-mc-attest-api = { path = "../../attest/api" }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-api = { workspace = true }
+mc-attest-api = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-transaction-core = { workspace = true }
 
-futures = "0.3"
-grpcio = "0.13"
-protobuf = "2.27.1"
-
-[dev-dependencies]
-mc-crypto-multisig = { path = "../../crypto/multisig" }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-util-serial = { path = "../../util/serial" }
-
-rand_core = "0.6"
-rand_hc = "0.3"
+futures = { workspace = true }
+grpcio = { workspace = true }
+protobuf = { workspace = true }
 
 [build-dependencies]
-mc-util-build-grpc = { path = "../../util/build/grpc" }
-mc-util-build-script = { path = "../../util/build/script" }
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2.1"
+cargo-emit = { workspace = true }
+
+[dev-dependencies]
+mc-crypto-multisig = { workspace = true }
+mc-transaction-core-test-utils = { workspace = true }
+mc-util-serial = { workspace = true }
+
+rand_core = { workspace = true }
+rand_hc = { workspace = true }

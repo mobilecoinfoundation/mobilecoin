@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-x509-utils"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 description = "Verification of X509 certificate chains"
 edition = "2021"
@@ -8,12 +8,12 @@ license = "Apache-2.0"
 readme = "README.md"
 rust-version = { workspace = true }
 
-[dev-dependencies]
-mc-crypto-x509-test-vectors = { path = "../test-vectors" }
-
 [dependencies]
-mc-crypto-keys = { path = "../../keys" }
+mc-crypto-keys = { workspace = true }
 
-displaydoc = { version = "0.2", default-features = false }
-pem = "3.0"
-x509-signature = "0.5"
+displaydoc = { workspace = true }
+pem = { workspace = true }
+x509-signature = { workspace = true }
+
+[dev-dependencies]
+mc-crypto-x509-test-vectors = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-light-client-relayer"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -10,32 +10,32 @@ name = "mc-light-client-relayer"
 path = "src/bin/main.rs"
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-consensus-scp-types = { path = "../../consensus/scp/types" }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-light-client-verifier = { path = "../verifier" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-cli = { path = "../../util/cli" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-grpc = { path = "../../util/grpc" }
-mc-util-metrics = { path = "../../util/metrics" }
-mc-util-telemetry = { path = "../../util/telemetry" }
-mc-util-uri = { path = "../../util/uri" }
-mc-watcher = { path = "../../watcher" }
+mc-account-keys = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-consensus-scp-types = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-light-client-verifier = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-cli = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-metrics = { workspace = true }
+mc-util-telemetry = { workspace = true }
+mc-util-uri = { workspace = true }
+mc-watcher = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = "0.2"
-lazy_static = "1.4"
-rayon = "1.9"
-serde = "1"
-serde_json = "1"
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+lazy_static = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
-mc-consensus-scp-types = { path = "../../consensus/scp/types", features = ["test_utils"] }
-mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
-mc-transaction-extra = { path = "../../transaction/extra" }
-rand = "0.8"
-tempfile = "3.10"
+mc-consensus-scp-types = { workspace = true, features = ["test_utils"] }
+mc-ledger-db = { workspace = true, features = ["test_utils"] }
+mc-transaction-extra = { workspace = true }
+rand = { workspace = true }
+tempfile = { workspace = true }

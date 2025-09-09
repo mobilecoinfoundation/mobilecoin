@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-block-provider"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Provide blocks from a local or remote ledger database"
@@ -8,20 +8,20 @@ license = "Apache-2.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-api = { path = "../../api" }
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", features = ["log"] }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-fog-api = { path = "../api" }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-mobilecoind-api = { path = "../../mobilecoind/api" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-grpc = { path = "../../util/grpc" }
-mc-watcher = { path = "../../watcher" }
-mc-watcher-api = { path = "../../watcher/api" }
+mc-api = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-crypto-keys = { workspace = true }
+mc-fog-api = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-mobilecoind-api = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-watcher = { workspace = true }
+mc-watcher-api = { workspace = true }
 
-displaydoc = "0.2"
-dyn-clone = "1.0.17"
-grpcio = "0.13"
+displaydoc = { workspace = true }
+dyn-clone = { workspace = true }
+grpcio = { workspace = true }
 
 [dev-dependencies]

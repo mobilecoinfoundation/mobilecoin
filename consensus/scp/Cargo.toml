@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-scp"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 description = "Stellar Consensus Protocol"
 edition = "2021"
@@ -13,30 +13,30 @@ rust-version = { workspace = true }
 test_utils = ["mc-consensus-scp-types/test_utils"]
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
-mc-consensus-scp-types = { path = "types" }
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["derive"] }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-serial = { path = "../../util/serial", features = ["std"] }
+mc-common = { workspace = true, features = ["log"] }
+mc-consensus-scp-types = { workspace = true }
+mc-crypto-digestible = { workspace = true, features = ["derive"] }
+mc-crypto-keys = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std"] }
 
-mockall = "0.12.1"
-primitive-types = "0.12.2"
-rand = "0.8"
-rand_hc = "0.3"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_json = "1.0"
+mockall = { workspace = true }
+primitive-types = { workspace = true }
+rand = { workspace = true }
+rand_hc = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+serde_json = { workspace = true }
 
 [dev-dependencies]
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-consensus-scp-types = { path = "types", features = ["test_utils"] }
-mc-util-logger-macros = { path = "../../util/logger-macros" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-consensus-scp-types = { workspace = true, features = ["test_utils"] }
+mc-util-logger-macros = { workspace = true }
+mc-util-test-helper = { workspace = true }
 
-crossbeam-channel = "0.5"
-maplit = "1.0.2"
-serial_test = "3.0"
-tempfile = "3.10"
+crossbeam-channel = { workspace = true }
+maplit = { workspace = true }
+serial_test = { workspace = true }
+tempfile = { workspace = true }
 
 [[test]]
 name = "test_cyclic_networks"

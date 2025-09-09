@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ingest-server-test-utils"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -8,26 +8,26 @@ rust-version = { workspace = true }
 
 [dependencies]
 # MC/root
-mc-blockchain-test-utils = { path = "../../../../blockchain/test-utils" }
-mc-blockchain-types = { path = "../../../../blockchain/types" }
-mc-common = { path = "../../../../common", features = ["loggers"] }
-mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
-mc-ledger-db = { path = "../../../../ledger/db" }
-mc-transaction-core = { path = "../../../../transaction/core" }
-mc-util-from-random = { path = "../../../../util/from-random" }
-mc-watcher = { path = "../../../../watcher" }
+mc-blockchain-test-utils = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-crypto-keys = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-watcher = { workspace = true }
 
 # fog
-mc-fog-block-provider = { path = "../../../block_provider" }
-mc-fog-ingest-enclave = { path = "../../enclave" }
-mc-fog-ingest-server = { path = ".." }
-mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
-mc-fog-sql-recovery-db = { path = "../../../sql_recovery_db" }
-mc-fog-test-infra = { path = "../../../test_infra" }
-mc-fog-uri = { path = "../../../uri" }
+mc-fog-block-provider = { workspace = true }
+mc-fog-ingest-enclave = { workspace = true }
+mc-fog-ingest-server = { workspace = true }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+mc-fog-test-infra = { workspace = true }
+mc-fog-uri = { workspace = true }
 
 # third-party
-rand_core = "0.6"
-rand_hc = "0.3"
-tempfile = "3.4"
-url = "2.2"
+rand_core = { workspace = true }
+rand_hc = { workspace = true }
+tempfile = { workspace = true }
+url = { workspace = true }

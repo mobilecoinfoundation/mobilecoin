@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-b58-decoder"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,8 +11,8 @@ name = "mc-util-b58-decoder"
 path = "src/bin/main.rs"
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-api = { path = "../../api" }
+mc-account-keys = { workspace = true }
+mc-api = { workspace = true }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-hex = "0.4"
+clap = { workspace = true, features = ["derive", "env"] }
+hex = { workspace = true }

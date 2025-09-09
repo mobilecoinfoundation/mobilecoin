@@ -1,33 +1,33 @@
 [package]
 name = "mc-fog-view-server-test-utils"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
 # MC
-mc-blockchain-types = { path = "../../../../blockchain/types" }
-mc-common = { path = "../../../../common", features = ["log"] }
-mc-transaction-core = { path = "../../../../transaction/core" }
-mc-util-from-random = { path = "../../../../util/from-random" }
-mc-util-grpc = { path = "../../../../util/grpc" }
-mc-util-uri = { path = "../../../../util/uri" }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-transaction-core = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-uri = { workspace = true }
 
 # Fog
-mc-fog-api = { path = "../../../api" }
-mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
-mc-fog-sql-recovery-db = { path = "../../../sql_recovery_db" }
-mc-fog-test-infra = { path = "../../../test_infra" }
-mc-fog-types = { path = "../../../types" }
-mc-fog-uri = { path = "../../../uri" }
-mc-fog-view-connection = { path = "../../connection" }
-mc-fog-view-enclave = { path = "../../enclave" }
-mc-fog-view-enclave-measurement = { path = "../../enclave/measurement" }
-mc-fog-view-protocol = { path = "../../protocol" }
-mc-fog-view-server = { path = "../." }
+mc-fog-api = { workspace = true }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+mc-fog-test-infra = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-uri = { workspace = true }
+mc-fog-view-connection = { workspace = true }
+mc-fog-view-enclave = { workspace = true }
+mc-fog-view-enclave-measurement = { workspace = true }
+mc-fog-view-protocol = { workspace = true }
+mc-fog-view-server = { workspace = true }
 
 # Third-party
-grpcio = "0.13"
-mc-attestation-verifier = "0.4.4"
-portpicker = "0.1.1"
+grpcio = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+portpicker = { workspace = true }

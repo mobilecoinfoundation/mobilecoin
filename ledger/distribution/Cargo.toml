@@ -1,6 +1,6 @@
 [package]
 name = "mc-ledger-distribution"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -12,28 +12,28 @@ name = "ledger-distribution"
 path = "src/main.rs"
 
 [dependencies]
-mc-api = { path = "../../api" }
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", features = ["loggers"] }
-mc-ledger-db = { path = "../../ledger/db" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
+mc-api = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-ledger-db = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-telemetry = { workspace = true, features = ["jaeger"] }
 
-clap = { version = "4.5", features = ["derive", "env"] }
-dirs = "5.0"
-displaydoc = "0.2"
-protobuf = "2.27.1"
-retry = "2.0"
+clap = { workspace = true, features = ["derive", "env"] }
+dirs = { workspace = true }
+displaydoc = { workspace = true }
+protobuf = { workspace = true }
+retry = { workspace = true }
 # TODO: Replace with https://github.com/awslabs/aws-sdk-rust when it is ready.
-rusoto_core = { version = "0.48.0", features = ["rustls"], default-features = false }
-rusoto_s3 = { version = "0.48.0", features = ["rustls"], default-features = false }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1", features = ["rt-multi-thread"] }
-url = "2.5"
+rusoto_core = { workspace = true, features = ["rustls"] }
+rusoto_s3 = { workspace = true, features = ["rustls"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+url = { workspace = true }
 
 [dev-dependencies]
-mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
-mc-util-test-helper = { path = "../../util/test-helper" }
-tempfile = "3"
-walkdir = "2"
+mc-ledger-db = { workspace = true, features = ["test_utils"] }
+mc-util-test-helper = { workspace = true }
+tempfile = { workspace = true }
+walkdir = { workspace = true }

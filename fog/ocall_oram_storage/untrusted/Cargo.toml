@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ocall-oram-storage-untrusted"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -8,6 +8,6 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-common = { path = "../../../common", features = ["log"] }
+mc-common = { workspace = true, features = ["log"] }
 
-lazy_static = "1.4"
+lazy_static = { workspace = true }

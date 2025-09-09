@@ -276,10 +276,6 @@ fn cstr(path: &Path) -> io::Result<CString> {
 #[derive(Default, Debug)]
 pub struct SgxEnclave {
     id: sgx_enclave_id_t,
-    #[cfg(feature = "backtrace")]
-    debug: i32,
-    #[cfg(feature = "backtrace")]
-    path: std::path::PathBuf,
 }
 
 impl SgxEnclave {
@@ -302,13 +298,8 @@ impl SgxEnclave {
         )
         .map(|eid| SgxEnclave {
             id: eid,
-            #[cfg(feature = "backtrace")]
-            debug,
-            #[cfg(feature = "backtrace")]
-            path: file_name.as_ref().to_owned(),
         })?;
 
-        enclave.init();
         Ok(enclave)
     }
 
@@ -321,35 +312,10 @@ impl SgxEnclave {
     pub fn geteid(&self) -> sgx_enclave_id_t {
         self.id
     }
-
-    fn exit(&self) {}
-
-    fn init(&self) {
-        // Store enclave id -> pathbuf in the map, for backtrace functionality
-        #[cfg(feature = "backtrace")]
-        self.store_id_and_path();
-    }
-
-    #[cfg(feature = "backtrace")]
-    fn store_id_and_path(&self) {
-        let mut lk = crate::backtrace::ENCLAVE_PATH_MAP
-            .lock()
-            .expect("Could not lock enclave path map!");
-        let maybe_old_path = lk.insert(self.id, self.path.clone());
-        if let Some(old_path) = maybe_old_path {
-            panic!(
-                "The eid is already in the enclave path map! eid: {} old_path: {} new_path: {}",
-                self.id,
-                old_path.display(),
-                self.path.display()
-            );
-        }
-    }
 }
 
 impl Drop for SgxEnclave {
     fn drop(&mut self) {
-        self.exit();
         let _ = rsgx_destroy_enclave(self.id);
     }
 }

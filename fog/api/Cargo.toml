@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-api"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 links = "mc-fog-api"
@@ -9,38 +9,38 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-displaydoc = { version = "0.2", default-features = false }
-futures = "0.3"
-grpcio = "0.13"
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-protobuf = "2.27.1"
+displaydoc = { workspace = true }
+futures = { workspace = true }
+grpcio = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+protobuf = { workspace = true }
 
-mc-api = { path = "../../api" }
-mc-attest-api = { path = "../../attest/api" }
-mc-attest-core = { path = "../../attest/core" }
-mc-attest-enclave-api = { path = "../../attest/enclave-api" }
-mc-consensus-api = { path = "../../consensus/api" }
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-fog-enclave-connection = { path = "../enclave_connection" }
-mc-fog-report-api = { path = "../../fog/report/api" }
-mc-fog-report-types = { path = "../../fog/report/types" }
-mc-fog-types = { path = "../types" }
-mc-fog-uri = { path = "../uri" }
-mc-util-encodings = { path = "../../util/encodings" }
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-grpc = { path = "../../util/grpc" }
-mc-util-serial = { path = "../../util/serial" }
-mc-watcher-api = { path = "../../watcher/api" }
-
-[dev-dependencies]
-mc-fog-kex-rng = { path = "../kex_rng" }
-mc-fog-report-api-test-utils = { path = "../../fog/report/api/test-utils" }
-mc-fog-types = { path = "../types" }
-mc-transaction-core = { path = "../../transaction/core" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-api = { workspace = true }
+mc-attest-api = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-attest-enclave-api = { workspace = true }
+mc-consensus-api = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-fog-enclave-connection = { workspace = true }
+mc-fog-report-api = { workspace = true }
+mc-fog-report-types = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-uri = { workspace = true }
+mc-util-encodings = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-watcher-api = { workspace = true }
 
 [build-dependencies]
-mc-util-build-grpc = { path = "../../util/build/grpc" }
-mc-util-build-script = { path = "../../util/build/script" }
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }
 
-cargo-emit = "0.2.1"
+cargo-emit = { workspace = true }
+
+[dev-dependencies]
+mc-fog-kex-rng = { workspace = true }
+mc-fog-report-api-test-utils = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-test-helper = { workspace = true }

@@ -52,6 +52,11 @@ on:
         description: "Tokens File"
         type: string
         required: true
+      deployment_region:
+        description: "cloud deployment region"
+        type: string
+        required: false
+        default: italynorth
     secrets:
       DEV_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -332,7 +337,7 @@ jobs:
         fogView:
           responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
           color: green
-          zone: westeurope-1
+          zone: ${{ inputs.deployment_region }}-1
 
           stackConfig:
             network:
@@ -372,7 +377,7 @@ jobs:
         fogView:
           responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
           color: green
-          zone: westeurope-2
+          zone: ${{ inputs.deployment_region }}-2
 
           stackConfig:
             network:
@@ -459,7 +464,7 @@ jobs:
         fogLedger:
           responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
           color: green
-          zone: westeurope-1
+          zone: ${{ inputs.deployment_region }}-1
 
           stackConfig:
             network:
@@ -499,7 +504,7 @@ jobs:
         fogLedger:
           responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
           color: green
-          zone: westeurope-2
+          zone: ${{ inputs.deployment_region }}-2
 
           stackConfig:
             network:

@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-digestible-derive"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,6 +11,6 @@ rust-version = { workspace = true }
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1.0.8"
-quote = "1.0.2"
-syn = { version = "1.0.14", features = [ "extra-traits" ] }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["extra-traits"] }

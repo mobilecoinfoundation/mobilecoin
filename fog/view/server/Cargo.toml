@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-server"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -21,64 +21,64 @@ path = "src/bin/router.rs"
 
 [dependencies]
 # third party
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = { version = "0.2", default-features = false }
-futures = "0.3"
-grpcio = "0.13"
-lazy_static = "1.4"
-prometheus = "0.13"
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+futures = { workspace = true }
+grpcio = { workspace = true }
+lazy_static = { workspace = true }
+prometheus = { workspace = true }
 
 # mobilecoin
-mc-api = { path = "../../../api" }
-mc-attest-api = { path = "../../../attest/api" }
-mc-attest-core = { path = "../../../attest/core" }
-mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
-mc-blockchain-types = { path = "../../../blockchain/types" }
-mc-common = { path = "../../../common", features = ["log"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-api = { workspace = true }
+mc-attest-api = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-attest-enclave-api = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-crypto-keys = { workspace = true }
 
 # fog
-mc-fog-api = { path = "../../api" }
-mc-fog-kex-rng = { path = "../../kex_rng" }
-mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
-mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
-mc-fog-types = { path = "../../types" }
-mc-fog-uri = { path = "../../uri" }
-mc-fog-view-enclave = { path = "../enclave" }
-mc-fog-view-enclave-api = { path = "../enclave/api" }
-mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
-mc-util-cli = { path = "../../../util/cli" }
-mc-util-from-random = { path = "../../../util/from-random" }
-mc-util-grpc = { path = "../../../util/grpc" }
-mc-util-metrics = { path = "../../../util/metrics" }
-mc-util-parse = { path = "../../../util/parse" }
-mc-util-serial = { path = "../../../util/serial" }
-mc-util-telemetry = { path = "../../../util/telemetry", features = ["jaeger"] }
-mc-util-uri = { path = "../../../util/uri" }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-serde_json = "1.0"
+mc-fog-api = { workspace = true }
+mc-fog-kex-rng = { workspace = true }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-uri = { workspace = true }
+mc-fog-view-enclave = { workspace = true }
+mc-fog-view-enclave-api = { workspace = true }
+mc-sgx-report-cache-untrusted = { workspace = true }
+mc-util-cli = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-metrics = { workspace = true }
+mc-util-parse = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-telemetry = { workspace = true, features = ["jaeger"] }
+mc-util-uri = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
+serde_json = { workspace = true }
 
 [dev-dependencies]
-mc-attest-verifier = { path = "../../../attest/verifier" }
-mc-attest-verifier-types = { path = "../../../attest/verifier/types" }
-mc-blockchain-types = { path = "../../../blockchain/types" }
-mc-common = { path = "../../../common", features = ["loggers"] }
-mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }
+mc-attest-verifier = { workspace = true, features = ["std"] }
+mc-attest-verifier-types = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-crypto-keys = { workspace = true }
+mc-crypto-x509-test-vectors = { workspace = true }
 
-mc-fog-test-infra = { path = "../../test_infra" }
-mc-fog-types = { path = "../../types" }
-mc-fog-view-connection = { path = "../connection" }
-mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
-mc-fog-view-protocol = { path = "../protocol" }
-mc-fog-view-server-test-utils = { path = "./test-utils" }
-mc-transaction-core = { path = "../../../transaction/core" }
-mc-util-encodings = { path = "../../../util/encodings" }
-mc-util-serial = { path = "../../../util/serial" }
-mc-util-test-helper = { path = "../../../util/test-helper" }
-mc-util-uri = { path = "../../../util/uri" }
+mc-fog-test-infra = { workspace = true }
+mc-fog-types = { workspace = true }
+mc-fog-view-connection = { workspace = true }
+mc-fog-view-enclave-measurement = { workspace = true }
+mc-fog-view-protocol = { workspace = true }
+mc-fog-view-server-test-utils = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-encodings = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-test-helper = { workspace = true }
+mc-util-uri = { workspace = true }
 
-portpicker = "0.1.1"
-rand = "0.8"
-rand_core = "0.6"
-yare = "2.0.0"
+portpicker = { workspace = true }
+rand = { workspace = true }
+rand_core = { workspace = true }
+yare = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-summary"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -27,19 +27,25 @@ default = ["std", "serde", "prost", "mc-account-keys"]
 
 [dependencies]
 # External dependencies
-displaydoc = { version = "0.2", default-features = false }
+displaydoc = { workspace = true }
+heapless = { workspace = true }
 
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys", optional = true, default-features = false }
-mc-core = { path = "../../core", default-features = false }
-mc-crypto-digestible = { path = "../../crypto/digestible", default-features = false, features = ["dalek", "derive"] }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
-mc-transaction-types = { path = "../types", default-features = false, features = [ "alloc" ] }
-mc-util-vec-map = { path = "../../util/vec-map" }
-mc-util-zip-exact = { path = "../../util/zip-exact", default-features = false }
+mc-account-keys = { workspace = true, optional = true }
+mc-core = { workspace = true }
+mc-crypto-digestible = { workspace = true, features = ["dalek", "derive"] }
+mc-crypto-keys = { workspace = true }
+mc-crypto-ring-signature = { workspace = true }
+mc-transaction-types = { workspace = true, features = ["alloc"] }
+mc-util-vec-map = { workspace = true }
+mc-util-zip-exact = { workspace = true }
 
-prost = { version = "0.12", optional = true, default-features = false, features = ["prost-derive"] }
-serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
-subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = { version = "1.8", default-features = false }
+prost = { workspace = true, features = ["prost-derive"], optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+subtle = { workspace = true, features = ["i128"] }
+zeroize = { workspace = true }
+
+[dev-dependencies]
+mc-transaction-core = { workspace = true, features = [] }
+mc-util-from-random = { workspace = true }
+rand = { workspace = true }

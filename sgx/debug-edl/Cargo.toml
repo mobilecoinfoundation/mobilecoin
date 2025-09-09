@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-debug-edl"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -10,4 +10,4 @@ readme = "README.md"
 rust-version = "1.83.0"
 
 [build-dependencies]
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }

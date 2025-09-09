@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-recovery-db-iface"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -8,17 +8,17 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
-mc-blockchain-types = { path = "../../blockchain/types" }
-mc-common = { path = "../../common", default-features = false }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-transaction-core = { workspace = true }
 
 # fog
-mc-fog-kex-rng = { path = "../kex_rng" }
-mc-fog-report-types = { path = "../report/types" }
-mc-fog-types = { path = "../types" }
+mc-fog-kex-rng = { workspace = true }
+mc-fog-report-types = { workspace = true }
+mc-fog-types = { workspace = true }
 
 # third-party
-chrono = { version = "0.4", default-features = false }
-displaydoc = { version = "0.2", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+chrono = { workspace = true }
+displaydoc = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }

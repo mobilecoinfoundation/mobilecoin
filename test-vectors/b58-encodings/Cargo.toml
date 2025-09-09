@@ -1,16 +1,16 @@
 [package]
 name = "mc-test-vectors-b58-encodings"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
 rust-version = { workspace = true }
 
 [dependencies]
-mc-test-vectors-definitions = { path = "../definitions" }
+mc-test-vectors-definitions = { workspace = true }
 
 [build-dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-api = { path = "../../api" }
-mc-test-vectors-definitions = { path = "../definitions" }
-mc-util-test-vector = { path = "../../util/test-vector" }
+mc-account-keys = { workspace = true }
+mc-api = { workspace = true }
+mc-test-vectors-definitions = { workspace = true }
+mc-util-test-vector = { workspace = true }

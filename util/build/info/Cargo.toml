@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-info"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -15,8 +15,8 @@ path = "src/lib.rs"
 name = "show-build-info"
 path = "src/bin/main.rs"
 
-[dev-dependencies]
-json = "0.12"
-
 [build-dependencies]
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }
+
+[dev-dependencies]
+json = { workspace = true }

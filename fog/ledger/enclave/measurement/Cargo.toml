@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-measurement"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 description = "MobileCoin Ledger Enclave - Measurement"
 edition = "2021"
@@ -14,13 +14,13 @@ rust-version = { workspace = true }
 sgx-sim = []
 
 [dependencies]
-mc-attest-core = { path = "../../../../attest/core" }
-mc-attestation-verifier = "0.4.4"
-mc-sgx-css = { path = "../../../../sgx/css" }
+mc-attest-core = { workspace = true }
+mc-attestation-verifier = { workspace = true }
+mc-sgx-css = { workspace = true }
 
 [build-dependencies]
-mc-util-build-enclave = { path = "../../../../util/build/enclave" }
-mc-util-build-script = { path = "../../../../util/build/script" }
-mc-util-build-sgx = { path = "../../../../util/build/sgx" }
+mc-util-build-enclave = { workspace = true }
+mc-util-build-script = { workspace = true }
+mc-util-build-sgx = { workspace = true }
 
-cargo-emit = "0.2"
+cargo-emit = { workspace = true }

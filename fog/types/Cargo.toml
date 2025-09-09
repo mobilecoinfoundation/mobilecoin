@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-types"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -9,28 +9,28 @@ rust-version = { workspace = true }
 
 [dependencies]
 # mobilecoin
-mc-attest-enclave-api = { path = "../../attest/enclave-api" }
-mc-common = { path = "../../common/", default-features = false }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-attest-enclave-api = { workspace = true }
+mc-common = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-transaction-core = { workspace = true }
 
 # fog
-mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-kex-rng = { workspace = true }
 
 # third-party
-crc = { version = "3.0.1", default-features = false }
-displaydoc = { version = "0.2", default-features = false }
-prost = { version = "0.12", default-features = false, features = ["prost-derive"] }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+crc = { workspace = true }
+displaydoc = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 # mobilecoin
-mc-test-vectors-tx-out-records = { path = "../../test-vectors/tx-out-records" }
-mc-util-serial = { path = "../../util/serial", default-features = false }
-mc-util-test-helper = { path = "../../util/test-helper" }
-mc-util-test-vector = { path = "../../util/test-vector" }
-mc-util-test-with-data = { path = "../../util/test-with-data" }
+mc-test-vectors-tx-out-records = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-test-helper = { workspace = true }
+mc-util-test-vector = { workspace = true }
+mc-util-test-with-data = { workspace = true }
 
 # third-party
-hex = "0.4"
-yare = "1.0.2"
+hex = { workspace = true }
+yare = { workspace = true }

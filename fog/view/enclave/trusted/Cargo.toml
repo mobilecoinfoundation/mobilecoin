@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-enclave-trusted"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 description = "The MobileCoin Fog user-facing server's enclave entry point."
 edition = "2021"
@@ -17,9 +17,7 @@ rust-version = "1.83.0"
 crate-type = ["staticlib"]
 
 [features]
-sgx-sim = [
-    "mc-attest-verifier/sgx-sim"
-]
+sgx-sim = ["mc-attest-verifier/sgx-sim"]
 
 [dependencies]
 

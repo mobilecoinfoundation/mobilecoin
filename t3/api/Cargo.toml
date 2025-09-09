@@ -1,6 +1,6 @@
 [package]
 name = "mc-t3-api"
-version = "7.0.1"
+version = "7.0.2"
 edition = "2021"
 authors = ["MobileCoin"]
 license = "GPL-3.0"
@@ -8,13 +8,13 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-futures = "0.3"
-grpcio = "0.13"
-protobuf = "2.27.1"
+futures = { workspace = true }
+grpcio = { workspace = true }
+protobuf = { workspace = true }
 
-mc-util-uri = { path = "../../util/uri" }
+mc-util-uri = { workspace = true }
 
 [build-dependencies]
-cargo-emit = "0.2.1"
-mc-util-build-grpc = { path = "../../util/build/grpc" }
-mc-util-build-script = { path = "../../util/build/script" }
+cargo-emit = { workspace = true }
+mc-util-build-grpc = { workspace = true }
+mc-util-build-script = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sql-recovery-db-cleanup"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["Mobilecoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,9 +11,9 @@ name = "mc-fog-sql-recovery-db-cleanup"
 path = "src/main.rs"
 
 [dependencies]
-chrono = "0.4"
-clap = { version = "4.5", features = ["derive", "env"] }
-mc-common = { path = "../../../common", features = ["loggers"] }
-mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
-mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+mc-common = { workspace = true, features = ["loggers"] }
+mc-fog-recovery-db-iface = { workspace = true }
+mc-fog-sql-recovery-db = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-from-random"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 description = "A trait for constructing an object from a random number generator."
 edition = "2021"
@@ -9,4 +9,4 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [dependencies]
-rand_core = { version = "0.6", default-features = false }
+rand_core = { workspace = true }

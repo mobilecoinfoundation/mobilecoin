@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-keyfile"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -27,30 +27,30 @@ name = "read-pubfile"
 path = "src/bin/read_pubfile.rs"
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
-mc-api = { path = "../../api" }
-mc-core = { path = "../../core" }
-mc-rand = "1.0"
-mc-util-from-random = { path = "../../util/from-random" }
-mc-util-parse = { path = "../../util/parse" }
-mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
+mc-account-keys = { workspace = true }
+mc-api = { workspace = true }
+mc-core = { workspace = true, features = ["bip39"] }
+mc-rand = { workspace = true }
+mc-util-from-random = { workspace = true }
+mc-util-parse = { workspace = true }
+mc-util-serial = { workspace = true, features = ["std"] }
 
-base64 = "0.21"
-clap = { version = "4.5", features = ["derive", "env"] }
-displaydoc = "0.2"
-hex = "0.4"
-pem = "3.0"
-prost = "0.12"
-rand = "0.8"
-rand_core = "0.6.4"
-rand_hc = "0.3"
-serde = "1.0"
-serde_json = "1.0"
-tiny-bip39 = "1.0"
-x509-signature = "0.5"
+base64 = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+displaydoc = { workspace = true }
+hex = { workspace = true, features = ["std"] }
+pem = { workspace = true }
+prost = { workspace = true }
+rand = { workspace = true }
+rand_core = { workspace = true }
+rand_hc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+tiny-bip39 = { workspace = true }
+x509-signature = { workspace = true }
 
 [dev-dependencies]
-mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-crypto-x509-test-vectors = { workspace = true }
+mc-util-test-helper = { workspace = true }
 
-tempfile = "3.10"
+tempfile = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "mc-peers"
-version = "7.0.1"
+version = "7.0.2"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,34 +11,34 @@ rust-version = { workspace = true }
 test_utils = []
 
 [dependencies]
-mc-attest-api = { path = "../attest/api" }
-mc-attest-core = { path = "../attest/core" }
-mc-attest-enclave-api = { path = "../attest/enclave-api" }
-mc-blockchain-types = { path = "../blockchain/types" }
-mc-common = { path = "../common", features = ["log"] }
-mc-connection = { path = "../connection" }
-mc-consensus-api = { path = "../consensus/api" }
-mc-consensus-enclave-api = { path = "../consensus/enclave/api" }
-mc-consensus-scp = { path = "../consensus/scp" }
-mc-crypto-digestible = { path = "../crypto/digestible" }
-mc-crypto-keys = { path = "../crypto/keys" }
-mc-ledger-db = { path = "../ledger/db" }
-mc-transaction-core = { path = "../transaction/core" }
-mc-util-grpc = { path = "../util/grpc" }
-mc-util-serial = { path = "../util/serial" }
-mc-util-uri = { path = "../util/uri" }
+mc-attest-api = { workspace = true }
+mc-attest-core = { workspace = true }
+mc-attest-enclave-api = { workspace = true }
+mc-blockchain-types = { workspace = true }
+mc-common = { workspace = true, features = ["log"] }
+mc-connection = { workspace = true }
+mc-consensus-api = { workspace = true }
+mc-consensus-enclave-api = { workspace = true }
+mc-consensus-scp = { workspace = true }
+mc-crypto-digestible = { workspace = true }
+mc-crypto-keys = { workspace = true }
+mc-ledger-db = { workspace = true }
+mc-transaction-core = { workspace = true }
+mc-util-grpc = { workspace = true }
+mc-util-serial = { workspace = true }
+mc-util-uri = { workspace = true }
 
-crossbeam-channel = "0.5"
-displaydoc = "0.2"
-grpcio = "0.13"
-mockall = "0.12.1"
-protobuf = "2.27.1"
-retry = "2.0"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+crossbeam-channel = { workspace = true }
+displaydoc = { workspace = true }
+grpcio = { workspace = true }
+mockall = { workspace = true }
+protobuf = { workspace = true }
+retry = { workspace = true }
+serde = { workspace = true, features = ["alloc", "derive"] }
 
 [dev-dependencies]
-mc-connection-test-utils = { path = "../connection/test-utils" }
-mc-peers-test-utils = { path = "./test-utils" }
+mc-connection-test-utils = { workspace = true }
+mc-peers-test-utils = { workspace = true }
 
-rand = "0.8"
-rand_hc = "0.3"
+rand = { workspace = true }
+rand_hc = { workspace = true }
