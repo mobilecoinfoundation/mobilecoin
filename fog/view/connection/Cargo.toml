@@ -33,7 +33,7 @@ mc-fog-view-protocol = { workspace = true }
 aes-gcm = { workspace = true }
 der = { workspace = true }
 futures = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 retry = { workspace = true }
 sha2 = { workspace = true }

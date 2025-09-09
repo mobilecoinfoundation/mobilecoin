@@ -55,10 +55,10 @@ mc-fog-view-protocol = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 link-cplusplus = { workspace = true } # This is needed to support building on darwin which only has libc++ and not libstdc++
 mc-attestation-verifier = { workspace = true }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { workspace = true, features = ["prost-derive"] }
 rand = { workspace = true }
 serde_json = { workspace = true, features = ["alloc"] }
 

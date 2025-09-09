@@ -17,7 +17,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 itertools = { workspace = true }
 lazy_static = { workspace = true }

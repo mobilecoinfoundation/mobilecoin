@@ -28,6 +28,6 @@ mc-fog-view-protocol = { workspace = true }
 mc-fog-view-server = { workspace = true }
 
 # Third-party
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 portpicker = { workspace = true }

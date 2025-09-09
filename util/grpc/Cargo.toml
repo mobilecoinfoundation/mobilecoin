@@ -20,12 +20,12 @@ clap = { workspace = true, features = ["derive", "env"] }
 cookie = { workspace = true }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec", "boringssl"] }
+grpcio = { workspace = true, features = ["prost-codec", "boringssl"] }
 hex = { workspace = true }
 hex_fmt = { workspace = true }
 hmac = { workspace = true }
 lazy_static = { workspace = true }
-prost = { version = "0.11", default-features = false }
+prost = { workspace = true }
 prometheus = { workspace = true }
 rand = { workspace = true }
 retry = { workspace = true }

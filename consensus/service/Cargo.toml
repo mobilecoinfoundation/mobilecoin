@@ -51,7 +51,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 fs_extra = { workspace = true }
 futures = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 lazy_static = { workspace = true }
 once_cell = { workspace = true }

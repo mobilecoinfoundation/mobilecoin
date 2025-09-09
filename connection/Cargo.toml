@@ -28,10 +28,10 @@ mc-util-uri = { workspace = true }
 aes-gcm = { workspace = true }
 cookie = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 mc-rand = { workspace = true }
-prost = { version = "0.11", default-features = false, features = ["prost-derive"] }
+prost = { workspace = true, features = ["prost-derive"] }
 retry = { workspace = true }
 secrecy = { workspace = true }
 serde = { workspace = true }

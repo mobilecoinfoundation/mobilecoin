@@ -14,8 +14,8 @@ service_metrics = ["dep:grpcio", "dep:prost"]
 mc-common = { workspace = true, features = ["log"] }
 
 chrono = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"], optional = true }
+grpcio = { workspace = true, features = ["prost-codec"], optional = true }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
-prost = { version = "0.11", optional = true }
+prost = { workspace = true, optional = true }
 serde_json = { workspace = true }

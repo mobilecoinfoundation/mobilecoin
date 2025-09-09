@@ -33,7 +33,7 @@ mc-util-uri = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { version = "0.13", default-features = false, features = ["prost-codec"] }
+grpcio = { workspace = true, features = ["prost-codec"] }
 lazy_static = { workspace = true }
 pem = { workspace = true }
 prost = { workspace = true }
