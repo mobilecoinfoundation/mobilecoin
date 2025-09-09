@@ -289,8 +289,8 @@ primitive-types = "0.12"
 proc-macro2 = "1"
 prometheus = "0.13"
 proptest = { version = "1", default-features = false }
-prost = { version = "0.12", default-features = false }
-prost-build = "0.12"
+prost = { version = "0.11", default-features = false }
+prost-build = "0.11"
 protobuf = "2"
 protoc-grpcio = "3"
 quote = "1"
