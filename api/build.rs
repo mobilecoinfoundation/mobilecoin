@@ -12,14 +12,18 @@ fn main() {
         .expect("Invalid UTF-8 in proto dir");
     cargo_emit::pair!("PROTOS_PATH", "{}", proto_str);
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
-        &[proto_str],
-        &[
-            "blockchain.proto",
-            "external.proto",
-            "printable.proto",
-            "quorum_set.proto",
-            "watcher.proto",
-        ],
-    );
+    let protos = [
+        "blockchain.proto",
+        "external.proto",
+        "printable.proto",
+        "quorum_set.proto",
+        "watcher.proto",
+    ];
+
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(&[proto_str], &protos);
+
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(&protos, &[proto_str])
+        .expect("Failed to compile tonic gRPC definitions!");
 }

@@ -31,8 +31,12 @@ fn main() {
         .to_owned();
     all_proto_dirs.extend(attest_api_proto_path.split(':'));
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
-        all_proto_dirs.as_slice(),
-        &["mobilecoind_api.proto"],
-    );
+    let protos = ["mobilecoind_api.proto"];
+
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(all_proto_dirs.as_slice(), &protos);
+
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(&protos, all_proto_dirs.as_slice())
+        .expect("Failed to compile tonic gRPC definitions!");
 }

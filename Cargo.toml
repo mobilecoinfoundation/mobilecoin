@@ -342,6 +342,8 @@ textwrap = "0.16"
 tiny-bip39 = "1"
 tokio = "1"
 toml = "0.8"
+tonic = { version = "0.9", default-features = false }
+tonic-build = "0.9"
 url = "2"
 walkdir = "2"
 wasm-bindgen = "0.2"
