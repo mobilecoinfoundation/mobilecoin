@@ -49,9 +49,6 @@
   - name: http
     containerPort: {{ .Values.fogView.ports.http }}
   resources:
-    limits:
-      cpu: 1
-      memory: 256Mi
     requests:
       cpu: 256m
       memory: 256Mi

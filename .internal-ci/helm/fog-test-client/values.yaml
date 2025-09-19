@@ -54,7 +54,10 @@ fogTestClient:
     tag: ""
   podAnnotations:
     fluentbit.io/include: 'true'
-  resources: {}
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
   nodeSelector: {}
   tolerations: []
   affinity: {}
