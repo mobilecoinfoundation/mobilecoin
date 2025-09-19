@@ -122,7 +122,6 @@ toolbox:
       cpu: 100m
     limits:
       memory: 4Gi
-      cpu: 2000m
 
 jaegerTracing:
   enabled: false
