@@ -106,13 +106,21 @@ export ENCLAVE_DIR="${TMP_DIR}/${CHAIN_ID}net-enclaves-${ENCLAVE_TAG}"
 export ENCLAVE_SIGNED_DIR="${TMP_DIR}/${CHAIN_ID}net-signed.so-${ENCLAVE_TAG}"
 export MEASUREMENTS_DIR="${TMP_DIR}/${CHAIN_ID}net-measurements-${ENCLAVE_TAG}"
 
+export CURRENT_TAG_SIGNED_DIR="${TMP_DIR}/${CHAIN_ID}net-signed.so-${GIT_TAG}"
+export CURRENT_TAG_MEASUREMENTS_DIR="${TMP_DIR}/${CHAIN_ID}net-measurements-${GIT_TAG}"
+
 # Tarballs
 export ENCLAVE_TAR="${TMP_DIR}/${CHAIN_ID}net-enclaves-${ENCLAVE_TAG}.tar.gz"
 export ENCLAVE_SIGNED_TAR="${TMP_DIR}/${CHAIN_ID}net-signed.so-${ENCLAVE_TAG}.tar.gz"
-export MEASUREMENTS_TAR="${TMP_DIR}/${CHAIN_ID}net-measurements-${ENCLAVE_TAG}.tar.gz"
+export ENCLAVE_MEASUREMENTS_TAR="${TMP_DIR}/${CHAIN_ID}net-measurements-${ENCLAVE_TAG}.tar.gz"
+export ENCLAVE_PRODUCTION_JSON="${TMP_DIR}/${CHAIN_ID}net-${ENCLAVE_TAG}.json"
+
+export SIGNED_TAR="${TMP_DIR}/${CHAIN_ID}net-signed.so-${GIT_TAG}.tar.gz"
+export MEASUREMENTS_TAR="${TMP_DIR}/${CHAIN_ID}net-measurements-${GIT_TAG}.tar.gz"
 export PRODUCTION_JSON="${TMP_DIR}/${CHAIN_ID}net-${GIT_TAG}.json"
 
 # Log file for the build process
+export ENCLAVE_LOG="${TMP_DIR}/${CHAIN_ID}net-build-${ENCLAVE_TAG}.log"
 export LOG="${TMP_DIR}/${CHAIN_ID}net-build-${GIT_TAG}.log"
 
 # Set Cargo environment

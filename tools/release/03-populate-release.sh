@@ -14,27 +14,39 @@ command -v gh >/dev/null 2>&1 || { red "GitHub CLI (gh) is not installed. Aborti
 
 if [[ "${ENCLAVE_RELEASE}" == "true" ]]
 then
-    yellow "Using local artifact files to create a release"
+    yellow "Using local artifact files to create a release."
 
-    check_file "${ENCLAVE_SIGNED_TAR}"
+    check_file "${SIGNED_TAR}"
     check_file "${MEASUREMENTS_TAR}"
     check_file "${PRODUCTION_JSON}"
     check_file "${LOG}"
 else
-    yellow "Downloading artifacts from the latest enclave release"
-    # download artifacts from the latest enclave release
+    yellow "Downloading artifacts from the latest enclave release."
     gh release download --clobber \
         --pattern "$(basename "${ENCLAVE_SIGNED_TAR}")" \
-        --pattern "$(basename "${MEASUREMENTS_TAR}")" \
-        --pattern "$(basename "${PRODUCTION_JSON}")" \
-        --pattern "$(basename "${LOG}")" \
+        --pattern "$(basename "${ENCLAVE_MEASUREMENTS_TAR}")" \
+        --pattern "$(basename "${ENCLAVE_PRODUCTION_JSON}")" \
+        --pattern "$(basename "${ENCLAVE_LOG}")" \
         "${ENCLAVE_TAG}" -D "${TMP_DIR}"
-fi
 
-yellow "extract the signed enclaves"
-pushd "${TMP_DIR}" >/dev/null
-tar xvzf "${ENCLAVE_SIGNED_TAR}"
-popd >/dev/null
+    pushd "${TMP_DIR}" 2>/dev/null || exit 1
+    yellow "Extract and rename signed directory to match current tag."
+    rm -rf "${CURRENT_TAG_SIGNED_DIR}"
+    tar -xvzf "${ENCLAVE_SIGNED_TAR}"
+    mv "${ENCLAVE_SIGNED_DIR}" "${CURRENT_TAG_SIGNED_DIR}"
+    tar -cvzf "${SIGNED_TAR}" "$(basename "${CURRENT_TAG_SIGNED_DIR}")"
+
+    yellow "Extract and rename measurements directory to match current tag."
+    rm -rf "${CURRENT_TAG_MEASUREMENTS_DIR}"
+    tar -xvzf "${ENCLAVE_MEASUREMENTS_TAR}"
+    mv "${MEASUREMENTS_DIR}" "${CURRENT_TAG_MEASUREMENTS_DIR}"
+    tar -cvzf "${MEASUREMENTS_TAR}" "$(basename "${CURRENT_TAG_MEASUREMENTS_DIR}")"
+    popd || exit 1
+
+    yellow "Rename production JSON and log files to match current tag."
+    mv "${ENCLAVE_PRODUCTION_JSON}" "${PRODUCTION_JSON}"
+    mv "${ENCLAVE_LOG}" "${LOG}"
+fi
 
 # get mrenclave from production.json
 mrenclave_consensus=$(jq -r '.consensus.mrenclave' "${PRODUCTION_JSON}")
@@ -99,7 +111,7 @@ else
 fi
 
 gh release upload --clobber "${GIT_TAG}" \
-    "${ENCLAVE_SIGNED_TAR}" \
+    "${SIGNED_TAR}" \
     "${MEASUREMENTS_TAR}" \
     "${PRODUCTION_JSON}" \
     "${LOG}" \
