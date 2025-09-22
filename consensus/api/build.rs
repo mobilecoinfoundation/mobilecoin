@@ -25,13 +25,17 @@ fn main() {
         .to_owned();
     all_proto_dirs.extend(api_proto_path.split(':').collect::<Vec<&str>>());
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
-        all_proto_dirs.as_slice(),
-        &[
-            "consensus_client.proto",
-            "consensus_common.proto",
-            "consensus_config.proto",
-            "consensus_peer.proto",
-        ],
-    );
+    let protos = [
+        "consensus_client.proto",
+        "consensus_common.proto",
+        "consensus_config.proto",
+        "consensus_peer.proto",
+    ];
+
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(all_proto_dirs.as_slice(), &protos);
+
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(&protos, all_proto_dirs.as_slice())
+        .expect("Failed to compile tonic gRPC definitions!");
 }

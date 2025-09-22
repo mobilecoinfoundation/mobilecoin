@@ -11,6 +11,7 @@ rust-version = { workspace = true }
 futures = { workspace = true }
 grpcio = { workspace = true, features = ["prost-codec"] }
 prost = { workspace = true }
+tonic = { workspace = true, features = ["codegen", "prost"] }
 
 mc-util-uri = { workspace = true }
 
@@ -18,3 +19,4 @@ mc-util-uri = { workspace = true }
 cargo-emit = { workspace = true }
 mc-util-build-grpc = { workspace = true }
 mc-util-build-script = { workspace = true }
+tonic-build = { workspace = true }

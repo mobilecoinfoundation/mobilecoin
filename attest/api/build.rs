@@ -14,5 +14,12 @@ fn main() {
             .expect("Invalid UTF-8 in proto dir path")
     );
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(&["./proto"], &["attest.proto"]);
+    let protos = ["attest.proto"];
+
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(&["./proto"], &protos);
+
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(&protos, &["./proto"])
+        .expect("Failed to compile tonic gRPC definitions!");
 }

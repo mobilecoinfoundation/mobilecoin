@@ -33,10 +33,12 @@ mc-sgx-dcap-types = { workspace = true }
 
 curve25519-dalek = { workspace = true }
 prost = { workspace = true }
+tonic = { workspace = true, features = ["codegen", "prost"] }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }
 mc-util-build-script = { workspace = true }
+tonic-build = { workspace = true }
 
 cargo-emit = { workspace = true }
 

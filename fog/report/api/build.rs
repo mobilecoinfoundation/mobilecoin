@@ -31,8 +31,12 @@ fn main() {
         .to_owned();
     all_proto_dirs.extend(consensus_api_proto_path.split(':').collect::<Vec<&str>>());
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
-        all_proto_dirs.as_slice(),
-        &["report.proto"],
-    );
+    let protos = ["report.proto"];
+
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(all_proto_dirs.as_slice(), &protos);
+
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(&protos, all_proto_dirs.as_slice())
+        .expect("Failed to compile tonic gRPC definitions!");
 }

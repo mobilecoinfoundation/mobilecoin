@@ -31,11 +31,13 @@ aead = { workspace = true }
 digest = { workspace = true }
 futures = { workspace = true }
 grpcio = { workspace = true, features = ["prost-codec"] }
-prost = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
+tonic = { workspace = true, features = ["transport", "tls", "codegen", "prost"] }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }
 mc-util-build-script = { workspace = true }
+tonic-build = { workspace = true }
 
 cargo-emit = { workspace = true }
 
