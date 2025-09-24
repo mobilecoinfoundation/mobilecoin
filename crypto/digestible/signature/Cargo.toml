@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-digestible-signature"
-version = "7.0.3"
+version = "7.0.4"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Digestible Signatures"
