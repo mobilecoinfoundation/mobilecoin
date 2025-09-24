@@ -106,7 +106,6 @@ spec:
             stack: {{ include "fog-ledger-fsg.fullname" $ }}-{{ $stackCount }}
             color: {{ $color }}
             zone: {{ $zone }}
-            {{- include "fog-ledger-fsg.selectorLabels" $ | nindent 12 }}
             {{- include "fog-ledger-fsg.labels" $ | nindent 12 }}
         spec:
           {{- if $store.affinityEnabled }}
