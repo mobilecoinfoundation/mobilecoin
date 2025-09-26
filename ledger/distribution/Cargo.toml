@@ -17,7 +17,7 @@ mc-blockchain-types = { workspace = true }
 mc-common = { workspace = true, features = ["loggers"] }
 mc-ledger-db = { workspace = true }
 mc-transaction-core = { workspace = true }
-mc-util-telemetry = { workspace = true, features = ["jaeger"] }
+mc-util-telemetry = { workspace = true, features = ["otlp"] }
 
 clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
