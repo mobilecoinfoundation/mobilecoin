@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [7.0.5]
+
+### Fixed
+
+- Fix ledger metrics ([#4071])
+
+[#4071]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4071
+
+
 ## [7.0.4]
 
 ### Fixed
