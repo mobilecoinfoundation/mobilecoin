@@ -28,7 +28,7 @@ mc-consensus-api = { workspace = true }
 mc-consensus-enclave-api = { workspace = true }
 mc-consensus-enclave-measurement = { workspace = true }
 mc-consensus-scp = { workspace = true }
-mc-core = { workspace = true }
+mc-core = { workspace = true, features = ["bip39"] }
 mc-crypto-digestible = { workspace = true, features = ["derive"] }
 mc-crypto-hashes = { workspace = true }
 mc-crypto-keys = { workspace = true }
