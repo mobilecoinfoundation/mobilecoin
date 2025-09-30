@@ -48,7 +48,15 @@ pub fn versioned_tracer(
     version: Option<&'static str>,
     schema_url: Option<&'static str>,
 ) -> BoxedTracer {
-    tracer_provider().versioned_tracer(name, version, schema_url, None)
+    let provider = tracer_provider();
+    let mut builder = provider.tracer_builder(name);
+    if let Some(version) = version {
+        builder = builder.with_version(version);
+    }
+    if let Some(schema_url) = schema_url {
+        builder = builder.with_schema_url(schema_url);
+    }
+    builder.build()
 }
 
 /// Creates a context when an explicit context is required. Useful when tracing
@@ -94,8 +102,8 @@ pub fn start_block_span<T: Tracer>(
     block_span_builder(tracer, span_name, block_index).start(tracer)
 }
 
-#[cfg(feature = "jaeger")]
-mod jaeger;
+#[cfg(feature = "otlp")]
+mod otlp;
 
-#[cfg(feature = "jaeger")]
-pub use jaeger::{setup_default_tracer, setup_default_tracer_with_tags, Error};
+#[cfg(feature = "otlp")]
+pub use otlp::{setup_default_tracer, setup_default_tracer_with_tags, Error};

@@ -29,6 +29,13 @@ fn main() {
 
     let config = TestClientConfig::parse();
 
+    // Create a Tokio runtime for telemetry OTLP exporter
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+    let _enter_guard = runtime.enter();
+
     let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
         .expect("Failed setting telemetry tracer");
 
