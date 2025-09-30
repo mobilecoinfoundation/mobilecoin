@@ -13,8 +13,6 @@ spec:
   selector:
     matchLabels:
       app: fog-ledger-store
-      color: {{ .Values.fogLedger.color }}
-      zone: {{ .Values.fogLedger.zone }}
       {{- include "fog-ledger-fsg.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: mgmt
@@ -31,4 +29,3 @@ spec:
       sourceLabels:
       - __meta_kubernetes_pod_label_color
       targetLabel: color
-
