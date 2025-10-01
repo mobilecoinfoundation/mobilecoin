@@ -5,9 +5,7 @@
 use crate::{external, ConversionError};
 use mc_transaction_builder::TxBlueprintOutput; // Import only the main enum
 use mc_transaction_core::encrypted_fog_hint::EncryptedFogHint;
-// Removed Amount, UnmaskedAmount, tx::TxOut as unused
 
-// TxBlueprintOutput -> external::TxBlueprintOutput
 impl From<&TxBlueprintOutput> for external::TxBlueprintOutput {
     fn from(source: &TxBlueprintOutput) -> Self {
         match source {
@@ -67,7 +65,6 @@ impl From<&TxBlueprintOutput> for external::TxBlueprintOutput {
     }
 }
 
-// external::TxBlueprintOutput -> TxBlueprintOutput
 impl TryFrom<&external::TxBlueprintOutput> for TxBlueprintOutput {
     type Error = ConversionError;
 

@@ -7,7 +7,6 @@ use mc_transaction_builder::TxBlueprint;
 use mc_transaction_core::{ring_ct::InputRing, tx::TxIn, Amount};
 use std::convert::{TryFrom, TryInto};
 
-// TxBlueprint -> external::TxBlueprint
 impl From<&TxBlueprint> for external::TxBlueprint {
     fn from(source: &TxBlueprint) -> Self {
         Self {
@@ -21,7 +20,6 @@ impl From<&TxBlueprint> for external::TxBlueprint {
     }
 }
 
-// external::TxBlueprint -> TxBlueprint
 impl TryFrom<&external::TxBlueprint> for TxBlueprint {
     type Error = ConversionError;
 

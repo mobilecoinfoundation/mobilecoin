@@ -64,6 +64,7 @@ pub struct TxOutContext {
     /// add_output/add_change_output
     pub shared_secret: RistrettoPublic,
 }
+
 /// Helper utility for building and signing a CryptoNote-style transaction,
 /// and attaching fog hint and memos as appropriate.
 ///
@@ -98,8 +99,7 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
 }
 
 impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
-    /// Initializes a new TransactionBuilder, using a Box<dyn MemoBuilder>
-    /// instead of statically typed
+    /// Initializes a new TransactionBuilder.
     ///
     /// # Arguments
     /// * `block_version` - The block version rules to use when building this
@@ -794,8 +794,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self,
         memo_builder: impl MemoBuilder,
     ) -> Result<UnsignedTx, TxBuilderError> {
-        self.build_blueprint()?
-            .to_unsigned_tx::<DefaultTxOutputsOrdering>(memo_builder)
+        self.build_unsigned_with_sorter::<DefaultTxOutputsOrdering>(memo_builder)
     }
 
     /// Consume the builder and return the transaction.
@@ -828,6 +827,18 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.build_with_comparer_internal::<RNG, O, S>(ring_signer, memo_builder, rng)
     }
 
+    /// Return low level data to sign and construct transactions with external
+    /// signers.
+    ///
+    /// Allows specifying a custom output ordering, which is useful for internal
+    /// testing.
+    fn build_unsigned_with_sorter<O: TxOutputsOrdering>(
+        self,
+        memo_builder: impl MemoBuilder,
+    ) -> Result<UnsignedTx, TxBuilderError> {
+        self.build_blueprint()?.to_unsigned_tx::<O>(memo_builder)
+    }
+
     /// Consume the builder and return the transaction with a comparer
     /// (internal usage only).
     fn build_with_comparer_internal<
@@ -841,8 +852,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
         let fee_map = self.fee_map.clone();
-        self.build_blueprint()?
-            .sign::<O, S, RNG>(ring_signer, memo_builder, rng, fee_map.as_ref())
+        let unsigned_tx = self.build_unsigned_with_sorter::<O>(memo_builder)?;
+        Ok(unsigned_tx.sign(ring_signer, fee_map.as_ref(), rng)?)
     }
 }
 
@@ -2736,8 +2747,7 @@ pub mod transaction_builder_tests {
                 );
             }
 
-            // Test that adding a  change output after the change output causes an error as
-            // expected
+            // Multiple change outputs cause error
             {
                 let mut memo_builder = RTHMemoBuilder::default();
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
@@ -4129,18 +4139,9 @@ pub mod transaction_builder_tests {
             );
         }
 
-        // Ensure we can't write destination TxOuts for Cancellation & Sending
+        // Ensure we can't write destination TxOuts for Cancellation
         {
-            let sender_memo_builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
             let cancellation_memo_builder = GiftCodeCancellationMemoBuilder::new(50);
-
-            let mut sending_transaction_builder = TransactionBuilder::new(
-                BlockVersion::MAX,
-                Amount::new(1, token_id),
-                MockFogResolver::default(),
-            )
-            .unwrap();
-            sending_transaction_builder.add_input(input_credentials.clone());
 
             let mut cancellation_transaction_builder = TransactionBuilder::new(
                 BlockVersion::MAX,
@@ -4149,20 +4150,6 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
             cancellation_transaction_builder.add_input(input_credentials.clone());
-
-            sending_transaction_builder
-                .add_output(
-                    Amount::new(100, token_id),
-                    &sender_reserved_destinations.gift_code_subaddress,
-                    &mut rng,
-                )
-                .unwrap();
-
-            let sender_result = sending_transaction_builder.build(
-                &NoKeysRingSigner {},
-                sender_memo_builder,
-                &mut rng,
-            );
 
             cancellation_transaction_builder
                 .add_output(
@@ -4179,14 +4166,41 @@ pub mod transaction_builder_tests {
             );
 
             assert_matches!(
-                sender_result,
+                cancellation_result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
                     NewMemoError::DestinationMemoNotAllowed
                 )))
             );
+        }
+
+        // Ensure we can't write destination TxOuts for Sending
+        {
+            let sender_memo_builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
+
+            let mut sending_transaction_builder = TransactionBuilder::new(
+                BlockVersion::MAX,
+                Amount::new(1, token_id),
+                MockFogResolver::default(),
+            )
+            .unwrap();
+            sending_transaction_builder.add_input(input_credentials.clone());
+
+            sending_transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let sender_result = sending_transaction_builder.build(
+                &NoKeysRingSigner {},
+                sender_memo_builder,
+                &mut rng,
+            );
 
             assert_matches!(
-                cancellation_result,
+                sender_result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
                     NewMemoError::DestinationMemoNotAllowed
                 )))

@@ -103,7 +103,7 @@ impl RTHMemoBuilder {
     /// This is the same as calling set_authenticated_sender_hmac_signer with
     /// `Arc::new(Box::new(cred))` and is provided for convenience.
     ///
-    /// This credential is usually be produced from your AccountKey object.
+    /// This credential is usually produced from your AccountKey object.
     ///
     /// If you want to make it appear to the recipient as if this came from
     /// another address or a subaddress of yours,
@@ -115,7 +115,6 @@ impl RTHMemoBuilder {
     /// normally deposit to. Then a chat client will be able to associate both
     /// their deposits and withdrawals into a single chat interaction.
     pub fn set_sender_credential(&mut self, cred: SenderMemoCredential) {
-        // self.sender_cred = Some(cred);
         self.authenticated_sender_hmac_signer = Some(Arc::new(Box::new(cred)));
     }
 
@@ -124,14 +123,11 @@ impl RTHMemoBuilder {
     /// produced.
     pub fn set_authenticated_sender_hmac_signer(
         &mut self,
-        hmac_signer: Arc<Box<dyn AuthenticatedMemoHmacSigner + 'static + Send + Sync>>,
+        hmac_signer: impl Into<
+            Option<Arc<Box<dyn AuthenticatedMemoHmacSigner + 'static + Send + Sync>>>,
+        >,
     ) {
-        self.authenticated_sender_hmac_signer = Some(hmac_signer);
-    }
-
-    /// Clear the authenticated sender hmac signer.
-    pub fn clear_authenticated_sender_hmac_signer(&mut self) {
-        self.authenticated_sender_hmac_signer = None;
+        self.authenticated_sender_hmac_signer = hmac_signer.into();
     }
 
     /// Set the payment request id.
