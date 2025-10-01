@@ -26,9 +26,6 @@
   - name: mgmt
     containerPort: {{ .Values.fogLedger.ports.mgmt }}
   resources:
-    limits:
-      cpu: 1
-      memory: 256Mi
     requests:
       cpu: 256m
       memory: 256Mi
@@ -56,9 +53,6 @@
   - name: http
     containerPort: {{ .Values.fogLedger.ports.http }}
   resources:
-    limits:
-      cpu: 1
-      memory: 256Mi
     requests:
       cpu: 256m
       memory: 256Mi

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-enclave-measurement"
-version = "7.0.2"
+version = "7.0.5"
 authors = ["MobileCoin"]
 description = "MobileCoin Ledger Enclave - Measurement"
 edition = "2021"

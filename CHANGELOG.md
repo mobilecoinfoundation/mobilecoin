@@ -6,7 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
-## [7.0.1]
+## [7.0.5]
+
+### Fixed
+
+- Fix ledger metrics ([#4071])
+
+[#4071]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4071
+
+
+## [7.0.4]
+
+### Fixed
+
+- Fix fog-ledger-fsg chart dupe labels ([#4068])
+
+[#4068]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4068
+
+## [7.0.3]
+
+### Fixed
+
+- Fix release scripts for non-enclave releases ([#4065])
+- Remove cpu limits from helm releases ([#4066])
+
+[#4065]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4065
+[#4066]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4066
+
+## [7.0.2]
 
 ### Fixed
 
