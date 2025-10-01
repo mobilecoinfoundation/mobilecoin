@@ -12,7 +12,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     ring_ct::{InputRing, OutputSecret},
     tx::{Tx, TxIn, TxOut, TxPrefix},
-    FeeMap,
+    FeeMap, MemoContext, MemoPayload, NewMemoError,
 };
 use mc_transaction_extra::UnsignedTx;
 use mc_transaction_summary::TxOutSummaryUnblindingData;
@@ -150,62 +150,28 @@ fn build_output(
             amount,
             e_fog_hint,
             tx_private_key,
-        } => {
-            let (tx_out, shared_secret) = create_output_with_fog_hint(
-                unsigned_tx.block_version,
-                amount,
-                &recipient,
-                e_fog_hint,
-                |memo_ctxt| mb.make_memo_for_output(amount, &recipient, memo_ctxt),
-                &tx_private_key,
-            )?;
-
-            let (amount, blinding) = tx_out
-                .get_masked_amount()
-                .expect("TransactionBuilder created an invalid MaskedAmount")
-                .get_value(&shared_secret)
-                .expect("TransactionBuilder created an invalid Amount");
-            let output_secret = OutputSecret { amount, blinding };
-
-            let unblinding_data = TxOutSummaryUnblindingData {
-                unmasked_amount: output_secret.into(),
-                address: Some(recipient),
-                tx_private_key: Some(tx_private_key),
-            };
-
-            (tx_out, unblinding_data)
-        }
+        } => build_standard_output(
+            unsigned_tx.block_version,
+            amount,
+            &recipient,
+            e_fog_hint,
+            |memo_ctxt| mb.make_memo_for_output(amount, &recipient, memo_ctxt),
+            tx_private_key,
+        )?,
 
         TxBlueprintOutput::Change {
             change_destination,
             amount,
             e_fog_hint,
             tx_private_key,
-        } => {
-            let (tx_out, shared_secret) = create_output_with_fog_hint(
-                unsigned_tx.block_version,
-                amount,
-                &change_destination.change_subaddress,
-                e_fog_hint,
-                |memo_ctxt| mb.make_memo_for_change_output(amount, &change_destination, memo_ctxt),
-                &tx_private_key,
-            )?;
-
-            let (amount, blinding) = tx_out
-                .get_masked_amount()
-                .expect("TransactionBuilder created an invalid MaskedAmount")
-                .get_value(&shared_secret)
-                .expect("TransactionBuilder created an invalid Amount");
-            let output_secret = OutputSecret { amount, blinding };
-
-            let unblinding_data = TxOutSummaryUnblindingData {
-                unmasked_amount: output_secret.into(),
-                address: Some(change_destination.change_subaddress),
-                tx_private_key: Some(tx_private_key),
-            };
-
-            (tx_out, unblinding_data)
-        }
+        } => build_standard_output(
+            unsigned_tx.block_version,
+            amount,
+            &change_destination.change_subaddress,
+            e_fog_hint,
+            |memo_ctxt| mb.make_memo_for_change_output(amount, &change_destination, memo_ctxt),
+            tx_private_key,
+        )?,
 
         TxBlueprintOutput::Sci {
             output,
@@ -229,6 +195,39 @@ fn build_output(
             unblinding_data.unmasked_amount.token_id.into(),
         ));
     }
+
+    Ok((tx_out, unblinding_data))
+}
+
+fn build_standard_output(
+    block_version: BlockVersion,
+    amount: Amount,
+    recipient: &PublicAddress,
+    e_fog_hint: EncryptedFogHint,
+    memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
+    tx_private_key: RistrettoPrivate,
+) -> Result<(TxOut, TxOutSummaryUnblindingData), TxBuilderError> {
+    let (tx_out, shared_secret) = create_output_with_fog_hint(
+        block_version,
+        amount,
+        recipient,
+        e_fog_hint,
+        memo_fn,
+        &tx_private_key,
+    )?;
+
+    let (amount, blinding) = tx_out
+        .get_masked_amount()
+        .expect("TransactionBuilder created an invalid MaskedAmount")
+        .get_value(&shared_secret)
+        .expect("TransactionBuilder created an invalid Amount");
+    let output_secret = OutputSecret { amount, blinding };
+
+    let unblinding_data = TxOutSummaryUnblindingData {
+        unmasked_amount: output_secret.into(),
+        address: Some(recipient.clone()),
+        tx_private_key: Some(tx_private_key),
+    };
 
     Ok((tx_out, unblinding_data))
 }
