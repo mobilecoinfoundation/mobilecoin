@@ -27,7 +27,7 @@ use std::collections::HashMap;
 /// Class that can resolve a public address to a fully-validated fog public key
 /// structure, including the pubkey expiry data from the report server.
 #[cfg_attr(feature = "automock", automock)]
-pub trait FogPubkeyResolver: Clone {
+pub trait FogPubkeyResolver {
     /// Fetch and validate a fog public key, given a recipient's public address
     fn get_fog_pubkey(
         &self,
@@ -97,7 +97,6 @@ impl<A: Debug + Display, R: Debug + Display> From<FogSigError<A, R>> for FogPubk
 
 /// A basic implementation of the FogPubkeyResolver trait that must be seeded
 /// with a HashMap of PublicAddresses to FullValidatedFogPubkeys.
-#[derive(Clone)]
 pub struct FogResolver(HashMap<PublicAddress, FullyValidatedFogPubkey>);
 
 impl FogResolver {

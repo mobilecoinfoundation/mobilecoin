@@ -8,7 +8,7 @@ use crate::{
     input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedSubaddresses,
     TxBlueprint, TxBlueprintOutput, TxBuilderError,
 };
-use alloc::vec::Vec;
+use alloc::{sync::Arc, vec::Vec};
 use core::{
     cmp::{min, Ordering},
     fmt::Debug,
@@ -90,7 +90,7 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// id.
     fee: Amount,
     /// The source of validated fog pubkeys used for this transaction
-    fog_resolver: FPR,
+    fog_resolver: Arc<FPR>,
     /// The limit on the tombstone block value imposed pubkey_expiry values in
     /// fog pubkeys used so far
     fog_tombstone_block_limit: u64,
@@ -119,7 +119,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             block_version,
             fee,
             fee_map: None,
-            fog_resolver,
+            fog_resolver: Arc::new(fog_resolver),
             fog_tombstone_block_limit: u64::MAX,
             input_materials: Vec::new(),
             outputs: Vec::new(),
@@ -499,8 +499,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         change_destination: &ReservedSubaddresses,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
-        let (hint, pubkey_expiry) =
-            create_fog_hint(&change_destination.primary_address, &self.fog_resolver, rng)?;
+        let (hint, pubkey_expiry) = create_fog_hint(
+            &change_destination.primary_address,
+            &*self.fog_resolver,
+            rng,
+        )?;
 
         if !self.block_version.mixed_transactions_are_supported()
             && self.fee.token_id != amount.token_id
@@ -606,7 +609,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         tx_private_key: Option<RistrettoPrivate>,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
-        let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
+        let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &*self.fog_resolver, rng)?;
 
         if !self.block_version.mixed_transactions_are_supported()
             && self.fee.token_id != amount.token_id
@@ -964,7 +967,7 @@ pub mod transaction_builder_tests {
         ]
     }
 
-    fn single_input_transaction_builder<FPR: FogPubkeyResolver>(
+    fn single_input_transaction_builder<FPR: FogPubkeyResolver + Clone>(
         block_version: BlockVersion,
         token_id: TokenId,
         input_amount: u64,
