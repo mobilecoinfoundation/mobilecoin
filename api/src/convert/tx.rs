@@ -72,7 +72,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -94,7 +93,7 @@ mod tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // decode(encode(tx)) should be the identity function.
@@ -182,7 +181,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -212,7 +210,7 @@ mod tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // decode(encode(tx)) should be the identity function.
@@ -309,7 +307,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -344,7 +341,7 @@ mod tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // decode(encode(tx)) should be the identity function.

@@ -5,13 +5,16 @@
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/4
 
 use super::{
-    authenticated_common::{compute_authenticated_sender_memo, validate_authenticated_sender},
-    credential::SenderMemoCredential,
+    authenticated_common::{
+        compute_authenticated_sender_memo, validate_authenticated_sender,
+        AuthenticatedMemoHmacSigner,
+    },
     RegisteredMemoType,
 };
 use crate::impl_memo_type_conversions;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_transaction_core::NewMemoError;
 use subtle::Choice;
 
 /// A memo that the sender writes to convey their identity in an authenticated
@@ -36,22 +39,22 @@ impl RegisteredMemoType for AuthenticatedSenderWithPaymentRequestIdMemo {
 }
 
 impl AuthenticatedSenderWithPaymentRequestIdMemo {
-    /// Create a new AuthenticatedSenderMemo given credential, recipient public
-    /// key, and tx out public key
+    /// Create a new AuthenticatedSenderWithPaymentRequestIdMemo given hmac
+    /// signer, recipient public key, and tx out public key
     ///
     /// # Arguments:
-    /// * cred: A sender memo credential tied to the address we wish to identify
-    ///   ourselves as
+    /// * hmac_signer: A sender memo hmac signer tied to the address we wish to
+    ///   identify ourselves as
     /// * receiving_subaddress_view_public_key: This is the view public key from
     ///   the public address of recipient
     /// * tx_out_public_key: The public_key of the TxOut to which we will attach
     ///   this memo
-    pub fn new(
-        cred: &SenderMemoCredential,
+    pub fn new<H: AuthenticatedMemoHmacSigner>(
+        hmac_signer: &H,
         receiving_subaddress_view_public_key: &RistrettoPublic,
         tx_out_public_key: &CompressedRistrettoPublic,
         payment_request_id: u64,
-    ) -> Self {
+    ) -> Result<Self, NewMemoError> {
         // The layout of the memo is:
         // [0-16) address hash
         // [16-24) payment request id
@@ -61,14 +64,14 @@ impl AuthenticatedSenderWithPaymentRequestIdMemo {
         let mut data = [0u8; (48 - 16)];
         data[0..8].copy_from_slice(&payment_request_id.to_be_bytes());
         let memo_data = compute_authenticated_sender_memo(
+            hmac_signer,
             Self::MEMO_TYPE_BYTES,
-            cred,
             receiving_subaddress_view_public_key,
             tx_out_public_key,
             &data,
-        );
+        )?;
 
-        Self { memo_data }
+        Ok(Self { memo_data })
     }
 
     /// Get the sender address hash from the memo

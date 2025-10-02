@@ -711,8 +711,7 @@ fn build_tx(
     let fee_amount = Amount::new(MOB_FEE.load(Ordering::SeqCst), token_id);
 
     // Create tx_builder.
-    let mut tx_builder =
-        TransactionBuilder::new(block_version, fee_amount, fog_resolver, EmptyMemoBuilder).unwrap();
+    let mut tx_builder = TransactionBuilder::new(block_version, fee_amount, fog_resolver).unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -812,7 +811,7 @@ fn build_tx(
 
     // Build and return tx.
     tx_builder
-        .build(&NoKeysRingSigner {}, &mut rng)
+        .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
         .expect("failed building tx")
 }
 

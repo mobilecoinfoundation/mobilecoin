@@ -402,7 +402,8 @@ mod test {
         assert_eq!(decoded.decoded_memo, None);
 
         let memo2 =
-            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key)
+                .unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo2));
         if let Some(decoded_memo::DecodedMemo::AuthenticatedSenderMemo(memo)) = decoded.decoded_memo
         {
@@ -418,7 +419,8 @@ mod test {
             bob_addr.view_public_key(),
             &tx_public_key,
             7u64,
-        );
+        )
+        .unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo3));
         if let Some(decoded_memo::DecodedMemo::AuthenticatedSenderMemo(memo)) = decoded.decoded_memo
         {
@@ -434,7 +436,8 @@ mod test {
             bob_addr.view_public_key(),
             &tx_public_key,
             9u64,
-        );
+        )
+        .unwrap();
         let decoded = decode_memo(&MemoPayload::from(memo4));
         if let Some(decoded_memo::DecodedMemo::AuthenticatedSenderMemo(memo)) = decoded.decoded_memo
         {
