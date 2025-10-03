@@ -2363,6 +2363,113 @@ pub mod transaction_builder_tests {
     }
 
     #[test]
+    fn test_add_regular_output_after_change_output() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id = TokenId::MOB;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        let sender_addr = sender.default_subaddress();
+        let sender_change_dest = ReservedSubaddresses::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_address = recipient.default_subaddress();
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+        let change_value = 128 * MILLIMOB_TO_PICOMOB;
+        let fog_resolver = MockFogResolver::default();
+
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
+        memo_builder.enable_destination_memo();
+
+        let mut transaction_builder = single_input_transaction_builder(
+            block_version,
+            token_id,
+            value,
+            &fog_resolver,
+            &mut rng,
+        );
+
+        transaction_builder
+            .add_change_output(
+                Amount::new(change_value, token_id),
+                &sender_change_dest,
+                &mut rng,
+            )
+            .unwrap();
+
+        transaction_builder
+            .add_output(
+                Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
+                &recipient_address,
+                &mut rng,
+            )
+            .unwrap();
+
+        let tx = transaction_builder
+            .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
+            .unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 2);
+
+        let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+        let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+
+        // The 1st output should belong to the correct recipient and have correct amount
+        // and have correct memo
+        {
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                output,
+                &recipient,
+                Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
+            );
+
+            let MemoType::AuthenticatedSender(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+
+            assert_eq!(
+                memo.sender_address_hash(),
+                ShortAddressHash::from(&sender_addr),
+                "lookup based on address hash failed"
+            );
+            assert!(
+                bool::from(memo.validate(
+                    &sender_addr,
+                    &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                    &output.public_key,
+                )),
+                "hmac validation failed"
+            );
+        }
+
+        // The 2nd output should belong to the correct recipient and have correct amount
+        // and have correct memo
+        {
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                change,
+                &sender,
+                Amount::new(change_value, token_id),
+            );
+            let MemoType::Destination(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(
+                memo.get_address_hash(),
+                &ShortAddressHash::from(&recipient_address),
+                "lookup based on address hash failed"
+            );
+            assert_eq!(memo.get_num_recipients(), 1);
+            assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+            assert_eq!(
+                memo.get_total_outlay(),
+                value - change_value,
+                "outlay should be amount sent to recipient + fee"
+            );
+        }
+    }
+
+    #[test]
     // TransactionBuilder with RTHMemoBuilder expected failures due to modification
     // after change output
     fn transaction_builder_rth_memo_expected_failures() {
@@ -2392,55 +2499,6 @@ pub mod transaction_builder_tests {
                         pubkey_expiry: 1000,
                     },
             });
-
-            // Test that adding an output after the change output causes an error as
-            // expected
-            {
-                let mut memo_builder = RTHMemoBuilder::default();
-                memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
-                memo_builder.enable_destination_memo();
-
-                let mut transaction_builder = single_input_transaction_builder(
-                    block_version,
-                    token_id,
-                    value,
-                    &fog_resolver,
-                    &mut rng,
-                );
-
-                transaction_builder
-                    .add_output(
-                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
-                        &recipient_address,
-                        &mut rng,
-                    )
-                    .unwrap();
-
-                transaction_builder
-                    .add_change_output(
-                        Amount::new(change_value, token_id),
-                        &sender_change_dest,
-                        &mut rng,
-                    )
-                    .unwrap();
-
-                transaction_builder
-                    .add_output(
-                        Amount::new(Mob::MINIMUM_FEE, token_id),
-                        &recipient_address,
-                        &mut rng,
-                    )
-                    .unwrap();
-                let result =
-                    transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
-
-                assert_matches!(
-                    result,
-                    Err(TxBuilderError::NewTx(NewTxError::Memo(
-                        NewMemoError::OutputsAfterChange
-                    )))
-                );
-            }
 
             // Multiple change outputs cause error
             {
@@ -3599,55 +3657,6 @@ pub mod transaction_builder_tests {
                 result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
                     NewMemoError::MultipleOutputs
-                )))
-            );
-        }
-
-        // Ensure we can't add a change output after an output
-        {
-            let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
-
-            let mut transaction_builder = single_input_transaction_builder(
-                BlockVersion::MAX,
-                token_id,
-                100,
-                &MockFogResolver::default(),
-                &mut rng,
-            );
-
-            // Fund gift code & add change output in proper order
-            transaction_builder
-                .add_output(
-                    Amount::new(100, token_id),
-                    &sender_reserved_destinations.gift_code_subaddress,
-                    &mut rng,
-                )
-                .unwrap();
-
-            transaction_builder
-                .add_change_output(
-                    Amount::new(100, token_id),
-                    &sender_reserved_destinations,
-                    &mut rng,
-                )
-                .unwrap();
-
-            // Attempt to write an output after change
-            transaction_builder
-                .add_output(
-                    Amount::new(100, token_id),
-                    &sender_reserved_destinations.gift_code_subaddress,
-                    &mut rng,
-                )
-                .unwrap();
-
-            let result =
-                transaction_builder.build(&NoKeysRingSigner {}, funding_memo_builder, &mut rng);
-
-            assert_matches!(
-                result,
-                Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::OutputsAfterChange
                 )))
             );
         }
