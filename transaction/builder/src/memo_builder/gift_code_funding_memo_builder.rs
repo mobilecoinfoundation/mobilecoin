@@ -335,6 +335,52 @@ mod tests {
     }
 
     #[test]
+    fn test_gift_code_funding_memos_fail_for_outputs_after_change() {
+        // Create memo builder with note
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let note = "It's MEMO TIME!!";
+        let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+        let fee = Amount::new(1, 0.into());
+        builder.set_fee(fee).unwrap();
+
+        let alice = AccountKey::random_with_fog(&mut rng);
+        let alice_address_book = ReservedSubaddresses::from(&alice);
+        let change_amount = Amount::new(666, 0.into());
+
+        let funding_tx_out_public_key = RistrettoPublic::from_random(&mut rng);
+        let change_tx_public_key = RistrettoPublic::from_random(&mut rng);
+        let change_tx_public_key_2 = RistrettoPublic::from_random(&mut rng);
+
+        builder
+            .make_memo_for_output(
+                change_amount,
+                &alice_address_book.gift_code_subaddress,
+                MemoContext {
+                    tx_public_key: &funding_tx_out_public_key,
+                },
+            )
+            .unwrap();
+        builder
+            .make_memo_for_change_output(
+                change_amount,
+                &alice_address_book,
+                MemoContext {
+                    tx_public_key: &change_tx_public_key,
+                },
+            )
+            .unwrap();
+        let memo_payload = builder.make_memo_for_output(
+            change_amount,
+            &alice_address_book.gift_code_subaddress,
+            MemoContext {
+                tx_public_key: &change_tx_public_key_2,
+            },
+        );
+
+        assert_eq!(memo_payload, Err(NewMemoError::OutputsAfterChange));
+    }
+
+    #[test]
     fn test_gift_code_funding_memo_builder_creation_fails_with_invalid_note() {
         // Create Memo Builder with note length exceeding max length
         let note_bytes = [b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN + 1];

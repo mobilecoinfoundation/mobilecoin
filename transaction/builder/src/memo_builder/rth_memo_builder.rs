@@ -320,3 +320,49 @@ impl MemoBuilder for RTHMemoBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use assert_matches::assert_matches;
+    use mc_account_keys::AccountKey;
+    use mc_crypto_keys::RistrettoPublic;
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn make_memo_for_output_fails_after_change_output() {
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let mut builder = RTHMemoBuilder::default();
+        builder.enable_destination_memo();
+        builder
+            .make_memo_for_output(
+                Amount::new(100, Mob::ID),
+                &PublicAddress::default(),
+                MemoContext {
+                    tx_public_key: &RistrettoPublic::from_random(&mut rng),
+                },
+            )
+            .unwrap();
+        builder
+            .make_memo_for_change_output(
+                Amount::new(100, Mob::ID),
+                &ReservedSubaddresses::from(&AccountKey::random(&mut rng)),
+                MemoContext {
+                    tx_public_key: &RistrettoPublic::from_random(&mut rng),
+                },
+            )
+            .unwrap();
+
+        assert_matches!(
+            builder.make_memo_for_output(
+                Amount::new(100, Mob::ID),
+                &PublicAddress::default(),
+                MemoContext {
+                    tx_public_key: &RistrettoPublic::from_random(&mut rng),
+                }
+            ),
+            Err(NewMemoError::OutputsAfterChange)
+        );
+    }
+}

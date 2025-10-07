@@ -103,10 +103,18 @@ impl TxBlueprint {
         // is initialized to the same fee as the transaction
         memo_builder.set_fee(self.fee)?;
 
-        let mut outputs_and_secrets = Vec::new();
-        for output in self.outputs.clone() {
-            outputs_and_secrets.push(build_output(&mut memo_builder, self, output)?);
-        }
+        // Change outputs have to be built last because RTH change memos require knowing
+        // the total output amount.
+        let mut outputs = self.outputs.clone();
+        outputs.sort_by_key(|x| match x {
+            TxBlueprintOutput::Change { .. } => 1,
+            _ => 0,
+        });
+
+        let mut outputs_and_secrets = outputs
+            .into_iter()
+            .map(|output| build_output(&mut memo_builder, self, output))
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Outputs are sorted according to the rule (but generally by public key)
         outputs_and_secrets.sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
