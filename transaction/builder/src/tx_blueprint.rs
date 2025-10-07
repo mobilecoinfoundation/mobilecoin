@@ -111,10 +111,10 @@ impl TxBlueprint {
             _ => 0,
         });
 
-        let mut outputs_and_secrets = Vec::new();
-        for output in outputs.clone() {
-            outputs_and_secrets.push(build_output(&mut memo_builder, self, output)?);
-        }
+        let mut outputs_and_secrets = outputs
+            .into_iter()
+            .map(|output| build_output(&mut memo_builder, self, output))
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Outputs are sorted according to the rule (but generally by public key)
         outputs_and_secrets.sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
