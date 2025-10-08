@@ -132,6 +132,7 @@ fogView:
       fluentbit.io/include: 'true' # collect logs with fluentbit
       # This is the container name that needs to use sgx resources
       sgx.intel.com/quote-provider: fog-view-store
+      cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
 
     # disable affinity rules for single node testing
     podManagementPolicy: Parallel
