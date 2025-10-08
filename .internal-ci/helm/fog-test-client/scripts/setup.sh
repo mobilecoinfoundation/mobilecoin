@@ -10,7 +10,6 @@ tmp=/tmp
 all_nets="mc-mainnet mc-testnet signal-testnet signal-mainnet"
 test_nets="mc-testnet signal-testnet"
 prod_nets="mc-mainnet signal-mainnet"
-signal_nets="signal-mainnet signal-testnet"
 
 # Vaults
 wallet_vault="Fog-Test-Client Wallets"
@@ -55,7 +54,7 @@ do
     item=$(op get item "${uuid}")
     # list the fields for item - this contains the filenames (n) and contents (v)
     fields=$(echo "${item}" | jq -r '.details.sections[0].fields[].n')
-    
+
     # write values for each file
     for f in ${fields}
     do
@@ -72,20 +71,6 @@ do
             echo "${value}" > "${tmp}/nets/${n}/keys/${name}"
         fi
     done
-done
-
-echo "---- Get fog-client-auth-token-secrets"
-for n in ${signal_nets}
-do
-    # get uuid for fog-client-auth-secret by network
-    uuid=$(echo "${vault_items}" |jq -r ".[] | select(.overview.title | match(\"${n}/fog-client-auth-token-secret\")).uuid")
-    # get item details for uuid
-    item=$(op get item "${uuid}")
-    # get password for in item
-    value=$(echo "${item}" | jq -r '.details.fields[] | select(.name=="password").value')
-
-    # write value to file
-    echo -n "${value}" > "${tmp}/nets/${n}/fog-client-auth-token-secret"
 done
 
 echo "---- Generate k8s objects"
