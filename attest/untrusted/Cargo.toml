@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-untrusted"
-version = "7.0.5"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
