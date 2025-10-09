@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-enclave"
-version = "7.0.5"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Enclave build assistance, from MobileCoin."
