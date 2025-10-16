@@ -139,3 +139,19 @@ cfg_if::cfg_if! {
         pub use loggers::*;
     }
 }
+
+/// Creates a test logger for the current function.
+/// This is meant to be used inside unit tests that require a logger.
+#[macro_export]
+macro_rules! test_logger {
+    () => {{
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            std::any::type_name::<T>()
+        }
+        let name = type_name_of(f);
+        let fn_name = name.strip_suffix("::f").unwrap_or(name);
+        mc_common::logger::create_test_logger(fn_name.to_string())
+    }};
+}
+pub use test_logger;
