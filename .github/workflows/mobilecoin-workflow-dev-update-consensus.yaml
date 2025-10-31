@@ -28,6 +28,11 @@ on:
         description: "Tokens File"
         type: string
         required: true
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
     secrets:
       INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -79,8 +84,8 @@ jobs:
 
         node:
           config:
-            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
-            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
+            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.${{ inputs.domain_name }}
+            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.${{ inputs.domain_name }}
             blockVersion: ${{ inputs.block_version }}
 
           persistence:

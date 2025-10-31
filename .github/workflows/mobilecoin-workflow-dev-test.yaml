@@ -66,6 +66,11 @@ on:
         type: boolean
         required: false
         default: true
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
 
     secrets:
       INFRA_RANCHER_CLUSTER:
@@ -116,8 +121,8 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           INITIALIZE_LEDGER="true" \
-          FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" \
-          FOG_REPORT_B_URL="fog://fog-b.${{ inputs.namespace }}.development.mobilecoin.com:443" \
+          FOG_REPORT_URL="fog://fog.${{ inputs.namespace }}.${{ inputs.domain_name }}:443" \
+          FOG_REPORT_B_URL="fog://fog-b.${{ inputs.namespace }}.${{ inputs.domain_name }}:443" \
           /util/generate_origin_data.sh
 
     - name: fog-distribution
@@ -279,4 +284,4 @@ jobs:
           /test/fog-test-client.sh \
             --key-dir ${{ env.V3_DST_FOG_KEYS_DIR }} \
             --token-ids 0,8192 \
-            --fog-hostname fog.${{ inputs.namespace }}.development.mobilecoin.com
+            --fog-hostname fog.${{ inputs.namespace }}.${{ inputs.domain_name }}

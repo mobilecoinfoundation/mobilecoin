@@ -13,11 +13,11 @@ on:
         description: "Target Namespace"
         type: string
         required: true
-      delete_namespace:
-        description: "Delete Target Namespace"
-        type: boolean
-        required: true
-        default: true
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
 
 jobs:
   reset:
@@ -25,5 +25,5 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
     with:
       namespace: ${{ inputs.namespace }}
-      delete_namespace: ${{ inputs.delete_namespace }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit

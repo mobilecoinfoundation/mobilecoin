@@ -31,5 +31,4 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
     with:
       namespace: ${{ needs.metadata.outputs.namespace }}
-      delete_namespace: true
     secrets: inherit

@@ -57,6 +57,11 @@ on:
         type: string
         required: false
         default: italynorth
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
     secrets:
       INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
@@ -109,8 +114,8 @@ jobs:
 
         node:
           config:
-            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
-            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.development.mobilecoin.com
+            clientHostname: node${{ matrix.release.instance }}.${{ inputs.namespace }}.${{ inputs.domain_name }}
+            peerHostname: peer${{ matrix.release.instance }}.${{ inputs.namespace }}.${{ inputs.domain_name }}
             blockVersion: ${{ inputs.block_version }}
 
           persistence:
@@ -201,7 +206,7 @@ jobs:
 
         fogReport:
           hosts:
-          - fog.${{ inputs.namespace }}.development.mobilecoin.com
+          - fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           ingress:
             common:
               blocklist:
@@ -248,8 +253,8 @@ jobs:
 
         fogReport:
           hosts:
-          - fog-b.${{ inputs.namespace }}.development.mobilecoin.com
-          - fog-report-b.${{ inputs.namespace }}.development.mobilecoin.com
+          - fog-b.${{ inputs.namespace }}.${{ inputs.domain_name }}
+          - fog-report-b.${{ inputs.namespace }}.${{ inputs.domain_name }}
           ingress:
             common:
               blocklist:
@@ -295,7 +300,7 @@ jobs:
           partner: dev
 
         fogView:
-          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
 
           router:
@@ -335,7 +340,7 @@ jobs:
           partner: dev
 
         fogView:
-          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
           zone: ${{ inputs.deployment_region }}-1
 
@@ -375,7 +380,7 @@ jobs:
           partner: dev
 
         fogView:
-          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
           zone: ${{ inputs.deployment_region }}-2
 
@@ -422,7 +427,7 @@ jobs:
           partner: dev
 
         fogLedger:
-          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
 
           router:
@@ -462,7 +467,7 @@ jobs:
           partner: dev
 
         fogLedger:
-          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
           zone: ${{ inputs.deployment_region }}-1
 
@@ -502,7 +507,7 @@ jobs:
           partner: dev
 
         fogLedger:
-          responderID: fog.${{ inputs.namespace }}.development.mobilecoin.com
+          responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
           zone: ${{ inputs.deployment_region }}-2
 

@@ -36,6 +36,11 @@ on:
         type: boolean
         required: false
         default: true
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
 
 jobs:
   test:
@@ -46,4 +51,5 @@ jobs:
       fog_distribution: ${{ inputs.fog_distribution }}
       fog_and_minting: ${{ inputs.fog_and_minting }}
       mobilecoind: ${{ inputs.mobilecoind }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit

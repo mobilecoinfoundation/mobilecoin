@@ -14,6 +14,7 @@ env:
   MEASUREMENTS_ARTIFACTS_PATH: .tmp/rust-bin-cache/measurements/mobilecoin
   GO_CACHE_PATH: .tmp/go-bin-cache
   GO_ARTIFACTS_PATH: .tmp/go-bin-cache/bin/mobilecoin
+  DOMAIN_NAME: infra.mc.dance
 
 on:
   pull_request:
@@ -53,6 +54,7 @@ jobs:
       docker_org: ${{ env.DOCKER_ORG }}
       release_5x_tag: ${{ env.RELEASE_5X_TAG }}
       minimum_block: ${{ env.MINIMUM_BLOCK }}
+      domain_name: ${{ env.DOMAIN_NAME }}
 
     steps:
     - name: Checkout
@@ -316,6 +318,7 @@ jobs:
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       bootstrap_version: ${{ needs.generate-metadata.outputs.release_5x_tag }}
       tokens_file: 'dev'
+      domain_name: ${{ needs.generate-metadata.outputs.domain_name }}
     secrets: inherit
 
 ###############################################
@@ -336,6 +339,7 @@ jobs:
       version: ${{ needs.generate-metadata.outputs.tag }}
       minimum_block: ${{ needs.generate-metadata.outputs.minimum_block }}
       tokens_file: 'dev'
+      domain_name: ${{ needs.generate-metadata.outputs.domain_name }}
     secrets: inherit
 
   test-current-bv4-release:
@@ -403,7 +407,6 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
     with:
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      delete_namespace: true
     secrets: inherit
 
   cleanup-after-pr-to-release-branch:
@@ -414,5 +417,4 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
     with:
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
-      delete_namespace: true
     secrets: inherit

@@ -31,6 +31,11 @@ on:
         - dev
         - test
         - main
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: true
+        default: development.mobilecoin.com
 
 jobs:
   update-consensus-block-version:
@@ -40,4 +45,5 @@ jobs:
       version: ${{ inputs.version }}
       block_version: "${{ inputs.block_version }}"
       tokens_file: ${{ inputs.tokens_file }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit

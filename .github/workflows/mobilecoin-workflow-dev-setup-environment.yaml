@@ -15,6 +15,11 @@ on:
         description: "Tokens File"
         type: string
         required: true
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
     secrets:
       DEV_FOG_REPORT_B_SIGNING_CA_CERT:
         description: "Fog Report signing CA cert"
@@ -98,12 +103,12 @@ env:
   PG_PATH: .tmp/pg
   CERTS_BASE_PATH: .tmp/certs
   MOBILECOIND_BASE_PATH: ./tmp/mobilecoind
-  N1: "node1.${{ inputs.namespace }}.development.mobilecoin.com"
-  N2: "node2.${{ inputs.namespace }}.development.mobilecoin.com"
-  N3: "node3.${{ inputs.namespace }}.development.mobilecoin.com"
-  P1: "peer1.${{ inputs.namespace }}.development.mobilecoin.com"
-  P2: "peer2.${{ inputs.namespace }}.development.mobilecoin.com"
-  P3: "peer3.${{ inputs.namespace }}.development.mobilecoin.com"
+  N1: "node1.${{ inputs.namespace }}.${{ inputs.domain_name }}"
+  N2: "node2.${{ inputs.namespace }}.${{ inputs.domain_name }}"
+  N3: "node3.${{ inputs.namespace }}.${{ inputs.domain_name }}"
+  P1: "peer1.${{ inputs.namespace }}.${{ inputs.domain_name }}"
+  P2: "peer2.${{ inputs.namespace }}.${{ inputs.domain_name }}"
+  P3: "peer3.${{ inputs.namespace }}.${{ inputs.domain_name }}"
   TX_BASE: "s3-eu-central-1.amazonaws.com"
   TX_BUCKET: "mobilecoin.eu.development.chain"
   TX_BUCKET_REGION: "eu-central-1"
@@ -141,8 +146,8 @@ jobs:
         echo -n "${{ secrets.DEV_FOG_REPORT_B_SIGNING_CA_CERT }}" > "${SEEDS_BASE_PATH}/FOG_REPORT_B_SIGNING_CA_CERT"
         echo -n "/wallet-seeds/FOG_REPORT_SIGNING_CA_CERT" > "${SEEDS_BASE_PATH}/FOG_REPORT_SIGNING_CA_CERT_PATH"
         echo -n "/wallet-seeds/FOG_REPORT_B_SIGNING_CA_CERT" > "${SEEDS_BASE_PATH}/FOG_REPORT_B_SIGNING_CA_CERT_PATH"
-        echo -n "fog://fog.${{ inputs.namespace }}.development.mobilecoin.com:443" > "${SEEDS_BASE_PATH}/FOG_REPORT_URL"
-        echo -n "fog://fog-b.${{ inputs.namespace }}.development.mobilecoin.com:443" > "${SEEDS_BASE_PATH}/FOG_REPORT_B_URL"
+        echo -n "fog://fog.${{ inputs.namespace }}.${{ inputs.domain_name }}:443" > "${SEEDS_BASE_PATH}/FOG_REPORT_URL"
+        echo -n "fog://fog-b.${{ inputs.namespace }}.${{ inputs.domain_name }}:443" > "${SEEDS_BASE_PATH}/FOG_REPORT_B_URL"
 
     - name: Create wallet key secrets
       uses: mobilecoinofficial/gha-k8s-toolbox@v1

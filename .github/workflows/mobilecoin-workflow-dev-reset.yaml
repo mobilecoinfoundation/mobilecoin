@@ -9,15 +9,15 @@ name: mobilecoin-workflow-dev-reset
 on:
   workflow_call:
     inputs:
-      delete_namespace:
-        description: "Delete Target Namespace"
-        type: boolean
-        default: false
-        required: false
       namespace:
         description: "Target Namespace"
         type: string
         required: true
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
     secrets:
       DEV_LEDGER_AWS_ACCESS_KEY_ID:
         description: "Ledger AWS S3 access"
@@ -38,38 +38,8 @@ on:
 jobs:
   reset-k8s:
     runs-on: mcf-dev-small-x64
-    strategy:
-      matrix:
-        chart:
-        - consensus-node-1
-        - consensus-node-2
-        - consensus-node-3
-        - fog-ingest-blue
-        - fog-ingest-green
-        - fog-recovery-postgresql
-        - mobilecoind
     steps:
-    - name: Delete release
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: helm-release-delete
-        namespace: ${{ inputs.namespace }}
-        release_name: ${{ matrix.chart }}
-        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-
-    - name: Delete PersistentVolumeClaims
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1
-      with:
-        action: pvcs-delete
-        namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.DEV_RANCHER_URL }}
-        rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
-
     - name: Delete namespace
-      if: inputs.delete_namespace
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: namespace-delete
@@ -91,6 +61,7 @@ jobs:
         AWS_DEFAULT_REGION: eu-central-1
         BUCKET: mobilecoin.eu.development.chain
         NAMESPACE: ${{ inputs.namespace }}
+        DOMAIN_NAME: ${{ inputs.domain_name }}
       shell: bash
       run: |
         echo "[profile s3]" > /tmp/aws_cli_profile
@@ -104,7 +75,7 @@ jobs:
 
         for i in 1 2 3
         do
-            aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.development.mobilecoin.com" &
+            aws s3 rm --only-show-errors --recursive "s3://${BUCKET}/node${i}.${NAMESPACE}.${DOMAIN_NAME}" &
             pids[i]=$!
         done
 

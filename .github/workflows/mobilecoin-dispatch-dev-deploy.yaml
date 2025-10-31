@@ -74,6 +74,11 @@ on:
         type: string
         required: true
         default: italynorth
+      domain_name:
+        description: "Domain name for ingress hosts"
+        type: string
+        required: false
+        default: development.mobilecoin.com
 
 jobs:
   list-values:
@@ -87,6 +92,7 @@ jobs:
       env:
         NAMESPACE: ${{ inputs.namespace }}
         VERSION: ${{ inputs.version }}
+        DOMAIN_NAME: ${{ inputs.domain_name }}
       run: |
         .internal-ci/util/print_details.sh
 
@@ -100,6 +106,7 @@ jobs:
       namespace: ${{ inputs.namespace }}
       bootstrap_version: ${{ inputs.bootstrap_version }}
       tokens_file: ${{ inputs.tokens_file }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit
 
   deploy:
@@ -117,4 +124,5 @@ jobs:
       shard_exceed_block_height_by: ${{ inputs.shard_exceed_block_height_by }}
       tokens_file: ${{ inputs.tokens_file }}
       deployment_region: ${{ inputs.deployment_region }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit
