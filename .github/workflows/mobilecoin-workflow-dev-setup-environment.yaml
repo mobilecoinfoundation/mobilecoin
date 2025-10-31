@@ -79,7 +79,7 @@ on:
       DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD:
         description: "password for fog_recovery database"
         required: true
-      DEV_RANCHER_CLUSTER:
+      INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
       DEV_RANCHER_URL:
@@ -120,7 +120,7 @@ jobs:
       with:
         action: namespace-create
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
@@ -149,7 +149,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: sample-keys-seeds
@@ -184,7 +184,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-minting-secrets
@@ -210,7 +210,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-report-signing-cert-a
@@ -221,7 +221,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-report-signing-cert-b
@@ -259,7 +259,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-recovery-postgresql
@@ -270,7 +270,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-recovery-reader-0-postgresql
@@ -281,7 +281,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-recovery-postgresql
@@ -292,7 +292,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-recovery-reader-0-postgresql
@@ -336,7 +336,7 @@ jobs:
         chart_wait_timeout: 5m
         release_name: fog-recovery-postgresql
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
@@ -362,7 +362,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: fog-mobilecoind
@@ -402,7 +402,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: tokens-config
@@ -436,7 +436,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-1-msg-signer-key
@@ -447,7 +447,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-2-msg-signer-key
@@ -458,7 +458,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-3-msg-signer-key
@@ -498,7 +498,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-1-network-config
@@ -538,7 +538,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-2-network-config
@@ -578,7 +578,7 @@ jobs:
       with:
         action: configmap-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-3-network-config
@@ -606,7 +606,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-1-ledger-distribution
@@ -617,7 +617,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-2-ledger-distribution
@@ -628,7 +628,7 @@ jobs:
       with:
         action: secrets-create-from-file
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         object_name: consensus-node-3-ledger-distribution

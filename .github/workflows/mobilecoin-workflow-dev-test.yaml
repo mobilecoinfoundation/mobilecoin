@@ -68,7 +68,7 @@ on:
         default: true
 
     secrets:
-      DEV_RANCHER_CLUSTER:
+      INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
       DEV_RANCHER_URL:
@@ -98,7 +98,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -111,7 +111,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -127,7 +127,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -139,7 +139,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -155,7 +155,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -171,7 +171,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -193,7 +193,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -206,7 +206,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -226,7 +226,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -240,7 +240,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -255,7 +255,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -272,7 +272,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |

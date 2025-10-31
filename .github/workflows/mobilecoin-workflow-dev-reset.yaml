@@ -25,7 +25,7 @@ on:
       DEV_LEDGER_AWS_SECRET_ACCESS_KEY:
         description: "Ledger AWS S3 access"
         required: true
-      DEV_RANCHER_CLUSTER:
+      INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
       DEV_RANCHER_URL:
@@ -55,7 +55,7 @@ jobs:
         action: helm-release-delete
         namespace: ${{ inputs.namespace }}
         release_name: ${{ matrix.chart }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
@@ -64,7 +64,7 @@ jobs:
       with:
         action: pvcs-delete
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
@@ -74,7 +74,7 @@ jobs:
       with:
         action: namespace-delete
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 

@@ -29,7 +29,7 @@ on:
         type: string
         required: true
     secrets:
-      DEV_RANCHER_CLUSTER:
+      INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
       DEV_RANCHER_URL:
@@ -106,7 +106,7 @@ jobs:
         chart_wait_timeout: 10m
         release_name: ${{ matrix.release.name }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}

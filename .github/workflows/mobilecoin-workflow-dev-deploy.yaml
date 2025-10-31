@@ -58,7 +58,7 @@ on:
         required: false
         default: italynorth
     secrets:
-      DEV_RANCHER_CLUSTER:
+      INFRA_RANCHER_CLUSTER:
         description: "Rancher cluster name"
         required: true
       DEV_RANCHER_URL:
@@ -136,7 +136,7 @@ jobs:
         chart_wait_timeout: 60m
         release_name: ${{ matrix.release.name }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -176,7 +176,7 @@ jobs:
         chart_wait_timeout: 60m
         release_name: mobilecoind
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -224,7 +224,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
         release_name: fog-report-a
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -272,7 +272,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-report-values.yaml
         release_name: fog-report-b
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -317,7 +317,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-service-values.yaml
         release_name: fog-view-service
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -357,7 +357,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z1.yaml
         release_name: fog-view-fsg-gr-z1
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -397,7 +397,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z2.yaml
         release_name: fog-view-fsg-gr-z2
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -444,7 +444,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-service-values.yaml
         release_name: fog-ledger-service
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -484,7 +484,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-fsg-values-gr-z1.yaml
         release_name: fog-ledger-fsg-gr-z1
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -524,7 +524,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ledger-fsg-values-gr-z2.yaml
         release_name: fog-ledger-fsg-gr-z2
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -558,7 +558,7 @@ jobs:
         chart_values: ${{ env.VALUES_BASE_PATH }}/fog-ingest-values.yaml
         release_name: fog-ingest-${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         chart_repo_password: ${{ github.token }}
@@ -570,7 +570,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
@@ -582,7 +582,7 @@ jobs:
         action: fog-ingest-activate
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
@@ -592,7 +592,7 @@ jobs:
         action: helm-release-delete
         namespace: ${{ inputs.namespace }}
         release_name: fog-ingest-${{ env.FLIPSIDE }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
@@ -611,7 +611,7 @@ jobs:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
         namespace: ${{ inputs.namespace }}
-        rancher_cluster: ${{ secrets.DEV_RANCHER_CLUSTER }}
+        rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
