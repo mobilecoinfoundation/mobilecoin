@@ -44,7 +44,6 @@ jobs:
     uses: ./.github/workflows/mobilecoin-workflow-dev-reset.yaml
     with:
       namespace: ${{ inputs.namespace }}
-      delete_namespace: true
     secrets: inherit
 
   restore-s3-archive:
@@ -103,25 +102,53 @@ jobs:
     runs-on: mcf-dev-small-x64
     needs:
     - setup-environment
-    container:
-      image: mobilecoin/gha-s3-pg-helper:v0
     steps:
-    - name: restore-db
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: eu-central-1
-        BUCKET: mobilecoin.eu.development.chain
-        PGDATABASE: postgres
-        PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
-        PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
-        PGUSER: postgres
-        VERSION: ${{ inputs.bootstrap_version }}
-      run: |
-        # Copy sql from S3
-        aws s3 cp --only-show-errors \
-          "s3://${BUCKET}/prebuilt/${VERSION}/sql/fog_recovery.sql" \
-          /tmp/fog_recovery.sql
+      - name: restore-db
+        uses: mobilecoinofficial/gha-k8s-toolbox@v1
+        with:
+          action: helm-deploy-oci
+          chart_repo: ghcr.io/mobilecoinofficial/charts
+          chart_name: gha-s3-pg-restore
+          chart_version: v0.0.8
+          # chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
+          # chart_wait_timeout: 60m
+          chart_set: |
+            --set secret.data.AWS_ACCESS_KEY_ID=${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+            --set secret.data.AWS_SECRET_ACCESS_KEY=${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+            --set secret.data.AWS_DEFAULT_REGION=eu-central-1
+            --set secret.data.BUCKET=mobilecoin.eu.development.chain
+            --set secret.data.PGDATABASE=postgres
+            --set secret.data.PGHOST=fog-recovery-postgresql-primary.${{ inputs.namespace }}
+            --set secret.data.PGPASSWORD=${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
+            --set secret.data.PGUSER=postgres
+            --set secret.data.VERSION=${{ inputs.bootstrap_version }}
+          release_name: gha-s3-pg-restore
+          namespace: ${{ inputs.namespace }}
+          rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
+          rancher_url: ${{ secrets.DEV_RANCHER_URL }}
+          rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
+          chart_repo_password: ${{ github.token }}
+          chart_repo_username: ${{ github.actor }}
 
-        # Restore to PG
-        psql < /tmp/fog_recovery.sql
+  #   container:
+  #     image: mobilecoin/gha-s3-pg-helper:v0
+  #   steps:
+  #   - name: restore-db
+  #     env:
+  #       AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+  #       AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+  #       AWS_DEFAULT_REGION: eu-central-1
+  #       BUCKET: mobilecoin.eu.development.chain
+  #       PGDATABASE: postgres
+  #       PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
+  #       PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
+  #       PGUSER: postgres
+  #       VERSION: ${{ inputs.bootstrap_version }}
+  #     run: |
+  #       # Copy sql from S3
+  #       aws s3 cp --only-show-errors \
+  #         "s3://${BUCKET}/prebuilt/${VERSION}/sql/fog_recovery.sql" \
+  #         /tmp/fog_recovery.sql
+
+  #       # Restore to PG
+  #       psql < /tmp/fog_recovery.sql
