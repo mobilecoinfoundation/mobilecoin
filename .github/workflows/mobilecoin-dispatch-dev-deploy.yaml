@@ -56,11 +56,6 @@ on:
         type: string
         required: true
         default: '20000'
-      shard_exceed_block_height_by:
-        description: "Exceed Block Height By"
-        type: string
-        required: true
-        default: '5000'
       ingest_color:
         description: "Fog Ingest blue/green"
         type: choice
@@ -121,7 +116,7 @@ jobs:
       version: ${{ inputs.version }}
       minimum_block: ${{ inputs.minimum_block }}
       shard_size: ${{ inputs.shard_size }}
-      shard_exceed_block_height_by: ${{ inputs.shard_exceed_block_height_by }}
+      shard_exceed_block_height_by: '5000'
       tokens_file: ${{ inputs.tokens_file }}
       deployment_region: ${{ inputs.deployment_region }}
       domain_name: ${{ inputs.domain_name }}

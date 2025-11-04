@@ -94,6 +94,7 @@ jobs:
     with:
       namespace: ${{ inputs.namespace }}
       tokens_file: ${{ inputs.tokens_file }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit
 
   #  We now have a db with setup-environment
