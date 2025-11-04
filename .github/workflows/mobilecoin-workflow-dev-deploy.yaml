@@ -488,9 +488,6 @@ jobs:
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-values.yaml"
 
-        fogIngest:
-          replicaCount: 1
-
         mobilecoin:
           network: ${{ inputs.namespace }}
           partner: dev
