@@ -106,4 +106,4 @@ pub fn start_block_span<T: Tracer>(
 mod otlp;
 
 #[cfg(feature = "otlp")]
-pub use otlp::{setup_default_tracer, setup_default_tracer_with_tags, Error};
+pub use otlp::{setup_default_tracer, setup_default_tracer_with_tags, telemetry_enabled, Error};

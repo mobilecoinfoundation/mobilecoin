@@ -27,6 +27,7 @@ futures = { workspace = true }
 grpcio = { workspace = true, features = ["prost-codec"] }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 # mobilecoin
 mc-api = { workspace = true }

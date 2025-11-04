@@ -74,6 +74,7 @@ reqwest = { workspace = true, features = ["blocking", "rustls-tls", "gzip"] }
 retry = { workspace = true }
 serde_json = { workspace = true }
 tiny-bip39 = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [build-dependencies]
 # Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25

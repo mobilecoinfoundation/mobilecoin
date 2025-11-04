@@ -3380,6 +3380,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -4068,6 +4069,7 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
+ "tokio",
  "url",
 ]
 
@@ -5060,6 +5062,7 @@ dependencies = [
  "rand_core",
  "serde",
  "serde_json",
+ "tokio",
  "yare",
 ]
 
@@ -5343,6 +5346,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tiny-bip39",
+ "tokio",
 ]
 
 [[package]]

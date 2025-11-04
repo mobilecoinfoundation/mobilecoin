@@ -319,14 +319,14 @@ fn main() {
 
     let config = Config::parse();
 
-    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
-        .expect("Failed setting telemetry tracer");
-
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("tokio runtime");
     let _enter_guard = runtime.enter();
+
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
 
     // Open ledger
     log::info!(logger, "Opening ledger db {:?}", config.ledger_path);
