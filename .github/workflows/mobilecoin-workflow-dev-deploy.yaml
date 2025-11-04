@@ -46,7 +46,7 @@ on:
         description: "cloud deployment region"
         type: string
         required: false
-        default: italynorth
+        default: westeurope
       domain_name:
         description: "Domain name for ingress hosts"
         type: string
@@ -78,6 +78,7 @@ jobs:
     with:
       namespace: ${{ inputs.namespace }}
       tokens_file: ${{ inputs.tokens_file }}
+      domain_name: ${{ inputs.domain_name }}
     secrets: inherit
 
   consensus-deploy:
