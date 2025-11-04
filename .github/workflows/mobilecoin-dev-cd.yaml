@@ -333,7 +333,6 @@ jobs:
     - generate-metadata
     with:
       block_version: 4
-      docker_image_org: ${{ needs.generate-metadata.outputs.docker_org }}
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
       version: ${{ needs.generate-metadata.outputs.tag }}

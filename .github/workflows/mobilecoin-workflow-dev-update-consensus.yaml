@@ -11,11 +11,6 @@ on:
         description: "block_version"
         type: string
         required: true
-      chart_repo:
-        description: "Chart Repo URL"
-        type: string
-        required: false
-        default: ghcr.io/mobilecoinfoundation/charts
       namespace:
         description: "Target Namespace"
         type: string
@@ -50,6 +45,7 @@ permissions:
 
 env:
   VALUES_BASE_PATH: .tmp/values
+  CHART_REPO: ghcr.io/mobilecoinfoundation/charts
 
 jobs:
   setup-environment:
@@ -104,7 +100,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml

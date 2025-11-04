@@ -15,16 +15,6 @@ on:
         description: "Chart Version"
         type: string
         required: true
-      docker_image_org:
-        description: "Docker Image Org"
-        type: string
-        required: false
-        default: docker.io/mobilecoin
-      chart_repo:
-        description: "Chart Repo URL"
-        type: string
-        required: false
-        default: ghcr.io/mobilecoinfoundation/charts
       ingest_color:
         description: "Fog Ingest blue/green"
         type: string
@@ -80,6 +70,7 @@ permissions:
 env:
   FLIPSIDE: ${{ inputs.ingest_color == 'blue' && 'green' || 'blue' }}
   VALUES_BASE_PATH: .tmp/values
+  CHART_REPO: ghcr.io/mobilecoinfoundation/charts
 
 jobs:
   setup-environment:
@@ -134,7 +125,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: consensus-node
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
@@ -156,8 +147,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/mobilecoind-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -174,7 +163,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: mobilecoind
         chart_version: ${{ inputs.version }}
         chart_values: ${{ env.VALUES_BASE_PATH }}/mobilecoind-values.yaml
@@ -197,8 +186,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -222,7 +209,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -244,8 +231,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-report-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -270,7 +255,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-report
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -292,8 +277,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-view-service-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -315,7 +298,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-view-service
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -332,8 +315,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-view-fsg-values-gr-z1.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -355,7 +336,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -372,8 +353,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-view-fsg-values-gr-z2.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -395,7 +374,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -419,8 +398,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-service-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -442,7 +419,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-ledger-service
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -459,8 +436,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-fsg-values-gr-z1.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -482,7 +457,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-ledger-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -499,8 +474,6 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ledger-fsg-values-gr-z2.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -522,7 +495,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-ledger-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
@@ -545,8 +518,7 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/fog-ingest-values.yaml"
-        image:
-          org: ${{ inputs.docker_image_org }}
+
         mobilecoin:
           network: ${{ inputs.namespace }}
           partner: dev
@@ -556,7 +528,7 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
       with:
         action: helm-deploy-oci
-        chart_repo: ${{ inputs.chart_repo }}
+        chart_repo: ${{ env.CHART_REPO }}
         chart_name: fog-ingest
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
