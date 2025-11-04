@@ -329,6 +329,7 @@ jobs:
           stackConfig:
             network:
               default:
+                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
         EOF
@@ -367,6 +368,7 @@ jobs:
           stackConfig:
             network:
               default:
+                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
         EOF
@@ -450,6 +452,7 @@ jobs:
           stackConfig:
             network:
               default:
+                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
         EOF
@@ -488,6 +491,7 @@ jobs:
           stackConfig:
             network:
               default:
+                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
         EOF
