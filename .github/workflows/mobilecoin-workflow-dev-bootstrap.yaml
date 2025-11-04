@@ -108,7 +108,7 @@ jobs:
         with:
           action: helm-deploy-oci
           chart_repo: ghcr.io/mobilecoinofficial/charts
-          chart_name: gha-s3-pg-restore
+          chart_name: gha-s3-pg-helper
           chart_version: v0.0.8
           # chart_values: ${{ env.VALUES_BASE_PATH }}/consensus-node-values.yaml
           # chart_wait_timeout: 60m
@@ -122,7 +122,7 @@ jobs:
             --set secret.data.PGPASSWORD=${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
             --set secret.data.PGUSER=postgres
             --set secret.data.VERSION=${{ inputs.bootstrap_version }}
-          release_name: gha-s3-pg-restore
+          release_name: gha-s3-pg-helper
           namespace: ${{ inputs.namespace }}
           rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
           rancher_url: ${{ secrets.DEV_RANCHER_URL }}
