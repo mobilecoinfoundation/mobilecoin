@@ -24,6 +24,10 @@ do
             namespace="${2}"
             shift 2
             ;;
+        --domain-name )
+            domain_name="${2}"
+            shift 2
+            ;;
         *)
             echo "${1} unknown option"
             usage
@@ -35,6 +39,7 @@ done
 # Check to see if these vars are set
 : "${minimum_block:?}"
 : "${namespace:?}"
+: "${domain_name:?}"
 
 check()
 {
@@ -56,10 +61,10 @@ for n in 1 2 3
 do
     counter=0
     block_height=0
-    echo "Waiting for consensus node${n}.${namespace}.development.mobilecoin.com"
+    echo "Waiting for consensus node${n}.${namespace}.${domain_name}"
     while [[ ${block_height} -lt ${minimum_block} ]]
     do
-        block_info=$(check https://node${n}.${namespace}.development.mobilecoin.com/gw/consensus_common.BlockchainAPI/GetLastBlockInfo)
+        block_info=$(check https://node${n}.${namespace}.${domain_name}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo)
         block_height=$(jq -r -n --argjson data "${block_info}" '$data.index')
         echo "  current: ${block_height} minimum: ${minimum_block}"
 
@@ -74,8 +79,8 @@ do
     pubkey=""
     while [[ -z "${pubkey}" ]]
     do
-        echo "Waiting for fog-report fog://${r}.${namespace}.development.mobilecoin.com"
-        if report_info=$(/usr/local/bin/fog-report-cli -n -v -u "fog://${r}.${namespace}.development.mobilecoin.com")
+        echo "Waiting for fog-report fog://${r}.${namespace}.${domain_name}"
+        if report_info=$(/usr/local/bin/fog-report-cli -n -v -u "fog://${r}.${namespace}.${domain_name}")
         then
             pubkey=$(jq -r -n --argjson data "${report_info}" '$data.pubkey')
         fi
@@ -85,18 +90,16 @@ do
 done
 
 # check ledger
-
 counter=0
 block_height=0
-echo "Waiting for fog-ledger fog://fog.${namespace}.development.mobilecoin.com"
+echo "Waiting for fog-ledger fog://fog.${namespace}.${domain_name}"
 while [[ ${block_height} -lt ${minimum_block} ]]
 do
-    block_info=$(check "https://fog.${namespace}.development.mobilecoin.com/gw/fog_ledger.FogBlockAPI/GetBlocks")
+    block_info=$(check "https://fog.${namespace}.${domain_name}/gw/fog_ledger.FogBlockAPI/GetBlocks")
     block_height=$(jq -r -n --argjson data "${block_info}" '$data.numBlocks')
     echo "  current: ${block_height} minimum: ${minimum_block}"
 
     check_timeout $(( counter++ ))
 done
-
 
 # no way to check view right now :(
