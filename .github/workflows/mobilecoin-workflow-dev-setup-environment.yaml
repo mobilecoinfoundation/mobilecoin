@@ -336,7 +336,7 @@ jobs:
         action: helm-deploy
         chart_repo: https://charts.bitnami.com/bitnami
         chart_name: postgresql
-        chart_version: latest
+        chart_version: 18.1.3
         chart_values: ${{ env.VALUES_BASE_PATH }}/postgresql-values.yaml
         chart_wait_timeout: 5m
         release_name: fog-recovery-postgresql
