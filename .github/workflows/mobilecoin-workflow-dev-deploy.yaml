@@ -329,9 +329,10 @@ jobs:
           stackConfig:
             network:
               default:
-                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+                blockHeightRetrieval:
+                  blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
         EOF
 
     - name: Deploy fog-view-fsg-gr-z1
@@ -368,9 +369,10 @@ jobs:
           stackConfig:
             network:
               default:
-                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+                blockHeightRetrieval:
+                  blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
         EOF
 
     - name: Deploy fog-view-fsg-gr-z2
@@ -452,9 +454,10 @@ jobs:
           stackConfig:
             network:
               default:
-                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+                blockHeightRetrieval:
+                  blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
         EOF
 
     - name: Deploy fog-ledger-fsg-gr-z1
@@ -491,9 +494,10 @@ jobs:
           stackConfig:
             network:
               default:
-                blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
+                blockHeightRetrieval:
+                  blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
         EOF
 
     - name: Deploy fog-ledger-fsg-gr-z2
@@ -530,7 +534,7 @@ jobs:
         EOF
 
     - name: Deploy fog-ingest
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
         chart_repo: ${{ env.CHART_REPO }}
@@ -547,7 +551,7 @@ jobs:
         chart_repo_username: ${{ github.actor }}
 
     - name: Run fog-recovery database migrations
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
@@ -559,7 +563,7 @@ jobs:
           fog-sql-recovery-db-migrations
 
     - name: Activate primary ingest
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: fog-ingest-activate
         ingest_color: ${{ inputs.ingest_color }}
@@ -569,7 +573,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
 
     - name: Delete retired flipside ingest (if exists)
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-release-delete
         namespace: ${{ inputs.namespace }}
@@ -588,7 +592,7 @@ jobs:
     runs-on: mcf-dev-small-x64
     steps:
     - name: Check end points up.
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0.13
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: toolbox-exec
         ingest_color: ${{ inputs.ingest_color }}
