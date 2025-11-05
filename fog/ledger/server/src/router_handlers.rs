@@ -6,7 +6,9 @@ use crate::{
     SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
-use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
+use grpcio::{
+    CallOption, ChannelBuilder, DuplexSink, MetadataBuilder, RequestStream, RpcStatus, WriteFlags,
+};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::{EnclaveMessage, NonceSession};
 use mc_common::{
@@ -21,7 +23,9 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
 use mc_util_metrics::GrpcMethodName;
-use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
+use mc_util_telemetry::{
+    create_context, tracer, BoxedTracer, Context, FutureExt, InjectContext, Tracer,
+};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 /// Handles a series of requests sent by the Fog Ledger Router client,
@@ -361,7 +365,13 @@ async fn query_shard(
     request: &MultiKeyImageStoreRequest,
     shard_client: Arc<KeyImageStoreApiClient>,
 ) -> Result<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse), RouterServerError> {
-    let client_unary_receiver = shard_client.multi_key_image_store_query_async(request)?;
+    let mut meta_builder = MetadataBuilder::new();
+    // We ignore the error here as it only affects distributed tracing and
+    // shouldn't prevent the request from being processed.
+    let _ = meta_builder.inject_context(&Context::current());
+    let call_opt = CallOption::default().headers(meta_builder.build());
+    let client_unary_receiver =
+        shard_client.multi_key_image_store_query_async_opt(request, call_opt)?;
     let response = client_unary_receiver.await?;
     Ok((shard_client, response))
 }

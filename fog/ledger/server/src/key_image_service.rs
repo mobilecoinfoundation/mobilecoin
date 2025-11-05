@@ -12,6 +12,7 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
 use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
+use mc_util_telemetry::{Context, KeyValue, TraceContextExt, Tracer};
 use std::{
     sync::{Arc, Mutex},
     time::Instant,
@@ -107,6 +108,9 @@ impl<E: LedgerEnclaveProxy> KeyImageService<E> {
         &mut self,
         request: attest::NonceMessage,
     ) -> Result<attest::NonceMessage, EnclaveError> {
+        let tracer = mc_util_telemetry::tracer!();
+        let _guard =
+            Context::current_with_span(tracer.start("check_key_image_store_auth")).attach();
         log::trace!(self.logger, "Getting encrypted request");
 
         let untrusted_query_response = self.prepare_untrusted_query();
@@ -125,6 +129,13 @@ impl<E: LedgerEnclaveProxy> KeyImageService<E> {
         fog_ledger_store_uri: KeyImageStoreUri,
         queries: Vec<attest::NonceMessage>,
     ) -> MultiKeyImageStoreResponse {
+        let tracer = mc_util_telemetry::tracer!();
+        let span = tracer
+            .span_builder("process_queries")
+            .with_attributes([KeyValue::new("query_count", queries.len() as i64)])
+            .start(&tracer);
+        let _guard = Context::current_with_span(span).attach();
+
         let mut response = MultiKeyImageStoreResponse {
             // The router needs our own URI, in case auth fails / hasn't been started yet.
             store_uri: fog_ledger_store_uri.url().to_string(),
@@ -173,6 +184,10 @@ impl<E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<E> {
         sink: grpcio::UnarySink<AuthMessage>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let _guard = mc_util_telemetry::extract_context(&ctx)
+            .with_span(tracer.start("auth"))
+            .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
@@ -204,6 +219,11 @@ impl<E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<E> {
         sink: grpcio::UnarySink<MultiKeyImageStoreResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let _guard = mc_util_telemetry::extract_context(&ctx)
+            .with_span(tracer.start("multi_key_image_store_query"))
+            .attach();
+
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);

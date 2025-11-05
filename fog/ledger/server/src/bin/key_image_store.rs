@@ -18,6 +18,28 @@ fn main() {
     mc_common::setup_panic_handler();
     let config = LedgerStoreConfig::parse();
 
+    let _runtime = if mc_util_telemetry::telemetry_enabled() {
+        // Create a Tokio runtime for telemetry OTLP exporter
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime");
+        Some(runtime)
+    } else {
+        None
+    };
+
+    let _runtime_guard = _runtime.as_ref().map(|runtime| runtime.enter());
+
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[(
+            "client_responser_id",
+            config.client_responder_id.to_string(),
+        )],
+    )
+    .expect("Failed setting telemetry tracer");
+
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);

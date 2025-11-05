@@ -10,6 +10,7 @@ use mc_util_grpc::{
     check_request_chain_id, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result,
     Authenticator,
 };
+use mc_util_telemetry::{TraceContextExt, Tracer};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -37,6 +38,7 @@ impl UntrustedTxOutService {
 
     fn get_tx_outs_impl(&mut self, request: TxOutRequest) -> Result<TxOutResponse, RpcStatus> {
         mc_common::trace_time!(self.logger, "Get Blocks");
+        let tracer = mc_util_telemetry::tracer!();
 
         let tx_out_pub_keys = request
             .tx_out_pubkeys
@@ -48,12 +50,13 @@ impl UntrustedTxOutService {
         let TxOutInfoByPublicKeyResponse {
             results,
             latest_block,
-        } = self
-            .block_provider
-            .get_tx_out_info_by_public_key(tx_out_pub_keys.as_slice())
-            .map_err(|err| {
-                rpc_internal_error("get_tX_out_info_by_public_key", err, &self.logger)
-            })?;
+        } = tracer.in_span("get_tx_out_info_by_public_key", |_| {
+            self.block_provider
+                .get_tx_out_info_by_public_key(tx_out_pub_keys.as_slice())
+                .map_err(|err| {
+                    rpc_internal_error("get_tx_out_info_by_public_key", err, &self.logger)
+                })
+        })?;
 
         Ok(TxOutResponse {
             num_blocks: latest_block.index + 1,
@@ -71,6 +74,10 @@ impl FogUntrustedTxOutApi for UntrustedTxOutService {
         sink: UnarySink<TxOutResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let _guard = mc_util_telemetry::extract_context(&ctx)
+            .with_span(tracer.start("get_tx_outs"))
+            .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
