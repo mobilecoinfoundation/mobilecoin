@@ -8,7 +8,7 @@ use mc_common::{
     logger::{o, Logger},
     trace_time,
 };
-use mc_fog_api::ledger_grpc::FogMerkleProofApiClient;
+use mc_fog_api::fog_ledger::FogMerkleProofApiClient;
 use mc_fog_enclave_connection::EnclaveConnection;
 use mc_fog_types::ledger::{GetOutputsRequest, GetOutputsResponse, OutputResult};
 use mc_fog_uri::FogLedgerUri;
@@ -103,11 +103,12 @@ impl OutputResultExtension for OutputResult {
     /// Map the protobuf OutputResult type to a more idiomatic rust Result type
     fn status(&self) -> Result<Option<(TxOut, TxOutMembershipProof)>, OutputError> {
         // Rust does not allow the left side of match expression to a be `Foo as u32`.
-        const OUTPUT_RESULT_CODE_EXISTS: u32 = mc_fog_api::ledger::OutputResultCode::Exists as u32;
+        const OUTPUT_RESULT_CODE_EXISTS: u32 =
+            mc_fog_api::fog_ledger::OutputResultCode::Exists as u32;
         const OUTPUT_RESULT_CODE_DOES_NOT_EXIST: u32 =
-            mc_fog_api::ledger::OutputResultCode::DoesNotExist as u32;
+            mc_fog_api::fog_ledger::OutputResultCode::DoesNotExist as u32;
         const OUTPUT_RESULT_CODE_DATABASE_ERROR: u32 =
-            mc_fog_api::ledger::OutputResultCode::OutputDatabaseError as u32;
+            mc_fog_api::fog_ledger::OutputResultCode::OutputDatabaseError as u32;
 
         match self.result_code {
             OUTPUT_RESULT_CODE_EXISTS => Ok(Some((self.output.clone(), self.proof.clone()))),

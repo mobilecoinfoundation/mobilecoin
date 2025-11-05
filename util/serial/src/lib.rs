@@ -129,23 +129,22 @@ mod json_u64 {
 #[cfg(feature = "serde_with")]
 pub use json_u64::JsonU64;
 
-/// Take a prost type and try to roundtrip it through a protobuf type
+/// Take one prost type and try to roundtrip it through another prost type
 #[cfg(feature = "test_utils")]
-pub fn round_trip_message<SRC: Message + Eq + Default, DEST: protobuf::Message>(prost_val: &SRC) {
+pub fn round_trip_message<SRC: Message + Eq + Default, DEST: Message + Default>(prost_val: &SRC) {
     let prost_bytes = encode(prost_val);
 
-    let dest_val =
-        DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
+    let dest_val = DEST::decode(prost_bytes.as_slice())
+        .expect("Parsing second prost from first prost bytes failed");
 
-    let protobuf_bytes = dest_val
-        .write_to_bytes()
-        .expect("Writing protobuf to bytes failed");
+    let protobuf_bytes = dest_val.encode_to_vec();
 
-    let final_val: SRC = decode(&protobuf_bytes).expect("Parsing prost from protobuf bytes failed");
+    let final_val: SRC =
+        decode(&protobuf_bytes).expect("Parsing first prost from second prost bytes failed");
 
     assert_eq!(
         *prost_val, final_val,
-        "Round-trip check failed!\nprost: {prost_val:?}\nprotobuf: {final_val:?}"
+        "Round-trip check failed!\nprost_1: {prost_val:?}\nprost_2: {final_val:?}"
     );
 }
 

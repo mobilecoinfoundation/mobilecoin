@@ -239,7 +239,8 @@ fs_extra = "1"
 futures = "0.3"
 generic-array = { version = "0.14", default-features = false }
 getrandom = "0.2"
-grpcio = "0.13"
+grpcio = { version = "0.13", default-features = false }
+grpcio-compiler = { version = "0.13", default-features = false }
 hashbrown = { version = "0.14", default-features = false }
 heapless = { version = "0.8", default-features = false }
 hex = { version = "0.4", default-features = false }
@@ -276,9 +277,9 @@ mockall = "0.12"
 more-asserts = "0.3"
 num_cpus = "1"
 once_cell = { version = "1", default-features = false }
-opentelemetry = "0.21"
-opentelemetry-jaeger = "0.20"
-opentelemetry_sdk = "0.21"
+opentelemetry = "0.25"
+opentelemetry-otlp = "0.25"
+opentelemetry_sdk = "0.25"
 p256 = { version = "0.13", default-features = false }
 pem = "3"
 percent-encoding = "2"
@@ -289,8 +290,8 @@ primitive-types = "0.12"
 proc-macro2 = "1"
 prometheus = "0.13"
 proptest = { version = "1", default-features = false }
-prost = { version = "0.12", default-features = false }
-prost-build = "0.12"
+prost = { version = "0.11", default-features = false }
+prost-build = "0.11"
 protobuf = "2"
 protoc-grpcio = "3"
 quote = "1"

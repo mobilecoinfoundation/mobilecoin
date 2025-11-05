@@ -1,5 +1,5 @@
 use displaydoc::Display;
-use opentelemetry::{trace::TraceError, KeyValue};
+use opentelemetry::{global, global::BoxedTracer, trace::TraceError, KeyValue};
 use opentelemetry_sdk::{trace, Resource};
 
 #[derive(Debug, Display)]
@@ -16,16 +16,16 @@ pub enum Error {
 
 /// Set up a default tracer with no additional tags.
 /// Telemetry is enabled iff env.MC_TELEMETRY is set to "1" or "true".
-pub fn setup_default_tracer(service_name: &str) -> Result<Option<trace::Tracer>, Error> {
+pub fn setup_default_tracer(service_name: &'static str) -> Result<Option<BoxedTracer>, Error> {
     setup_default_tracer_with_tags(service_name, &[])
 }
 
 /// Set up a default tracer with the given extra tags.
 /// Telemetry is enabled iff env.MC_TELEMETRY is set to "1" or "true".
 pub fn setup_default_tracer_with_tags(
-    service_name: &str,
+    service_name: &'static str,
     extra_tags: &[(&'static str, String)],
-) -> Result<Option<trace::Tracer>, Error> {
+) -> Result<Option<BoxedTracer>, Error> {
     let telemetry_enabled = std::env::var("MC_TELEMETRY")
         .map(|val| val == "1" || val.to_lowercase() == "true")
         .unwrap_or(false);
@@ -35,21 +35,27 @@ pub fn setup_default_tracer_with_tags(
 
     let local_hostname = hostname::get().map_err(Error::GetHostname)?;
 
-    let mut tags = vec![KeyValue::new(
-        "hostname",
-        local_hostname
-            .to_str()
-            .ok_or(Error::HostnameToString)?
-            .to_owned(),
-    )];
+    let mut tags = vec![
+        KeyValue::new("service.name", service_name.to_owned()),
+        KeyValue::new(
+            "hostname",
+            local_hostname
+                .to_str()
+                .ok_or(Error::HostnameToString)?
+                .to_owned(),
+        ),
+    ];
     for (key, value) in extra_tags.iter() {
         tags.push(KeyValue::new(*key, value.clone()));
     }
 
-    opentelemetry_jaeger::new_agent_pipeline()
-        .with_service_name(service_name)
+    let provider = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
         .with_trace_config(trace::Config::default().with_resource(Resource::new(tags)))
-        .install_simple()
-        .map_err(Error::Trace)
-        .map(Some)
+        .install_batch(opentelemetry_sdk::runtime::Tokio)
+        .map_err(Error::Trace)?;
+    global::set_tracer_provider(provider);
+
+    Ok(Some(global::tracer(service_name)))
 }

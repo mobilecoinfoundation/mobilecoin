@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-serial"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "Apache-2.0"
@@ -13,11 +13,10 @@ rust-version = { workspace = true }
 # so if anything else in your build plan will activate ser../../std, then mcseri../../std is
 # required.
 std = ["serde/std", "serde_cbor/std", "serde_with"]
-test_utils = ["protobuf"]
+test_utils = []
 
 [dependencies]
 prost = { workspace = true, features = ["prost-derive"] }
-protobuf = { workspace = true, optional = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 serde_cbor = { workspace = true, features = ["alloc"] }
 serde_with = { workspace = true, features = ["macros"], optional = true }

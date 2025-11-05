@@ -15,7 +15,7 @@ use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
 };
-use mc_fog_api::view_grpc;
+use mc_fog_api::fog_view;
 use mc_fog_types::common::BlockRange;
 use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
@@ -46,7 +46,7 @@ pub struct Shard {
     pub uri: FogViewStoreUri,
 
     /// The gRPC client that is used to communicate with the shard.
-    pub grpc_client: Arc<view_grpc::FogViewStoreApiClient>,
+    pub grpc_client: Arc<fog_view::FogViewStoreApiClient>,
 
     /// The `BlockRange` that this shard is responsible for providing.
     pub block_range: BlockRange,
@@ -55,7 +55,7 @@ pub struct Shard {
 impl Shard {
     pub fn new(
         uri: FogViewStoreUri,
-        grpc_client: Arc<view_grpc::FogViewStoreApiClient>,
+        grpc_client: Arc<fog_view::FogViewStoreApiClient>,
         block_range: BlockRange,
     ) -> Self {
         Self {
@@ -107,7 +107,7 @@ where
         let router_server = match config.client_listen_uri {
             RouterClientListenUri::Streaming(ref streaming_uri) => {
                 let fog_view_router_service =
-                    view_grpc::create_fog_view_router_api(FogViewRouterService::new(
+                    fog_view::create_fog_view_router_api(FogViewRouterService::new(
                         enclave.clone(),
                         shards,
                         config.chain_id.clone(),
@@ -129,7 +129,7 @@ where
             }
             RouterClientListenUri::Unary(ref unary_uri) => {
                 let fog_view_router_service =
-                    view_grpc::create_fog_view_api(FogViewRouterService::new(
+                    fog_view::create_fog_view_api(FogViewRouterService::new(
                         enclave.clone(),
                         shards,
                         config.chain_id.clone(),
@@ -191,7 +191,7 @@ where
         let config_json =
             serde_json::to_string(&self.config).expect("failed to serialize config to JSON");
         let get_config_json = Arc::new(move || Ok(config_json.clone()));
-        let admin_service = view_grpc::create_fog_view_router_admin_api(self.admin_service.clone());
+        let admin_service = fog_view::create_fog_view_router_admin_api(self.admin_service.clone());
         // Prevent from getting dropped
         self.admin_server = AdminServer::start(
             None,

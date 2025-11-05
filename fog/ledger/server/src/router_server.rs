@@ -10,7 +10,7 @@ use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,
 };
-use mc_fog_api::ledger_grpc;
+use mc_fog_api::fog_ledger;
 use mc_fog_block_provider::BlockProvider;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
@@ -57,7 +57,7 @@ where
                 .build(),
         );
         for shard_uri in config.shard_uris.clone() {
-            let ledger_store_grpc_client = ledger_grpc::KeyImageStoreApiClient::new(
+            let ledger_store_grpc_client = fog_ledger::KeyImageStoreApiClient::new(
                 ChannelBuilder::default_channel_builder(grpc_env.clone())
                     .keepalive_permit_without_calls(false)
                     .connect_to_uri(&shard_uri, &logger),
@@ -95,10 +95,10 @@ where
             logger.clone(),
         );
 
-        let ledger_router_service = ledger_grpc::create_ledger_api(ledger_service.clone());
+        let ledger_router_service = fog_ledger::create_ledger_api(ledger_service.clone());
         log::debug!(logger, "Constructed Ledger Router GRPC Service");
 
-        let unary_key_image_service = ledger_grpc::create_fog_key_image_api(ledger_service);
+        let unary_key_image_service = fog_ledger::create_fog_key_image_api(ledger_service);
 
         // Init ledger router admin service.
         let admin_service =
@@ -108,7 +108,7 @@ where
         // Non-routed servers and services
         // Init merkle proof service
         let merkle_proof_service =
-            ledger_grpc::create_fog_merkle_proof_api(MerkleProofService::new(
+            fog_ledger::create_fog_merkle_proof_api(MerkleProofService::new(
                 config.chain_id.clone(),
                 block_provider.clone(),
                 enclave.clone(),
@@ -117,14 +117,14 @@ where
             ));
         // Init untrusted tx out service
         let untrusted_tx_out_service =
-            ledger_grpc::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
+            fog_ledger::create_fog_untrusted_tx_out_api(UntrustedTxOutService::new(
                 config.chain_id.clone(),
                 block_provider.clone(),
                 client_authenticator.clone(),
                 logger.clone(),
             ));
         // Init block service
-        let block_service = ledger_grpc::create_fog_block_api(BlockService::new(
+        let block_service = fog_ledger::create_fog_block_api(BlockService::new(
             config.chain_id.clone(),
             block_provider,
             client_authenticator,
@@ -182,7 +182,7 @@ where
         let config_json =
             serde_json::to_string(&self.config).expect("failed to serialize config to JSON");
         let get_config_json = Arc::new(move || Ok(config_json.clone()));
-        let admin_service = ledger_grpc::create_ledger_router_admin_api(self.admin_service.clone());
+        let admin_service = fog_ledger::create_ledger_router_admin_api(self.admin_service.clone());
 
         // Prevent from being dropped
         self.admin_server = AdminServer::start(

@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-api"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 description = "gRPC APIs for encrypted communications with an enclave"
 edition = "2021"
@@ -30,8 +30,8 @@ mc-util-serial = { workspace = true }
 aead = { workspace = true }
 digest = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
-protobuf = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
+prost = { workspace = true }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }

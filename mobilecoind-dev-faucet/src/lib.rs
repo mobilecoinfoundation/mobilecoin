@@ -18,9 +18,9 @@ use worker::{GetUtxoError, UtxoRecord, Worker};
 use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_account_keys::AccountKey;
-use mc_api::printable::PrintableWrapper;
+use mc_api::printable::{printable_wrapper, PrintableWrapper};
 use mc_common::logger::{log, o, Logger};
-use mc_mobilecoind_api::{self as api, mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_api::{self as api, mobilecoind_api::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
@@ -199,10 +199,12 @@ impl State {
     > {
         // Create a monitor using our account key
         let monitor_id = {
-            let mut req = api::AddMonitorRequest::new();
-            req.set_account_key(account_key.into());
-            req.set_num_subaddresses(2);
-            req.set_name("faucet".to_string());
+            let req = api::AddMonitorRequest {
+                account_key: Some(account_key.into()),
+                num_subaddresses: 2,
+                name: "faucet".to_string(),
+                ..Default::default()
+            };
 
             let resp = mobilecoind_api_client
                 .add_monitor(&req)
@@ -213,8 +215,10 @@ impl State {
 
         // Get the b58 public address for monitor
         let monitor_b58_address = {
-            let mut req = api::GetPublicAddressRequest::new();
-            req.set_monitor_id(monitor_id.clone());
+            let req = api::GetPublicAddressRequest {
+                monitor_id: monitor_id.clone(),
+                ..Default::default()
+            };
 
             let resp = mobilecoind_api_client
                 .get_public_address(&req)
@@ -225,8 +229,11 @@ impl State {
 
         let monitor_printable_wrapper = PrintableWrapper::b58_decode(monitor_b58_address.clone())
             .expect("Could not decode b58 address");
-        assert!(monitor_printable_wrapper.has_public_address());
-        let monitor_public_address = monitor_printable_wrapper.get_public_address();
+        let Some(printable_wrapper::Wrapper::PublicAddress(monitor_public_address)) =
+            monitor_printable_wrapper.wrapper
+        else {
+            panic!("Printable Wrapper did not contain public address");
+        };
 
         // Get the network minimum fees and compute faucet amounts
         let minimum_fees = {
@@ -236,7 +243,13 @@ impl State {
                 .get_network_status(&Default::default())
                 .map_err(|err| format!("Failed getting network status: {err}"))?;
 
-            for (k, v) in resp.get_last_block_info().minimum_fees.iter() {
+            for (k, v) in resp
+                .last_block_info
+                .as_ref()
+                .unwrap_or(&Default::default())
+                .minimum_fees
+                .iter()
+            {
                 result.insert(k.into(), *v);
             }
 
@@ -260,9 +273,9 @@ impl State {
         let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
             .map_err(|err| format!("Could not decode b58 address: {err}"))?;
 
-        let public_address = if printable_wrapper.has_public_address() {
-            printable_wrapper.get_public_address()
-        } else {
+        let Some(printable_wrapper::Wrapper::PublicAddress(public_address)) =
+            printable_wrapper.wrapper
+        else {
             return Err(format!(
                 "b58 address '{}' is not a public address",
                 req.b58_address
@@ -275,16 +288,25 @@ impl State {
         log::trace!(
             self.logger,
             "Got a UTXO: key_image = {:?}, value = {}",
-            KeyImage::try_from(utxo_record.utxo.get_key_image()).unwrap(),
+            KeyImage::try_from(
+                utxo_record
+                    .utxo
+                    .key_image
+                    .as_ref()
+                    .unwrap_or(&Default::default())
+            )
+            .unwrap(),
             utxo_record.utxo.value
         );
 
         // Generate a Tx sending this specific TxOut, less fees
-        let mut req = api::GenerateTxFromTxOutListRequest::new();
-        req.set_account_key((&self.account_key).into());
-        req.set_input_list(vec![utxo_record.utxo].into());
-        req.set_receiver(public_address.clone());
-        req.set_token_id(*token_id);
+        let req = api::GenerateTxFromTxOutListRequest {
+            account_key: Some((&self.account_key).into()),
+            input_list: vec![utxo_record.utxo],
+            receiver: Some(public_address.clone()),
+            token_id: *token_id,
+            ..Default::default()
+        };
 
         let resp = self
             .mobilecoind_api_client
@@ -294,8 +316,9 @@ impl State {
             .map_err(|err| format!("Build Tx ended in error: {err}"))?;
 
         // Submit the tx proposal
-        let mut req = api::SubmitTxRequest::new();
-        req.set_tx_proposal(resp.get_tx_proposal().clone());
+        let req = api::SubmitTxRequest {
+            tx_proposal: resp.tx_proposal.clone(),
+        };
 
         let resp = self
             .mobilecoind_api_client
@@ -321,9 +344,11 @@ impl State {
         // Get up-to-date balances for all the tokens we are tracking
         let mut balances: HashMap<TokenId, u64> = Default::default();
         for (token_id, _) in self.faucet_payout_amounts.iter() {
-            let mut req = api::GetBalanceRequest::new();
-            req.set_monitor_id(self.monitor_id.clone());
-            req.set_token_id(**token_id);
+            let req = api::GetBalanceRequest {
+                monitor_id: self.monitor_id.clone(),
+                token_id: **token_id,
+                ..Default::default()
+            };
 
             let resp = self
                 .mobilecoind_api_client

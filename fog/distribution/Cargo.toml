@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-distribution"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -31,7 +31,7 @@ mc-util-uri = { workspace = true }
 
 clap = { workspace = true, features = ["derive", "env"] }
 crossbeam-channel = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 lazy_static = { workspace = true }
 mc-attestation-verifier = { workspace = true }
 rand = { workspace = true }

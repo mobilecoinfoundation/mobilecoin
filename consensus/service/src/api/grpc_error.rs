@@ -145,17 +145,17 @@ impl From<ConsensusGrpcError> for RpcStatus {
 impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
     fn from(src: ConsensusGrpcError) -> Result<ProposeTxResponse, RpcStatus> {
         match src {
-            ConsensusGrpcError::TransactionValidation(err) => {
-                let mut resp = ProposeTxResponse::new();
-                resp.set_err_msg(err.to_string());
-                resp.set_result(ProposeTxResult::from(err));
-                Ok(resp)
-            }
+            ConsensusGrpcError::TransactionValidation(err) => Ok(ProposeTxResponse {
+                err_msg: err.to_string(),
+                result: ProposeTxResult::from(err).into(),
+                ..Default::default()
+            }),
             ConsensusGrpcError::Enclave(EnclaveError::FeeMapDigestMismatch) => {
-                let mut resp = ProposeTxResponse::new();
-                resp.set_err_msg(EnclaveError::FeeMapDigestMismatch.to_string());
-                resp.set_result(ProposeTxResult::FeeMapDigestMismatch);
-                Ok(resp)
+                Ok(ProposeTxResponse {
+                    err_msg: EnclaveError::FeeMapDigestMismatch.to_string(),
+                    result: ProposeTxResult::FeeMapDigestMismatch.into(),
+                    ..Default::default()
+                })
             }
 
             _ => Err(RpcStatus::from(src)),
@@ -169,7 +169,7 @@ impl From<ConsensusGrpcError> for Result<ProposeMintConfigTxResponse, RpcStatus>
     fn from(src: ConsensusGrpcError) -> Result<ProposeMintConfigTxResponse, RpcStatus> {
         match src {
             ConsensusGrpcError::MintValidation(err) => Ok(ProposeMintConfigTxResponse {
-                result: Some(MintValidationResult::from(err)).into(),
+                result: Some(MintValidationResult::from(err)),
                 ..Default::default()
             }),
             _ => Err(RpcStatus::from(src)),
@@ -183,7 +183,7 @@ impl From<ConsensusGrpcError> for Result<ProposeMintTxResponse, RpcStatus> {
     fn from(src: ConsensusGrpcError) -> Result<ProposeMintTxResponse, RpcStatus> {
         match src {
             ConsensusGrpcError::MintValidation(err) => Ok(ProposeMintTxResponse {
-                result: Some(MintValidationResult::from(err)).into(),
+                result: Some(MintValidationResult::from(err)),
                 ..Default::default()
             }),
             _ => Err(RpcStatus::from(src)),

@@ -2,6 +2,7 @@
 
 //! Utilities for mobilecoind unit tests
 
+pub use mc_blockchain_types::BlockVersion;
 pub use mc_ledger_db::test_utils::{add_block_to_ledger, add_txos_to_ledger};
 
 use crate::{
@@ -16,12 +17,17 @@ use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
 use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
 use mc_consensus_scp::QuorumSet;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{test_utils::recreate_ledger_db, Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_api::{mobilecoind_api::MobilecoindApiClient, MobilecoindUri};
 use mc_rand::{CryptoRng, RngCore};
-use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, Amount, FeeMap, Token, TokenId};
+use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint, onetime_keys::create_shared_secret,
+    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, FeeMap, Token, TokenId,
+};
+use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
 use mc_watcher::watcher_db::WatcherDB;
@@ -30,8 +36,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 use tempfile::TempDir;
-
-pub use mc_blockchain_types::BlockVersion;
 
 /// The amount each recipient gets in the test ledger.
 pub const DEFAULT_PER_RECIPIENT_AMOUNT: u64 = 5_000 * 1_000_000_000_000;
@@ -312,4 +316,23 @@ pub fn wait_for_monitors(mobilecoind_db: &Database, ledger_db: &LedgerDB, logger
             num_blocks
         );
     }
+}
+
+pub fn create_tx_out(
+    amount: Amount,
+    recipient: &PublicAddress,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> (TxOut, RistrettoPublic) {
+    let tx_private_key = RistrettoPrivate::from_random(rng);
+    let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
+    let tx_out = TxOut::new(
+        BlockVersion::MAX,
+        amount,
+        recipient,
+        &tx_private_key,
+        EncryptedFogHint::fake_onetime_hint(rng),
+    )
+    .unwrap();
+
+    (tx_out, shared_secret)
 }

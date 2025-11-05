@@ -8,10 +8,9 @@ use mc_sgx_dcap_types::Quote3;
 
 impl<T: AsRef<[u8]>> From<&Quote3<T>> for external::Quote3 {
     fn from(src: &Quote3<T>) -> Self {
-        let mut dst = Self::new();
-        dst.set_data(src.as_ref().to_vec());
-
-        dst
+        Self {
+            data: src.as_ref().to_vec(),
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-telemetry"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -11,12 +11,12 @@ rust-version = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-jaeger = ["dep:opentelemetry-jaeger"]
+otlp = ["dep:opentelemetry-otlp"]
 
 [dependencies]
 cfg-if = { workspace = true }
 displaydoc = { workspace = true }
 hostname = { workspace = true }
 opentelemetry = { workspace = true }
-opentelemetry-jaeger = { workspace = true, features = ["reqwest_rustls_collector_client"], optional = true }
-opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"], optional = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }

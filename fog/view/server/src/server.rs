@@ -15,7 +15,7 @@ use mc_common::{
     trace_time,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_api::view_grpc;
+use mc_fog_api::fog_view;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ETxOutRecord;
 use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
@@ -108,7 +108,7 @@ where
         let uri = FogViewStoreUri::try_from_responder_id(responder_id, use_tls)
             .expect("Could not create uri from responder id");
 
-        let fog_view_service = view_grpc::create_fog_view_store_api(FogViewService::new(
+        let fog_view_service = fog_view::create_fog_view_store_api(FogViewService::new(
             enclave.clone(),
             Arc::new(recovery_db),
             db_poll_thread.get_shared_state(),

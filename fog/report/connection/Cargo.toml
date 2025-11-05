@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-connection"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -17,4 +17,4 @@ mc-util-serial = { workspace = true }
 mc-util-uri = { workspace = true }
 
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }

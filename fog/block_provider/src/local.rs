@@ -5,7 +5,7 @@ use crate::{
 };
 use mc_blockchain_types::{Block, BlockIndex};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_api::ledger::{TxOutResult, TxOutResultCode};
+use mc_fog_api::fog_ledger::{TxOutResult, TxOutResultCode};
 use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_watcher::watcher_db::WatcherDB;
@@ -30,13 +30,15 @@ impl<L: Ledger + Clone + Sync> LocalBlockProvider<L> {
         &self,
         tx_out_pubkey: &CompressedRistrettoPublic,
     ) -> Result<TxOutResult, LedgerError> {
-        let mut result = TxOutResult::new();
-        result.set_tx_out_pubkey(tx_out_pubkey.into());
+        let mut result = TxOutResult {
+            tx_out_pubkey: Some(tx_out_pubkey.into()),
+            ..Default::default()
+        };
 
         let tx_out_index = match self.ledger.get_tx_out_index_by_public_key(tx_out_pubkey) {
             Ok(index) => index,
             Err(LedgerError::NotFound) => {
-                result.result_code = TxOutResultCode::NotFound;
+                result.result_code = TxOutResultCode::NotFound.into();
                 return Ok(result);
             }
             Err(err) => {
@@ -44,7 +46,7 @@ impl<L: Ledger + Clone + Sync> LocalBlockProvider<L> {
             }
         };
 
-        result.result_code = TxOutResultCode::Found;
+        result.result_code = TxOutResultCode::Found.into();
         result.tx_out_global_index = tx_out_index;
 
         let block_index = match self.ledger.get_block_index_by_tx_out_index(tx_out_index) {
@@ -57,7 +59,7 @@ impl<L: Ledger + Clone + Sync> LocalBlockProvider<L> {
                 //     tx_out_index,
                 //     err
                 // );
-                result.result_code = TxOutResultCode::DatabaseError;
+                result.result_code = TxOutResultCode::DatabaseError.into();
                 return Ok(result);
             }
         };

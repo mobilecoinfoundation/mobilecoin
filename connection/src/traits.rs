@@ -104,6 +104,7 @@ impl Display for BlockInfo {
 
 impl From<LastBlockInfoResponse> for BlockInfo {
     fn from(src: LastBlockInfoResponse) -> Self {
+        #[allow(deprecated)]
         // Needed for nodes that do not yet return the fee map.
         let minimum_fees = if src.minimum_fees.is_empty() {
             [(Mob::ID, src.mob_minimum_fee)].into()
@@ -124,16 +125,16 @@ impl From<LastBlockInfoResponse> for BlockInfo {
 
 impl From<BlockInfo> for LastBlockInfoResponse {
     fn from(src: BlockInfo) -> Self {
-        let mut result = LastBlockInfoResponse::new();
-        result.index = src.block_index;
-        result.network_block_version = src.network_block_version;
-        result.set_minimum_fees(
-            src.minimum_fees
+        Self {
+            index: src.block_index,
+            minimum_fees: src
+                .minimum_fees
                 .into_iter()
                 .map(|(token_id, fee)| (*token_id, fee))
                 .collect(),
-        );
-        result
+            network_block_version: src.network_block_version,
+            ..Default::default()
+        }
     }
 }
 

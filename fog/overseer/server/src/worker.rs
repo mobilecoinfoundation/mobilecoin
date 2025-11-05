@@ -192,7 +192,7 @@ where
                 ingest_summary_node_mappings
                     .iter()
                     .filter(|ingest_summary_node_mapping| {
-                        ingest_summary_node_mapping.ingest_summary.mode
+                        ingest_summary_node_mapping.ingest_summary.mode()
                             == IngestControllerMode::Active
                     })
                     .collect();
@@ -219,18 +219,21 @@ where
                         "There is one active node in the Fog Ingest cluster. Active ingress key: {:?}",
                         active_ingest_summary_node_mappings[0]
                         .ingest_summary
-                        .get_ingress_pubkey()
+                        .ingress_pubkey
                     );
                     continue;
                 }
                 _ => {
+                    let default_pubkey = Default::default();
                     let active_node_ingress_pubkeys: Vec<&external::CompressedRistretto> =
                         active_ingest_summary_node_mappings
                             .iter()
                             .map(|active_ingest_summary_node_mapping| {
                                 active_ingest_summary_node_mapping
                                     .ingest_summary
-                                    .get_ingress_pubkey()
+                                    .ingress_pubkey
+                                    .as_ref()
+                                    .unwrap_or(&default_pubkey)
                             })
                             .collect();
                     let error_message =
@@ -401,7 +404,9 @@ where
             let node_ingress_key = match CompressedRistrettoPublic::try_from(
                 ingest_summary_node_mapping
                     .ingest_summary
-                    .get_ingress_pubkey(),
+                    .ingress_pubkey
+                    .as_ref()
+                    .unwrap_or(&Default::default()),
             ) {
                 Ok(key) => key,
                 Err(_) => continue,

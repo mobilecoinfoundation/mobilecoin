@@ -26,6 +26,15 @@ fogTestClientConfig:
   #     | grep -v creationTimestamp > "fog-test-client-configMap.yaml"
   configMap:
     name: fog-test-client
+    ### Values:
+      # MC_CONSENSUS: ${consensus_validators}
+      # MC_CONSENSUS_WAIT: "20"
+      # MC_FOG_LEDGER: fog-ledger://${fog_hostname}:443
+      # MC_FOG_VIEW: fog-view://${fog_hostname}:443
+      # MC_TELEMETRY: "true"
+      # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.otel:4317
+      # OTEL_RESOURCE_ATTRIBUTES: deployment.environment=${partner}-${network}
+      # MC_TRANSFER_AMOUNT: "100000000000"
 
   ### populates enclave measurement .css files
   # Generate with:
@@ -35,17 +44,6 @@ fogTestClientConfig:
   measurementsConfigMap:
     name: fog-test-client-measurements
 
-  ### Enable for Signal Fog environments.
-  #   Secret used to generate token when communicating with signal view/ledger services.
-  # Generate with:
-  #   kubectl create secret generic fog-client-auth-token -o yaml --dry-run=client \
-  #     --from-literal=token="${CLIENT_AUTH_TOKEN_SECRET}" \
-  #     | grep -v creationTimestamp > fog-client-auth-token-secret.yaml
-  fogClientAuthTokenSecret:
-    name: fog-client-auth-token
-    enabled: false
-
-
 ### Deployments
 fogTestClient:
   replicaCount: 1
@@ -54,15 +52,16 @@ fogTestClient:
     tag: ""
   podAnnotations:
     fluentbit.io/include: 'true'
-  resources: {}
+    cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
   nodeSelector: {}
   tolerations: []
   affinity: {}
 
 mobileCoinNetwork:
-  configMap:
-    external: true
-    name: mobilecoin-network
   # test, prod, alpha...
   network: ""
   # mc, mcww, signal...
@@ -70,6 +69,3 @@ mobileCoinNetwork:
 
 serviceMonitor:
   enabled: true
-
-jaegerTracing:
-  enabled: false

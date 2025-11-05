@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-connection"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -33,7 +33,7 @@ mc-fog-view-protocol = { workspace = true }
 aes-gcm = { workspace = true }
 der = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 retry = { workspace = true }
 sha2 = { workspace = true }

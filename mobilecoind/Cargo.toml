@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -28,7 +28,7 @@ mc-consensus-api = { workspace = true }
 mc-consensus-enclave-api = { workspace = true }
 mc-consensus-enclave-measurement = { workspace = true }
 mc-consensus-scp = { workspace = true }
-mc-core = { workspace = true }
+mc-core = { workspace = true, features = ["bip39"] }
 mc-crypto-digestible = { workspace = true, features = ["derive"] }
 mc-crypto-hashes = { workspace = true }
 mc-crypto-keys = { workspace = true }
@@ -53,7 +53,7 @@ mc-util-lmdb = { workspace = true }
 mc-util-parse = { workspace = true }
 mc-util-repr-bytes = { workspace = true }
 mc-util-serial = { workspace = true }
-mc-util-telemetry = { workspace = true, features = ["jaeger"] }
+mc-util-telemetry = { workspace = true, features = ["otlp"] }
 mc-util-uri = { workspace = true }
 mc-watcher = { workspace = true }
 mc-watcher-api = { workspace = true }
@@ -62,13 +62,12 @@ aes-gcm = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 crossbeam-channel = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex_fmt = { workspace = true }
 lmdb-rkv = { workspace = true }
 mc-attestation-verifier = { workspace = true }
 num_cpus = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
-protobuf = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 reqwest = { workspace = true, features = ["blocking", "rustls-tls", "gzip"] }

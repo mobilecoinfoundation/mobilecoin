@@ -1,6 +1,6 @@
 [package]
 name = "mc-watcher"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -43,7 +43,7 @@ aes-gcm = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 lazy_static = { workspace = true }
 lmdb-rkv = { workspace = true }

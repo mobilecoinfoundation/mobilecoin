@@ -34,8 +34,7 @@ mobilecoind:
       memory: 5Gi
       cpu: 1000m
     limits:
-      memory: 5Gi
-      cpu: 4000m
+      memory: 10Gi
 
 mobilecoindJson:
   image:

@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-server"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -36,7 +36,7 @@ mc-util-grpc = { workspace = true }
 mc-util-metrics = { workspace = true }
 mc-util-parse = { workspace = true }
 mc-util-serial = { workspace = true }
-mc-util-telemetry = { workspace = true, features = ["jaeger"] }
+mc-util-telemetry = { workspace = true, features = ["otlp"] }
 mc-util-uri = { workspace = true }
 mc-watcher = { workspace = true }
 mc-watcher-api = { workspace = true }
@@ -54,7 +54,7 @@ mc-fog-uri = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 itertools = { workspace = true }
 lazy_static = { workspace = true }
 mc-attestation-verifier = { workspace = true }

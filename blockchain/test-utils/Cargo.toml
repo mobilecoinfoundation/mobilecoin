@@ -1,6 +1,6 @@
 [package]
 name = "mc-blockchain-test-utils"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"

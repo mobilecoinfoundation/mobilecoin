@@ -1,6 +1,6 @@
 [package]
 name = "mc-peers-test-utils"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -21,7 +21,7 @@ mc-transaction-core = { workspace = true }
 mc-util-from-random = { workspace = true }
 mc-util-uri = { workspace = true }
 
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex = { workspace = true }
 rand = { workspace = true }
 rand_hc = { workspace = true }

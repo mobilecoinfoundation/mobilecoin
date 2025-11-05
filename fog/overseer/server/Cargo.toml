@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-overseer-server"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -15,7 +15,7 @@ path = "src/bin/main.rs"
 # third-party
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 lazy_static = { workspace = true }
 prometheus = { workspace = true }
 retry = { workspace = true }

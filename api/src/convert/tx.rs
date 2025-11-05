@@ -3,16 +3,16 @@
 //! Convert to/from external::Tx.
 
 use crate::{external, ConversionError};
-use mc_transaction_core::{ring_ct::SignatureRctBulletproofs, tx};
+use mc_transaction_core::tx;
 
 /// Convert mc_transaction_core::tx::Tx --> external::Tx.
 impl From<&tx::Tx> for external::Tx {
     fn from(source: &tx::Tx) -> Self {
-        let mut tx = external::Tx::new();
-        tx.set_prefix(external::TxPrefix::from(&source.prefix));
-        tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
-        tx.set_fee_map_digest(source.fee_map_digest.clone());
-        tx
+        Self {
+            prefix: Some((&source.prefix).into()),
+            signature: Some((&source.signature).into()),
+            fee_map_digest: source.fee_map_digest.clone(),
+        }
     }
 }
 
@@ -21,13 +21,20 @@ impl TryFrom<&external::Tx> for tx::Tx {
     type Error = ConversionError;
 
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
-        let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
-        let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
-        let fee_map_digest = source.get_fee_map_digest().to_vec();
+        let prefix = source
+            .prefix
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
+        let signature = source
+            .signature
+            .as_ref()
+            .unwrap_or(&Default::default())
+            .try_into()?;
         Ok(tx::Tx {
             prefix,
             signature,
-            fee_map_digest,
+            fee_map_digest: source.fee_map_digest.clone(),
         })
     }
 }
@@ -45,7 +52,7 @@ mod tests {
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB, tokens::Mob, tx::Tx, Amount, BlockVersion, Token, TokenId,
     };
-    use protobuf::Message;
+    use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
@@ -65,7 +72,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -87,7 +93,7 @@ mod tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // decode(encode(tx)) should be the identity function.
@@ -108,14 +114,14 @@ mod tests {
             // Encoding with prost, decoding with protobuf should be the identity function.
             {
                 let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
+                let recovered_tx = external::Tx::decode(bytes.as_slice()).unwrap();
                 assert_eq!(recovered_tx, external::Tx::from(&tx));
             }
 
             // Encoding with protobuf, decoding with prost should be the identity function.
             {
                 let external_tx: external::Tx = external::Tx::from(&tx);
-                let bytes = external_tx.write_to_bytes().unwrap();
+                let bytes = external_tx.encode_to_vec();
                 let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
                 assert_eq!(tx, recovered_tx);
             }
@@ -175,7 +181,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -205,7 +210,7 @@ mod tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // decode(encode(tx)) should be the identity function.
@@ -226,14 +231,14 @@ mod tests {
             // Encoding with prost, decoding with protobuf should be the identity function.
             {
                 let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
+                let recovered_tx = external::Tx::decode(bytes.as_slice()).unwrap();
                 assert_eq!(recovered_tx, external::Tx::from(&tx));
             }
 
             // Encoding with protobuf, decoding with prost should be the identity function.
             {
                 let external_tx: external::Tx = external::Tx::from(&tx);
-                let bytes = external_tx.write_to_bytes().unwrap();
+                let bytes = external_tx.encode_to_vec();
                 let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
                 assert_eq!(tx, recovered_tx);
             }
@@ -302,7 +307,6 @@ mod tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fpr.clone(),
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -337,7 +341,7 @@ mod tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // decode(encode(tx)) should be the identity function.
@@ -358,14 +362,14 @@ mod tests {
             // Encoding with prost, decoding with protobuf should be the identity function.
             {
                 let bytes = mc_util_serial::encode(&tx);
-                let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
+                let recovered_tx = external::Tx::decode(bytes.as_slice()).unwrap();
                 assert_eq!(recovered_tx, external::Tx::from(&tx));
             }
 
             // Encoding with protobuf, decoding with prost should be the identity function.
             {
                 let external_tx: external::Tx = external::Tx::from(&tx);
-                let bytes = external_tx.write_to_bytes().unwrap();
+                let bytes = external_tx.encode_to_vec();
                 let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
                 assert_eq!(tx, recovered_tx);
             }

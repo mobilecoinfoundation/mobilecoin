@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-api"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -16,8 +16,8 @@ mc-ledger-db = { workspace = true }
 mc-transaction-core = { workspace = true }
 
 futures = { workspace = true }
-grpcio = { workspace = true }
-protobuf = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
+prost = { workspace = true }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }

@@ -12,7 +12,7 @@ source "${location}/.shared_functions"
 
 if [[ "${ENCLAVE_RELEASE}" == "false" ]]
 then
-    red "This is not an enclave release tag. No need to build enclaves. Download the tarball from the enclave release page."
+    red "This is not an enclave release tag. No need to build signed enclaves. Skip ahead to 03-populate-release.sh."
     exit 1
 fi
 

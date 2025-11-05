@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
-use protobuf::error::ProtobufError;
+use prost::DecodeError;
 use retry::Error as RetryError;
 
 use mc_api::ConversionError;
@@ -15,7 +15,7 @@ pub enum Error {
     /// Enclave Connection Error ({0}): {1}
     Connection(FogLedgerUri, RetryError<EnclaveConnectionError>),
     /// Protobuf Error: {0}
-    Protobuf(ProtobufError),
+    Protobuf(DecodeError),
     /// Deserialization failed
     DeserializationFailed,
     /// Mobilecoin API Conversion Error: {0}
@@ -24,8 +24,8 @@ pub enum Error {
     Grpc(FogLedgerUri, RetryError<grpcio::Error>),
 }
 
-impl From<ProtobufError> for Error {
-    fn from(err: ProtobufError) -> Self {
+impl From<DecodeError> for Error {
+    fn from(err: DecodeError) -> Self {
         Error::Protobuf(err)
     }
 }

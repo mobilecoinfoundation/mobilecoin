@@ -11,11 +11,15 @@ use mc_transaction_core::{
 /// Convert TxOutMembershipElement -> external::TxOutMembershipElement
 impl From<&TxOutMembershipElement> for external::TxOutMembershipElement {
     fn from(src: &TxOutMembershipElement) -> Self {
-        let mut dst = external::TxOutMembershipElement::new();
-        dst.mut_range().set_from(src.range.from);
-        dst.mut_range().set_to(src.range.to);
-        dst.mut_hash().set_data(src.hash.to_vec());
-        dst
+        Self {
+            range: Some(external::Range {
+                from: src.range.from,
+                to: src.range.to,
+            }),
+            hash: Some(external::TxOutMembershipHash {
+                data: src.hash.to_vec(),
+            }),
+        }
     }
 }
 
@@ -24,10 +28,18 @@ impl TryFrom<&external::TxOutMembershipElement> for TxOutMembershipElement {
     type Error = ConversionError;
 
     fn try_from(src: &external::TxOutMembershipElement) -> Result<Self, Self::Error> {
-        let range = Range::new(src.get_range().get_from(), src.get_range().get_to())
-            .map_err(|_e| ConversionError::Other)?;
+        let default_range = Default::default();
+        let src_range = src.range.as_ref().unwrap_or(&default_range);
+        let range =
+            Range::new(src_range.from, src_range.to).map_err(|_e| ConversionError::Other)?;
 
-        let bytes: &[u8] = src.get_hash().get_data();
+        let default_membership_hash = Default::default();
+        let bytes: &[u8] = src
+            .hash
+            .as_ref()
+            .unwrap_or(&default_membership_hash)
+            .data
+            .as_slice();
         let mut hash = [0u8; 32];
         if bytes.len() != hash.len() {
             return Err(ConversionError::ArrayCastError);

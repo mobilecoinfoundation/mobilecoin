@@ -187,7 +187,6 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
         block_version,
         Amount::new(fee, sender_amount.token_id),
         MockFogResolver::default(),
-        EmptyMemoBuilder,
     )
     .unwrap();
 
@@ -248,7 +247,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
 
     // Build and return the transaction
     transaction_builder
-        .build_with_sorter::<_, O, _>(&NoKeysRingSigner {}, rng)
+        .build_with_sorter::<_, O, _>(&NoKeysRingSigner {}, EmptyMemoBuilder, rng)
         .unwrap()
 }
 

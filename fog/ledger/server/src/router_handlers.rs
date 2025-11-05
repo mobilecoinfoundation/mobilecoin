@@ -13,12 +13,9 @@ use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
-use mc_fog_api::{
-    ledger::{
-        LedgerRequest, LedgerRequest_oneof_request_data, LedgerResponse, MultiKeyImageStoreRequest,
-        MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus,
-    },
-    ledger_grpc::KeyImageStoreApiClient,
+use mc_fog_api::fog_ledger::{
+    ledger_request, ledger_response, KeyImageStoreApiClient, LedgerRequest, LedgerResponse,
+    MultiKeyImageStoreRequest, MultiKeyImageStoreResponse, MultiKeyImageStoreResponseStatus,
 };
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::{ConnectionUri, KeyImageStoreUri};
@@ -84,10 +81,10 @@ where
 {
     let tracer = tracer!();
     match request.request_data {
-        Some(LedgerRequest_oneof_request_data::auth(request)) => {
+        Some(ledger_request::RequestData::Auth(request)) => {
             tracer.in_span("auth", |_cx| handle_auth_request(enclave, request, logger))
         }
-        Some(LedgerRequest_oneof_request_data::check_key_images(request)) => {
+        Some(ledger_request::RequestData::CheckKeyImages(request)) => {
             handle_query_request(
                 request,
                 enclave,
@@ -149,14 +146,17 @@ pub fn process_shard_responses(
     let mut store_uris_for_authentication = Vec::new();
     let mut new_query_responses = Vec::new();
 
-    for (shard_client, mut response) in clients_and_responses {
-        let store_uri = KeyImageStoreUri::from_str(response.get_store_uri())?;
-        match response.get_status() {
-            MultiKeyImageStoreResponseStatus::SUCCESS => {
+    for (shard_client, response) in clients_and_responses {
+        let store_uri = KeyImageStoreUri::from_str(&response.store_uri)?;
+        match response.status() {
+            MultiKeyImageStoreResponseStatus::Success => {
                 let store_responder_id = store_uri.host_and_port_responder_id()?;
-                new_query_responses.push((store_responder_id, response.take_query_response()));
+                new_query_responses.push((
+                    store_responder_id,
+                    response.query_response.unwrap_or_default(),
+                ));
             }
-            MultiKeyImageStoreResponseStatus::AUTHENTICATION_ERROR => {
+            MultiKeyImageStoreResponseStatus::AuthenticationError => {
                 // We did not receive a query response for this shard.Therefore, we need to:
                 //  (a) retry the query
                 //  (b) authenticate with the Ledger Store that returned the decryption_error
@@ -164,7 +164,7 @@ pub fn process_shard_responses(
                 store_uris_for_authentication.push(store_uri);
             }
             // This call will be retried as part of the larger retry logic
-            MultiKeyImageStoreResponseStatus::NOT_READY => {
+            MultiKeyImageStoreResponseStatus::NotReady => {
                 log::debug!(
                     logger,
                     "Shard {} status NotReady",
@@ -172,7 +172,7 @@ pub fn process_shard_responses(
                 );
             }
             // This is a Protobuf decode error - we should never see this
-            MultiKeyImageStoreResponseStatus::INVALID_ARGUMENT => {
+            MultiKeyImageStoreResponseStatus::InvalidArgument => {
                 log::error!(
                     logger,
                     "Received a response with status 'INVALID_ARGUMENT' from store {}",
@@ -180,7 +180,7 @@ pub fn process_shard_responses(
                 );
             }
             // This is an unexpected error - we should never see this
-            MultiKeyImageStoreResponseStatus::UNKNOWN => {
+            MultiKeyImageStoreResponseStatus::Unknown => {
                 log::error!(
                     logger,
                     "Received a response with status 'UNKNOWN' from store {}",
@@ -210,9 +210,11 @@ where
         router_server_err_to_rpc_status("Auth: e client accept", err.into(), logger)
     })?;
 
-    let mut response = LedgerResponse::new();
-    response.mut_auth().set_data(client_auth_response.into());
-    Ok(response)
+    Ok(LedgerResponse {
+        response_data: Some(ledger_response::ResponseData::Auth(
+            client_auth_response.into(),
+        )),
+    })
 }
 
 /// Handles a client's query request.
@@ -336,9 +338,11 @@ where
             })
     })?;
 
-    let mut response = LedgerResponse::new();
-    response.set_check_key_image_response(query_response.into());
-    Ok(response)
+    Ok(LedgerResponse {
+        response_data: Some(ledger_response::ResponseData::CheckKeyImageResponse(
+            query_response.into(),
+        )),
+    })
 }
 
 /// Sends a client's query request to all of the Fog Ledger shards.

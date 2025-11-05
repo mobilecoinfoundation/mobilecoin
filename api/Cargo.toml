@@ -1,6 +1,6 @@
 [package]
 name = "mc-api"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
@@ -17,6 +17,7 @@ mc-common = { workspace = true }
 mc-crypto-keys = { workspace = true }
 mc-crypto-multisig = { workspace = true }
 mc-crypto-ring-signature-signer = { workspace = true }
+mc-transaction-builder = { workspace = true }
 mc-transaction-core = { workspace = true }
 mc-transaction-extra = { workspace = true }
 mc-transaction-summary = { workspace = true }
@@ -30,9 +31,9 @@ crc = { workspace = true }
 displaydoc = { workspace = true }
 mc-sgx-core-types = { workspace = true }
 mc-sgx-dcap-types = { workspace = true }
-protobuf = { workspace = true }
 
 curve25519-dalek = { workspace = true }
+prost = { workspace = true }
 
 [build-dependencies]
 mc-util-build-grpc = { workspace = true }
@@ -41,7 +42,6 @@ mc-util-build-script = { workspace = true }
 cargo-emit = { workspace = true }
 
 [dev-dependencies]
-assert_matches = { workspace = true }
 mc-attest-untrusted = { workspace = true }
 mc-blockchain-test-utils = { workspace = true }
 mc-crypto-ring-signature-signer = { workspace = true }
@@ -56,9 +56,9 @@ mc-util-test-vector = { workspace = true }
 mc-util-test-with-data = { workspace = true }
 mc-util-zip-exact = { workspace = true }
 
+assert_matches = { workspace = true }
 generic-array = { workspace = true }
 pem = { workspace = true }
-prost = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
 rand_hc = { workspace = true }

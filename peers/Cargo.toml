@@ -1,6 +1,6 @@
 [package]
 name = "mc-peers"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -30,9 +30,8 @@ mc-util-uri = { workspace = true }
 
 crossbeam-channel = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mockall = { workspace = true }
-protobuf = { workspace = true }
 retry = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 

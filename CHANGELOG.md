@@ -6,7 +6,71 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
-## [7.0.1]
+## [7.1.0]
+
+### Changed
+
+- Transaction report rework ([#3316])
+- Update syn dependency to 2.0 ([#4053])
+- Add mc-sgx-build to workspace and fix clippy issues ([#4055])
+- Add mc-sgx-urts to workspace and fix clippy issues ([#4056])
+- Move deps to the workspace ([#4054])
+- Less strict dependency versions ([#4057])
+- Downgrade prost to version 11 to use with gRPC-io ([#4063])
+- Use prost for grpc generated types ([#4032])
+- Update tracing to use otlp ([#4070])
+- update mc-core features in mobilecoind Cargo.toml ([#4074])
+- Rework TransactionBuilder to produce TxBlueprint instead of `UnsignedTx`. ([#4030])
+- Make TransactionBuilder derive Clone and DRY some unit tests (SENTZ-4373) ([#4077])
+- DRY some stuff in TransactionBuilder tests ([#4078])
+- TxBlueprint::to_unsigned_tx can process change outputs after regular outputs (SENTZ-4374) ([#4079])
+- Add do not evict annotation to view/ledger stores ([#4081])
+
+[#3316]: https://github.com/mobilecoinfoundation/mobilecoin/pull/3316
+[#4053]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4053
+[#4055]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4055
+[#4056]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4056
+[#4054]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4054
+[#4057]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4057
+[#4065]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4065
+[#4063]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4063
+[#4032]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4032
+[#4070]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4070
+[#4074]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4074
+[#4030]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4030
+[#4077]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4077
+[#4078]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4078
+[#4079]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4079
+[#4081]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4081
+
+## [7.0.5]
+
+### Fixed
+
+- Fix ledger metrics ([#4071])
+
+[#4071]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4071
+
+
+## [7.0.4]
+
+### Fixed
+
+- Fix fog-ledger-fsg chart dupe labels ([#4068])
+
+[#4068]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4068
+
+## [7.0.3]
+
+### Fixed
+
+- Fix release scripts for non-enclave releases ([#4065])
+- Remove cpu limits from helm releases ([#4066])
+
+[#4065]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4065
+[#4066]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4066
+
+## [7.0.2]
 
 ### Fixed
 

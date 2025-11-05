@@ -1,6 +1,6 @@
 [package]
 name = "mc-admin-http-gateway"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -13,7 +13,7 @@ mc-util-grpc = { workspace = true }
 mc-util-uri = { workspace = true }
 
 clap = { workspace = true, features = ["derive", "env"] }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 rocket = { workspace = true, features = ["json"] }
 serde = { workspace = true }
 serde_derive = { workspace = true }

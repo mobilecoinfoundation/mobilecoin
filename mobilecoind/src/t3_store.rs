@@ -14,7 +14,7 @@ use mc_common::logger::{log, Logger};
 use mc_t3_api::TransparentTransaction;
 use mc_transaction_core::MemoPayload;
 use mc_transaction_extra::MemoType;
-use protobuf::Message;
+use prost::Message;
 use std::sync::Arc;
 
 // LMDB Database Names
@@ -138,15 +138,14 @@ impl T3Store {
             }
         };
 
-        let public_key = mc_t3_api::external::CompressedRistretto {
+        let public_key = mc_t3_api::external::v1::CompressedRistretto {
             data: utxo.tx_out.public_key.as_bytes().to_vec(),
-            ..Default::default()
         };
 
         let reported_direction = if sender_address_hash == our_short_address_hash {
-            mc_t3_api::ReportedDirection::REPORTED_DIRECTION_SEND
+            mc_t3_api::ReportedDirection::Send
         } else {
-            mc_t3_api::ReportedDirection::REPORTED_DIRECTION_RECEIVE
+            mc_t3_api::ReportedDirection::Receive
         };
 
         let ttx = TransparentTransaction {
@@ -154,9 +153,9 @@ impl T3Store {
             recipient_address_hash: recipient_address_hash.as_ref().to_vec(),
             token_id: utxo.token_id,
             amount: utxo.value,
-            public_key: Some(public_key).into(),
+            public_key: Some(public_key),
             public_key_hex: format!("{}", HexFmt(utxo.tx_out.public_key.as_bytes())),
-            reported_direction,
+            reported_direction: reported_direction.into(),
             ..Default::default()
         };
 
@@ -180,7 +179,7 @@ impl T3Store {
     ) -> Result<(), Error> {
         let index = self.get_transparent_tx_counter(db_txn)?;
         let index_bytes = index.to_be_bytes();
-        let tx_bytes = tx.write_to_bytes()?;
+        let tx_bytes = tx.encode_to_vec();
 
         db_txn.put(
             self.index_to_transparent_tx,
@@ -229,7 +228,7 @@ impl T3Store {
 
         Ok(Some((
             first_index,
-            TransparentTransaction::parse_from_bytes(transparent_tx_bytes)?,
+            TransparentTransaction::decode(transparent_tx_bytes)?,
         )))
     }
 

@@ -5,7 +5,7 @@ use grpcio::{ChannelBuilder, Environment};
 use mc_blockchain_types::BlockIndex;
 use mc_common::{logger::Logger, trace_time};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc};
+use mc_fog_api::{fog_common::BlockRange, fog_ledger};
 use mc_fog_uri::FogLedgerUri;
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::ConnectionUri;
@@ -14,8 +14,8 @@ use std::{ops::Range, sync::Arc};
 /// A non-attested connection to untrusted fog ledger endpoints
 pub struct FogUntrustedLedgerGrpcClient {
     uri: FogLedgerUri,
-    blocks_client: ledger_grpc::FogBlockApiClient,
-    tx_out_client: ledger_grpc::FogUntrustedTxOutApiClient,
+    blocks_client: fog_ledger::FogBlockApiClient,
+    tx_out_client: fog_ledger::FogUntrustedTxOutApiClient,
     creds: BasicCredentials,
     grpc_retry_config: GrpcRetryConfig,
     #[allow(dead_code)]
@@ -34,9 +34,9 @@ impl FogUntrustedLedgerGrpcClient {
 
         let ch = ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger);
 
-        let blocks_client = ledger_grpc::FogBlockApiClient::new(ch.clone());
+        let blocks_client = fog_ledger::FogBlockApiClient::new(ch.clone());
 
-        let tx_out_client = ledger_grpc::FogUntrustedTxOutApiClient::new(ch);
+        let tx_out_client = fog_ledger::FogUntrustedTxOutApiClient::new(ch);
 
         Self {
             uri,
@@ -55,18 +55,18 @@ impl FogUntrustedLedgerGrpcClient {
     pub fn get_blocks<'a>(
         &self,
         block_ranges: impl IntoIterator<Item = &'a Range<BlockIndex>>,
-    ) -> Result<ledger::BlockResponse, Error> {
+    ) -> Result<fog_ledger::BlockResponse, Error> {
         trace_time!(self.logger, "FogUntrustedLedgerGrpcClient::get_blocks");
 
-        let mut request = ledger::BlockRequest::new();
-        for iter_range in block_ranges.into_iter() {
-            request.ranges.push({
-                let mut range = BlockRange::new();
-                range.start_block = iter_range.start;
-                range.end_block = iter_range.end;
-                range
-            });
-        }
+        let request = fog_ledger::BlockRequest {
+            ranges: block_ranges
+                .into_iter()
+                .map(|range| BlockRange {
+                    start_block: range.start,
+                    end_block: range.end,
+                })
+                .collect(),
+        };
 
         self.grpc_retry_config
             .retry(|| {
@@ -85,14 +85,15 @@ impl FogUntrustedLedgerGrpcClient {
     pub fn get_tx_outs(
         &self,
         tx_out_pubkeys: impl IntoIterator<Item = CompressedRistrettoPublic>,
-    ) -> Result<ledger::TxOutResponse, Error> {
+    ) -> Result<fog_ledger::TxOutResponse, Error> {
         trace_time!(self.logger, "FogUntrustedLedgerGrpcClient::get_tx_outs");
 
-        let mut request = ledger::TxOutRequest::new();
-        for pubkey in tx_out_pubkeys.into_iter() {
-            // Convert to external::CompressedRistretto
-            request.tx_out_pubkeys.push((&pubkey).into());
-        }
+        let request = fog_ledger::TxOutRequest {
+            tx_out_pubkeys: tx_out_pubkeys
+                .into_iter()
+                .map(|pubkey| (&pubkey).into())
+                .collect(),
+        };
 
         self.grpc_retry_config
             .retry(|| {

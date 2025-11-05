@@ -1,6 +1,6 @@
 [package]
 name = "mc-ledger-sync"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -32,10 +32,10 @@ mc-util-uri = { workspace = true }
 
 crossbeam-channel = { workspace = true }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 mockall = { workspace = true }
-protobuf = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
 rand = { workspace = true }
 reqwest = { workspace = true, features = ["blocking", "rustls-tls", "gzip"] }
 retry = { workspace = true }

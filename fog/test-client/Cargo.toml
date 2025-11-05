@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-test-client"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -25,7 +25,7 @@ mc-util-grpc = { workspace = true }
 mc-util-keyfile = { workspace = true }
 mc-util-metrics = { workspace = true }
 mc-util-parse = { workspace = true }
-mc-util-telemetry = { workspace = true, features = ["jaeger"] }
+mc-util-telemetry = { workspace = true, features = ["otlp"] }
 mc-util-uri = { workspace = true }
 
 # fog
@@ -35,7 +35,7 @@ mc-fog-uri = { workspace = true }
 # third-party
 clap = { workspace = true, features = ["derive", "env"] }
 displaydoc = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 hex_fmt = { workspace = true }
 lazy_static = { workspace = true }
 maplit = { workspace = true }
@@ -46,6 +46,7 @@ rand = { workspace = true }
 retry = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [dev-dependencies]
 mc-common = { workspace = true, features = ["loggers"] }

@@ -6,9 +6,9 @@
 
 use crate::{
     input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedSubaddresses,
-    TxBuilderError,
+    TxBlueprint, TxBlueprintOutput, TxBuilderError,
 };
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{sync::Arc, vec::Vec};
 use core::{
     cmp::{min, Ordering},
     fmt::Debug,
@@ -20,18 +20,17 @@ use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
-    onetime_keys::create_shared_secret,
+    onetime_keys::{create_shared_secret, create_tx_out_public_key},
     ring_ct::{InputRing, OutputSecret},
     ring_signature::Scalar,
     tokens::Mob,
-    tx::{Tx, TxIn, TxOut, TxPrefix},
+    tx::{Tx, TxIn, TxOut},
     Amount, BlockVersion, FeeMap, MemoContext, MemoPayload, NewMemoError, RevealedTxOut,
     RevealedTxOutError, Token, TokenId,
 };
 use mc_transaction_extra::{
     SignedContingentInput, SignedContingentInputError, TxOutConfirmationNumber, UnsignedTx,
 };
-use mc_transaction_summary::TxOutSummaryUnblindingData;
 use mc_util_from_random::FromRandom;
 use mc_util_u64_ratio::U64Ratio;
 use rand_core::{CryptoRng, RngCore};
@@ -53,11 +52,11 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 
 /// Transaction output context is produced by add_output method
 /// Used for receipt creation
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TxOutContext {
-    /// TxOut that comes from a transaction builder
+    /// TxOut public key that comes from a transaction builder
     /// add_output/add_change_output
-    pub tx_out: TxOut,
+    pub tx_out_public_key: CompressedRistrettoPublic,
     /// confirmation that comes from a transaction builder
     /// add_output/add_change_output
     pub confirmation: TxOutConfirmationNumber,
@@ -74,14 +73,15 @@ pub struct TxOutContext {
 ///
 /// This is generic over MemoBuilder to allow injecting a policy for how to
 /// use the memos in the TxOuts.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// The block version that we are targeting for this transaction
     block_version: BlockVersion,
     /// The input materials used to form the transaction.
     input_materials: Vec<InputMaterials>,
-    /// The outputs created by the transaction, and associated output secrets.
-    outputs_and_secrets: Vec<(TxOut, TxOutSummaryUnblindingData)>,
+    /// The outputs that we will produce when going from a `TxBlueprint` to an
+    /// `UnsignedTx`.
+    outputs: Vec<TxBlueprintOutput>,
     /// The tombstone_block value, a block index in which the transaction
     /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
@@ -90,18 +90,10 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// id.
     fee: Amount,
     /// The source of validated fog pubkeys used for this transaction
-    fog_resolver: FPR,
+    fog_resolver: Arc<FPR>,
     /// The limit on the tombstone block value imposed pubkey_expiry values in
     /// fog pubkeys used so far
     fog_tombstone_block_limit: u64,
-    /// An policy object implementing MemoBuilder which constructs memos for
-    /// this transaction.
-    ///
-    /// This is an Option in order to allow working around the borrow checker.
-    /// Box<dyn ...> is used because having more generic parameters creates more
-    /// types that SDKs must bind to if they support multiple memo builder
-    /// types.
-    memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
     /// The minimum fee map, if available.
     fee_map: Option<FeeMap>,
 }
@@ -114,53 +106,24 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///   transaction
     /// * `fee` - The fee (and token id) to use for this transaction. Note: The
     ///   fee token id cannot be changed later, and before mixed transactions
-    ///   feature, every input and output must have this token id.
-    /// * `fog_resolver` - Source of validated fog keys to use with this
-    ///   transaction
-    /// * `memo_builder` - An object which creates memos for the TxOuts in this
-    ///   transaction
-    pub fn new<MB: MemoBuilder + 'static + Send + Sync>(
-        block_version: BlockVersion,
-        fee: Amount,
-        fog_resolver: FPR,
-        memo_builder: MB,
-    ) -> Result<Self, TxBuilderError> {
-        TransactionBuilder::new_with_box(block_version, fee, fog_resolver, Box::new(memo_builder))
-    }
-
-    /// Initializes a new TransactionBuilder, using a Box<dyn MemoBuilder>
-    /// instead of statically typed
-    ///
-    /// # Arguments
-    /// * `block_version` - The block version rules to use when building this
-    ///   transaction
-    /// * `fee` - The fee (and token id) to use for this transaction. Note: The
-    ///   fee token id cannot be changed later, and before mixed transactions
     ///   feature, every input and output must have the same token id as the
     ///   fee.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
-    /// * `memo_builder` - An object which creates memos for the TxOuts in this
-    ///   transaction
-    pub fn new_with_box(
+    pub fn new(
         block_version: BlockVersion,
         fee: Amount,
         fog_resolver: FPR,
-        mut memo_builder: Box<dyn MemoBuilder + Send + Sync>,
     ) -> Result<Self, TxBuilderError> {
-        // make sure that the memo builder
-        // is initialized to the same fee as the transaction builder
-        memo_builder.set_fee(fee)?;
-        Ok(TransactionBuilder {
+        Ok(Self {
             block_version,
-            input_materials: Vec::new(),
-            outputs_and_secrets: Vec::new(),
-            tombstone_block: u64::MAX,
             fee,
-            fog_resolver,
-            fog_tombstone_block_limit: u64::MAX,
-            memo_builder: Some(memo_builder),
             fee_map: None,
+            fog_resolver: Arc::new(fog_resolver),
+            fog_tombstone_block_limit: u64::MAX,
+            input_materials: Vec::new(),
+            outputs: Vec::new(),
+            tombstone_block: u64::MAX,
         })
     }
 
@@ -310,14 +273,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                         blinding,
                     };
 
-                    let unblinding_data = TxOutSummaryUnblindingData {
+                    self.outputs.push(TxBlueprintOutput::Sci {
+                        output: fractional_tx_out,
                         unmasked_amount: output_secret.into(),
-                        address: None,
-                        tx_private_key: None,
-                    };
-
-                    self.outputs_and_secrets
-                        .push((fractional_tx_out, unblinding_data));
+                    });
 
                     Ok(fractional_amount)
                 },
@@ -337,14 +296,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 blinding: partial_fill_change_blinding,
             };
 
-            let unblinding_data = TxOutSummaryUnblindingData {
+            self.outputs.push(TxBlueprintOutput::Sci {
+                output: fractional_change,
                 unmasked_amount: output_secret.into(),
-                address: None,
-                tx_private_key: None,
-            };
-
-            self.outputs_and_secrets
-                .push((fractional_change, unblinding_data));
+            });
         }
 
         self.add_presigned_input_helper(sci)?;
@@ -389,19 +344,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         {
             // Check if the required output is already there
             if !self
-                .outputs_and_secrets
+                .outputs
                 .iter()
-                .any(|(output, _sec)| output == required_output)
+                .any(|output| matches!(output, TxBlueprintOutput::Sci { output: tx_out, .. } if tx_out == required_output))
             {
                 // If not, add it
-                let unblinding_data = TxOutSummaryUnblindingData {
-                    unmasked_amount: unmasked_amount.clone(),
-                    address: None,
-                    tx_private_key: None,
-                };
-
-                self.outputs_and_secrets
-                    .push((required_output.clone(), unblinding_data));
+                self.outputs
+                    .push(TxBlueprintOutput::Sci {
+                        output: required_output.clone(),
+                        unmasked_amount: unmasked_amount.clone(),
+                    });
             }
         }
         // 2. Max tombstone block
@@ -498,24 +450,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         tx_private_key: Option<RistrettoPrivate>,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
-        // Taking self.memo_builder here means that we can call functions on &mut self,
-        // and pass them something that has captured the memo builder.
-        // Calling take() on Option<Box> is just moving a pointer.
-        let mut mb = self
-            .memo_builder
-            .take()
-            .expect("memo builder is missing, this is a logic error");
-        let result = self.add_output_with_fog_hint_address(
-            amount,
-            recipient,
-            recipient,
-            tx_private_key,
-            |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
-            rng,
-        );
-        // Put the memo builder back
-        self.memo_builder = Some(mb);
-        result
+        self.add_output_with_fog_hint_address(amount, recipient, recipient, tx_private_key, rng)
     }
 
     /// Add a standard change output to the transaction.
@@ -564,24 +499,49 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         change_destination: &ReservedSubaddresses,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
-        // Taking self.memo_builder here means that we can call functions on &mut self,
-        // and pass them something that has captured the memo builder.
-        // Calling take() on Option<Box> is just moving a pointer.
-        let mut mb = self
-            .memo_builder
-            .take()
-            .expect("memo builder is missing, this is a logic error");
-        let result = self.add_output_with_fog_hint_address(
-            amount,
-            &change_destination.change_subaddress,
+        let (hint, pubkey_expiry) = create_fog_hint(
             &change_destination.primary_address,
-            None,
-            |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
+            &*self.fog_resolver,
             rng,
+        )?;
+
+        if !self.block_version.mixed_transactions_are_supported()
+            && self.fee.token_id != amount.token_id
+        {
+            return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                self.fee.token_id,
+                amount.token_id,
+            ));
+        }
+
+        let tx_private_key = RistrettoPrivate::from_random(rng);
+
+        self.outputs.push(TxBlueprintOutput::Change {
+            change_destination: change_destination.clone(),
+            amount,
+            e_fog_hint: hint,
+            tx_private_key,
+        });
+
+        self.impose_tombstone_block_limit(pubkey_expiry);
+
+        let shared_secret = create_shared_secret(
+            change_destination.change_subaddress.view_public_key(),
+            &tx_private_key,
         );
-        // Put the memo builder back
-        self.memo_builder = Some(mb);
-        result
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
+
+        let tx_out_public_key = create_tx_out_public_key(
+            &tx_private_key,
+            change_destination.change_subaddress.spend_public_key(),
+        )
+        .into();
+
+        Ok(TxOutContext {
+            tx_out_public_key,
+            confirmation,
+            shared_secret,
+        })
     }
 
     /// Add an output to the reserved subaddress for gift codes
@@ -611,30 +571,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         reserved_subaddresses: &ReservedSubaddresses,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
-        // Taking self.memo_builder here means that we can call functions on &mut self,
-        // and pass them something that has captured the memo builder.
-        // Calling take() on Option<Box> is just moving a pointer.
-        let mut mb = self
-            .memo_builder
-            .take()
-            .expect("memo builder is missing, this is a logic error");
-        let result = self.add_output_with_fog_hint_address(
+        self.add_output_with_fog_hint_address(
             amount,
             &reserved_subaddresses.gift_code_subaddress,
             &reserved_subaddresses.primary_address,
             None,
-            |memo_ctxt| {
-                mb.make_memo_for_output(
-                    amount,
-                    &reserved_subaddresses.gift_code_subaddress,
-                    memo_ctxt,
-                )
-            },
             rng,
-        );
-        // Put the memo builder back
-        self.memo_builder = Some(mb);
-        result
+        )
     }
 
     /// Add an output to the transaction, using `fog_hint_address` to construct
@@ -664,10 +607,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
         tx_private_key: Option<RistrettoPrivate>,
-        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
-        let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
+        let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &*self.fog_resolver, rng)?;
 
         if !self.block_version.mixed_transactions_are_supported()
             && self.fee.token_id != amount.token_id
@@ -680,37 +622,23 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let tx_private_key = tx_private_key.unwrap_or_else(|| RistrettoPrivate::from_random(rng));
 
-        let (tx_out, shared_secret) = create_output_with_fog_hint(
-            self.block_version,
+        self.outputs.push(TxBlueprintOutput::Recipient {
+            recipient: recipient.clone(),
             amount,
-            recipient,
-            hint,
-            memo_fn,
-            &tx_private_key,
-        )?;
-
-        let (amount, blinding) = tx_out
-            .get_masked_amount()
-            .expect("TransactionBuilder created an invalid MaskedAmount")
-            .get_value(&shared_secret)
-            .expect("TransactionBuilder created an invalid Amount");
-        let output_secret = OutputSecret { amount, blinding };
-
-        let unblinding_data = TxOutSummaryUnblindingData {
-            unmasked_amount: output_secret.into(),
-            address: Some(recipient.clone()),
-            tx_private_key: Some(tx_private_key),
-        };
+            e_fog_hint: hint,
+            tx_private_key,
+        });
 
         self.impose_tombstone_block_limit(pubkey_expiry);
 
-        self.outputs_and_secrets
-            .push((tx_out.clone(), unblinding_data));
-
+        let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
+        let tx_out_public_key =
+            create_tx_out_public_key(&tx_private_key, recipient.spend_public_key()).into();
+
         Ok(TxOutContext {
-            tx_out,
+            tx_out_public_key,
             confirmation,
             shared_secret,
         })
@@ -739,15 +667,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// # Arguments
     /// * `fee_value` - Transaction fee value, in smallest representable units.
     pub fn set_fee(&mut self, fee_value: u64) -> Result<(), TxBuilderError> {
-        // Set the fee in memo builder first, so that it can signal an error
-        // before we set self.fee, and don't have to roll back.
-        let mut new_fee = self.fee;
-        new_fee.value = fee_value;
-        self.memo_builder
-            .as_mut()
-            .expect("memo builder is missing, this is a logic error")
-            .set_fee(new_fee)?;
-        self.fee = new_fee;
+        self.fee.value = fee_value;
         Ok(())
     }
 
@@ -770,9 +690,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.fee_map = Some(fee_map);
     }
 
-    /// Return low level data to sign and construct transactions with external
-    /// signers
-    pub fn build_unsigned<O: TxOutputsOrdering>(mut self) -> Result<UnsignedTx, TxBuilderError> {
+    /// Return blueprint that together with a memo builder can be used to
+    /// produce an unsigned tx.
+    pub fn build_blueprint(mut self) -> Result<TxBlueprint, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
         // block version zero has no special rules and so targeting block version 0
@@ -851,36 +771,47 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
 
-        // Outputs are sorted according to the rule (but generally by public key)
-        self.outputs_and_secrets
-            .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
-
-        let (outputs, tx_out_unblinding_data): (Vec<TxOut>, Vec<_>) =
-            self.outputs_and_secrets.drain(..).unzip();
-
-        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
-
-        let input_rings = self
+        let rings = self
             .input_materials
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<InputRing>, _>>()?;
 
-        Ok(UnsignedTx {
-            tx_prefix,
-            rings: input_rings,
-            tx_out_unblinding_data,
+        Ok(TxBlueprint {
+            inputs,
+            rings,
+            outputs: self.outputs,
+            fee: self.fee,
+            tombstone_block: self.tombstone_block,
             block_version: self.block_version,
         })
+    }
+
+    /// Return low level data to sign and construct transactions with external
+    /// signers
+    ///
+    /// # Arguments
+    /// * `memo_builder` - An object which creates memos for the TxOuts in this
+    ///   transaction
+    pub fn build_unsigned(
+        self,
+        memo_builder: impl MemoBuilder,
+    ) -> Result<UnsignedTx, TxBuilderError> {
+        self.build_unsigned_with_sorter::<DefaultTxOutputsOrdering>(memo_builder)
     }
 
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
         self,
         ring_signer: &S,
+        memo_builder: impl MemoBuilder,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(
+            ring_signer,
+            memo_builder,
+            rng,
+        )
     }
 
     /// Consume the builder and return the transaction with a comparer.
@@ -893,9 +824,22 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     >(
         self,
         ring_signer: &S,
+        memo_builder: impl MemoBuilder,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
+        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, memo_builder, rng)
+    }
+
+    /// Return low level data to sign and construct transactions with external
+    /// signers.
+    ///
+    /// Allows specifying a custom output ordering, which is useful for internal
+    /// testing.
+    fn build_unsigned_with_sorter<O: TxOutputsOrdering>(
+        self,
+        memo_builder: impl MemoBuilder,
+    ) -> Result<UnsignedTx, TxBuilderError> {
+        self.build_blueprint()?.to_unsigned_tx::<O>(memo_builder)
     }
 
     /// Consume the builder and return the transaction with a comparer
@@ -907,10 +851,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     >(
         self,
         ring_signer: &S,
+        memo_builder: impl MemoBuilder,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
         let fee_map = self.fee_map.clone();
-        let unsigned_tx = self.build_unsigned::<O>()?;
+        let unsigned_tx = self.build_unsigned_with_sorter::<O>(memo_builder)?;
         Ok(unsigned_tx.sign(ring_signer, fee_map.as_ref(), rng)?)
     }
 }
@@ -983,7 +928,7 @@ pub(crate) fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 pub mod transaction_builder_tests {
     use super::*;
     use crate::{
-        test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
+        test_utils::{create_output, get_input_credentials, get_transaction},
         BurnRedemptionMemoBuilder, DefragmentationMemoBuilder, EmptyMemoBuilder,
         GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder,
         RTHMemoBuilder,
@@ -995,7 +940,7 @@ pub mod transaction_builder_tests {
         burn_address, burn_address_view_private, AccountKey, ShortAddressHash,
         CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
     };
-    use mc_crypto_ring_signature_signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData};
+    use mc_crypto_ring_signature_signer::{InputSecret, NoKeysRingSigner};
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
@@ -1022,6 +967,88 @@ pub mod transaction_builder_tests {
         ]
     }
 
+    fn single_input_transaction_builder<FPR: FogPubkeyResolver + Clone>(
+        block_version: BlockVersion,
+        token_id: TokenId,
+        input_amount: u64,
+        fog_resolver: &FPR,
+        rng: &mut StdRng,
+    ) -> TransactionBuilder<FPR> {
+        let mut transaction_builder = TransactionBuilder::new(
+            block_version,
+            Amount::new(Mob::MINIMUM_FEE, token_id),
+            fog_resolver.clone(),
+        )
+        .unwrap();
+        transaction_builder.set_tombstone_block(2000);
+        transaction_builder.add_input(get_input_credentials(
+            block_version,
+            Amount::new(input_amount, token_id),
+            &AccountKey::random(rng),
+            fog_resolver,
+            rng,
+        ));
+        transaction_builder
+    }
+
+    #[track_caller]
+    fn find_output<'a>(tx: &'a Tx, recipient: &AccountKey, subaddress_index: u64) -> &'a TxOut {
+        tx.prefix
+            .outputs
+            .iter()
+            .find(|tx_out| subaddress_matches_tx_out(recipient, subaddress_index, tx_out).unwrap())
+            .expect("Didn't find output")
+    }
+
+    #[track_caller]
+    fn validate_tx_outs(
+        block_version: BlockVersion,
+        sender: &AccountKey,
+        tx_outs: &[(&TxOut, &AccountKey, u64)],
+    ) {
+        let all_subaddress_indices = tx_outs
+            .iter()
+            .map(|(_, _, subaddress_index)| *subaddress_index)
+            .collect::<Vec<_>>();
+
+        for (tx_out, recipient, subaddress_index) in tx_outs {
+            validate_tx_out(block_version, tx_out).unwrap();
+            assert!(subaddress_matches_tx_out(recipient, *subaddress_index, tx_out).unwrap());
+
+            all_subaddress_indices.iter().for_each(|index| {
+                if *index != *subaddress_index {
+                    assert!(!subaddress_matches_tx_out(recipient, *index, tx_out).unwrap());
+                }
+
+                if &sender != recipient {
+                    assert!(!subaddress_matches_tx_out(sender, *index, tx_out).unwrap());
+                }
+            });
+        }
+    }
+
+    #[track_caller]
+    fn validate_amount_and_get_memo(
+        block_version: BlockVersion,
+        tx_out: &TxOut,
+        recipient: &AccountKey,
+        expected_amount: Amount,
+    ) -> Option<MemoType> {
+        let ss = get_tx_out_shared_secret(
+            recipient.view_private_key(),
+            &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
+        );
+        let (amount, _) = tx_out.get_masked_amount().unwrap().get_value(&ss).unwrap();
+        assert_eq!(amount, expected_amount);
+
+        if block_version.e_memo_feature_is_supported() {
+            let memo = tx_out.e_memo.unwrap().decrypt(&ss);
+            Some(MemoType::try_from(&memo).expect("Couldn't decrypt memo"))
+        } else {
+            None
+        }
+    }
+
     #[test]
     // Spend a single input and send its full value to a single recipient.
     fn test_simple_transaction() {
@@ -1045,7 +1072,6 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, token_id),
                 fpr,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1059,7 +1085,7 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // The transaction should have a single input.
@@ -1129,7 +1155,6 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver,
-                EmptyMemoBuilder,
             )
             .unwrap();
 
@@ -1143,7 +1168,7 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // The transaction should have a single input.
@@ -1199,12 +1224,10 @@ pub mod transaction_builder_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
-            let sender = AccountKey::random(&mut rng);
             let recipient = AccountKey::random(&mut rng);
             let fog_hint_address = AccountKey::random_with_fog(&mut rng).default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
             let value = 1475 * MILLIMOB_TO_PICOMOB;
-            let amount = Amount { value, token_id };
 
             let fog_resolver = MockFogResolver(btreemap! {
                                 fog_hint_address
@@ -1218,17 +1241,13 @@ pub mod transaction_builder_tests {
                     },
             });
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(Mob::MINIMUM_FEE, token_id),
-                fog_resolver.clone(),
-                EmptyMemoBuilder,
-            )
-            .unwrap();
-
-            let input_credentials =
-                get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
-            transaction_builder.add_input(input_credentials);
+                token_id,
+                value,
+                &fog_resolver,
+                &mut rng,
+            );
 
             let _tx_out_context = transaction_builder
                 .add_output_with_fog_hint_address(
@@ -1236,13 +1255,12 @@ pub mod transaction_builder_tests {
                     &recipient.default_subaddress(),
                     &fog_hint_address,
                     None,
-                    |_| Ok(Default::default()),
                     &mut rng,
                 )
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                 .unwrap();
 
             // The transaction should have one output.
@@ -1277,12 +1295,10 @@ pub mod transaction_builder_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
-            let sender = AccountKey::random(&mut rng);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
             let value = 1475 * MILLIMOB_TO_PICOMOB;
-            let amount = Amount { value, token_id };
 
             let fog_resolver = MockFogResolver(btreemap! {
                                 recipient_address
@@ -1297,19 +1313,13 @@ pub mod transaction_builder_tests {
             });
 
             {
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    EmptyMemoBuilder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials =
-                    get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
-                transaction_builder.add_input(input_credentials);
+                    token_id,
+                    value,
+                    &fog_resolver,
+                    &mut rng,
+                );
 
                 transaction_builder
                     .add_output(
@@ -1320,7 +1330,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
 
                 // The transaction should have one output.
@@ -1334,19 +1344,15 @@ pub mod transaction_builder_tests {
             }
 
             {
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    EmptyMemoBuilder,
-                )
-                .unwrap();
+                    token_id,
+                    value,
+                    &fog_resolver,
+                    &mut rng,
+                );
 
                 transaction_builder.set_tombstone_block(500);
-
-                let input_credentials =
-                    get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -1357,7 +1363,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
 
                 // The transaction should have one output.
@@ -1400,24 +1406,13 @@ pub mod transaction_builder_tests {
             });
 
             {
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    EmptyMemoBuilder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -1436,7 +1431,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -1446,40 +1441,15 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
@@ -1583,24 +1553,13 @@ pub mod transaction_builder_tests {
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.enable_destination_memo();
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -1619,7 +1578,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -1629,113 +1588,75 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        recipient.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &recipient,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::AuthenticatedSender(memo) => {
-                                assert_eq!(
-                                    memo.sender_address_hash(),
-                                    ShortAddressHash::from(&sender_addr),
-                                    "lookup based on address hash failed"
-                                );
-                                assert!(
-                                    bool::from(
-                                        memo.validate(
-                                            &sender_addr,
-                                            &recipient
-                                                .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key,
-                                        )
-                                    ),
-                                    "hmac validation failed"
-                                );
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::AuthenticatedSender(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.sender_address_hash(),
+                            ShortAddressHash::from(&sender_addr),
+                            "lookup based on address hash failed"
+                        );
+                        assert!(
+                            bool::from(memo.validate(
+                                &sender_addr,
+                                &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                &output.public_key,
+                            )),
+                            "hmac validation failed"
+                        );
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        sender.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &sender,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
-                                assert_eq!(
-                                    memo.get_address_hash(),
-                                    &ShortAddressHash::from(&recipient_address),
-                                    "lookup based on address hash failed"
-                                );
-                                assert_eq!(memo.get_num_recipients(), 1);
-                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
-                                assert_eq!(
-                                    memo.get_total_outlay(),
-                                    value - change_value,
-                                    "outlay should be amount sent to recipient + fee"
-                                );
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::Destination(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.get_address_hash(),
+                            &ShortAddressHash::from(&recipient_address),
+                            "lookup based on address hash failed"
+                        );
+                        assert_eq!(memo.get_num_recipients(), 1);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+                        assert_eq!(
+                            memo.get_total_outlay(),
+                            value - change_value,
+                            "outlay should be amount sent to recipient + fee"
+                        );
                     }
                 }
             }
@@ -1746,26 +1667,14 @@ pub mod transaction_builder_tests {
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.enable_destination_memo();
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-                transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).unwrap();
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
-
+                transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).unwrap();
                 transaction_builder
                     .add_output(
                         Amount::new(value - change_value - 4 * Mob::MINIMUM_FEE, token_id),
@@ -1783,7 +1692,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -1793,113 +1702,75 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        recipient.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &recipient,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE * 4, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE * 4);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::AuthenticatedSender(memo) => {
-                                assert_eq!(
-                                    memo.sender_address_hash(),
-                                    ShortAddressHash::from(&sender_addr),
-                                    "lookup based on address hash failed"
-                                );
-                                assert!(
-                                    bool::from(
-                                        memo.validate(
-                                            &sender_addr,
-                                            &recipient
-                                                .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key,
-                                        )
-                                    ),
-                                    "hmac validation failed"
-                                );
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::AuthenticatedSender(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.sender_address_hash(),
+                            ShortAddressHash::from(&sender_addr),
+                            "lookup based on address hash failed"
+                        );
+                        assert!(
+                            bool::from(memo.validate(
+                                &sender_addr,
+                                &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                &output.public_key,
+                            )),
+                            "hmac validation failed"
+                        );
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        sender.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &sender,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
-                                assert_eq!(
-                                    memo.get_address_hash(),
-                                    &ShortAddressHash::from(&recipient_address),
-                                    "lookup based on address hash failed"
-                                );
-                                assert_eq!(memo.get_num_recipients(), 1);
-                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE * 4);
-                                assert_eq!(
-                                    memo.get_total_outlay(),
-                                    value - change_value,
-                                    "outlay should be amount sent to recipient + fee"
-                                );
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::Destination(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.get_address_hash(),
+                            &ShortAddressHash::from(&recipient_address),
+                            "lookup based on address hash failed"
+                        );
+                        assert_eq!(memo.get_num_recipients(), 1);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE * 4);
+                        assert_eq!(
+                            memo.get_total_outlay(),
+                            value - change_value,
+                            "outlay should be amount sent to recipient + fee"
+                        );
                     }
                 }
             }
@@ -1911,24 +1782,13 @@ pub mod transaction_builder_tests {
                 memo_builder.enable_destination_memo();
                 memo_builder.set_payment_request_id(42);
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -1947,7 +1807,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -1957,115 +1817,78 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        recipient.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &recipient,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
-                                assert_eq!(
-                                    memo.sender_address_hash(),
-                                    ShortAddressHash::from(&sender_addr),
-                                    "lookup based on address hash failed"
-                                );
-                                assert!(
-                                    bool::from(
-                                        memo.validate(
-                                            &sender_addr,
-                                            &recipient
-                                                .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key,
-                                        )
-                                    ),
-                                    "hmac validation failed"
-                                );
-                                assert_eq!(memo.payment_request_id(), 42);
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::AuthenticatedSenderWithPaymentRequestId(memo) = memo.unwrap()
+                        else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.sender_address_hash(),
+                            ShortAddressHash::from(&sender_addr),
+                            "lookup based on address hash failed"
+                        );
+                        assert!(
+                            bool::from(memo.validate(
+                                &sender_addr,
+                                &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                &output.public_key,
+                            )),
+                            "hmac validation failed"
+                        );
+                        assert_eq!(memo.payment_request_id(), 42);
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        sender.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &sender,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::DestinationWithPaymentRequestId(memo) => {
-                                assert_eq!(
-                                    memo.get_address_hash(),
-                                    &ShortAddressHash::from(&recipient_address),
-                                    "lookup based on address hash failed"
-                                );
-                                assert_eq!(memo.get_num_recipients(), 1);
-                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
-                                assert_eq!(
-                                    memo.get_total_outlay(),
-                                    value - change_value,
-                                    "outlay should be amount sent to recipient + fee"
-                                );
-                                assert_eq!(memo.get_payment_request_id(), 42);
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::DestinationWithPaymentRequestId(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.get_address_hash(),
+                            &ShortAddressHash::from(&recipient_address),
+                            "lookup based on address hash failed"
+                        );
+                        assert_eq!(memo.get_num_recipients(), 1);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+                        assert_eq!(
+                            memo.get_total_outlay(),
+                            value - change_value,
+                            "outlay should be amount sent to recipient + fee"
+                        );
+                        assert_eq!(memo.get_payment_request_id(), 42);
                     }
                 }
             }
@@ -2076,24 +1899,13 @@ pub mod transaction_builder_tests {
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.set_payment_request_id(47);
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -2112,7 +1924,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -2122,101 +1934,62 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        recipient.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &recipient,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
-                                assert_eq!(
-                                    memo.sender_address_hash(),
-                                    ShortAddressHash::from(&sender_addr),
-                                    "lookup based on address hash failed"
-                                );
-                                assert!(
-                                    bool::from(
-                                        memo.validate(
-                                            &sender_addr,
-                                            &recipient
-                                                .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key,
-                                        )
-                                    ),
-                                    "hmac validation failed"
-                                );
-                                assert_eq!(memo.payment_request_id(), 47);
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::AuthenticatedSenderWithPaymentRequestId(memo) = memo.unwrap()
+                        else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.sender_address_hash(),
+                            ShortAddressHash::from(&sender_addr),
+                            "lookup based on address hash failed"
+                        );
+                        assert!(
+                            bool::from(memo.validate(
+                                &sender_addr,
+                                &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                &output.public_key,
+                            )),
+                            "hmac validation failed"
+                        );
+                        assert_eq!(memo.payment_request_id(), 47);
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        sender.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &sender,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Unused(_) => {}
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        assert!(matches!(memo.unwrap(), MemoType::Unused(_)));
                     }
                 }
             }
@@ -2228,24 +2001,13 @@ pub mod transaction_builder_tests {
                 memo_builder.enable_destination_memo();
                 memo_builder.set_payment_request_id(47);
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -2264,7 +2026,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -2274,97 +2036,60 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        recipient.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &recipient,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Unused(_) => {}
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        assert!(matches!(memo.unwrap(), MemoType::Unused(_)));
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        sender.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &sender,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::DestinationWithPaymentRequestId(memo) => {
-                                assert_eq!(
-                                    memo.get_address_hash(),
-                                    &ShortAddressHash::from(&recipient_address),
-                                    "lookup based on address hash failed"
-                                );
-                                assert_eq!(memo.get_num_recipients(), 1);
-                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
-                                assert_eq!(
-                                    memo.get_total_outlay(),
-                                    value - change_value,
-                                    "outlay should be amount sent to recipient + fee"
-                                );
-                                assert_eq!(memo.get_payment_request_id(), 47);
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::DestinationWithPaymentRequestId(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.get_address_hash(),
+                            &ShortAddressHash::from(&recipient_address),
+                            "lookup based on address hash failed"
+                        );
+                        assert_eq!(memo.get_num_recipients(), 1);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+                        assert_eq!(
+                            memo.get_total_outlay(),
+                            value - change_value,
+                            "outlay should be amount sent to recipient + fee"
+                        );
+                        assert_eq!(memo.get_payment_request_id(), 47);
                     }
                 }
             }
@@ -2376,24 +2101,13 @@ pub mod transaction_builder_tests {
                 memo_builder.enable_destination_memo();
                 memo_builder.set_payment_intent_id(4855282172840142080);
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -2412,7 +2126,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -2422,115 +2136,77 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out)
-                            .unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
-                        .unwrap()
+                let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &sender,
+                    &[
+                        (output, &recipient, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &sender, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        recipient.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &recipient,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::AuthenticatedSenderWithPaymentIntentId(memo) => {
-                                assert_eq!(
-                                    memo.sender_address_hash(),
-                                    ShortAddressHash::from(&sender_addr),
-                                    "lookup based on address hash failed"
-                                );
-                                assert!(
-                                    bool::from(
-                                        memo.validate(
-                                            &sender_addr,
-                                            &recipient
-                                                .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key,
-                                        )
-                                    ),
-                                    "hmac validation failed"
-                                );
-                                assert_eq!(memo.payment_intent_id(), 4855282172840142080);
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::AuthenticatedSenderWithPaymentIntentId(memo) = memo.unwrap()
+                        else {
+                            panic!("unexpected memo type")
+                        };
+
+                        assert_eq!(
+                            memo.sender_address_hash(),
+                            ShortAddressHash::from(&sender_addr),
+                            "lookup based on address hash failed"
+                        );
+                        assert!(
+                            bool::from(memo.validate(
+                                &sender_addr,
+                                &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                &output.public_key,
+                            )),
+                            "hmac validation failed"
+                        );
+                        assert_eq!(memo.payment_intent_id(), 4855282172840142080);
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        sender.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &sender,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::DestinationWithPaymentIntentId(memo) => {
-                                assert_eq!(
-                                    memo.get_address_hash(),
-                                    &ShortAddressHash::from(&recipient_address),
-                                    "lookup based on address hash failed"
-                                );
-                                assert_eq!(memo.get_num_recipients(), 1);
-                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
-                                assert_eq!(
-                                    memo.get_total_outlay(),
-                                    value - change_value,
-                                    "outlay should be amount sent to recipient + fee"
-                                );
-                                assert_eq!(memo.get_payment_intent_id(), 4855282172840142080);
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::DestinationWithPaymentIntentId(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+                        assert_eq!(
+                            memo.get_address_hash(),
+                            &ShortAddressHash::from(&recipient_address),
+                            "lookup based on address hash failed"
+                        );
+                        assert_eq!(memo.get_num_recipients(), 1);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+                        assert_eq!(
+                            memo.get_total_outlay(),
+                            value - change_value,
+                            "outlay should be amount sent to recipient + fee"
+                        );
+                        assert_eq!(memo.get_payment_intent_id(), 4855282172840142080);
                     }
                 }
             }
@@ -2572,24 +2248,13 @@ pub mod transaction_builder_tests {
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&charlie));
                 memo_builder.enable_destination_memo();
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &alice,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -2608,7 +2273,7 @@ pub mod transaction_builder_tests {
                     .unwrap();
 
                 let tx = transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                     .unwrap();
 
                 // The transaction should have two output.
@@ -2618,36 +2283,16 @@ pub mod transaction_builder_tests {
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
 
-                let output = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find recipient's output");
-                let change = tx
-                    .prefix
-                    .outputs
-                    .iter()
-                    .find(|tx_out| {
-                        subaddress_matches_tx_out(&alice, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                    })
-                    .expect("Didn't find sender's output");
-
-                validate_tx_out(block_version, output).unwrap();
-                validate_tx_out(block_version, change).unwrap();
-
-                assert!(
-                    !subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
+                let output = find_output(&tx, &bob, DEFAULT_SUBADDRESS_INDEX);
+                let change = find_output(&tx, &alice, CHANGE_SUBADDRESS_INDEX);
+                validate_tx_outs(
+                    block_version,
+                    &alice,
+                    &[
+                        (output, &bob, DEFAULT_SUBADDRESS_INDEX),
+                        (change, &alice, CHANGE_SUBADDRESS_INDEX),
+                    ],
                 );
-                assert!(
-                    !subaddress_matches_tx_out(&alice, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&alice, CHANGE_SUBADDRESS_INDEX, output).unwrap()
-                );
-                assert!(!subaddress_matches_tx_out(&bob, CHANGE_SUBADDRESS_INDEX, output).unwrap());
                 assert!(
                     !subaddress_matches_tx_out(&charlie, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
@@ -2658,74 +2303,169 @@ pub mod transaction_builder_tests {
                 // The 1st output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        bob.view_private_key(),
-                        &RistrettoPublic::try_from(&output.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        output,
+                        &bob,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     );
-                    let (amount, _) = output.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::AuthenticatedSender(memo) => {
-                                assert_eq!(
-                                    memo.sender_address_hash(),
-                                    ShortAddressHash::from(&charlie_addr),
-                                    "lookup based on address hash failed"
-                                );
-                                assert!(
-                                    bool::from(memo.validate(
-                                        &charlie_addr,
-                                        &bob.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                        &output.public_key,
-                                    )),
-                                    "hmac validation failed"
-                                );
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::AuthenticatedSender(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+                        assert_eq!(
+                            memo.sender_address_hash(),
+                            ShortAddressHash::from(&charlie_addr),
+                            "lookup based on address hash failed"
+                        );
+                        assert!(
+                            bool::from(memo.validate(
+                                &charlie_addr,
+                                &bob.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                                &output.public_key,
+                            )),
+                            "hmac validation failed"
+                        );
                     }
                 }
 
                 // The 2nd output should belong to the correct recipient and have correct amount
                 // and have correct memo
                 {
-                    let ss = get_tx_out_shared_secret(
-                        alice.view_private_key(),
-                        &RistrettoPublic::try_from(&change.public_key).unwrap(),
+                    let memo = validate_amount_and_get_memo(
+                        block_version,
+                        change,
+                        &alice,
+                        Amount::new(change_value, token_id),
                     );
-                    let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-                    assert_eq!(amount.value, change_value);
-                    assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.unwrap().decrypt(&ss);
-                        match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                            MemoType::Destination(memo) => {
-                                assert_eq!(
-                                    memo.get_address_hash(),
-                                    &ShortAddressHash::from(&bob_address),
-                                    "lookup based on address hash failed"
-                                );
-                                assert_eq!(memo.get_num_recipients(), 1);
-                                assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
-                                assert_eq!(
-                                    memo.get_total_outlay(),
-                                    value - change_value,
-                                    "outlay should be amount sent to recipient + fee"
-                                );
-                            }
-                            _ => {
-                                panic!("unexpected memo type")
-                            }
-                        }
+                        let MemoType::Destination(memo) = memo.unwrap() else {
+                            panic!("unexpected memo type")
+                        };
+                        assert_eq!(
+                            memo.get_address_hash(),
+                            &ShortAddressHash::from(&bob_address),
+                            "lookup based on address hash failed"
+                        );
+                        assert_eq!(memo.get_num_recipients(), 1);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+                        assert_eq!(
+                            memo.get_total_outlay(),
+                            value - change_value,
+                            "outlay should be amount sent to recipient + fee"
+                        );
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn test_add_regular_output_after_change_output() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id = TokenId::MOB;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        let sender_addr = sender.default_subaddress();
+        let sender_change_dest = ReservedSubaddresses::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_address = recipient.default_subaddress();
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+        let change_value = 128 * MILLIMOB_TO_PICOMOB;
+        let fog_resolver = MockFogResolver::default();
+
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
+        memo_builder.enable_destination_memo();
+
+        let mut transaction_builder = single_input_transaction_builder(
+            block_version,
+            token_id,
+            value,
+            &fog_resolver,
+            &mut rng,
+        );
+
+        transaction_builder
+            .add_change_output(
+                Amount::new(change_value, token_id),
+                &sender_change_dest,
+                &mut rng,
+            )
+            .unwrap();
+
+        transaction_builder
+            .add_output(
+                Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
+                &recipient_address,
+                &mut rng,
+            )
+            .unwrap();
+
+        let tx = transaction_builder
+            .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
+            .unwrap();
+
+        assert_eq!(tx.prefix.outputs.len(), 2);
+
+        let output = find_output(&tx, &recipient, DEFAULT_SUBADDRESS_INDEX);
+        let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
+
+        // The 1st output should belong to the correct recipient and have correct amount
+        // and have correct memo
+        {
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                output,
+                &recipient,
+                Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
+            );
+
+            let MemoType::AuthenticatedSender(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+
+            assert_eq!(
+                memo.sender_address_hash(),
+                ShortAddressHash::from(&sender_addr),
+                "lookup based on address hash failed"
+            );
+            assert!(
+                bool::from(memo.validate(
+                    &sender_addr,
+                    &recipient.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
+                    &output.public_key,
+                )),
+                "hmac validation failed"
+            );
+        }
+
+        // The 2nd output should belong to the correct recipient and have correct amount
+        // and have correct memo
+        {
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                change,
+                &sender,
+                Amount::new(change_value, token_id),
+            );
+            let MemoType::Destination(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(
+                memo.get_address_hash(),
+                &ShortAddressHash::from(&recipient_address),
+                "lookup based on address hash failed"
+            );
+            assert_eq!(memo.get_num_recipients(), 1);
+            assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
+            assert_eq!(
+                memo.get_total_outlay(),
+                value - change_value,
+                "outlay should be amount sent to recipient + fee"
+            );
         }
     }
 
@@ -2760,30 +2500,19 @@ pub mod transaction_builder_tests {
                     },
             });
 
-            // Test that changing things after the change output causes an error as expected
+            // Multiple change outputs cause error
             {
                 let mut memo_builder = RTHMemoBuilder::default();
                 memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
                 memo_builder.enable_destination_memo();
 
-                let mut transaction_builder = TransactionBuilder::new(
+                let mut transaction_builder = single_input_transaction_builder(
                     block_version,
-                    Amount::new(Mob::MINIMUM_FEE, token_id),
-                    fog_resolver.clone(),
-                    memo_builder,
-                )
-                .unwrap();
-
-                transaction_builder.set_tombstone_block(2000);
-
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    Amount { value, token_id },
-                    &sender,
+                    token_id,
+                    value,
                     &fog_resolver,
                     &mut rng,
                 );
-                transaction_builder.add_input(input_credentials);
 
                 transaction_builder
                     .add_output(
@@ -2801,36 +2530,23 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                assert!(
-                    transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).is_err(),
-                    "setting fee after change output should be rejected"
-                );
-
-                assert!(
-                    transaction_builder
-                        .add_output(
-                            Amount::new(Mob::MINIMUM_FEE, token_id),
-                            &recipient_address,
-                            &mut rng
-                        )
-                        .is_err(),
-                    "Adding another output after change output should be rejected"
-                );
-
-                assert!(
-                    transaction_builder
-                        .add_change_output(
-                            Amount::new(change_value, token_id),
-                            &sender_change_dest,
-                            &mut rng
-                        )
-                        .is_err(),
-                    "Adding a second change output should be rejected"
-                );
-
                 transaction_builder
-                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
+
+                let result =
+                    transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
+
+                assert_matches!(
+                    result,
+                    Err(TxBuilderError::NewTx(NewTxError::Memo(
+                        NewMemoError::MultipleChangeOutputs
+                    )))
+                );
             }
         }
     }
@@ -2851,47 +2567,11 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let fpr = MockFogResolver::default();
-            let alice = AccountKey::random(&mut rng);
             let bob = AccountKey::random(&mut rng);
             let value = 1475;
-            let amount = Amount { value, token_id };
 
-            // Mint an initial collection of outputs, including one belonging to Alice.
-            let (ring, real_index) = get_ring(block_version, amount, 3, &alice, &fpr, &mut rng);
-            let real_output = ring[real_index].clone();
-
-            let onetime_private_key = recover_onetime_private_key(
-                &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-                alice.view_private_key(),
-                &alice.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
-            );
-
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TransactionBuilder does not validate membership proofs, but does require one
-                    // for each ring member.
-                    TxOutMembershipProof::default()
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                real_index,
-                OneTimeKeyDeriveData::OneTimeKey(onetime_private_key),
-                *alice.view_private_key(),
-            )
-            .unwrap();
-
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(Mob::MINIMUM_FEE, token_id),
-                fpr,
-                EmptyMemoBuilder,
-            )
-            .unwrap();
-            transaction_builder.add_input(input_credentials);
+            let mut transaction_builder =
+                single_input_transaction_builder(block_version, token_id, value, &fpr, &mut rng);
 
             let wrong_value = 999;
             transaction_builder
@@ -2902,7 +2582,8 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let result = transaction_builder.build(&NoKeysRingSigner {}, &mut rng);
+            let result =
+                transaction_builder.build(&NoKeysRingSigner {}, EmptyMemoBuilder, &mut rng);
             // Signing should fail if value is not conserved.
             match result {
                 Err(TxBuilderError::RingSignatureFailed(_)) => {} // Expected.
@@ -3052,25 +2733,16 @@ pub mod transaction_builder_tests {
             memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
             memo_builder.enable_destination_memo();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(Mob::MINIMUM_FEE, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount { value, token_id },
-                &sender,
+                token_id,
+                value,
                 &fog_resolver,
                 &mut rng,
             );
-            transaction_builder.add_input(input_credentials);
 
             let TxOutContext {
-                tx_out: burn_tx_out,
+                tx_out_public_key: burn_tx_out_public_key,
                 ..
             } = transaction_builder
                 .add_output(
@@ -3089,7 +2761,7 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                 .unwrap();
 
             assert_eq!(tx.prefix.outputs.len(), 2);
@@ -3097,15 +2769,16 @@ pub mod transaction_builder_tests {
                 .prefix
                 .outputs
                 .iter()
-                .position(|tx_out| tx_out.public_key == burn_tx_out.public_key)
+                .position(|tx_out| tx_out.public_key == burn_tx_out_public_key)
                 .unwrap();
             let change_idx = 1 - idx;
 
+            let burn_tx_out = &tx.prefix.outputs[idx];
             let change_tx_out = &tx.prefix.outputs[change_idx];
 
             // Test that sender's change subaddress owns the change, and not the burn tx out
             assert!(
-                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &burn_tx_out).unwrap()
+                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, burn_tx_out).unwrap()
             );
             assert!(
                 subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change_tx_out).unwrap()
@@ -3145,24 +2818,25 @@ pub mod transaction_builder_tests {
         let sender = AccountKey::random(&mut rng);
         let change_destination = ReservedSubaddresses::from(&sender);
 
+        let transaction_builder =
+            single_input_transaction_builder(block_version, token_id, 500, &fog_resolver, &mut rng);
+
         // Adding an output that is not to the burn address is not allowed.
         {
             let memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
-
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
+            let mut transaction_builder = transaction_builder.clone();
 
             let recipient = AccountKey::random(&mut rng);
-            let result = transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &recipient.default_subaddress(),
-                &mut rng,
-            );
+            transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &recipient.default_subaddress(),
+                    &mut rng,
+                )
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
+
             assert_matches!(
                 result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
@@ -3174,24 +2848,17 @@ pub mod transaction_builder_tests {
         // Adding two burn outputs is not allowed.
         {
             let memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
-
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
+            let mut transaction_builder = transaction_builder.clone();
 
             transaction_builder
                 .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
-            let result = transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &burn_address(),
-                &mut rng,
-            );
+            transaction_builder
+                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
             assert_matches!(
                 result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
@@ -3205,19 +2872,13 @@ pub mod transaction_builder_tests {
             let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
             memo_builder.enable_destination_memo();
 
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
+            let mut transaction_builder = transaction_builder.clone();
 
-            let result = transaction_builder.add_change_output(
-                Amount::new(10, token_id),
-                &change_destination,
-                &mut rng,
-            );
+            transaction_builder
+                .add_change_output(Amount::new(10, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
 
             assert_matches!(
                 result,
@@ -3227,67 +2888,22 @@ pub mod transaction_builder_tests {
             );
         }
 
-        // Setting fee after change output has been written is not allowed.
-        {
-            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
-            memo_builder.enable_destination_memo();
-
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            transaction_builder.set_fee(3).unwrap();
-
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(113, token_id),
-                &AccountKey::random(&mut rng),
-                &fog_resolver,
-                &mut rng,
-            );
-            transaction_builder.add_input(input_credentials);
-
-            transaction_builder
-                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
-                .unwrap();
-
-            transaction_builder
-                .add_change_output(Amount::new(10, token_id), &change_destination, &mut rng)
-                .unwrap();
-
-            let result = transaction_builder.set_fee(1235);
-            assert_matches!(
-                result,
-                Err(TxBuilderError::Memo(NewMemoError::FeeAfterChange))
-            );
-        }
-
         // Change in a different token is not allowed.
         {
             let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
             memo_builder.enable_destination_memo();
 
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, Mob::ID),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
+            let mut transaction_builder = transaction_builder.clone();
 
             transaction_builder
-                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
+                .add_output(Amount::new(490, Mob::ID), &burn_address(), &mut rng)
                 .unwrap();
 
-            let result = transaction_builder.add_change_output(
-                Amount::new(10, token_id),
-                &change_destination,
-                &mut rng,
-            );
+            transaction_builder
+                .add_change_output(Amount::new(10, Mob::ID), &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
 
             assert_matches!(
                 result,
@@ -3302,45 +2918,30 @@ pub mod transaction_builder_tests {
             let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
             memo_builder.enable_destination_memo();
 
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
+            let mut transaction_builder = transaction_builder.clone();
             transaction_builder.set_fee(3).unwrap();
 
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(113, token_id),
-                &AccountKey::random(&mut rng),
-                &fog_resolver,
-                &mut rng,
-            );
-            transaction_builder.add_input(input_credentials);
-
             let TxOutContext {
-                tx_out: burn_output,
+                tx_out_public_key: burn_output_public_key,
                 ..
             } = transaction_builder
-                .add_output(Amount::new(110, token_id), &burn_address(), &mut rng)
+                .add_output(Amount::new(497, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                 .expect("build tx");
 
             assert_eq!(tx.prefix.outputs.len(), 1);
-            assert_eq!(burn_output, tx.prefix.outputs[0]);
+            assert_eq!(burn_output_public_key, tx.prefix.outputs[0].public_key);
+            let burn_output = &tx.prefix.outputs[0];
 
             // Test that view key matching works with the burn tx out with burn address view
             // key
             let (amount, _) = burn_output
                 .view_key_match(&burn_address_view_private())
                 .unwrap();
-            assert_eq!(amount, Amount::new(110, token_id));
+            assert_eq!(amount, Amount::new(497, token_id));
 
             // Burn output should have a burn redemption memo
             let ss = get_tx_out_shared_secret(
@@ -3363,38 +2964,28 @@ pub mod transaction_builder_tests {
             let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
             memo_builder.enable_destination_memo();
 
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
+            let mut transaction_builder = transaction_builder.clone();
 
             transaction_builder.set_fee(3).unwrap();
 
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(113, token_id),
-                &AccountKey::random(&mut rng),
-                &fog_resolver,
-                &mut rng,
-            );
-            transaction_builder.add_input(input_credentials);
-
             let TxOutContext {
-                tx_out: burn_tx_out,
+                tx_out_public_key: burn_tx_out_public_key,
                 ..
             } = transaction_builder
                 .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
+            let change_amount = 500 - 100 - 3;
             transaction_builder
-                .add_change_output(Amount::new(10, token_id), &change_destination, &mut rng)
+                .add_change_output(
+                    Amount::new(change_amount, token_id),
+                    &change_destination,
+                    &mut rng,
+                )
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                 .expect("build tx");
 
             assert_eq!(tx.prefix.outputs.len(), 2);
@@ -3403,16 +2994,9 @@ pub mod transaction_builder_tests {
                 .prefix
                 .outputs
                 .iter()
-                .find(|tx_out| tx_out.public_key == burn_tx_out.public_key)
+                .find(|tx_out| tx_out.public_key == burn_tx_out_public_key)
                 .expect("Didn't find recipient's output");
-            let change_output = tx
-                .prefix
-                .outputs
-                .iter()
-                .find(|tx_out| {
-                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                })
-                .expect("Didn't find sender's output");
+            let change_output = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
 
             // Test that view key matching works with the burn tx out with burn address view
             // key
@@ -3430,7 +3014,7 @@ pub mod transaction_builder_tests {
             let (amount, _) = change_output
                 .view_key_match(sender.view_private_key())
                 .unwrap();
-            assert_eq!(amount, Amount::new(10, token_id));
+            assert_eq!(amount, Amount::new(change_amount, token_id));
 
             assert!(burn_output
                 .view_key_match(sender.view_private_key())
@@ -3452,30 +3036,28 @@ pub mod transaction_builder_tests {
             }
 
             // Change output should have a destination memo
-            let ss = get_tx_out_shared_secret(
-                sender.view_private_key(),
-                &RistrettoPublic::try_from(&change_output.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                change_output,
+                &sender,
+                Amount::new(change_amount, token_id),
             );
-            let memo = change_output.e_memo.unwrap().decrypt(&ss);
-            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                MemoType::Destination(memo) => {
-                    assert_eq!(
-                        memo.get_address_hash(),
-                        &ShortAddressHash::from(&burn_address()),
-                        "lookup based on address hash failed"
-                    );
-                    assert_eq!(memo.get_num_recipients(), 1);
-                    assert_eq!(memo.get_fee(), 3);
-                    assert_eq!(
-                        memo.get_total_outlay(),
-                        103,
-                        "outlay should be amount sent to recipient + fee"
-                    );
-                }
-                _ => {
-                    panic!("unexpected memo type")
-                }
-            }
+
+            let MemoType::Destination(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(
+                memo.get_address_hash(),
+                &ShortAddressHash::from(&burn_address()),
+                "lookup based on address hash failed"
+            );
+            assert_eq!(memo.get_num_recipients(), 1);
+            assert_eq!(memo.get_fee(), 3);
+            assert_eq!(
+                memo.get_total_outlay(),
+                103,
+                "outlay should be amount sent to recipient + fee"
+            );
         }
     }
 
@@ -3511,7 +3093,6 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                memo_builder,
             )
             .unwrap();
 
@@ -3526,19 +3107,17 @@ pub mod transaction_builder_tests {
             let tx_out_context1 = transaction_builder
                 .add_output(tx_out1_right_amount, &recipient_addr, &mut rng)
                 .unwrap();
-            let tx_out1 = tx_out_context1.tx_out;
 
             let tx_out_context2 = transaction_builder
                 .add_output(amount2, &recipient_addr, &mut rng)
                 .unwrap();
-            let tx_out2 = tx_out_context2.tx_out;
 
             transaction_builder
                 .add_change_output(change_amount, &sender_change_dest, &mut rng)
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                 .unwrap();
 
             assert_eq!(tx.prefix.outputs.len(), 3);
@@ -3546,26 +3125,24 @@ pub mod transaction_builder_tests {
                 .prefix
                 .outputs
                 .iter()
-                .position(|tx_out| tx_out.public_key == tx_out1.public_key)
+                .position(|tx_out| tx_out.public_key == tx_out_context1.tx_out_public_key)
                 .unwrap();
             let idx2 = tx
                 .prefix
                 .outputs
                 .iter()
-                .position(|tx_out| tx_out.public_key == tx_out2.public_key)
+                .position(|tx_out| tx_out.public_key == tx_out_context2.tx_out_public_key)
                 .unwrap();
             let change_idx = (0..3).find(|x| *x != idx1 && *x != idx2).unwrap();
 
+            let tx_out1 = &tx.prefix.outputs[idx1];
+            let tx_out2 = &tx.prefix.outputs[idx2];
             let change_tx_out = &tx.prefix.outputs[change_idx];
 
             // Test that sender's change subaddress owns the change, and not the other tx
             // outs
-            assert!(
-                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &tx_out1).unwrap()
-            );
-            assert!(
-                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &tx_out2).unwrap()
-            );
+            assert!(!subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out1).unwrap());
+            assert!(!subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out2).unwrap());
             assert!(
                 subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change_tx_out).unwrap()
             );
@@ -3573,10 +3150,10 @@ pub mod transaction_builder_tests {
             // Test that recipients's default subaddress owns the correct output, and not
             // the other tx outs
             assert!(
-                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &tx_out1).unwrap()
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out1).unwrap()
             );
             assert!(
-                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &tx_out2).unwrap()
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, tx_out2).unwrap()
             );
             assert!(!subaddress_matches_tx_out(
                 &recipient,
@@ -3646,7 +3223,6 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 fog_resolver.clone(),
-                memo_builder,
             )
             .unwrap();
 
@@ -3670,7 +3246,7 @@ pub mod transaction_builder_tests {
                 .add_change_output(change_amount, &sender_change_dest, &mut rng)
                 .unwrap();
 
-            transaction_builder.build(&NoKeysRingSigner {}, &mut rng)
+            transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng)
         };
 
         for block_version in 3..=*BlockVersion::MAX {
@@ -3711,27 +3287,17 @@ pub mod transaction_builder_tests {
         {
             // Initialize funding memo & transaction builders
             let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
-            let funding_input_amount = Amount::new(funding_input_amt, token_id);
             let funding_output_amount = Amount::new(funding_output_amt, token_id);
             let funding_change_output_amount =
                 Amount::new(funding_input_amt - funding_output_amt - fee, token_id);
-            let mut funding_transaction_builder = TransactionBuilder::new(
+            let mut funding_transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(fee, token_id),
-                fog_resolver.clone(),
-                funding_memo_builder,
-            )
-            .unwrap();
-
-            // Make sample input supply
-            let funding_input_credentials = get_input_credentials(
-                block_version,
-                funding_input_amount,
-                &sender,
+                token_id,
+                funding_input_amt,
                 &fog_resolver,
                 &mut rng,
             );
-            funding_transaction_builder.add_input(funding_input_credentials);
+            funding_transaction_builder.set_fee(fee).unwrap();
 
             // Fund gift code TxOut
             funding_transaction_builder
@@ -3751,29 +3317,14 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             let funding_tx = funding_transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, funding_memo_builder, &mut rng)
                 .unwrap();
 
             // The transaction should have exactly 2 outputs
             assert_eq!(funding_tx.prefix.outputs.len(), 2);
 
-            let funding_output = funding_tx
-                .prefix
-                .outputs
-                .iter()
-                .find(|tx_out| {
-                    subaddress_matches_tx_out(&sender, GIFT_CODE_SUBADDRESS_INDEX, tx_out).unwrap()
-                })
-                .expect("Didn't find gift code funding output");
-
-            let funding_change_output = funding_tx
-                .prefix
-                .outputs
-                .iter()
-                .find(|tx_out| {
-                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                })
-                .expect("Didn't gift code funding change output");
+            let funding_output = find_output(&funding_tx, &sender, GIFT_CODE_SUBADDRESS_INDEX);
+            let funding_change_output = find_output(&funding_tx, &sender, CHANGE_SUBADDRESS_INDEX);
 
             validate_tx_out(block_version, funding_output).unwrap();
             validate_tx_out(block_version, funding_change_output).unwrap();
@@ -3884,7 +3435,6 @@ pub mod transaction_builder_tests {
                 block_version,
                 Amount::new(fee, token_id),
                 fog_resolver.clone(),
-                sending_memo_builder,
             )
             .unwrap();
 
@@ -3912,42 +3462,29 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, sending_memo_builder, &mut rng)
                 .unwrap();
 
             // Verify the sender transaction was valid
             assert_eq!(tx.prefix.outputs.len(), 1);
 
-            let change = tx
-                .prefix
-                .outputs
-                .iter()
-                .find(|tx_out| {
-                    subaddress_matches_tx_out(&receiver, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                })
-                .expect("Didn't find sender's output");
+            let change = find_output(&tx, &receiver, CHANGE_SUBADDRESS_INDEX);
 
             validate_tx_out(block_version, change).unwrap();
 
             // Ensure change memo is correct
-            let ss = get_tx_out_shared_secret(
-                receiver.view_private_key(),
-                &RistrettoPublic::try_from(&change.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                change,
+                &receiver,
+                Amount::new(sending_output_amount.value, token_id),
             );
-            let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-            assert_eq!(amount.value, sending_output_amount.value);
-            assert_eq!(amount.token_id, token_id);
 
             if block_version.e_memo_feature_is_supported() {
-                let memo = change.e_memo.unwrap().decrypt(&ss);
-                match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                    MemoType::GiftCodeSender(memo) => {
-                        assert_eq!(memo.sender_note().unwrap(), note,);
-                    }
-                    _ => {
-                        panic!("unexpected memo type")
-                    }
-                }
+                let MemoType::GiftCodeSender(memo) = memo.unwrap() else {
+                    panic!("unexpected memo type")
+                };
+                assert_eq!(memo.sender_note().unwrap(), note);
             }
         }
 
@@ -3956,26 +3493,16 @@ pub mod transaction_builder_tests {
             let sample_index = 1;
             let cancellation_memo_builder = GiftCodeCancellationMemoBuilder::new(sample_index);
 
-            let cancellation_input_amount = Amount::new(funding_output_amt, token_id);
             let cancellation_output_amount = Amount::new(funding_output_amt - fee, token_id);
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(fee, token_id),
-                fog_resolver.clone(),
-                cancellation_memo_builder,
-            )
-            .unwrap();
-
-            // Make sample input supply
-            let input_credentials = get_input_credentials(
-                block_version,
-                cancellation_input_amount,
-                &sender,
+                token_id,
+                funding_output_amt,
                 &fog_resolver,
                 &mut rng,
             );
-            transaction_builder.add_input(input_credentials);
+            transaction_builder.set_fee(fee).unwrap();
 
             // Cancel gift code
             transaction_builder
@@ -3987,42 +3514,29 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, cancellation_memo_builder, &mut rng)
                 .unwrap();
 
             // The transaction should have exactly 1 output
             assert_eq!(tx.prefix.outputs.len(), 1);
 
-            let change = tx
-                .prefix
-                .outputs
-                .iter()
-                .find(|tx_out| {
-                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
-                })
-                .expect("Didn't find sender's output");
+            let change = find_output(&tx, &sender, CHANGE_SUBADDRESS_INDEX);
 
             validate_tx_out(block_version, change).unwrap();
 
             // Ensure change memo is correct
-            let ss = get_tx_out_shared_secret(
-                sender.view_private_key(),
-                &RistrettoPublic::try_from(&change.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                change,
+                &sender,
+                Amount::new(cancellation_output_amount.value, token_id),
             );
-            let (amount, _) = change.get_masked_amount().unwrap().get_value(&ss).unwrap();
-            assert_eq!(amount.value, cancellation_output_amount.value);
-            assert_eq!(amount.token_id, token_id);
 
             if block_version.e_memo_feature_is_supported() {
-                let memo = change.e_memo.unwrap().decrypt(&ss);
-                match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                    MemoType::GiftCodeCancellation(memo) => {
-                        assert_eq!(memo.cancelled_gift_code_index(), sample_index,);
-                    }
-                    _ => {
-                        panic!("unexpected memo type")
-                    }
-                }
+                let MemoType::GiftCodeCancellation(memo) = memo.unwrap() else {
+                    panic!("unexpected memo type")
+                };
+                assert_eq!(memo.cancelled_gift_code_index(), sample_index);
             }
         }
     }
@@ -4041,13 +3555,13 @@ pub mod transaction_builder_tests {
         {
             let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 BlockVersion::MAX,
-                Amount::new(1, token_id),
-                MockFogResolver::default(),
-                funding_memo_builder,
-            )
-            .unwrap();
+                token_id,
+                100,
+                &MockFogResolver::default(),
+                &mut rng,
+            );
 
             transaction_builder
                 .add_output(
@@ -4057,11 +3571,16 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let result = transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &sender_reserved_destinations.gift_code_subaddress,
-                &mut rng,
-            );
+            transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let result =
+                transaction_builder.build(&NoKeysRingSigner {}, funding_memo_builder, &mut rng);
             assert_matches!(
                 result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
@@ -4070,55 +3589,19 @@ pub mod transaction_builder_tests {
             );
         }
 
-        // Ensure we can't write change before funding or fund after change
+        // Ensure we can't write change before funding
         {
             let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 BlockVersion::MAX,
-                Amount::new(1, token_id),
-                MockFogResolver::default(),
-                funding_memo_builder,
-            )
-            .unwrap();
+                token_id,
+                100,
+                &MockFogResolver::default(),
+                &mut rng,
+            );
 
             // Try to write change before funding gift code and assert it errors
-            let result_change_before_output = transaction_builder.add_change_output(
-                Amount::new(100, token_id),
-                &sender_reserved_destinations,
-                &mut rng,
-            );
-
-            assert_matches!(
-                result_change_before_output,
-                Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::MissingOutput
-                )))
-            );
-
-            // Fund gift code & add change output in proper order
-            transaction_builder
-                .add_output(
-                    Amount::new(100, token_id),
-                    &sender_reserved_destinations.gift_code_subaddress,
-                    &mut rng,
-                )
-                .unwrap();
-
-            // Attempt to fund second gift code
-            let second_output = transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &sender_reserved_destinations.gift_code_subaddress,
-                &mut rng,
-            );
-
-            assert_matches!(
-                second_output,
-                Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::MultipleOutputs
-                )))
-            );
-
             transaction_builder
                 .add_change_output(
                     Amount::new(100, token_id),
@@ -4127,63 +3610,119 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            // Attempt to write an output after change
-            let output_after_change = transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &sender_reserved_destinations.gift_code_subaddress,
-                &mut rng,
-            );
+            let result =
+                transaction_builder.build(&NoKeysRingSigner {}, funding_memo_builder, &mut rng);
 
             assert_matches!(
-                output_after_change,
+                result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::OutputsAfterChange
+                    NewMemoError::MissingOutput
                 )))
             );
         }
 
-        // Ensure we can't write destination TxOuts for Cancellation & Sending
+        // Ensure we can't add two outputs
         {
-            let sender_memo_builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
-            let cancellation_memo_builder = GiftCodeCancellationMemoBuilder::new(50);
+            let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
 
-            let mut sending_transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 BlockVersion::MAX,
-                Amount::new(1, token_id),
-                MockFogResolver::default(),
-                sender_memo_builder,
-            )
-            .unwrap();
-
-            let mut cancellation_transaction_builder = TransactionBuilder::new(
-                BlockVersion::MAX,
-                Amount::new(1, token_id),
-                MockFogResolver::default(),
-                cancellation_memo_builder,
-            )
-            .unwrap();
-
-            let sender_result = sending_transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &sender_reserved_destinations.gift_code_subaddress,
+                token_id,
+                100,
+                &MockFogResolver::default(),
                 &mut rng,
             );
 
-            let cancellation_result = cancellation_transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &sender_reserved_destinations.gift_code_subaddress,
+            transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Attempt to fund second gift code, this will trigger an error when we build
+            transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let result =
+                transaction_builder.build(&NoKeysRingSigner {}, funding_memo_builder, &mut rng);
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+        }
+
+        // Ensure we can't write destination TxOuts for Cancellation
+        {
+            let cancellation_memo_builder = GiftCodeCancellationMemoBuilder::new(50);
+
+            let mut cancellation_transaction_builder = single_input_transaction_builder(
+                BlockVersion::MAX,
+                token_id,
+                100,
+                &MockFogResolver::default(),
+                &mut rng,
+            );
+
+            cancellation_transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let cancellation_result = cancellation_transaction_builder.build(
+                &NoKeysRingSigner {},
+                cancellation_memo_builder,
+                &mut rng,
+            );
+
+            assert_matches!(
+                cancellation_result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::DestinationMemoNotAllowed
+                )))
+            );
+        }
+
+        // Ensure we can't write destination TxOuts for Sending
+        {
+            let sender_memo_builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
+
+            let mut sending_transaction_builder = single_input_transaction_builder(
+                BlockVersion::MAX,
+                token_id,
+                100,
+                &MockFogResolver::default(),
+                &mut rng,
+            );
+
+            sending_transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let sender_result = sending_transaction_builder.build(
+                &NoKeysRingSigner {},
+                sender_memo_builder,
                 &mut rng,
             );
 
             assert_matches!(
                 sender_result,
-                Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::DestinationMemoNotAllowed
-                )))
-            );
-
-            assert_matches!(
-                cancellation_result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
                     NewMemoError::DestinationMemoNotAllowed
                 )))
@@ -4205,23 +3744,24 @@ pub mod transaction_builder_tests {
         {
             let memo_builder = DefragmentationMemoBuilder::default();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
+                token_id,
+                100,
+                &fog_resolver,
+                &mut rng,
+            );
 
             transaction_builder
                 .add_output(Amount::new(100, token_id), &change_address, &mut rng)
                 .unwrap();
 
-            let result = transaction_builder.add_output(
-                Amount::new(100, token_id),
-                &change_address,
-                &mut rng,
-            );
+            transaction_builder
+                .add_output(Amount::new(100, token_id), &change_address, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
+
             assert_matches!(
                 result,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
@@ -4234,19 +3774,19 @@ pub mod transaction_builder_tests {
         {
             let memo_builder = DefragmentationMemoBuilder::default();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            let result = transaction_builder.add_change_output(
-                Amount::new(0, token_id),
-                &change_destination,
+                token_id,
+                100,
+                &fog_resolver,
                 &mut rng,
             );
+
+            transaction_builder
+                .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
 
             assert_matches!(
                 result,
@@ -4256,65 +3796,27 @@ pub mod transaction_builder_tests {
             );
         }
 
-        // Setting fee after change output has been written is not allowed.
+        // Change in a different token is not allowed.
         {
             let memo_builder = DefragmentationMemoBuilder::default();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            transaction_builder.set_fee(3).unwrap();
-
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(113, token_id),
-                &sender,
+                Mob::ID,
+                100,
                 &fog_resolver,
                 &mut rng,
             );
-            transaction_builder.add_input(input_credentials);
 
             transaction_builder
-                .add_output(Amount::new(113, token_id), &change_address, &mut rng)
+                .add_output(Amount::new(100, Mob::ID), &change_address, &mut rng)
                 .unwrap();
 
             transaction_builder
                 .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
                 .unwrap();
 
-            let result = transaction_builder.set_fee(1235);
-            assert_matches!(
-                result,
-                Err(TxBuilderError::Memo(NewMemoError::FeeAfterChange))
-            );
-        }
-
-        // Change in a different token is not allowed.
-        {
-            let memo_builder = DefragmentationMemoBuilder::default();
-
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, Mob::ID),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            transaction_builder
-                .add_output(Amount::new(100, Mob::ID), &change_address, &mut rng)
-                .unwrap();
-
-            let result = transaction_builder.add_change_output(
-                Amount::new(0, token_id),
-                &change_destination,
-                &mut rng,
-            );
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
 
             assert_matches!(
                 result,
@@ -4328,31 +3830,22 @@ pub mod transaction_builder_tests {
         {
             let memo_builder = DefragmentationMemoBuilder::default();
 
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(113, token_id),
-                &sender,
+                token_id,
+                113,
                 &fog_resolver,
                 &mut rng,
             );
-            transaction_builder.add_input(input_credentials);
 
             transaction_builder
                 .add_output(Amount::new(113, token_id), &change_address, &mut rng)
                 .unwrap();
-            let result = transaction_builder.add_change_output(
-                Amount::new(43, token_id),
-                &change_destination,
-                &mut rng,
-            );
+            transaction_builder
+                .add_change_output(Amount::new(43, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.build(&NoKeysRingSigner {}, memo_builder, &mut rng);
 
             assert_matches!(
                 result,
@@ -4365,42 +3858,31 @@ pub mod transaction_builder_tests {
         // Test builds memos with no ID
         {
             let memo_builder = DefragmentationMemoBuilder::default();
-
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            transaction_builder.set_fee(3).unwrap();
-
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(432, token_id),
-                &sender,
+                token_id,
+                432,
                 &fog_resolver,
                 &mut rng,
             );
-            transaction_builder.add_input(input_credentials);
+            transaction_builder.set_fee(3).unwrap();
 
             let TxOutContext {
-                tx_out: defrag_tx_out,
+                tx_out_public_key: defrag_tx_out_public_key,
                 ..
             } = transaction_builder
                 .add_output(Amount::new(429, token_id), &change_address, &mut rng)
                 .unwrap();
 
             let TxOutContext {
-                tx_out: decoy_tx_out,
+                tx_out_public_key: decoy_tx_out_public_key,
                 ..
             } = transaction_builder
                 .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                 .expect("build tx");
 
             assert_eq!(tx.prefix.outputs.len(), 2);
@@ -4409,89 +3891,72 @@ pub mod transaction_builder_tests {
                 .prefix
                 .outputs
                 .iter()
-                .find(|tx_out| tx_out.public_key == defrag_tx_out.public_key)
+                .find(|tx_out| tx_out.public_key == defrag_tx_out_public_key)
                 .expect("Didn't find recipient's output");
             let decoy_output = tx
                 .prefix
                 .outputs
                 .iter()
-                .find(|tx_out| tx_out.public_key == decoy_tx_out.public_key)
+                .find(|tx_out| tx_out.public_key == decoy_tx_out_public_key)
                 .expect("Didn't find sender's output");
 
             // Defrag output should have a defrag memo
-            let ss = get_tx_out_shared_secret(
-                sender.view_private_key(),
-                &RistrettoPublic::try_from(&main_output.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                main_output,
+                &sender,
+                Amount::new(429, token_id),
             );
-            let memo = main_output.e_memo.unwrap().decrypt(&ss);
-            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.defrag_id(), 0u64);
-                    assert_eq!(memo.fee(), 3u64);
-                    assert_eq!(memo.total_outlay(), 432u64);
-                }
-                _ => {
-                    panic!("unexpected memo type")
-                }
-            }
+            let MemoType::Defragmentation(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(memo.defrag_id(), 0u64);
+            assert_eq!(memo.fee(), 3u64);
+            assert_eq!(memo.total_outlay(), 432u64);
 
             // Change output should have a 0 value defrag memo
-            let ss = get_tx_out_shared_secret(
-                sender.view_private_key(),
-                &RistrettoPublic::try_from(&decoy_output.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                decoy_output,
+                &sender,
+                Amount::new(0, token_id),
             );
-            let memo = decoy_output.e_memo.unwrap().decrypt(&ss);
-            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.defrag_id(), 0u64);
-                    assert_eq!(memo.fee(), 0u64);
-                    assert_eq!(memo.total_outlay(), 0u64);
-                }
-                _ => {
-                    panic!("unexpected memo type")
-                }
-            }
+            let MemoType::Defragmentation(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(memo.defrag_id(), 0u64);
+            assert_eq!(memo.fee(), 0u64);
+            assert_eq!(memo.total_outlay(), 0u64);
         }
 
         // Test builds memos with ID
         {
             let memo_builder = DefragmentationMemoBuilder::new(64);
-
-            let mut transaction_builder = TransactionBuilder::new(
+            let mut transaction_builder = single_input_transaction_builder(
                 block_version,
-                Amount::new(10, token_id),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            transaction_builder.set_fee(3).unwrap();
-
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount::new(432, token_id),
-                &sender,
+                token_id,
+                432,
                 &fog_resolver,
                 &mut rng,
             );
-            transaction_builder.add_input(input_credentials);
+            transaction_builder.set_fee(3).unwrap();
 
             let TxOutContext {
-                tx_out: defrag_tx_out,
+                tx_out_public_key: defrag_tx_out_public_key,
                 ..
             } = transaction_builder
                 .add_output(Amount::new(429, token_id), &change_address, &mut rng)
                 .unwrap();
 
             let TxOutContext {
-                tx_out: decoy_tx_out,
+                tx_out_public_key: decoy_tx_out_public_key,
                 ..
             } = transaction_builder
                 .add_change_output(Amount::new(0, token_id), &change_destination, &mut rng)
                 .unwrap();
 
             let tx = transaction_builder
-                .build(&NoKeysRingSigner {}, &mut rng)
+                .build(&NoKeysRingSigner {}, memo_builder, &mut rng)
                 .expect("build tx");
 
             assert_eq!(tx.prefix.outputs.len(), 2);
@@ -4500,48 +3965,42 @@ pub mod transaction_builder_tests {
                 .prefix
                 .outputs
                 .iter()
-                .find(|tx_out| tx_out.public_key == defrag_tx_out.public_key)
+                .find(|tx_out| tx_out.public_key == defrag_tx_out_public_key)
                 .expect("Didn't find recipient's output");
             let decoy_output = tx
                 .prefix
                 .outputs
                 .iter()
-                .find(|tx_out| tx_out.public_key == decoy_tx_out.public_key)
+                .find(|tx_out| tx_out.public_key == decoy_tx_out_public_key)
                 .expect("Didn't find sender's output");
 
             // Defrag output should have a defrag memo
-            let ss = get_tx_out_shared_secret(
-                sender.view_private_key(),
-                &RistrettoPublic::try_from(&main_output.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                main_output,
+                &sender,
+                Amount::new(429, token_id),
             );
-            let memo = main_output.e_memo.unwrap().decrypt(&ss);
-            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.defrag_id(), 64u64);
-                    assert_eq!(memo.fee(), 3u64);
-                    assert_eq!(memo.total_outlay(), 432u64);
-                }
-                _ => {
-                    panic!("unexpected memo type")
-                }
-            }
+            let MemoType::Defragmentation(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(memo.defrag_id(), 64u64);
+            assert_eq!(memo.fee(), 3u64);
+            assert_eq!(memo.total_outlay(), 432u64);
 
             // Change output should have a 0 value defrag memo
-            let ss = get_tx_out_shared_secret(
-                sender.view_private_key(),
-                &RistrettoPublic::try_from(&decoy_output.public_key).unwrap(),
+            let memo = validate_amount_and_get_memo(
+                block_version,
+                decoy_output,
+                &sender,
+                Amount::new(0, token_id),
             );
-            let memo = decoy_output.e_memo.unwrap().decrypt(&ss);
-            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
-                MemoType::Defragmentation(memo) => {
-                    assert_eq!(memo.defrag_id(), 64u64);
-                    assert_eq!(memo.fee(), 0u64);
-                    assert_eq!(memo.total_outlay(), 0u64);
-                }
-                _ => {
-                    panic!("unexpected memo type")
-                }
-            }
+            let MemoType::Defragmentation(memo) = memo.unwrap() else {
+                panic!("unexpected memo type")
+            };
+            assert_eq!(memo.defrag_id(), 64u64);
+            assert_eq!(memo.fee(), 0u64);
+            assert_eq!(memo.total_outlay(), 0u64);
         }
     }
 }

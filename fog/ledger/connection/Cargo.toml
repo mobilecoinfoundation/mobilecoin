@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-ledger-connection"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 license = "GPL-3.0"
@@ -33,9 +33,9 @@ aes-gcm = { workspace = true }
 der = { workspace = true }
 displaydoc = { workspace = true }
 futures = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
-protobuf = { workspace = true }
+prost = { workspace = true, features = ["prost-derive"] }
 retry = { workspace = true }
 sha2 = { workspace = true }
 

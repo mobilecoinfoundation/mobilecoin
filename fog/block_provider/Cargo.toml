@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-block-provider"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Provide blocks from a local or remote ledger database"
@@ -22,6 +22,6 @@ mc-watcher-api = { workspace = true }
 
 displaydoc = { workspace = true }
 dyn-clone = { workspace = true }
-grpcio = { workspace = true }
+grpcio = { workspace = true, features = ["prost-codec"] }
 
 [dev-dependencies]

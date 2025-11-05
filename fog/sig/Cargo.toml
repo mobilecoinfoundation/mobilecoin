@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sig"
-version = "7.0.2"
+version = "7.1.0"
 authors = ["MobileCoin"]
 edition = "2021"
 description = "Verify Fog Signatures"

@@ -6,7 +6,7 @@ use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_enclave_api::ClientSession;
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
-use mc_fog_api::{ledger::OutputResultCode, ledger_grpc::FogMerkleProofApi};
+use mc_fog_api::fog_ledger::{FogMerkleProofApi, OutputResultCode};
 use mc_fog_block_provider::{BlockProvider, Error as BlockProviderError};
 use mc_fog_ledger_enclave::{GetOutputsResponse, LedgerEnclaveProxy, OutputContext, OutputResult};
 use mc_fog_ledger_enclave_api::Error as EnclaveError;
