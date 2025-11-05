@@ -60,6 +60,7 @@ rayon = { workspace = true }
 retry = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [build-dependencies]
 mc-sgx-build = { workspace = true }

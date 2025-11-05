@@ -28,6 +28,19 @@ fn main() {
         config.validate_host().expect("Could not validate host");
     }
 
+    let _runtime = if mc_util_telemetry::telemetry_enabled() {
+        // Create a Tokio runtime for telemetry OTLP exporter
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime");
+        Some(runtime)
+    } else {
+        None
+    };
+
+    let _runtime_guard = _runtime.as_ref().map(|runtime| runtime.enter());
+
     let _tracer =
         setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer");
 

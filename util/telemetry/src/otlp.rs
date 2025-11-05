@@ -20,16 +20,19 @@ pub fn setup_default_tracer(service_name: &'static str) -> Result<Option<BoxedTr
     setup_default_tracer_with_tags(service_name, &[])
 }
 
+pub fn telemetry_enabled() -> bool {
+    std::env::var("MC_TELEMETRY")
+        .map(|val| val == "1" || val.to_lowercase() == "true")
+        .unwrap_or(false)
+}
+
 /// Set up a default tracer with the given extra tags.
 /// Telemetry is enabled iff env.MC_TELEMETRY is set to "1" or "true".
 pub fn setup_default_tracer_with_tags(
     service_name: &'static str,
     extra_tags: &[(&'static str, String)],
 ) -> Result<Option<BoxedTracer>, Error> {
-    let telemetry_enabled = std::env::var("MC_TELEMETRY")
-        .map(|val| val == "1" || val.to_lowercase() == "true")
-        .unwrap_or(false);
-    if !telemetry_enabled {
+    if !telemetry_enabled() {
         return Ok(None);
     }
 
