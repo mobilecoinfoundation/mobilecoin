@@ -349,6 +349,7 @@ jobs:
     with:
       ingest_color: blue
       namespace: ${{ needs.generate-metadata.outputs.namespace }}
+      domain_name: ${{ needs.generate-metadata.outputs.domain_name }}
       fog_distribution: false
       fog_and_minting: true
       mobilecoind: true
