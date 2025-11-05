@@ -5,7 +5,7 @@
 pub use opentelemetry::{
     global::BoxedTracer,
     trace::{mark_span_as_active, FutureExt, Span, SpanKind, TraceContextExt, Tracer},
-    Context, Key,
+    Context, Key, KeyValue,
 };
 
 use opentelemetry::{
@@ -13,6 +13,13 @@ use opentelemetry::{
     trace::{SpanBuilder, TraceId, TracerProvider},
 };
 use std::borrow::Cow;
+mod extractor;
+mod injector;
+mod otlp;
+
+pub use extractor::extract_context;
+pub use injector::InjectContext;
+pub use otlp::{setup_default_tracer, setup_default_tracer_with_tags, telemetry_enabled, Error};
 
 #[macro_export]
 macro_rules! tracer {
@@ -101,9 +108,3 @@ pub fn start_block_span<T: Tracer>(
 ) -> T::Span {
     block_span_builder(tracer, span_name, block_index).start(tracer)
 }
-
-#[cfg(feature = "otlp")]
-mod otlp;
-
-#[cfg(feature = "otlp")]
-pub use otlp::{setup_default_tracer, setup_default_tracer_with_tags, telemetry_enabled, Error};

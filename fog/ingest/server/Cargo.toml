@@ -46,7 +46,7 @@ mc-util-grpc = { workspace = true }
 mc-util-metrics = { workspace = true }
 mc-util-parse = { workspace = true }
 mc-util-serial = { workspace = true }
-mc-util-telemetry = { workspace = true, features = ["otlp"] }
+mc-util-telemetry = { workspace = true }
 mc-util-uri = { workspace = true }
 mc-watcher = { workspace = true }
 mc-watcher-api = { workspace = true }

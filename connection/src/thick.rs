@@ -43,7 +43,9 @@ use mc_rand::McRng;
 use mc_transaction_core::tx::Tx;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
 use mc_util_serial::encode;
+use mc_util_telemetry::InjectContext;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
+use opentelemetry::Context;
 use secrecy::{ExposeSecret, SecretVec};
 use sha2::Sha512;
 use std::{
@@ -269,6 +271,10 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
                 .add_str(CHAIN_ID_GRPC_HEADER, &self.chain_id)
                 .expect("Error setting chain-id header");
         }
+
+        // We ignore errors as it just breaks distributed tracing and shouldn't
+        // fail the actual grpc call
+        let _ = metadata_builder.inject_context(&Context::current());
 
         Ok(CallOption::default().headers(metadata_builder.build()))
     }

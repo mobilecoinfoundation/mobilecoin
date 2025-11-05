@@ -18,6 +18,7 @@ mc-crypto-noise = { workspace = true }
 mc-rand = { workspace = true }
 mc-util-grpc = { workspace = true }
 mc-util-serial = { workspace = true }
+mc-util-telemetry = { workspace = true }
 mc-util-uri = { workspace = true }
 
 aes-gcm = { workspace = true }
@@ -26,5 +27,6 @@ der = { workspace = true }
 displaydoc = { workspace = true }
 grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
+opentelemetry = { workspace = true }
 retry = { workspace = true }
 sha2 = { workspace = true }

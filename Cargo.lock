@@ -3033,7 +3033,9 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-grpc",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-uri",
+ "opentelemetry",
  "prost 0.11.9",
  "rand",
  "rand_hc",
@@ -3853,7 +3855,9 @@ dependencies = [
  "mc-rand",
  "mc-util-grpc",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-uri",
+ "opentelemetry",
  "retry",
  "sha2 0.10.8",
 ]
@@ -6451,6 +6455,7 @@ version = "7.1.0"
 dependencies = [
  "cfg-if 1.0.0",
  "displaydoc",
+ "grpcio",
  "hostname",
  "opentelemetry",
  "opentelemetry-otlp",
