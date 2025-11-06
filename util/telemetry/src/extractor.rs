@@ -1,16 +1,6 @@
 // Copyright (c) 2025 The MobileCoin Foundation
 
 //! Extractor for propagating trace context from gRPC metadata headers.
-//!
-//! # Example
-//!
-//! ```rust
-//! use mc_util_telemetry::extract_context;
-//! use opentelemetry::Context;
-//!
-//! // Extract context from incoming gRPC context
-//! let parent_context = tracing_utils::extract_context(rpc_ctx);
-//! ```
 
 use grpcio::{Metadata, RpcContext};
 use opentelemetry::{global, propagation::Extractor, Context};
