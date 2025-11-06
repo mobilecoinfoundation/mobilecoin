@@ -23,7 +23,9 @@ use mc_connection::{AttestationError, AttestedConnection, Connection};
 use mc_crypto_keys::X25519;
 use mc_rand::McRng;
 use mc_util_grpc::{BasicCredentials, GrpcCookieStore, CHAIN_ID_GRPC_HEADER};
+use mc_util_telemetry::InjectContext;
 use mc_util_uri::ConnectionUri;
+use opentelemetry::Context;
 use retry::OperationResult;
 use sha2::Sha512;
 
@@ -190,6 +192,10 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
                 .add_str(CHAIN_ID_GRPC_HEADER, &self.chain_id)
                 .expect("Could not add chain-id header");
         }
+
+        // We ignore errors as it just breaks distributed tracing and shouldn't
+        // fail the actual grpc call
+        let _ = metadata_builder.inject_context(&Context::current());
 
         retval.headers(metadata_builder.build())
     }
