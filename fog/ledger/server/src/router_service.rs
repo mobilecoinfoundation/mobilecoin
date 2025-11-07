@@ -16,7 +16,7 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::{rpc_internal_error, rpc_logger};
 use mc_util_metrics::ServiceMetrics;
-use mc_util_telemetry::tracer;
+use mc_util_telemetry::{tracer, TraceContextExt, Tracer};
 
 use std::{
     collections::HashMap,
@@ -138,6 +138,11 @@ where
 impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
     fn check_key_images(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let _guard = mc_util_telemetry::extract_context(&ctx)
+            .with_span(tracer.start("check_key_images"))
+            .attach();
+
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
             let shards = self.shards.read().expect("RwLock poisoned");
@@ -160,6 +165,11 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
 
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let _guard = mc_util_telemetry::extract_context(&ctx)
+            .with_span(tracer.start("auth"))
+            .attach();
+
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
             let result = handle_auth_request(self.enclave.clone(), request, logger.clone());
