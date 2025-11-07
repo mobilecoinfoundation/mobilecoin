@@ -1,6 +1,6 @@
 use displaydoc::Display;
 use opentelemetry::{global, global::BoxedTracer, trace::TraceError, KeyValue};
-use opentelemetry_sdk::{trace, Resource};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, trace, Resource};
 
 #[derive(Debug, Display)]
 pub enum Error {
@@ -35,6 +35,8 @@ pub fn setup_default_tracer_with_tags(
     if !telemetry_enabled() {
         return Ok(None);
     }
+
+    opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
 
     let local_hostname = hostname::get().map_err(Error::GetHostname)?;
 

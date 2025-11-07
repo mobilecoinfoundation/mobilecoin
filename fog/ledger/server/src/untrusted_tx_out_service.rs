@@ -75,8 +75,9 @@ impl FogUntrustedTxOutApi for UntrustedTxOutService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         let tracer = mc_util_telemetry::tracer!();
-        let _guard = mc_util_telemetry::extract_context(&ctx)
-            .with_span(tracer.start("get_tx_outs"))
+        let tracing_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = tracing_ctx
+            .with_span(tracer.start_with_context("get_tx_outs", &tracing_ctx))
             .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
