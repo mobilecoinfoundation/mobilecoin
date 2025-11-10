@@ -354,9 +354,10 @@ async fn route_query(
     request: &MultiKeyImageStoreRequest,
     shard_clients: Vec<Arc<KeyImageStoreApiClient>>,
 ) -> Result<Vec<(Arc<KeyImageStoreApiClient>, MultiKeyImageStoreResponse)>, RouterServerError> {
-    let responses = shard_clients
-        .into_iter()
-        .map(|shard_client| query_shard(request, shard_client));
+    let tracer = mc_util_telemetry::tracer!();
+    let responses = shard_clients.into_iter().map(|shard_client| {
+        query_shard(request, shard_client).with_context(create_context(&tracer, "query_shard"))
+    });
     try_join_all(responses).await
 }
 

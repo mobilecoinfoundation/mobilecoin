@@ -185,8 +185,9 @@ impl<E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<E> {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         let tracer = mc_util_telemetry::tracer!();
-        let _guard = mc_util_telemetry::extract_context(&ctx)
-            .with_span(tracer.start("auth"))
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = parent_ctx
+            .with_span(tracer.start_with_context("auth", &parent_ctx))
             .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
@@ -220,8 +221,9 @@ impl<E: LedgerEnclaveProxy> KeyImageStoreApi for KeyImageService<E> {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         let tracer = mc_util_telemetry::tracer!();
-        let _guard = mc_util_telemetry::extract_context(&ctx)
-            .with_span(tracer.start("multi_key_image_store_query"))
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = parent_ctx
+            .with_span(tracer.start_with_context("multi_key_image_store_query", &parent_ctx))
             .attach();
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {

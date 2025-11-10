@@ -30,7 +30,7 @@ fn main() {
     let _runtime_guard = _runtime.as_ref().map(|runtime| runtime.enter());
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
-        env!("CARGO_PKG_NAME"),
+        "fog_ledger_router",
         &[(
             "client_responser_id",
             config.client_responder_id.to_string(),

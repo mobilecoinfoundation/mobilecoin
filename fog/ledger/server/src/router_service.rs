@@ -16,7 +16,7 @@ use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_uri::KeyImageStoreUri;
 use mc_util_grpc::{rpc_internal_error, rpc_logger};
 use mc_util_metrics::ServiceMetrics;
-use mc_util_telemetry::{tracer, TraceContextExt, Tracer};
+use mc_util_telemetry::{tracer, FutureExt as TraceFutureExt, TraceContextExt, Tracer};
 
 use std::{
     collections::HashMap,
@@ -139,9 +139,9 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
     fn check_key_images(&mut self, ctx: RpcContext, request: Message, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         let tracer = mc_util_telemetry::tracer!();
-        let _guard = mc_util_telemetry::extract_context(&ctx)
-            .with_span(tracer.start("check_key_images"))
-            .attach();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let tracing_ctx =
+            parent_ctx.with_span(tracer.start_with_context("check_key_images", &parent_ctx));
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
@@ -155,6 +155,7 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
                 shards.values().cloned().collect(),
                 logger.clone(),
             )
+            .with_context(tracing_ctx)
             .map_err(move |err| log::error!(&logger, "failed to reply: {}", err))
             // TODO: Do more with the error than just push it to the log.
             .map(|_| ());
@@ -166,9 +167,8 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         let tracer = mc_util_telemetry::tracer!();
-        let _guard = mc_util_telemetry::extract_context(&ctx)
-            .with_span(tracer.start("auth"))
-            .attach();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let tracing_ctx = parent_ctx.with_span(tracer.start_with_context("auth", &parent_ctx));
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
@@ -188,6 +188,7 @@ impl<E: LedgerEnclaveProxy> FogKeyImageApi for LedgerRouterService<E> {
                 },
                 Err(rpc_status) => sink.fail(rpc_status),
             }
+            .with_context(tracing_ctx)
             .map_err(move |err| log::error!(&logger, "failed to reply: {}", err))
             .map(|_| ());
             ctx.spawn(future);
