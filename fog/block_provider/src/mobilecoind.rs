@@ -3,7 +3,7 @@
 use crate::{
     BlockDataWithTimestamp, BlockProvider, BlocksDataResponse, Error, TxOutInfoByPublicKeyResponse,
 };
-use grpcio::{ChannelBuilder, EnvBuilder};
+use grpcio::{CallOption, ChannelBuilder, EnvBuilder, MetadataBuilder};
 use mc_api::watcher::TimestampResultCode;
 use mc_blockchain_types::{Block, BlockData, BlockIndex};
 use mc_common::logger::{log, Logger};
@@ -14,6 +14,7 @@ use mc_mobilecoind_api::{
 };
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use mc_util_telemetry::{Context, InjectContext};
 use mc_watcher::watcher_db::{
     POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY, POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY,
 };
@@ -193,10 +194,17 @@ impl BlockProvider for MobilecoindBlockProvider {
         &self,
         tx_out_pub_keys: &[CompressedRistrettoPublic],
     ) -> Result<TxOutInfoByPublicKeyResponse, Error> {
+        let mut meta_builder = MetadataBuilder::new();
+        // We ignore the error here as it only affects distributed tracing and
+        // shouldn't prevent the request from being processed.
+        let _ = meta_builder.inject_context(&Context::current());
+        let call_opt = CallOption::default().headers(meta_builder.build());
         let request = GetTxOutResultsByPubKeyRequest {
             tx_out_public_keys: tx_out_pub_keys.iter().map(|pk| pk.into()).collect(),
         };
-        let response = self.client.get_tx_out_results_by_pub_key(&request)?;
+        let response = self
+            .client
+            .get_tx_out_results_by_pub_key_opt(&request, call_opt)?;
 
         let latest_block = Block::try_from(
             response
