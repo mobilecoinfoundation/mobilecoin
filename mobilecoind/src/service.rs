@@ -2700,11 +2700,18 @@ macro_rules! build_api {
                     request: $service_request_type,
                     sink: UnarySink<$service_response_type>,
                 ) {
-                    let tracer = mc_util_telemetry::tracer!();
                     let parent_ctx = mc_util_telemetry::extract_context(&ctx);
-                    let _guard = parent_ctx
-                        .with_span(tracer.start_with_context(stringify!($service_function_name), &parent_ctx))
-                        .attach();
+                    // Mobilecoind is often called by polling threads that don't
+                    // have a trace context (e.g. db polling thread). In those
+                    // cases, we don't want to record spans as they would be orphaned.
+                    let _guard = if parent_ctx.span().span_context().is_valid() {
+                        let tracer = mc_util_telemetry::tracer!();
+                        Some(parent_ctx
+                            .with_span(tracer.start_with_context(stringify!($service_function_name), &parent_ctx))
+                            .attach())
+                    } else {
+                        None
+                    };
                     let logger = rpc_logger(&ctx, &self.logger);
                     send_result(
                         ctx,
