@@ -53,6 +53,7 @@ use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
     BuildInfoService, ConnectionUriGrpcioServer,
 };
+use mc_util_telemetry::{TraceContextExt, Tracer};
 use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
 use std::sync::{Arc, Mutex, RwLock};
@@ -2699,6 +2700,11 @@ macro_rules! build_api {
                     request: $service_request_type,
                     sink: UnarySink<$service_response_type>,
                 ) {
+                    let tracer = mc_util_telemetry::tracer!();
+                    let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+                    let _guard = parent_ctx
+                        .with_span(tracer.start_with_context(stringify!($service_function_name), &parent_ctx))
+                        .attach();
                     let logger = rpc_logger(&ctx, &self.logger);
                     send_result(
                         ctx,

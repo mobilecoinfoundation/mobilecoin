@@ -3798,6 +3798,7 @@ dependencies = [
  "mc-mobilecoind-api",
  "mc-transaction-core",
  "mc-util-grpc",
+ "mc-util-telemetry",
  "mc-watcher",
  "mc-watcher-api",
 ]
