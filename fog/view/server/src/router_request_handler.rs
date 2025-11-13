@@ -9,7 +9,9 @@ use crate::{
     shard_responses_processor, SVC_COUNTERS,
 };
 use futures::{future::try_join_all, SinkExt, TryStreamExt};
-use grpcio::{ChannelBuilder, DuplexSink, RequestStream, RpcStatus, WriteFlags};
+use grpcio::{
+    CallOption, ChannelBuilder, DuplexSink, MetadataBuilder, RequestStream, RpcStatus, WriteFlags,
+};
 use mc_attest_api::attest;
 use mc_attest_enclave_api::SealedClientMessage;
 use mc_common::logger::{log, Logger};
@@ -22,7 +24,9 @@ use mc_fog_uri::FogViewStoreUri;
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{rpc_invalid_arg_error, ConnectionUriGrpcioChannel, ResponseStatus};
 use mc_util_metrics::GrpcMethodName;
-use mc_util_telemetry::{create_context, tracer, BoxedTracer, FutureExt, Tracer};
+use mc_util_telemetry::{
+    create_context, tracer, BoxedTracer, Context, FutureExt, InjectContext, Tracer,
+};
 use mc_util_uri::ConnectionUri;
 use std::{sync::Arc, time::Instant};
 
@@ -264,9 +268,10 @@ async fn route_query(
     request: &MultiViewStoreQueryRequest,
     shards: Vec<Shard>,
 ) -> Result<Vec<(Shard, MultiViewStoreQueryResponse)>, RouterServerError> {
-    let responses = shards
-        .into_iter()
-        .map(|shard_client| query_shard(request, shard_client));
+    let tracer = mc_util_telemetry::tracer!();
+    let responses = shards.into_iter().map(|shard_client| {
+        query_shard(request, shard_client).with_context(create_context(&tracer, "query_shard"))
+    });
     try_join_all(responses).await
 }
 
@@ -283,9 +288,14 @@ async fn query_shard(
         histogram.observe(start_time.elapsed().as_secs_f64());
     };
 
+    let mut meta_builder = MetadataBuilder::new();
+    // We ignore the error here as it only affects distributed tracing and
+    // shouldn't prevent the request from being processed.
+    let _ = meta_builder.inject_context(&Context::current());
+    let call_opt = CallOption::default().headers(meta_builder.build());
     let client_unary_receiver = shard
         .grpc_client
-        .multi_view_store_query_async(request)
+        .multi_view_store_query_async_opt(request, call_opt)
         .inspect_err(|err| {
             histogram_observe(&err.to_string());
         })?;
