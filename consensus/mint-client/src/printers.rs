@@ -67,7 +67,7 @@ pub fn print_mint_tx_prefix(prefix: &MintTxPrefix, indent: usize) {
             (&recipient).into(),
         )),
     };
-    let b58_recipient = wrapper.b58_encode().expect("failed encoding b58 address");
+    let b58_recipient = wrapper.b58_encode();
 
     let mut indent_str = INDENT_STR.repeat(indent);
     println!("{indent_str}MintTxPrefix:");

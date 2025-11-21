@@ -114,7 +114,7 @@ pub fn write_b58pubfile<P: AsRef<Path>>(
         wrapper: Some(printable_wrapper::Wrapper::PublicAddress(addr.into())),
     };
 
-    let data = wrapper.b58_encode().map_err(to_io_error)?;
+    let data = wrapper.b58_encode();
 
     File::create(path)?.write_all(data.as_ref())?;
     Ok(())
