@@ -964,7 +964,7 @@ impl Client {
             )),
         };
 
-        wrapper.b58_encode().unwrap()
+        wrapper.b58_encode()
     }
 }
 

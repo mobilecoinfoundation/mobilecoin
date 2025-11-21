@@ -33,7 +33,7 @@ fn test_b58pub_length<T: RngCore + CryptoRng>(
             wrapper: Some(printable_wrapper::Wrapper::PublicAddress((&addr).into())),
         };
 
-        let data = wrapper.b58_encode().unwrap();
+        let data = wrapper.b58_encode();
 
         if data.len() >= B58_ADDRESS_LIMIT {
             return true;

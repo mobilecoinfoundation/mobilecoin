@@ -14,7 +14,7 @@ fn main() {
                         (&public_address).into(),
                     )),
                 };
-                let b58_encoded = wrapper.b58_encode().unwrap();
+                let b58_encoded = wrapper.b58_encode();
                 B58EncodePublicAddressWithoutFog {
                     view_public_key: public_address.view_public_key().to_bytes(),
                     spend_public_key: public_address.spend_public_key().to_bytes(),
@@ -40,7 +40,7 @@ fn main() {
                         (&public_address).into(),
                     )),
                 };
-                let b58_encoded = wrapper.b58_encode().unwrap();
+                let b58_encoded = wrapper.b58_encode();
                 B58EncodePublicAddressWithFog {
                     view_public_key: public_address.view_public_key().to_bytes(),
                     spend_public_key: public_address.spend_public_key().to_bytes(),
