@@ -14,6 +14,7 @@
 
 use alloc::{
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 use core::{
@@ -441,7 +442,7 @@ impl AccountKey {
             &RistrettoPrivate::from_random(rng),
             "fog://example.com".to_string(),
             Default::default(),
-            <Vec<u8>>::default(),
+            vec![1u8; 128],
         )
     }
 
