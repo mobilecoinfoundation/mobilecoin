@@ -46,6 +46,10 @@ do
             json_flag="1"
             shift 1
             ;;
+        --domain-name )
+            domain_name="${2}"
+            shift 2
+            ;;
         *)
             echo "${1} unknown option"
             usage
@@ -56,6 +60,7 @@ done
 
 is_set token_id
 is_set NAMESPACE
+is_set domain_name
 
 # check block height before config tx
 block_count=$(get_block_count)
@@ -68,7 +73,7 @@ token_signer_key="/minting-keys/token_${token_id}_signer_1.public.pem"
 
 if [ "$json_flag" == "0" ]; then
     mc-consensus-mint-client generate-and-submit-mint-config-tx \
-        --node "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
+        --node "mc://node1.${NAMESPACE}.${domain_name}/" \
         --signing-key "${governor_signer_key}" \
         --token-id "${token_id}" \
         --config "1000000000:1:${token_signer_key}" \

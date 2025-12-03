@@ -236,7 +236,7 @@ jobs:
         rancher_token: ${{ secrets.DEV_RANCHER_TOKEN }}
         command: |
           /test/minting-config-tx-test.sh \
-            --json --token-id 8192
+            --json --token-id 8192 --domain-name ${{ inputs.domain_name }}
 
     - name: Test - Minting tx
       if: inputs.fog_and_minting
@@ -251,7 +251,7 @@ jobs:
         command: |
           /test/minting-tx-test.sh \
             --key-dir ${{ env.V3_DST_KEYS_DIR }} \
-            --token-id 8192
+            --token-id 8192 --domain-name ${{ inputs.domain_name }}
 
     - name: Test - use drain_accounts to transfer id 8192 balances to fog keys
       if: inputs.fog_and_minting

@@ -46,7 +46,7 @@ on:
         description: "cloud deployment region"
         type: string
         required: false
-        default: westeurope
+        default: italynorth
       domain_name:
         description: "Domain name for ingress hosts"
         type: string
