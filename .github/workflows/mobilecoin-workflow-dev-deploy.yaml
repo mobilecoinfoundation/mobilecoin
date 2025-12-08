@@ -312,10 +312,10 @@ jobs:
         chart_repo_password: ${{ github.token }}
         chart_repo_username: ${{ github.actor }}
 
-    - name: Generate fog-view-fsg-gr-z3 values file
+    - name: Generate fog-view-fsg-gr-z2 values file
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
-        cat <<EOF > "${VALUES_BASE_PATH}/fog-view-fsg-values-gr-z3.yaml"
+        cat <<EOF > "${VALUES_BASE_PATH}/fog-view-fsg-values-gr-z2.yaml"
 
         mobilecoin:
           network: ${{ inputs.namespace }}
@@ -324,18 +324,19 @@ jobs:
         fogView:
           responderID: fog.${{ inputs.namespace }}.${{ inputs.domain_name }}
           color: green
-          zone: ${{ inputs.deployment_region }}-3
+          zone: ${{ inputs.deployment_region }}-2
 
           stackConfig:
             network:
               default:
+                count: 1
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
                 blockHeightRetrieval:
                   blockCountURL: 'https://node1.${{ inputs.namespace }}.${{ inputs.domain_name }}/gw/consensus_common.BlockchainAPI/GetLastBlockInfo'
         EOF
 
-    - name: Deploy fog-view-fsg-gr-z3
+    - name: Deploy fog-view-fsg-gr-z2
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy-oci
@@ -343,8 +344,8 @@ jobs:
         chart_name: fog-view-fsg
         chart_version: ${{ inputs.version }}
         chart_wait_timeout: 10m
-        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z3.yaml
-        release_name: fog-view-fsg-gr-z3
+        chart_values: ${{ env.VALUES_BASE_PATH }}/fog-view-fsg-values-gr-z2.yaml
+        release_name: fog-view-fsg-gr-z2
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.INFRA_RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.DEV_RANCHER_URL }}
@@ -454,6 +455,7 @@ jobs:
           stackConfig:
             network:
               default:
+                count: 1
                 shardSize: ${{ inputs.shard_size }}
                 exceedBlockHeightBy: ${{ inputs.shard_exceed_block_height_by }}
                 blockHeightRetrieval:
