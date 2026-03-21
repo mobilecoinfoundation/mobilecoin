@@ -123,6 +123,12 @@ load_config() {
     read -rp "Block version [4]: " BLOCK_VERSION
     BLOCK_VERSION="${BLOCK_VERSION:-4}"
 
+    read -rp "Path to mainnet ledger data.mdb (leave empty to skip preload): " MAINNET_LEDGER_PATH
+    if [[ -n "${MAINNET_LEDGER_PATH:-}" && ! -f "$MAINNET_LEDGER_PATH" ]]; then
+        warn "Ledger file not found at ${MAINNET_LEDGER_PATH}"
+        MAINNET_LEDGER_PATH=""
+    fi
+
     read -rp "Docker Hub username (for image pulls): " DOCKERHUB_USERNAME
     [[ -z "$DOCKERHUB_USERNAME" ]] && warn "No Docker Hub credentials — image pulls will be rate-limited"
     if [[ -n "${DOCKERHUB_USERNAME:-}" ]]; then
@@ -146,6 +152,7 @@ S3_REGION="${S3_REGION}"
 BLOCK_VERSION="${BLOCK_VERSION}"
 CLUSTER_NAME="aks-\${AZURE_RESOURCE_GROUP}"
 ACR_NAME="acr\$(echo "\${AZURE_RESOURCE_GROUP}" | tr -d '-')"
+MAINNET_LEDGER_PATH="${MAINNET_LEDGER_PATH:-}"
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-}"
 DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:-}"
 EOF
@@ -309,6 +316,25 @@ phase_secrets() {
     ok "Kubernetes secrets created"
 }
 
+# === PHASE 4b: LEDGER PRELOAD ===
+
+phase_ledger_preload() {
+    if [[ -z "${MAINNET_LEDGER_PATH:-}" ]]; then
+        warn "No mainnet ledger path set — nodes will sync from scratch"
+        return
+    fi
+
+    log "Phase 4b: Preloading mainnet ledger into node PVs..."
+
+    bash "${SCRIPTS_DIR}/upload-ledger.sh" \
+        --ledger-path "$MAINNET_LEDGER_PATH" \
+        --resource-group "$AZURE_RESOURCE_GROUP" \
+        --namespace "$NAMESPACE" \
+        --num-nodes "$NUM_NODES"
+
+    ok "Mainnet ledger preloaded"
+}
+
 # === PHASE 5: DEPLOY SERVICES ===
 
 phase_deploy() {
@@ -364,6 +390,7 @@ main() {
     phase_build           # Build images from source, push to ACR
     phase_network_config
     phase_secrets
+    phase_ledger_preload  # Upload mainnet ledger into node PVs
     phase_deploy
     phase_validate
 
