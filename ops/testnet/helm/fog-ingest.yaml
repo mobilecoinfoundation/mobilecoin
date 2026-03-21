@@ -4,8 +4,7 @@
 # Only the active instance processes blocks.
 # The toolbox container is used for activation/retirement.
 
-imagePullSecrets:
-- name: docker-credentials
+imagePullSecrets: []
 
 image:
   org: mobilecoin

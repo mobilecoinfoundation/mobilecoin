@@ -3,8 +3,7 @@
 # Router + Store architecture (same pattern as fog-view).
 # Serves key image checks and Merkle proofs to clients.
 
-imagePullSecrets:
-- name: docker-credentials
+imagePullSecrets: []
 
 image:
   org: mobilecoin

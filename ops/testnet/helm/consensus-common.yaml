@@ -4,9 +4,8 @@
 # Per-node values (hostnames, fullnameOverride) are set via --set flags
 # in deploy.sh because each node is its own Helm release.
 
-# Pull from docker.io/mobilecoin — requires docker-credentials secret
-imagePullSecrets:
-- name: docker-credentials
+# AKS has AcrPull role on our ACR — no pull secret needed
+imagePullSecrets: []
 
 # Accept client connections (mobilecoind, wallets)
 acceptClientConnections: true

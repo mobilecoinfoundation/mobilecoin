@@ -237,6 +237,20 @@ EOF
     ok "Infrastructure provisioned"
 }
 
+# === PHASE 1b: BUILD IMAGES FROM SOURCE ===
+
+phase_build() {
+    log "Phase 1b: Building Docker images from source..."
+
+    bash "${SCRIPTS_DIR}/build-images.sh" \
+        --acr-name "$ACR_NAME" \
+        --tag "$IMAGE_TAG" \
+        --enclave-signing-key "${SECRETS_DIR}/enclave-signing-key.pem" \
+        --push
+
+    ok "Images built and pushed to ${ACR_NAME}.azurecr.io"
+}
+
 # === PHASE 2: KEY GENERATION ===
 
 phase_keys() {
@@ -304,6 +318,7 @@ phase_deploy() {
         --namespace "$NAMESPACE" \
         --num-nodes "$NUM_NODES" \
         --image-tag "$IMAGE_TAG" \
+        --image-org "${ACR_NAME}.azurecr.io" \
         --domain "$TESTNET_DOMAIN" \
         --block-version "$BLOCK_VERSION" \
         --helm-dir "$HELM_DIR"
@@ -346,6 +361,7 @@ main() {
 
     phase_keys            # Keys first — terraform needs the postgres password
     phase_terraform
+    phase_build           # Build images from source, push to ACR
     phase_network_config
     phase_secrets
     phase_deploy

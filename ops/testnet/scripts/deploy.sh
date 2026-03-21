@@ -15,6 +15,7 @@ IMAGE_TAG=""
 DOMAIN=""
 BLOCK_VERSION="4"
 HELM_DIR=""
+IMAGE_ORG="mobilecoin"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -24,6 +25,7 @@ while [[ $# -gt 0 ]]; do
         --domain)        DOMAIN="$2"; shift 2 ;;
         --block-version) BLOCK_VERSION="$2"; shift 2 ;;
         --helm-dir)      HELM_DIR="$2"; shift 2 ;;
+        --image-org)     IMAGE_ORG="$2"; shift 2 ;;
         *)               echo "Unknown: $1" >&2; exit 1 ;;
     esac
 done
@@ -67,6 +69,7 @@ wait_ready() {
 }
 
 echo "Deploying MobileCoin testnet to namespace: ${NAMESPACE}"
+echo "  Image org:     ${IMAGE_ORG}"
 echo "  Image tag:     ${IMAGE_TAG}"
 echo "  Domain:        ${DOMAIN}"
 echo "  Block version: ${BLOCK_VERSION}"
@@ -83,6 +86,7 @@ echo "=== Consensus Nodes ==="
 for i in $(seq 1 "$NUM_NODES"); do
     helm_deploy "consensus-node-${i}" "${CHARTS_DIR}/consensus-node" \
         -f "${HELM_DIR}/consensus-common.yaml" \
+        --set "image.org=${IMAGE_ORG}" \
         --set "image.tag=${IMAGE_TAG}" \
         --set "node.config.peerHostname=peer${i}.${DOMAIN}" \
         --set "node.config.clientHostname=node${i}.${DOMAIN}" \
@@ -104,6 +108,7 @@ echo "=== Fog Report ==="
 
 helm_deploy "fog-report" "${CHARTS_DIR}/fog-report" \
     -f "${HELM_DIR}/fog-report.yaml" \
+    --set "image.org=${IMAGE_ORG}" \
     --set "image.tag=${IMAGE_TAG}" \
     --set "fogReport.hosts[0]=fog-report.${DOMAIN}" \
     --set "mobilecoin.network=testnet" \
@@ -122,6 +127,7 @@ echo "=== Fog Ingest ==="
 
 helm_deploy "fog-ingest" "${CHARTS_DIR}/fog-ingest" \
     -f "${HELM_DIR}/fog-ingest.yaml" \
+    --set "image.org=${IMAGE_ORG}" \
     --set "image.tag=${IMAGE_TAG}" \
     --set "mobilecoin.network=testnet" \
     --set "mobilecoin.partner=mc"
@@ -139,6 +145,7 @@ echo "=== Fog View ==="
 
 helm_deploy "fog-view" "${CHARTS_DIR}/fog-view-fsg" \
     -f "${HELM_DIR}/fog-view.yaml" \
+    --set "image.org=${IMAGE_ORG}" \
     --set "image.tag=${IMAGE_TAG}" \
     --set "fogView.responderID=fog-view.${DOMAIN}:443" \
     --set "mobilecoin.network=testnet" \
@@ -156,6 +163,7 @@ echo "=== Fog Ledger ==="
 
 helm_deploy "fog-ledger" "${CHARTS_DIR}/fog-ledger-fsg" \
     -f "${HELM_DIR}/fog-ledger.yaml" \
+    --set "image.org=${IMAGE_ORG}" \
     --set "image.tag=${IMAGE_TAG}" \
     --set "fogLedger.responderID=fog-ledger.${DOMAIN}:443" \
     --set "mobilecoin.network=testnet" \
@@ -173,6 +181,7 @@ echo "=== Mobilecoind ==="
 
 helm_deploy "mobilecoind" "${CHARTS_DIR}/mobilecoind" \
     -f "${HELM_DIR}/mobilecoind.yaml" \
+    --set "image.org=${IMAGE_ORG}" \
     --set "image.tag=${IMAGE_TAG}" \
     --set "mobilecoin.network=testnet" \
     --set "mobilecoin.partner=mc"
