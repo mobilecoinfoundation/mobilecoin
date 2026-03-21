@@ -1,0 +1,13 @@
+# Secrets directory — NEVER commit this
+secrets/
+
+# Terraform state — contains sensitive values
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/tfplan
+terraform/terraform.tfvars
+
+# Generated config
+env.sh
