@@ -4,8 +4,9 @@
 # Per-node values (hostnames, fullnameOverride) are set via --set flags
 # in deploy.sh because each node is its own Helm release.
 
-# No docker-credentials needed when using ACR with managed identity
-imagePullSecrets: []
+# Pull from docker.io/mobilecoin — requires docker-credentials secret
+imagePullSecrets:
+- name: docker-credentials
 
 # Accept client connections (mobilecoind, wallets)
 acceptClientConnections: true

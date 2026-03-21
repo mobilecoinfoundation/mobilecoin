@@ -4,7 +4,8 @@
 # Dev faucet is ENABLED for testnet — creates test MOB on demand.
 # Never enable devFaucet on mainnet.
 
-imagePullSecrets: []
+imagePullSecrets:
+- name: docker-credentials
 
 replicaCount: 1
 

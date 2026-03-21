@@ -29,17 +29,21 @@ S3_BUCKET=""
 S3_REGION=""
 DOMAIN=""
 AZURE_RESOURCE_GROUP=""
+DOCKER_USERNAME=""
+DOCKER_PASSWORD=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --secrets-dir)      SECRETS_DIR="$2"; shift 2 ;;
-        --namespace)        NAMESPACE="$2"; shift 2 ;;
-        --num-nodes)        NUM_NODES="$2"; shift 2 ;;
-        --s3-bucket)        S3_BUCKET="$2"; shift 2 ;;
-        --s3-region)        S3_REGION="$2"; shift 2 ;;
-        --domain)           DOMAIN="$2"; shift 2 ;;
-        --resource-group)   AZURE_RESOURCE_GROUP="$2"; shift 2 ;;
-        *)                  echo "Unknown: $1" >&2; exit 1 ;;
+        --secrets-dir)       SECRETS_DIR="$2"; shift 2 ;;
+        --namespace)         NAMESPACE="$2"; shift 2 ;;
+        --num-nodes)         NUM_NODES="$2"; shift 2 ;;
+        --s3-bucket)         S3_BUCKET="$2"; shift 2 ;;
+        --s3-region)         S3_REGION="$2"; shift 2 ;;
+        --domain)            DOMAIN="$2"; shift 2 ;;
+        --resource-group)    AZURE_RESOURCE_GROUP="$2"; shift 2 ;;
+        --docker-username)   DOCKER_USERNAME="$2"; shift 2 ;;
+        --docker-password)   DOCKER_PASSWORD="$2"; shift 2 ;;
+        *)                   echo "Unknown: $1" >&2; exit 1 ;;
     esac
 done
 
@@ -182,6 +186,31 @@ apply_configmap "sentry" \
     --from-literal="fog-ledger-sentry-dsn=" \
     --from-literal="fog-view-sentry-dsn=" \
     --from-literal="fog-report-sentry-dsn=" 2>/dev/null || true
+
+# ─── Docker Hub pull credentials ──────────────────────────────────
+#
+# The Helm charts expect imagePullSecrets: [name: docker-credentials]
+# pointing to docker.io/mobilecoin. Without this, image pulls will
+# be rate-limited or fail on private images.
+
+echo "  docker-credentials..."
+
+_DU="${DOCKER_USERNAME:-${DOCKERHUB_USERNAME:-}}"
+_DP="${DOCKER_PASSWORD:-${DOCKERHUB_TOKEN:-}}"
+
+if [[ -z "$_DU" || -z "$_DP" ]]; then
+    warn_msg="WARNING: Docker Hub credentials not provided."
+    warn_msg+=" Set --docker-username/--docker-password or"
+    warn_msg+=" DOCKERHUB_USERNAME/DOCKERHUB_TOKEN env vars."
+    warn_msg+=" Image pulls will be rate-limited."
+    echo "    ${warn_msg}"
+else
+    kubectl create secret docker-registry docker-credentials \
+        --docker-server=https://index.docker.io/v1/ \
+        --docker-username="$_DU" \
+        --docker-password="$_DP" \
+        --dry-run=client -o yaml | kubectl apply ${NS} -f -
+fi
 
 echo ""
 echo "All secrets and configmaps created in namespace: ${NAMESPACE}"

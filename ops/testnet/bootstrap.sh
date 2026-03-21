@@ -123,6 +123,13 @@ load_config() {
     read -rp "Block version [4]: " BLOCK_VERSION
     BLOCK_VERSION="${BLOCK_VERSION:-4}"
 
+    read -rp "Docker Hub username (for image pulls): " DOCKERHUB_USERNAME
+    [[ -z "$DOCKERHUB_USERNAME" ]] && warn "No Docker Hub credentials — image pulls will be rate-limited"
+    if [[ -n "${DOCKERHUB_USERNAME:-}" ]]; then
+        read -rsp "Docker Hub token/password: " DOCKERHUB_TOKEN
+        echo ""
+    fi
+
     # Write config
     cat > "$config_path" <<EOF
 # MobileCoin Testnet Configuration
@@ -139,6 +146,8 @@ S3_REGION="${S3_REGION}"
 BLOCK_VERSION="${BLOCK_VERSION}"
 CLUSTER_NAME="aks-\${AZURE_RESOURCE_GROUP}"
 ACR_NAME="acr\$(echo "\${AZURE_RESOURCE_GROUP}" | tr -d '-')"
+DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-}"
+DOCKERHUB_TOKEN="${DOCKERHUB_TOKEN:-}"
 EOF
     # shellcheck source=/dev/null
     source "$config_path"
@@ -268,6 +277,11 @@ phase_secrets() {
     # Create namespace if needed
     kubectl create namespace "$NAMESPACE" 2>/dev/null || true
 
+    local docker_args=()
+    if [[ -n "${DOCKERHUB_USERNAME:-}" ]]; then
+        docker_args+=(--docker-username "$DOCKERHUB_USERNAME" --docker-password "$DOCKERHUB_TOKEN")
+    fi
+
     bash "${SCRIPTS_DIR}/create-secrets.sh" \
         --secrets-dir "$SECRETS_DIR" \
         --namespace "$NAMESPACE" \
@@ -275,7 +289,8 @@ phase_secrets() {
         --s3-bucket "$S3_BUCKET" \
         --s3-region "$S3_REGION" \
         --domain "$TESTNET_DOMAIN" \
-        --resource-group "$AZURE_RESOURCE_GROUP"
+        --resource-group "$AZURE_RESOURCE_GROUP" \
+        "${docker_args[@]+"${docker_args[@]}"}"
 
     ok "Kubernetes secrets created"
 }

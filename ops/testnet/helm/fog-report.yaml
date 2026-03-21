@@ -3,7 +3,8 @@
 # Non-SGX service. Serves fog report verification certificates.
 # Clients use these to verify fog responses are authentic.
 
-imagePullSecrets: []
+imagePullSecrets:
+- name: docker-credentials
 
 fogReport:
   replicaCount: 1

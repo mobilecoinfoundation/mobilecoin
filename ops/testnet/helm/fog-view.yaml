@@ -4,7 +4,8 @@
 # Router: handles client gRPC requests
 # Store: holds fog view shards, reads from recovery DB
 
-imagePullSecrets: []
+imagePullSecrets:
+- name: docker-credentials
 
 image:
   org: mobilecoin
