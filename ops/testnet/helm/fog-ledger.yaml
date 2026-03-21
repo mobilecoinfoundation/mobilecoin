@@ -1,0 +1,93 @@
+# Fog Ledger (FSG) — testnet overrides
+#
+# Router + Store architecture (same pattern as fog-view).
+# Serves key image checks and Merkle proofs to clients.
+
+imagePullSecrets: []
+
+image:
+  org: mobilecoin
+  name: fog-ledger
+
+fogLedger:
+  color: 'blue'
+  zone: ''
+  responderID: ''
+
+  ports:
+    grpc: 3228
+    http: 8228
+    mgmt: 8000
+
+  router:
+    replicaCount: 1
+
+    resources:
+      limits:
+        sgx.intel.com/epc: 512Ki
+        memory: 2Gi
+      requests:
+        sgx.intel.com/epc: 512Ki
+        memory: 2Gi
+        cpu: 1100m
+
+    nodeSelector:
+      dcap: 'true'
+
+    tolerations:
+    - key: dcap
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
+
+    podAnnotations:
+      sgx.intel.com/quote-provider: fog-ledger-router
+
+    configMap:
+      data:
+        PLACEHOLDER: 'empty'
+
+  store:
+    replicaCount: 1
+
+    resources:
+      limits:
+        sgx.intel.com/epc: 512Ki
+        memory: 3Gi
+      requests:
+        sgx.intel.com/epc: 512Ki
+        memory: 3Gi
+        cpu: 1100m
+
+    nodeSelector:
+      dcap: 'true'
+
+    tolerations:
+    - key: dcap
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
+
+    podAnnotations:
+      sgx.intel.com/quote-provider: fog-ledger-store
+      cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
+
+    configMap:
+      data:
+        MC_OMAP_CAPACITY: '4194304'
+
+  externalConfigMaps:
+    sentry:
+      name: sentry
+
+  externalSecrets: {}
+
+  stackConfig:
+    network:
+      test:
+        shardSize: 400000
+        exceedBlockHeightBy: 10000
+        count: 2
+
+jaegerTracing:
+  enabled: false

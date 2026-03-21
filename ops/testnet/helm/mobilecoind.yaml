@@ -1,0 +1,51 @@
+# Mobilecoind — testnet overrides
+#
+# Blockchain daemon + JSON API gateway + dev faucet.
+# Dev faucet is ENABLED for testnet — creates test MOB on demand.
+# Never enable devFaucet on mainnet.
+
+imagePullSecrets: []
+
+replicaCount: 1
+
+mobilecoind:
+  image:
+    org: mobilecoin
+    name: mobilecoind
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      memory: 5Gi
+      cpu: 1000m
+    limits:
+      memory: 10Gi
+
+# No SGX needed
+nodeSelector: {}
+
+# Testnet: smaller storage
+persistence:
+  enabled: true
+  spec:
+    storageClassName: managed-premium
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 100Gi
+
+# Dev faucet disabled — requires sample-keys-seeds secret with
+# INITIAL_KEYS_SEED which must match the keys used to generate
+# the origin block. Enable after setting up sample key generation.
+devFaucet:
+  enabled: false
+
+externalConfigMaps:
+  mobilecoind:
+    name: fog-mobilecoind
+
+externalSecrets: {}
+
+jaegerTracing:
+  enabled: false

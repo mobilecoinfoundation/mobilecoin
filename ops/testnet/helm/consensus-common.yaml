@@ -1,0 +1,87 @@
+# Consensus node — testnet overrides
+#
+# This file is shared across all consensus node instances.
+# Per-node values (hostnames, fullnameOverride) are set via --set flags
+# in deploy.sh because each node is its own Helm release.
+
+# No docker-credentials needed when using ACR with managed identity
+imagePullSecrets: []
+
+# Accept client connections (mobilecoind, wallets)
+acceptClientConnections: true
+
+image:
+  org: mobilecoin
+
+node:
+  # SGX: 512Ki EPC, DCAP attestation
+  resources:
+    limits:
+      sgx.intel.com/epc: 512Ki
+    requests:
+      cpu: 1
+      memory: 10Gi
+      sgx.intel.com/epc: 512Ki
+
+  nodeSelector:
+    dcap: 'true'
+
+  tolerations:
+  - key: dcap
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+  podAnnotations:
+    sgx.intel.com/quote-provider: node
+    cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
+
+  # Testnet: smaller storage, faster startup
+  persistence:
+    enabled: true
+    spec:
+      storageClassName: managed-premium
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
+
+  # Wait up to 2 hours for initial sync
+  startupProbe:
+    failureThreshold: 240
+
+  config:
+    blockVersion: '4'
+    ledgerFromArchiveOnly: false
+
+  # Testnet ingress: use Let's Encrypt staging to avoid rate limits
+  ingress:
+    enabled: true
+    common:
+      tls:
+        clusterIssuer: letsencrypt-staging
+      blocklist:
+        enabled: false
+      annotations:
+        haproxy.org/server-ssl: 'false'
+        haproxy.org/timeout-client: 239s
+        haproxy.org/timeout-server: 239s
+    grpc:
+      annotations:
+        haproxy.org/server-proto: 'h2'
+
+  # Sentry disabled for testnet
+  externalConfigMaps:
+    sentry:
+      name: sentry
+    tokensConfig:
+      name: tokens-config
+    # networkConfig name is auto-generated per instance
+
+  externalSecrets: {}
+  # ledgerDistribution and msgSignerKey names are auto-generated per instance
+
+# Jaeger tracing (enable if Jaeger collector is deployed)
+jaegerTracing:
+  enabled: false

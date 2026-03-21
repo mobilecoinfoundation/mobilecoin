@@ -1,0 +1,47 @@
+# Fog Report — testnet overrides
+#
+# Non-SGX service. Serves fog report verification certificates.
+# Clients use these to verify fog responses are authentic.
+
+imagePullSecrets: []
+
+fogReport:
+  replicaCount: 1
+
+  image:
+    org: mobilecoin
+    name: fogreport
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  # No SGX needed — runs on any node
+  nodeSelector: {}
+  tolerations: []
+
+  configMap:
+    data:
+      POSTGRES_IDLE_TIMEOUT: '60'
+      POSTGRES_MAX_LIFETIME: '120'
+      POSTGRES_CONNECTION_TIMEOUT: '5'
+      POSTGRES_MAX_CONNECTIONS: '3'
+
+  externalConfigMaps:
+    sentry:
+      name: sentry
+    postgresReader:
+      name: fog-recovery-reader-0-postgresql
+
+  externalSecrets:
+    postgresReader:
+      name: fog-recovery-reader-0-postgresql
+    signingCert:
+      name: fog-report-signing-cert
+
+jaegerTracing:
+  enabled: false

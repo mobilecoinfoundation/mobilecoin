@@ -1,0 +1,74 @@
+# Fog Ingest — testnet overrides
+#
+# 2 replicas: 1 active, 1 hot standby.
+# Only the active instance processes blocks.
+# The toolbox container is used for activation/retirement.
+
+imagePullSecrets: []
+
+image:
+  org: mobilecoin
+
+fogIngest:
+  replicaCount: 2
+
+  image:
+    org: mobilecoin
+    name: fogingest
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      sgx.intel.com/epc: 512Ki
+      memory: 3Gi
+    requests:
+      sgx.intel.com/epc: 512Ki
+      memory: 3Gi
+      cpu: 1000m
+
+  nodeSelector:
+    dcap: 'true'
+
+  tolerations:
+  - key: dcap
+    operator: Equal
+    value: 'true'
+    effect: NoSchedule
+
+  podAnnotations:
+    sgx.intel.com/quote-provider: fog-ingest
+    cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
+
+  rust:
+    backtrace: full
+    log: info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn
+
+  configMap:
+    data:
+      POSTGRES_IDLE_TIMEOUT: '60'
+      POSTGRES_MAX_LIFETIME: '120'
+      POSTGRES_CONNECTION_TIMEOUT: '5'
+      POSTGRES_MAX_CONNECTIONS: '3'
+
+  externalConfigMaps:
+    sentry:
+      name: sentry
+    mobilecoind:
+      name: fog-mobilecoind
+    postgres:
+      name: fog-recovery-postgresql
+
+  externalSecrets:
+    ias:
+      name: ias
+    postgres:
+      name: fog-recovery-postgresql
+
+toolbox:
+  image:
+    org: mobilecoin
+    name: bootstrap-tools
+    pullPolicy: IfNotPresent
+
+jaegerTracing:
+  enabled: false
