@@ -10,8 +10,6 @@ If you believe you have discovered a security vulnerability, please report it to
 
 Please do not publicly disclose a vulnerability until we have had a reasonable opportunity to investigate and remediate the issue.
 
----
-
 # Security Bounty Program
 
 Sentz operates a security bounty program and may provide rewards for eligible vulnerability reports.
