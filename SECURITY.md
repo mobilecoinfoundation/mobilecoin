@@ -229,11 +229,11 @@ Identify any AI systems used during the research process.
 
 Please distinguish between:
 
-### Findings directly observed and validated by the researcher
+**Findings directly observed and validated by the researcher**
 
 and
 
-### Hypotheses, attack paths, or analyses suggested by AI systems
+**Hypotheses, attack paths, or analyses suggested by AI systems**
 
 ## 8. Researcher's Validation
 
