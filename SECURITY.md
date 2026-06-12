@@ -44,6 +44,30 @@ Examples may include:
 * Payment and transaction infrastructure
 * Privacy-preserving systems and protocols
 
+# Out of scope vulnerabilities
+
+The following issues are considered out of scope:
+
+- UTXO Deframentation issues sending > 16 TXO's at once.
+- Local access to user data when operating a rooted mobile device
+- Non-security-impacting UX issues
+- Clickjacking on pages with no sensitive actions
+- Cross-Site Request Forgery (CSRF) on unauthenticated forms or forms with no sensitive actions
+- Attacks requiring MITM or physical access to a user's (unlocked) device
+- Previously known vulnerable libraries without a working Proof of Concept
+- Comma Separated Values (CSV) injection without demonstrating a vulnerability
+- Missing best practices in SSL/TLS configuration
+- Any activity that could lead to the disruption of our service (DoS)
+- Content spoofing and text injection issues without showing an attack vector/without being able to modify HTML/CSS
+- Missing best practices in Content Security Policy
+- Missing HttpOnly or Secure flags on cookies
+- Missing email best practices (Invalid, incomplete or missing SPF/DKIM/DMARC records, etc.)
+- Vulnerabilities only affecting users of outdated or unpatched browsers [Less than 2 stable versions behind the latest released stable version]
+- Software version disclosure / Banner identification issues / Descriptive error messages or headers (e.g. stack traces, application or server errors)
+- Public Zero-day vulnerabilities that have had an official patch for less than 1 month will be awarded on a case by case basis
+- Tabnabbing
+- Open redirect - unless an additional security impact can be demonstrated
+- Broken links on our public websites or support pages (intercom)
 ---
 
 # Privacy Vulnerabilities
