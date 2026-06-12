@@ -189,7 +189,7 @@ Understanding how a reported issue interacts with existing security controls sig
 
 ---
 
-## 6. Additional Requirements for Blockchain and Cryptographic Findings
+## Additional Requirements for Blockchain and Cryptographic Findings
 
 For reports involving:
 
@@ -217,13 +217,13 @@ Where practical, include a proof-of-concept demonstrating exploitation.
 
 ---
 
-## AI-Assisted Security Research
+## Additional Requirements for AI-Assisted Security Research 
 
 As AI-assisted security research becomes increasingly common, we welcome submissions that leverage AI tools.
 
 However, to enable efficient review and accurate assessment, we request that AI-assisted submissions follow the format above, and also include an AI Assistance Disclosure.
 
-## 7. AI Assistance Disclosure
+### AI Assistance Disclosure Format
 
 Identify any AI systems used during the research process.
 
@@ -235,7 +235,7 @@ and
 
 **Hypotheses, attack paths, or analyses suggested by AI systems**
 
-## 8. Researcher's Validation
+### Researcher's Validation
 
 Provide a statement confirming that you personally reproduced and validated the reported behavior.
 
