@@ -14,6 +14,7 @@ use mc_crypto_keys::{Ed25519Public, KeyError};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
+#[allow(unused)]
 #[derive(
     Clone, Copy, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
 )]
