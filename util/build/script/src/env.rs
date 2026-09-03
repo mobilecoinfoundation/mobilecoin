@@ -391,7 +391,7 @@ impl Environment {
 
     /// Get a reference to a hash set of enabled cargo features (as
     /// `lower-kebab-case` strings)
-    pub fn features(&self) -> HashSetIter<String> {
+    pub fn features(&'_ self) -> HashSetIter<'_, String> {
         self.features.iter()
     }
 
@@ -405,7 +405,7 @@ impl Environment {
 
     /// Get a reference to a hash map of variables injected by the current
     /// crate's dependencies
-    pub fn depvars(&self) -> HashMapIter<String, String> {
+    pub fn depvars(&self) -> HashMapIter<'_, String, String> {
         self.depvars.iter()
     }
 

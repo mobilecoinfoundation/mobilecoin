@@ -99,7 +99,7 @@ impl<K: Clone + Eq, V, const N: usize> VecMap<K, V, N> {
     }
 
     /// Get an iterator over the pairs in the VecMap
-    pub fn iter(&self) -> IterVecMap<K, V, N> {
+    pub fn iter(&'_ self) -> IterVecMap<'_, K, V, N> {
         IterVecMap::new(self)
     }
 

@@ -8,12 +8,7 @@ rust-version = { workspace = true }
 
 [features]
 std = ["displaydoc/std", "mc-util-serial/std"]
-log = [
-    "backtrace",
-    "chrono/clock",
-    "mc-util-logger-macros",
-    "slog-scope",
-]
+log = ["backtrace", "chrono/clock", "mc-util-logger-macros", "slog-scope"]
 loggers = [
     # Features
     "log",
@@ -32,15 +27,6 @@ loggers = [
 ]
 
 [dependencies]
-mc-crypto-digestible = { workspace = true }
-mc-crypto-keys = { workspace = true, features = ["serde", "alloc", "prost"] }
-mc-rand = { workspace = true }
-# loggers-only dependencies
-mc-util-build-info = { workspace = true, optional = true }
-# log- and loggers-only dependencies
-mc-util-logger-macros = { workspace = true, optional = true }
-# Note: mc-util-serial is an unused dependency, but anywhere we forward serde/std, we need to get rmp-serde/std also, or the build breaks.
-mc-util-serial = { workspace = true }
 
 backtrace = { workspace = true, optional = true }
 cfg-if = { workspace = true }
@@ -51,6 +37,15 @@ hex = { workspace = true }
 hex_fmt = { workspace = true }
 hostname = { workspace = true, optional = true }
 lazy_static = { workspace = true, optional = true }
+mc-crypto-digestible = { workspace = true }
+mc-crypto-keys = { workspace = true, features = ["serde", "alloc", "prost"] }
+mc-rand = { workspace = true }
+# loggers-only dependencies
+mc-util-build-info = { workspace = true, optional = true }
+# log- and loggers-only dependencies
+mc-util-logger-macros = { workspace = true, optional = true }
+# Note: mc-util-serial is an unused dependency, but anywhere we forward serde/std, we need to get rmp-serde/std also, or the build breaks.
+mc-util-serial = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
 rand_core = { workspace = true }
 sentry = { workspace = true, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "serde_json", "slog"], optional = true }

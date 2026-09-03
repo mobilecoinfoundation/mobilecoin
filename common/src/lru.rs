@@ -186,7 +186,7 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
     }
 
     /// Iterate over the contents of this cache.
-    pub fn iter(&self) -> LruCacheIterator<K, V> {
+    pub fn iter(&'_ self) -> LruCacheIterator<'_, K, V> {
         LruCacheIterator {
             pos: 0,
             cache: self,
@@ -194,7 +194,7 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
     }
 
     /// Iterate over the contents of this cache.
-    pub fn iter_mut(&mut self) -> LruCacheMutIterator<K, V> {
+    pub fn iter_mut(&'_ mut self) -> LruCacheMutIterator<'_, K, V> {
         LruCacheMutIterator {
             pos: 0,
             cache: self,
