@@ -9,7 +9,7 @@ use core::{
     hash::{Hash, Hasher},
 };
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{Ed25519Public};
+use mc_crypto_keys::Ed25519Public;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
