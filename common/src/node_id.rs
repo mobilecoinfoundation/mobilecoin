@@ -5,36 +5,13 @@
 use crate::responder_id::ResponderId;
 use core::{
     cmp::Ordering,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{Ed25519Public, KeyError};
+use mc_crypto_keys::Ed25519Public;
 use prost::Message;
 use serde::{Deserialize, Serialize};
-
-#[derive(
-    Clone, Copy, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
-)]
-pub enum NodeIDError {
-    /// Could not create NodeID due to serialization failure
-    Deserialization,
-    /// The input length was too short or not right (padding)
-    InvalidInputLength,
-    /// The output buffer was too short for the data
-    InvalidOutputLength,
-    /// The input data contained invalid characters
-    InvalidInput,
-    /// Could not parse public key for NodeID
-    KeyParseError,
-}
-
-impl From<KeyError> for NodeIDError {
-    fn from(_src: KeyError) -> Self {
-        NodeIDError::KeyParseError
-    }
-}
 
 /// Node unique identifier containing a responder_id as well as a unique public
 /// key

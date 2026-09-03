@@ -40,13 +40,13 @@ impl<'a> Iterator for X509CertificateIter<'a> {
 /// A trait used to monkey-patch an X509Certificate parsing iterator over a
 /// vector of byte slices.
 pub trait X509CertificateIterable {
-    fn iter_x509(&self) -> X509CertificateIter;
+    fn iter_x509(&self) -> X509CertificateIter<'_>;
 }
 
 /// Anything which can be referenced as a Pem slice gets a method to iterate
 /// certificates, and verify it is a well-formed single-path certificate chain.
 impl<T: AsRef<[Pem]>> X509CertificateIterable for T {
-    fn iter_x509(&self) -> X509CertificateIter {
+    fn iter_x509(&self) -> X509CertificateIter<'_> {
         self.as_ref()
             .iter()
             .map(Pem::contents)
