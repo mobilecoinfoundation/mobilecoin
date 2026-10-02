@@ -3033,7 +3033,9 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-grpc",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-uri",
+ "opentelemetry",
  "prost 0.11.9",
  "rand",
  "rand_hc",
@@ -3380,6 +3382,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -3795,6 +3798,7 @@ dependencies = [
  "mc-mobilecoind-api",
  "mc-transaction-core",
  "mc-util-grpc",
+ "mc-util-telemetry",
  "mc-watcher",
  "mc-watcher-api",
 ]
@@ -3852,7 +3856,9 @@ dependencies = [
  "mc-rand",
  "mc-util-grpc",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-uri",
+ "opentelemetry",
  "retry",
  "sha2 0.10.8",
 ]
@@ -4068,6 +4074,7 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
+ "tokio",
  "url",
 ]
 
@@ -5060,6 +5067,7 @@ dependencies = [
  "rand_core",
  "serde",
  "serde_json",
+ "tokio",
  "yare",
 ]
 
@@ -5343,6 +5351,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tiny-bip39",
+ "tokio",
 ]
 
 [[package]]
@@ -6447,6 +6456,7 @@ version = "7.1.0"
 dependencies = [
  "cfg-if 1.0.0",
  "displaydoc",
+ "grpcio",
  "hostname",
  "opentelemetry",
  "opentelemetry-otlp",

@@ -23,6 +23,7 @@ mc-crypto-noise = { workspace = true }
 mc-transaction-core = { workspace = true }
 mc-util-grpc = { workspace = true }
 mc-util-serial = { workspace = true }
+mc-util-telemetry = { workspace = true }
 mc-util-uri = { workspace = true }
 
 aes-gcm = { workspace = true }
@@ -31,6 +32,7 @@ displaydoc = { workspace = true }
 grpcio = { workspace = true, features = ["prost-codec"] }
 mc-attestation-verifier = { workspace = true }
 mc-rand = { workspace = true }
+opentelemetry = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
 retry = { workspace = true }
 secrecy = { workspace = true }
