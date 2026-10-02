@@ -1,22 +1,17 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{env, io::Write, process::Command};
+use std::{io::Write, path::PathBuf, process::Command};
 use tempfile::NamedTempFile;
 
-// Get the build dir, which is one down from current_exe, which is in
-// target/debug/deps,
-fn build_dir() -> std::path::PathBuf {
-    let mut result = env::current_exe().unwrap();
-    result.pop();
-    result.pop();
-    result
+fn sample_keys_bin() -> PathBuf {
+    PathBuf::from(env!("CARGO_BIN_EXE_sample-keys"))
 }
 
 // Test that the sample keys binary is deterministic.
 #[test]
 #[ignore]
 fn sample_keys_determinism() {
-    let sample_keys_bin = build_dir().join("sample-keys");
+    let sample_keys_bin = sample_keys_bin();
     assert!(
         sample_keys_bin.exists(),
         "sample_keys binary was not found: {}",
@@ -84,7 +79,7 @@ fn sample_keys_determinism() {
 #[test]
 #[ignore]
 fn sample_keys_determinism2() {
-    let sample_keys_bin = build_dir().join("sample-keys");
+    let sample_keys_bin = sample_keys_bin();
     assert!(
         sample_keys_bin.exists(),
         "sample_keys binary was not found: {}",

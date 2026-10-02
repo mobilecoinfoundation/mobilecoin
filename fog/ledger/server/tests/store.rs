@@ -26,6 +26,7 @@ use mc_fog_ledger_server::{
     sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageService,
     KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
+use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
@@ -86,14 +87,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
         // referencing the host node.
         let responder_id = test_uri.responder_id().expect("Test URI is invalid");
 
-        let enclave_path = std::env::current_exe()
-            .expect("Could not get the path of our executable")
-            // The test ends up in target/debug/deps/
-            // rather than just target/debug/. So,
-            // we need the parent directory.
-            .parent()
-            .expect("Failed to get parent of enclave path.")
-            .with_file_name(ENCLAVE_FILE);
+        let enclave_path = get_enclave_path(ENCLAVE_FILE);
 
         let enclave =
             LedgerSgxEnclave::new(enclave_path, &responder_id, omap_capacity, logger.clone());

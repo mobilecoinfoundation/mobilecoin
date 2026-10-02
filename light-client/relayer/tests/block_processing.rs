@@ -79,7 +79,7 @@ fn test_relayer_processing(logger: Logger) {
 
     let blockchain_path = TempDir::new()
         .expect("Could not make tempdir for blockchain state")
-        .into_path();
+        .keep();
 
     let watcher_db_path = {
         // Set up the Watcher db.

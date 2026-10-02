@@ -18,15 +18,23 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Check for nextest
+    - name: Check for cargo nextest
       id: meta
       shell: bash
       run: |
-        NEXTEST_PRESENT=$(command -v cargo-nextest >/dev/null && echo true || echo false)
-        echo "nextest_present=$NEXTEST_PRESENT" >> $GITHUB_OUTPUT
+        NEXTEST_PRESENT=false
+        if command -v cargo-nextest >/dev/null; then
+          NEXTEST_VERSION=$(cargo nextest --version | awk 'NR == 1 { print $2 }')
+          if [ "$NEXTEST_VERSION" = "0.9.146" ]; then
+            NEXTEST_PRESENT=true
+          fi
+        fi
+        echo "nextest_present=$NEXTEST_PRESENT" >> "$GITHUB_OUTPUT"
     - name: Install cargo nextest
       if: steps.meta.outputs.nextest_present != 'true'
-      uses: taiki-e/install-action@nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: nextest@0.9.146
     - name: Run MC tests
       shell: bash
       env:

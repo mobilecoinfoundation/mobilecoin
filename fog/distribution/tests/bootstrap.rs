@@ -1,10 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use std::{
-    env::{args, set_current_dir},
-    path::PathBuf,
-    process::Command,
-};
+use std::{env::set_current_dir, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
 // Test that fog distro can find the spendable tx outs from the bootstrap
@@ -13,11 +9,8 @@ use tempfile::TempDir;
 // distro problems earlier and with faster iteration times.
 #[test]
 fn test_find_spendable_tx_outs() {
-    let me = PathBuf::from(args().next().unwrap());
-    let bin = me
-        .ancestors()
-        .find(|dir| dir.join("sample-keys").is_file())
-        .expect("directory containing test helper binaries");
+    let fog_distribution = PathBuf::from(env!("CARGO_BIN_EXE_fog-distribution"));
+    let bin = fog_distribution.parent().unwrap();
     println!("bin = {bin:?}");
 
     let dir = TempDir::new().unwrap();
@@ -47,7 +40,7 @@ fn test_find_spendable_tx_outs() {
         .expect("sample-fog-keys")
         .success());
 
-    assert!(Command::new(bin.join("fog-distribution"))
+    assert!(Command::new(fog_distribution)
         .args([
             "--sample-data-dir",
             "./",
