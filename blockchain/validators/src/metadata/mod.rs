@@ -44,16 +44,21 @@ mod tests {
     use super::*;
     use crate::test_utils::{make_key, make_metadata};
     use mc_crypto_keys::Ed25519Signature;
+    use std::ops::RangeInclusive;
+
+    fn one_range(range: RangeInclusive<BlockIndex>) -> Vec<RangeInclusive<BlockIndex>> {
+        std::iter::once(range).collect()
+    }
 
     fn make_validator() -> MetadataValidator {
         let key_range = KeyRangeValidator::new(
             [
                 // Key #1 is always valid.
-                (make_key(1), vec![0..=BlockIndex::MAX]),
+                (make_key(1), one_range(0..=BlockIndex::MAX)),
                 // Key #2 is only valid for the first 11 blocks.
-                (make_key(2), vec![0..=10]),
+                (make_key(2), one_range(0..=10)),
                 // Key #3 is valid from block index 10 onward.
-                (make_key(3), vec![10..=BlockIndex::MAX]),
+                (make_key(3), one_range(10..=BlockIndex::MAX)),
             ]
             .into(),
         );

@@ -124,7 +124,7 @@ impl IngestServerTestHelper {
     ) -> Self {
         let blockchain_path = TempDir::new()
             .expect("Could not make tempdir for blockchain state")
-            .into_path();
+            .keep();
 
         let watcher_db_path = watcher_db_path.into().unwrap_or_else(|| {
             // Set up the Watcher db.
@@ -192,7 +192,7 @@ impl IngestServerTestHelper {
     pub fn make_node(&self, idx: u8, peer_idxs: impl Iterator<Item = u8>) -> TestIngestNode {
         let state_file_path = TempDir::new()
             .expect("Could not make tempdir for ingest state")
-            .into_path()
+            .keep()
             .join(format!("mc-fog-ingest-state-{idx}"));
         self.make_node_with_state(idx, peer_idxs, state_file_path)
     }

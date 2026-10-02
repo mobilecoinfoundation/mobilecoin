@@ -16,8 +16,8 @@ use mc_common::{
     ResponderId,
 };
 use mc_connection::{
-    BlockchainConnection, ConnectionManager,
     _retry::{delay::Fibonacci, Error as RetryError},
+    BlockchainConnection, ConnectionManager,
 };
 use mc_consensus_enclave::{ConsensusEnclave, FormBlockInputs};
 use mc_consensus_scp::{slot::Phase, Msg, ScpNode, SlotIndex};

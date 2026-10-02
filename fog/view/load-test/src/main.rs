@@ -63,7 +63,7 @@ impl Counters {
         if self.num_requests == 0 {
             0f64
         } else {
-            (self.total_millis_latency / self.num_requests) as f64 / 1000f64
+            self.total_millis_latency as f64 / self.num_requests as f64 / 1000f64
         }
     }
 }

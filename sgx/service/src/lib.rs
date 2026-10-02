@@ -59,7 +59,7 @@ const MISC_MASK: u32 = TSEAL_DEFAULT_MISCMASK;
 
 /// Convert a usize to u32 or else return invalid_parameter
 fn usize_for_sgx(val: usize) -> Result<u32, sgx_status_t> {
-    if val >= u32::max_value() as usize {
+    if val >= u32::MAX as usize {
         return Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER);
     }
     Ok(val as u32)
@@ -67,7 +67,7 @@ fn usize_for_sgx(val: usize) -> Result<u32, sgx_status_t> {
 
 /// For a given plaintext length, how large an outbuffer should I use to seal
 /// it? Note that using the wrong size is an error per intel SDK
-/// Per Intel, the result is u32::max_value() if there is an error
+/// Per Intel, the result is u32::MAX if there is an error
 pub fn calc_sealed_data_size(
     plaintext_len: usize,
     additional_mac_txt_len: usize,
@@ -78,7 +78,7 @@ pub fn calc_sealed_data_size(
             usize_for_sgx(plaintext_len)?,
         )
     };
-    if result == u32::max_value() {
+    if result == u32::MAX {
         return Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER);
     }
     Ok(result)

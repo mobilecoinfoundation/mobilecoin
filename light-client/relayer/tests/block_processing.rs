@@ -79,7 +79,7 @@ fn test_relayer_processing(logger: Logger) {
 
     let blockchain_path = TempDir::new()
         .expect("Could not make tempdir for blockchain state")
-        .into_path();
+        .keep();
 
     let watcher_db_path = {
         // Set up the Watcher db.
@@ -203,7 +203,7 @@ fn test_relayer_processing(logger: Logger) {
             panic!("relayer message not received");
         } else {
             let records = sender.sent.lock().unwrap();
-            if records.len() > 0 {
+            if !records.is_empty() {
                 assert_eq!(records.len(), 1);
                 let burn_record = &records[0];
                 assert_eq!(burn_record.burn_tx_outs, vec![burn_txo]);

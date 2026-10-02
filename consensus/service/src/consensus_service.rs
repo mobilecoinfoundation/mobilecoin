@@ -705,52 +705,56 @@ impl<
                     peer_block_height = ledger.highest_peer_block();
                 })
             });
-            let block_height;
-            let latest_block_hash;
-            let latest_block_timestamp;
-            let blocks_behind;
             // If we do not get a num_blocks, several status points will be null
-            match ledger_db.num_blocks() {
-                Ok(b) => {
-                    block_height = Some(b);
-                    latest_block_hash = ledger_db
-                        .get_block(b - 1)
-                        .map(|x| hex::encode(x.id.0))
-                        .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
-                        .ok();
+            let (block_height, latest_block_hash, latest_block_timestamp, blocks_behind) =
+                match ledger_db.num_blocks() {
+                    Ok(b) => {
+                        let latest_block_hash = ledger_db
+                            .get_block(b - 1)
+                            .map(|x| hex::encode(x.id.0))
+                            .map_err(|e| {
+                                log::error!(logger, "Error getting block {} {:?}", b - 1, e)
+                            })
+                            .ok();
 
-                    latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
-                        Ok(x) => Some(x.signed_at()),
-                        // Note, a block signature will be missing if the corresponding block was
-                        // not processed by an enclave participating in
-                        // consensus. For example, unsigned blocks can be
-                        // created by a validator node that falls behind its peers and
-                        // enters into catchup.
-                        Err(LedgerDbError::NotFound) => {
-                            log::trace!(logger, "Block signature not found for block {}", b - 1);
-                            None
-                        }
-                        Err(e) => {
-                            log::error!(
-                                logger,
-                                "Error getting block signature for block {} {:?}",
-                                b - 1,
-                                e
-                            );
-                            None
-                        }
-                    };
-                    // peer_block_height - b, unless overflow, then 0
-                    blocks_behind = Some(peer_block_height.saturating_sub(b));
-                }
-                Err(e) => {
-                    log::error!(logger, "Error getting block height {:?}", e);
-                    block_height = None;
-                    latest_block_hash = None;
-                    latest_block_timestamp = None;
-                    blocks_behind = None;
-                }
-            };
+                        let latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
+                            Ok(x) => Some(x.signed_at()),
+                            // Note, a block signature will be missing if the corresponding block was
+                            // not processed by an enclave participating in
+                            // consensus. For example, unsigned blocks can be
+                            // created by a validator node that falls behind its peers and
+                            // enters into catchup.
+                            Err(LedgerDbError::NotFound) => {
+                                log::trace!(
+                                    logger,
+                                    "Block signature not found for block {}",
+                                    b - 1
+                                );
+                                None
+                            }
+                            Err(e) => {
+                                log::error!(
+                                    logger,
+                                    "Error getting block signature for block {} {:?}",
+                                    b - 1,
+                                    e
+                                );
+                                None
+                            }
+                        };
+                        // peer_block_height - b, unless overflow, then 0
+                        (
+                            Some(b),
+                            latest_block_hash,
+                            latest_block_timestamp,
+                            Some(peer_block_height.saturating_sub(b)),
+                        )
+                    }
+                    Err(e) => {
+                        log::error!(logger, "Error getting block height {:?}", e);
+                        (None, None, None, None)
+                    }
+                };
             Ok(json!({
                 "config": {
                     "public_key": config.node_id().public_key,

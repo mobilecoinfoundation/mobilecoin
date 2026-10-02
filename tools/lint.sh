@@ -31,7 +31,7 @@ while [ "$1" != "" ]; do
   shift
 done
 
-cargo install --version 1.0.9 --locked cargo-sort
+cargo install --version 2.1.4 --locked cargo-sort
 
 # We want to check with --all-targets since it checks test code, but that flag
 # leads to build errors in enclave workspaces, so check it here.

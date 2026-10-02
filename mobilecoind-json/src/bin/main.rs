@@ -3,8 +3,6 @@
 
 //! JSON wrapper for the mobilecoind API.
 
-#![feature(proc_macro_hygiene, decl_macro)]
-
 use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_api::external::{CompressedRistretto, PublicAddress, RistrettoPrivate};
@@ -824,7 +822,7 @@ fn get_mixins(
 }
 
 #[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
+async fn main() -> Result<(), Box<rocket::Error>> {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
     mc_common::setup_panic_handler();

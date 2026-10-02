@@ -2,7 +2,6 @@
 
 //! Fog overseer server library.
 
-#![feature(proc_macro_hygiene, decl_macro)]
 #![deny(missing_docs)]
 
 pub mod config;

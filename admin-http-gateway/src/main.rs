@@ -3,7 +3,6 @@
 //! An HTTP frontend for a MobileCoin service's admin GRPC interface.
 
 #![deny(missing_docs)]
-#![feature(proc_macro_hygiene, decl_macro)]
 
 use clap::Parser;
 use grpcio::ChannelBuilder;
@@ -121,7 +120,7 @@ fn metrics(state: &rocket::State<State>) -> Result<String, String> {
 }
 
 #[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
+async fn main() -> Result<(), Box<rocket::Error>> {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
     mc_common::setup_panic_handler();

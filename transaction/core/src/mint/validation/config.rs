@@ -267,11 +267,19 @@ mod tests {
             }
 
             assert_eq!(
-                validate_configs(token_id, &[mint_config1.clone()], block_version),
+                validate_configs(
+                    token_id,
+                    core::slice::from_ref(&mint_config1),
+                    block_version
+                ),
                 Err(Error::InvalidSignerSet)
             );
             assert_eq!(
-                validate_configs(token_id, &[mint_config2.clone()], block_version),
+                validate_configs(
+                    token_id,
+                    core::slice::from_ref(&mint_config2),
+                    block_version
+                ),
                 Err(Error::InvalidSignerSet)
             );
         }
@@ -300,7 +308,11 @@ mod tests {
             }
 
             assert_eq!(
-                validate_configs(123.into(), &[mint_config.clone()], block_version),
+                validate_configs(
+                    123.into(),
+                    core::slice::from_ref(&mint_config),
+                    block_version
+                ),
                 Err(Error::InvalidSignerSet)
             );
         }

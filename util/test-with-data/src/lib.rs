@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-#![feature(proc_macro_diagnostic)]
-
 extern crate proc_macro;
 
 use proc_macro::TokenStream;

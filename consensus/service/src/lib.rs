@@ -2,11 +2,8 @@
 
 //! The MobileCoin consensus node.
 
-#![feature(test)]
 #![allow(clippy::result_large_err)]
 
-#[cfg(test)]
-extern crate test;
 use mc_util_metrics::ServiceMetrics;
 
 pub mod consensus_service;

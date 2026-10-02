@@ -30,7 +30,7 @@ use error::*;
 use types::*;
 
 //#[link(name = "sgx_tstdc")]
-extern {
+extern "C" {
     //
     // sgx_cpuid.h
     //
@@ -66,7 +66,7 @@ extern {
 
 
 //#[link(name = "sgx_tservice")]
-extern {
+extern "C" {
 
     //
     // sgx_dh.h
@@ -176,7 +176,7 @@ extern {
 
 
 //#[link(name = "sgx_tcrypto")]
-extern {
+extern "C" {
 
     //
     // sgx_tcrypto.h
@@ -379,7 +379,7 @@ extern {
 
 
 //#[link(name = "sgx_tkey_exchange")]
-extern {
+extern "C" {
 
     //
     // sgx_tkey_exchange.h
@@ -400,7 +400,7 @@ extern {
 
 
 //#[link(name = "sgx_trts")]
-extern {
+extern "C" {
 
     //
     // sgx_trts.h
@@ -429,7 +429,7 @@ extern {
 
 
 //#[link(name = "sgx_uae_service")]
-extern {
+extern "C" {
 
     //
     // sgx_uae_service.h
@@ -466,7 +466,7 @@ extern {
 
 
 //#[link(name = "sgx_ukey_exchange")]
-extern {
+extern "C" {
 
     //
     // sgx_ukey_exchange.h
@@ -489,7 +489,7 @@ extern {
 
 
 //#[link(name = "sgx_urts")]
-extern {
+extern "C" {
 
     //
     // sgx_urts.h
@@ -537,7 +537,7 @@ extern {
 
 /* intel sgx sdk 1.9 */
 //#[link(name = "sgx_tprotected_fs")]
-extern {
+extern "C" {
 
     //
     // sgx_tprotected_fs.h
@@ -583,7 +583,7 @@ extern {
 
 /* intel sgx sdk 2.0 */
 //#[link(name = "sgx_capable")]
-extern {
+extern "C" {
 
     pub fn sgx_is_capable(sgx_capable: * mut ::int32_t) -> sgx_status_t;
     pub fn sgx_cap_enable_device(sgx_device_status: * mut sgx_device_status_t) -> sgx_status_t;

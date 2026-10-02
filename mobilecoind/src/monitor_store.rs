@@ -336,7 +336,7 @@ mod test {
     use mc_util_from_random::FromRandom;
     use rand_chacha::ChaChaRng;
     use rand_core::SeedableRng;
-    use std::{assert_matches::assert_matches, collections::HashSet};
+    use std::{assert_matches, collections::HashSet};
 
     /// A randomly generated RSA subjectPublicKeyInfo, used as a fog authority.
     const AUTHORITY_PUBKEY: &str = r"-----BEGIN PUBLIC KEY-----

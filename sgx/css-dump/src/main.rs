@@ -30,8 +30,8 @@ struct Config {
 fn main() {
     let config = Config::parse();
 
-    let input = if config.input.is_some() {
-        std::fs::read(config.input.unwrap()).expect("Could not read input file")
+    let input = if let Some(input) = config.input.as_ref() {
+        std::fs::read(input).expect("Could not read input file")
     } else {
         // sigstruct structures should be 1208 bytes
         let mut bytes = vec![0u8; mem::size_of::<Signature>()];
@@ -102,8 +102,8 @@ fn main() {
     writeln!(output, "    q2 0x{}, ", HexFmt(&sigstruct.q2()[..])).expect("Could not write output");
     writeln!(output, "}}").expect("Could not write output");
 
-    if config.output.is_some() {
-        fs::write(config.output.unwrap(), output.as_bytes()).expect("Could not write output file");
+    if let Some(output_path) = config.output.as_ref() {
+        fs::write(output_path, output.as_bytes()).expect("Could not write output file");
     } else {
         io::stdout()
             .write_all(output.as_bytes())

@@ -3,8 +3,6 @@
 #![no_std]
 // Needed for a #[may_dangle] appearing in mutex.rs
 #![feature(dropck_eyepatch)]
-// Needed to suppress errors, we inherited this from rust-sgx-sdk sgx_tstd
-#![feature(auto_traits)]
 // Needed because condvar and rwlock are dropping Result sometimes
 #![allow(unused_must_use)]
 // Needed because condvar does this

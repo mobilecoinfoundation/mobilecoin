@@ -1076,7 +1076,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             range_proof_bytes: hex::decode(&src.range_proof_bytes).map_err(|err| {
                 format!(
                     "Could not decode top-level range proof from hex '{}': {}",
-                    &src.range_proof_bytes, err
+                    src.range_proof_bytes, err
                 )
             })?,
             range_proofs: src

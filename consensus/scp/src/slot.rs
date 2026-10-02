@@ -31,10 +31,10 @@ use std::{
 
 /// Application-specific function for combining multiple values. Must be
 /// deterministic.
-pub type CombineFn<V, E> = Arc<(dyn Fn(&[V]) -> Result<Vec<V>, E> + Sync + Send)>;
+pub type CombineFn<V, E> = Arc<dyn Fn(&[V]) -> Result<Vec<V>, E> + Sync + Send>;
 
 /// Application-specific validation of value.
-pub type ValidityFn<V, E> = Arc<(dyn Fn(&V) -> Result<(), E> + Sync + Send)>;
+pub type ValidityFn<V, E> = Arc<dyn Fn(&V) -> Result<(), E> + Sync + Send>;
 
 /// The various phases of the SCP protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -330,7 +330,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
 
     /// Handle an incoming message from a peer.
     fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
-        self.handle_messages(&[msg.clone()])
+        self.handle_messages(std::slice::from_ref(msg))
     }
 
     /// Handle incoming messages from peers. Messages for other slots are
@@ -760,8 +760,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // Note: This follows the Stellar IETF draft and differs slightly from the
         // Stellar whitepaper, which tests if p or p' abort H.
         if let Some(c) = &self.C {
-            let p_aborts_c = self.P.as_ref().map_or(false, |p| p > c && p.X != c.X);
-            let pp_aborts_c = self.PP.as_ref().map_or(false, |pp| pp > c && pp.X != c.X);
+            let p_aborts_c = self.P.as_ref().is_some_and(|p| p > c && p.X != c.X);
+            let pp_aborts_c = self.PP.as_ref().is_some_and(|pp| pp > c && pp.X != c.X);
             if p_aborts_c || pp_aborts_c {
                 self.C = None;
             }
@@ -806,10 +806,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             // C may never have been set before, or may have been cleared in step (1).
             if self.B <= *h {
                 // "If p is greater-than-and-incompatible with h"
-                let p_aborts_h = self.P.as_ref().map_or(false, |p| p > h && p.X != h.X);
+                let p_aborts_h = self.P.as_ref().is_some_and(|p| p > h && p.X != h.X);
 
                 // "If pp is greater-than-and-incompatible with h"
-                let pp_aborts_h = self.PP.as_ref().map_or(false, |pp| pp > h && pp.X != h.X);
+                let pp_aborts_h = self.PP.as_ref().is_some_and(|pp| pp > h && pp.X != h.X);
 
                 if !p_aborts_h && !pp_aborts_h {
                     // Set C to the lowest ballot for which this node:
@@ -1955,7 +1955,7 @@ mod nominate_protocol_tests {
         assert_eq!(slot.additional_values_accepted_nominated(), expected);
 
         // Nodes 2, and 3 vote to nominate "1234".
-        for node in vec![node_2, node_3] {
+        for node in [node_2, node_3] {
             // Node 1 votes to nominate "1234".
             let msg = Msg::new(
                 node.0.clone(),
@@ -3418,7 +3418,7 @@ mod ballot_protocol_tests {
             test_node_id(7),
             QuorumSet::new_with_node_ids(1, vec![test_node_id(5), test_node_id(6)]),
         );
-        let other_nodes = vec![node2, node3, node6, node7];
+        let other_nodes = [node2, node3, node6, node7];
 
         let msgs: Vec<Msg<u32>> = other_nodes
             .iter()
@@ -3705,7 +3705,7 @@ mod ballot_protocol_tests {
         let node_3_quorum_set =
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2), test_node_id(4)]);
 
-        let blocking_set = vec![
+        let blocking_set = [
             (node_2_id, node_2_quorum_set),
             (node_3_id, node_3_quorum_set),
         ];
@@ -3940,7 +3940,7 @@ mod ballot_protocol_tests {
 
         assert_eq!(slot.last_sent_msg, Some(initial_msg));
 
-        let other_nodes = vec![node_2, node_3, node_4];
+        let other_nodes = [node_2, node_3, node_4];
 
         let msgs: Vec<Msg<u32>> = other_nodes
             .iter()

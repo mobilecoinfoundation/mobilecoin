@@ -102,7 +102,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
         })
     }
 
-    fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
+    fn lock_cache(&self) -> MutexGuard<'_, HashMap<TxHash, CacheEntry>> {
         self.cache.lock().expect("Lock poisoned")
     }
 

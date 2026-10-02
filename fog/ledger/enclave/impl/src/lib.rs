@@ -263,16 +263,16 @@ where
                 Error::ProstDecode
             })?;
 
-        let shard_query_responses = shard_query_responses
-            .into_iter()
-            .map(|(responder_id, query_response)| {
-                let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &query_response)?;
-                let query_response: ShardKeyImageResponse =
-                    mc_util_serial::deserialize(&plaintext_bytes)?;
-
-                Ok(query_response)
-            })
-            .collect::<Result<Vec<_>>>()?;
+        // Keep this as an explicit loop: a fallible iterator closure triggers
+        // `clippy::result_large_err` because `Error` is large.
+        let mut decrypted_responses = Vec::with_capacity(shard_query_responses.len());
+        for (responder_id, query_response) in shard_query_responses {
+            let plaintext_bytes = self.ake.backend_decrypt(&responder_id, &query_response)?;
+            let query_response: ShardKeyImageResponse =
+                mc_util_serial::deserialize(&plaintext_bytes)?;
+            decrypted_responses.push(query_response);
+        }
+        let shard_query_responses = decrypted_responses;
 
         let untrusted_response =
             merge_untrusted_responses(shard_query_responses.iter().map(|r| &r.untrusted_response));

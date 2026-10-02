@@ -62,7 +62,7 @@ impl Edger8r {
                 PathBuf::from(var("CARGO_MANIFEST_DIR").expect("Could not read the manifest dir"));
             edl_path.push(&self.enclave_name);
             edl_path.set_extension("edl");
-            let expect_str = format!("Could not canonicalize EDL path {:?}", &edl_path);
+            let expect_str = format!("Could not canonicalize EDL path {edl_path:?}");
             edl_path.canonicalize().expect(&expect_str)
         };
 

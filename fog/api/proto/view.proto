@@ -103,8 +103,8 @@ service FogViewStoreAPI {
 // - RngRecords, which a user can use with their private key to construct KexRng's
 // - TxOutSearchResults, which the user can decrypt with their private key to obtain TxOutRecords
 // - Missed BlockRanges, which tell the user about blocks that fog didn't process,
-//   on which they have to fallback to view key scanning. They can download these blocks
-//   from the fog-ledger server.
+//  on which they have to fallback to view key scanning. They can download these blocks
+//  from the fog-ledger server.
 //
 // The TxOut requests ultimately have to be served obliviously to the user in order to meet
 // our definition of privacy. The other two do not.
@@ -357,9 +357,9 @@ message TxOutRecord {
     // - NOISY, forward and backwards in time, depending on system time settings of many different servers.
     // - NOT MONOTONIC: it's possible that you get a timestamp for block 101 that is before the timestamp for block 100.
     // - Not even CONSISTENT across fog services: It's possible you get a different timestamp for a TxOut in block 100,
-    //   than you do for a key image in block 100 from the key image endpoint.
-    //   This is unavoidable right now because it is possible that fog-ingest has different levels of
-    //   connectivity from the fog-key-image service to the blockchain data sources.
+    //  than you do for a key image in block 100 from the key image endpoint.
+    //  This is unavoidable right now because it is possible that fog-ingest has different levels of
+    //  connectivity from the fog-key-image service to the blockchain data sources.
     //
     // Timestamps are BEST-EFFORT and for a good user experience, the client software should attempt to reconcile these
     // timestamps, so that events that have a happens-before relationship in the system, have timestamps that reflect that.

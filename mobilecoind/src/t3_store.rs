@@ -264,7 +264,7 @@ impl T3Store {
 
 #[cfg(test)]
 mod test {
-    use std::assert_matches::assert_matches;
+    use std::assert_matches;
 
     use super::*;
     use mc_common::logger::test_with_logger;

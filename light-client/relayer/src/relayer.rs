@@ -101,7 +101,7 @@ impl Relayer {
     }
 
     /// Get a locked reference to the shared state.
-    fn shared_state(&self) -> MutexGuard<RelayerSharedState> {
+    fn shared_state(&self) -> MutexGuard<'_, RelayerSharedState> {
         self.shared_state.lock().expect("mutex poisoned")
     }
 }
@@ -265,7 +265,7 @@ where
             .collect())
     }
 
-    pub fn shared_state(&self) -> MutexGuard<RelayerSharedState> {
+    pub fn shared_state(&self) -> MutexGuard<'_, RelayerSharedState> {
         self.shared_state.lock().expect("mutex poisoned")
     }
 }

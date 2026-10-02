@@ -43,13 +43,13 @@ impl<C: Connection> SyncConnection<C> {
         }
     }
 
-    pub fn read(&self) -> RwLockReadGuard<C> {
+    pub fn read(&self) -> RwLockReadGuard<'_, C> {
         self.inner
             .read()
             .expect("Could not acquire read lock on SyncConnection")
     }
 
-    pub fn write(&self) -> RwLockWriteGuard<C> {
+    pub fn write(&self) -> RwLockWriteGuard<'_, C> {
         self.inner
             .write()
             .expect("Could not acquire write lock on SyncConnection")

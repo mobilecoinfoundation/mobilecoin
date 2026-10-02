@@ -33,7 +33,7 @@ use mc_transaction_core::{
     TokenId,
 };
 use std::{
-    cmp::min,
+    cmp::{min, Reverse},
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -377,7 +377,7 @@ impl Worker {
     /// This helps slam worker decide whether to try again later or give up.
     pub fn get_any_utxo(&self) -> Result<UtxoRecord, GetUtxoError> {
         let mut least_serious_error = None;
-        for (_, receiver) in self.receivers.iter() {
+        for receiver in self.receivers.values() {
             match receiver.get_utxo() {
                 Ok(utxo) => return Ok(utxo),
                 Err(err) => {
@@ -655,7 +655,7 @@ impl WorkerTokenState {
             .filter(|utxo| utxo.token_id == self.token_id && utxo.value != self.target_value)
             .collect();
         // Sort in descending order of value
-        non_target_value_utxos.sort_by(|a, b| b.value.cmp(&a.value));
+        non_target_value_utxos.sort_by_key(|utxo| Reverse(utxo.value));
 
         // Take the MAX_OUTPUTS largest utxos, these will be passed to
         // "maybe_send_split_txs" for consideration.

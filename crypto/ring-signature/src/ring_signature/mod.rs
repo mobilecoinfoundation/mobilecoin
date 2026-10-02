@@ -66,7 +66,7 @@ impl PedersenGens {
     pub fn commit(&self, value: Scalar, blinding: Scalar) -> RistrettoPoint {
         // Use optimised Straus' method if alloc is available
         #[cfg(feature = "alloc")]
-        return RistrettoPoint::multiscalar_mul(&[value, blinding], &[self.B, self.B_blinding]);
+        return RistrettoPoint::multiscalar_mul([value, blinding], [self.B, self.B_blinding]);
 
         // Otherwise fallback to naive method
         #[cfg(not(feature = "alloc"))]

@@ -192,7 +192,7 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.83.0"
+rust-version = "1.85.0"
 
 [workspace.dependencies]
 aead = { version = "0.5", default-features = false }
@@ -241,7 +241,7 @@ generic-array = { version = "0.14", default-features = false }
 getrandom = "0.2"
 grpcio = { version = "0.13", default-features = false }
 grpcio-compiler = { version = "0.13", default-features = false }
-hashbrown = { version = "0.14", default-features = false }
+hashbrown = { version = "0.17", default-features = false }
 heapless = { version = "0.8", default-features = false }
 hex = { version = "0.4", default-features = false }
 hex-literal = "0.4"

@@ -246,7 +246,7 @@ where
             ViewEnclaveError::AttestEnclave(err) => {
                 rpc_permissions_error(context, err, &self.logger)
             }
-            other => rpc_internal_error(context, format!("{}", &other), &self.logger),
+            other => rpc_internal_error(context, format!("{other}"), &self.logger),
         }
     }
 }

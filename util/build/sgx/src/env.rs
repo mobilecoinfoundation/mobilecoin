@@ -4,7 +4,7 @@
 
 use displaydoc::Display;
 use mc_util_build_script::Environment;
-use std::{env::VarError, fmt, result::Result as StdResult};
+use std::{env::VarError, fmt, result::Result as StdResult, str::FromStr};
 
 pub const ENV_SGX_MODE: &str = "SGX_MODE";
 
@@ -43,10 +43,10 @@ pub enum SgxMode {
     Simulation,
 }
 
-impl TryFrom<&str> for SgxMode {
-    type Error = Error;
+impl FromStr for SgxMode {
+    type Err = Error;
 
-    fn try_from(src: &str) -> Result<Self> {
+    fn from_str(src: &str) -> Result<Self> {
         match src {
             "HW" => Ok(SgxMode::Hardware),
             "SW" => Ok(SgxMode::Simulation),
@@ -68,7 +68,7 @@ impl SgxEnvironment {
             SgxMode::Simulation
         } else {
             let sgx_mode = var_helper(ENV_SGX_MODE)?;
-            SgxMode::try_from(sgx_mode.as_str())?
+            sgx_mode.parse()?
         };
 
         Ok(Self { sgx_mode })

@@ -59,7 +59,7 @@ impl<C: Connection> ConnectionManager<C> {
         }
     }
 
-    fn read(&self) -> RwLockReadGuard<ConnectionManagerInner<C>> {
+    fn read(&self) -> RwLockReadGuard<'_, ConnectionManagerInner<C>> {
         self.inner.read().expect("ConnectionManager lock poisoned")
     }
 

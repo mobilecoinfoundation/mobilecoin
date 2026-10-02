@@ -648,7 +648,7 @@ mod test {
         }
 
         let payload_len = output1.payload.len();
-        let challenge_len = challenge.as_bytes().len();
+        let challenge_len = challenge.len();
         assert_eq!(
             challenge.as_bytes(),
             &output1.payload[(payload_len - challenge_len)..]
@@ -680,11 +680,11 @@ mod test {
         };
 
         let payload_len = output3.payload.len();
-        let response_len = response.as_bytes().len();
+        let response_len = response.len();
         eprintln!(
             "response = {:02x?}\noutput3.payload = {:02x?}",
             response.as_bytes(),
-            &output3.payload
+            output3.payload
         );
         assert_ne!(
             response.as_bytes(),
@@ -778,7 +778,7 @@ mod test {
         }
 
         let payload_len = output1.payload.len();
-        let challenge_len = challenge.as_bytes().len();
+        let challenge_len = challenge.len();
         assert_eq!(
             challenge.as_bytes(),
             &output1.payload[(payload_len - challenge_len)..]
@@ -808,7 +808,7 @@ mod test {
         };
 
         let payload_len = output3.payload.len();
-        let response_len = response.as_bytes().len();
+        let response_len = response.len();
         assert_ne!(
             response.as_bytes(),
             &output3.payload[(payload_len - response_len)..]

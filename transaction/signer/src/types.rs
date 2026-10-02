@@ -336,7 +336,7 @@ impl<const N: usize> serde::de::Visitor<'_> for ConstArrayVisitor<N> {
     type Value = [u8; N];
 
     fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        write!(formatter, concat!("A hex encoded array of bytes"))
+        formatter.write_str("A hex encoded array of bytes")
     }
 
     fn visit_str<E: serde::de::Error>(self, s: &str) -> Result<Self::Value, E> {

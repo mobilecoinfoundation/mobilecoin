@@ -2,7 +2,7 @@
 
 //! Persistent storage for the blockchain.
 #![warn(unused_extern_crates)]
-#![feature(test)]
+#![cfg_attr(test, feature(test))]
 
 #[cfg(test)]
 extern crate test;

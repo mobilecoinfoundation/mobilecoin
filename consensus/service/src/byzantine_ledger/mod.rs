@@ -246,7 +246,7 @@ impl ByzantineLedger {
 
             Some(
                 thread::Builder::new()
-                    .name(format!("ByzantineLedger{:?}", &node_id))
+                    .name(format!("ByzantineLedger{node_id:?}"))
                     .spawn(move || loop {
                         if !worker.tick() {
                             break;
