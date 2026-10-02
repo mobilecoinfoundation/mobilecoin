@@ -1413,7 +1413,7 @@ mod mint_tx_tests {
         add_block_contents_to_ledger(&mut ledger, BLOCK_VERSION, block_contents, &mut rng).unwrap();
 
         // Test txs that have overlapping minting configurations
-        let mint_txs = vec![
+        let mint_txs = [
             create_mint_tx(
                 token_id_1,
                 &[Ed25519Pair::from(signers[0].private_key())],

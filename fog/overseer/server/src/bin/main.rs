@@ -13,7 +13,7 @@ use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_util_cli::ParserWithBuildInfo;
 
 #[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
+async fn main() -> Result<(), Box<rocket::Error>> {
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
     mc_common::setup_panic_handler();
     let _sentry_guard = sentry::init();

@@ -3,7 +3,6 @@
 //! HTTP faucet service backed by mobilecoind
 
 #![deny(missing_docs)]
-#![feature(proc_macro_hygiene, decl_macro)]
 #![allow(clippy::let_unit_value)]
 
 use clap::Parser;
@@ -56,7 +55,7 @@ async fn status(state: &rocket::State<State>) -> Json<JsonFaucetStatus> {
 }
 
 #[rocket::main]
-async fn main() -> Result<(), rocket::Error> {
+async fn main() -> Result<(), Box<rocket::Error>> {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
     mc_common::setup_panic_handler();

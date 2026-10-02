@@ -249,7 +249,7 @@ impl<'de> Deserialize<'de> for IntelSealed {
             type Value = IntelSealed;
 
             fn expecting(&self, formatter: &mut ::core::fmt::Formatter) -> core::fmt::Result {
-                write!(formatter, concat!("An IntelSealed"))
+                formatter.write_str("An IntelSealed")
             }
 
             #[inline]

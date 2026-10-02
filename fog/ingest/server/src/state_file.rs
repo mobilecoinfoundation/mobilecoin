@@ -7,7 +7,7 @@ use mc_util_serial::prost;
 use prost::Message;
 use std::{
     fs,
-    io::{Error, ErrorKind, Result, Write},
+    io::{Error, Result, Write},
     path::PathBuf,
 };
 
@@ -28,10 +28,10 @@ impl StateFile {
     pub fn read(&self) -> Result<IngestStateFile> {
         let file_data = fs::read(&self.file_path)?;
         let state_data = IngestStateFile::decode(file_data.as_slice()).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed parsing state file {:?}: {}", self.file_path, e),
-            )
+            Error::other(format!(
+                "Failed parsing state file {:?}: {}",
+                self.file_path, e
+            ))
         })?;
         Ok(state_data)
     }

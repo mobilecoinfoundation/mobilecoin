@@ -76,7 +76,7 @@ static TOTAL_MEM_FOOTPRINT_KB: AtomicU64 = AtomicU64::new(0);
 fn compute_mem_kb(count: usize, data_item_size: usize, meta_item_size: usize) -> u64 {
     let num_bytes = (count * (data_item_size + meta_item_size)) as u64;
     // Divide by 1024 and round up, to compute num_bytes in kb
-    (num_bytes + 1023) / 1024
+    num_bytes.div_ceil(1024)
 }
 
 impl UntrustedAllocation {

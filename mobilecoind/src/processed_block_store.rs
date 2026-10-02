@@ -278,7 +278,7 @@ mod test {
         let (ledger_db, _mobilecoind_db) = get_test_databases(
             BlockVersion::MAX,
             3,
-            &vec![account_key.subaddress(TEST_SUBADDRESS)],
+            &[account_key.subaddress(TEST_SUBADDRESS)],
             10,
             logger.clone(),
             &mut rng,

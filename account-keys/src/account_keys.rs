@@ -580,7 +580,7 @@ impl PartialEq for ViewAccountKey {
 
 impl PartialOrd for ViewAccountKey {
     fn partial_cmp(&self, other: &ViewAccountKey) -> Option<Ordering> {
-        Some(self.default_subaddress().cmp(&other.default_subaddress()))
+        Some(self.cmp(other))
     }
 }
 

@@ -4,7 +4,6 @@ use displaydoc::Display;
 use grpcio::RpcStatus;
 use mc_common::logger::Logger;
 use mc_fog_ledger_enclave_api::Error as LedgerEnclaveError;
-use mc_sgx_report_cache_untrusted::Error as ReportCacheError;
 use mc_util_grpc::{rpc_internal_error, rpc_permissions_error};
 
 #[derive(Debug, Display)]
@@ -55,25 +54,5 @@ pub fn router_server_err_to_rpc_status(
 impl From<LedgerEnclaveError> for RouterServerError {
     fn from(src: LedgerEnclaveError) -> Self {
         RouterServerError::Enclave(src)
-    }
-}
-
-#[derive(Display)]
-pub enum LedgerServerError {
-    /// Ledger Enclave error: {0}
-    Enclave(LedgerEnclaveError),
-    /// Report cache error: {0}
-    ReportCache(ReportCacheError),
-}
-
-impl From<LedgerEnclaveError> for LedgerServerError {
-    fn from(src: LedgerEnclaveError) -> Self {
-        LedgerServerError::Enclave(src)
-    }
-}
-
-impl From<ReportCacheError> for LedgerServerError {
-    fn from(src: ReportCacheError) -> Self {
-        Self::ReportCache(src)
     }
 }

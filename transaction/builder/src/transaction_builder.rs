@@ -2674,7 +2674,7 @@ pub mod transaction_builder_tests {
 
             let outputs = tx.prefix.outputs;
             let mut expected_outputs = outputs.clone();
-            expected_outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
+            expected_outputs.sort_by_key(|output| output.public_key);
             assert_eq!(outputs, expected_outputs);
         }
     }

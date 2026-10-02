@@ -1366,7 +1366,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             let tx_out_index = outlay_index_to_tx_out_index
                 .get(&i)
                 .expect("index not in map");
-            if !found_tx_out_indices.insert(tx_out_index) {
+            if !found_tx_out_indices.insert(*tx_out_index) {
                 panic!("duplicate index {tx_out_index} found in map");
             }
         }

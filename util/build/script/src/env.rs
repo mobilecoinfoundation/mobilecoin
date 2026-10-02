@@ -31,10 +31,10 @@ pub enum TargetFamilyError {
     Unknown(String),
 }
 
-impl TryFrom<&str> for TargetFamily {
-    type Error = TargetFamilyError;
+impl FromStr for TargetFamily {
+    type Err = TargetFamilyError;
 
-    fn try_from(src: &str) -> Result<TargetFamily, Self::Error> {
+    fn from_str(src: &str) -> Result<TargetFamily, Self::Err> {
         match src {
             "unix" => Ok(TargetFamily::Unix),
             "windows" => Ok(TargetFamily::Windows),
@@ -61,10 +61,10 @@ pub enum EndiannessError {
     Unknown(String),
 }
 
-impl TryFrom<&str> for Endianness {
-    type Error = EndiannessError;
+impl FromStr for Endianness {
+    type Err = EndiannessError;
 
-    fn try_from(src: &str) -> Result<Endianness, Self::Error> {
+    fn from_str(src: &str) -> Result<Endianness, Self::Err> {
         match src {
             "little" => Ok(Endianness::Little),
             "big" => Ok(Endianness::Big),
@@ -347,18 +347,14 @@ impl Environment {
             proc_macro: var(ENV_CARGO_CFG_PROC_MACRO).is_ok(),
             target_arch: var(ENV_CARGO_CFG_TARGET_ARCH)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_ARCH.to_owned(), e))?,
-            target_endian: Endianness::try_from(
-                var(ENV_CARGO_CFG_TARGET_ENDIAN)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_ENDIAN.to_owned(), e))?
-                    .as_str(),
-            )?,
+            target_endian: var(ENV_CARGO_CFG_TARGET_ENDIAN)
+                .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_ENDIAN.to_owned(), e))?
+                .parse()?,
             target_env: var(ENV_CARGO_CFG_TARGET_ENV)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_ENV.to_owned(), e))?,
-            target_family: TargetFamily::try_from(
-                var(ENV_CARGO_CFG_TARGET_FAMILY)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FAMILY.to_owned(), e))?
-                    .as_ref(),
-            )?,
+            target_family: var(ENV_CARGO_CFG_TARGET_FAMILY)
+                .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FAMILY.to_owned(), e))?
+                .parse()?,
             target_features: var(ENV_CARGO_CFG_TARGET_FEATURE)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FEATURE.to_owned(), e))?
                 .split(',')

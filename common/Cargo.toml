@@ -32,7 +32,7 @@ backtrace = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 chrono = { workspace = true, optional = true }
 displaydoc = { workspace = true }
-hashbrown = { workspace = true, features = ["serde", "nightly"] }
+hashbrown = { workspace = true, features = ["serde"] }
 hex = { workspace = true }
 hex_fmt = { workspace = true }
 hostname = { workspace = true, optional = true }

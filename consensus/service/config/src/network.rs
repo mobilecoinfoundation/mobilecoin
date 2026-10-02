@@ -86,7 +86,6 @@ impl NetworkConfig {
         let mut peer_map: HashMap<ResponderId, NodeID> = self
             .broadcast_peers
             .iter()
-            .cloned()
             .map(|uri| {
                 (
                     uri.responder_id()

@@ -95,10 +95,10 @@ fn print_public_address(pub_addr: &PublicAddressProto) {
     let parse_result = PublicAddress::try_from(pub_addr);
     match parse_result {
         Ok(parsed_addr) => {
-            println!("Validated: {:?}", &parsed_addr);
+            println!("Validated: {parsed_addr:?}");
 
             let address_hash = ShortAddressHash::from(&parsed_addr);
-            println!("Address hash: {}", &address_hash);
+            println!("Address hash: {address_hash}");
         }
         Err(err) => {
             println!("Failed to validate PublicAddress struct: {err}");

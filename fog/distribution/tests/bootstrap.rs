@@ -14,7 +14,10 @@ use tempfile::TempDir;
 #[test]
 fn test_find_spendable_tx_outs() {
     let me = PathBuf::from(args().next().unwrap());
-    let bin = me.parent().unwrap().parent().unwrap();
+    let bin = me
+        .ancestors()
+        .find(|dir| dir.join("sample-keys").is_file())
+        .expect("directory containing test helper binaries");
     println!("bin = {bin:?}");
 
     let dir = TempDir::new().unwrap();

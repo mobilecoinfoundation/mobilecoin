@@ -108,7 +108,7 @@ impl<R: RngCore + CryptoRng> TestingContext<R> {
 
         let db_tmp = TempDir::new().expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path()).expect("Could not create WatcherDB.");
-        let watcher = WatcherDB::open_rw(db_tmp.path(), &[url.clone()], logger)
+        let watcher = WatcherDB::open_rw(db_tmp.path(), std::slice::from_ref(&url), logger)
             .expect("Failed to open WatcherDB.");
 
         let config = LedgerStoreConfig {

@@ -163,7 +163,7 @@ mod test {
         src.0.pswUpdate = 3;
 
         assert_eq!(
-            format!("{}", &src),
+            format!("{src}"),
             "Microcode 1, Management Engine Firmware 2, Platform Services 3"
         );
     }
@@ -176,7 +176,7 @@ mod test {
         src.0.pswUpdate = 3;
 
         assert_eq!(
-            format!("{:?}", &src),
+            format!("{src:?}"),
             "UpdateInfo { ucodeUpdate: i32(1), csmeFwUpdate: i32(2), pswUpdate: i32(3) }",
         );
     }

@@ -78,7 +78,7 @@ impl SgxViewEnclave {
                 .unwrap_or_else(|e| {
                     panic!(
                         "SgxEnclave::create(file_name={:?}, debug={}) failed: {:?}",
-                        &enclave_path, DEBUG_ENCLAVE as i32, e
+                        enclave_path, DEBUG_ENCLAVE as i32, e
                     )
                 }),
             ),

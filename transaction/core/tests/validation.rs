@@ -779,7 +779,7 @@ fn test_global_validate_for_blocks_with_sorted_outputs() {
     let mut rng = get_seeded_rng();
     let fee = Mob::MINIMUM_FEE + 1;
 
-    let recipients = vec![
+    let recipients = [
         AccountKey::random(&mut rng).default_subaddress(),
         AccountKey::random(&mut rng).default_subaddress(),
         AccountKey::random(&mut rng).default_subaddress(),

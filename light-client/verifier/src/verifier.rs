@@ -151,7 +151,7 @@ impl LightClientVerifier {
 mod tests {
     use super::*;
     use crate::trusted_validator_set::tests::*;
-    use core::assert_matches::assert_matches;
+    use core::assert_matches;
     use mc_consensus_scp_types::{test_utils::test_node_id, QuorumSet, QuorumSetMember};
     use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, Amount};
     use mc_util_from_random::FromRandom;
@@ -379,11 +379,11 @@ mod tests {
         );
 
         // We can verify that txo1 is in the block
-        lcv.verify_txos_in_block(&[txo1.clone()], &block9999, &bc, &metadata)
+        lcv.verify_txos_in_block(std::slice::from_ref(&txo1), &block9999, &bc, &metadata)
             .unwrap();
 
         // We can verify that txo2 is in the block
-        lcv.verify_txos_in_block(&[txo2.clone()], &block9999, &bc, &metadata)
+        lcv.verify_txos_in_block(std::slice::from_ref(&txo2), &block9999, &bc, &metadata)
             .unwrap();
 
         // We can verify that txo1 and txo2 are in the block
@@ -403,7 +403,7 @@ mod tests {
 
         // We cannot verify that txo3 is in the block
         assert_matches!(
-            lcv.verify_txos_in_block(&[txo3.clone()], &block9999, &bc, &metadata,),
+            lcv.verify_txos_in_block(std::slice::from_ref(&txo3), &block9999, &bc, &metadata,),
             Err(Error::TxOutNotFound(_))
         );
 

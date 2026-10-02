@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn test_signature_debug() {
         let sig = VerificationSignature(vec![0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE]);
-        assert_eq!(format!("{:?}", &sig), "VerificationSignature(deadbeefcafe)");
+        assert_eq!(format!("{sig:?}"), "VerificationSignature(deadbeefcafe)");
     }
 
     #[test]
@@ -312,7 +312,7 @@ mod tests {
             http_body: "some_body".into(),
         };
         assert_eq!(
-            format!("{}", &report),
+            format!("{report}"),
             "VerificationReport { sig: deadbeefcafe, chain: [abcd, cdef, 1234], http_body: \"some_body\" }"
         );
     }

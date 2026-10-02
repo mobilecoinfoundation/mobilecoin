@@ -298,7 +298,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
         })?;
 
         let request = self.enclave.txs_for_peer(
-            &[encrypted_tx.clone()],
+            std::slice::from_ref(encrypted_tx),
             &aad,
             self.channel_id.as_ref().unwrap(),
         )?;

@@ -751,7 +751,7 @@ message SigningData {
     // The bytes actually signed by MLSAG signatures.
     // This is different depending on what block version we are in.
     // * In the oldest block versions, this is a large number of bytes called the
-    //   "extended message", which includes a tx prefix as well as the pseudo output commitments.
+    //  "extended message", which includes a tx prefix as well as the pseudo output commitments.
     // * In block version 2, this is instead 32 bytes called the "extended message digest".
     // * In block version 3, this is instead 32 bytes called the "extended-message-and-tx-summary digest".
     //

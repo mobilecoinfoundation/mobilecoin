@@ -593,7 +593,7 @@ mod test {
     fn debug_fmt() {
         let quote =
             Quote::from_base64(QUOTE_OK).expect("Could not create quote from base64 string");
-        let debug_str = format!("{:?}", &quote);
+        let debug_str = format!("{quote:?}");
         assert_eq!(QUOTE_OK_STR.trim(), debug_str.trim());
     }
 

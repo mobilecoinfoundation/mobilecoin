@@ -110,7 +110,7 @@ fn main() {
     let tx_source_url = Url::from_str("https://localhost").unwrap();
     let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
         &config.watcher,
-        &[tx_source_url.clone()],
+        std::slice::from_ref(&tx_source_url),
         logger,
     )
     .expect("Could not create watcher_db");

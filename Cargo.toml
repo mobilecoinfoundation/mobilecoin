@@ -192,7 +192,7 @@ exclude = [
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.83.0"
+rust-version = "1.85.0"
 
 [workspace.dependencies]
 aead = { version = "0.5", default-features = false }

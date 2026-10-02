@@ -39,7 +39,7 @@ impl Default for MockLedger {
 }
 
 impl MockLedger {
-    pub fn lock(&self) -> MutexGuard<MockLedgerInner> {
+    pub fn lock(&self) -> MutexGuard<'_, MockLedgerInner> {
         self.inner.lock().expect("mutex poisoned")
     }
 
@@ -57,7 +57,7 @@ impl MockLedger {
             assert!(
                 inner.tx_outs.insert(tx_out.clone()),
                 "duplicate TxOut: {:?}",
-                &tx_out
+                tx_out
             );
             inner.tx_outs_by_index.insert(tx_out_index, tx_out.clone());
             inner

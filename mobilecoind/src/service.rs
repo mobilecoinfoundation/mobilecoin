@@ -2815,7 +2815,7 @@ mod test {
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{assert_matches::assert_matches, str::FromStr};
+    use std::{assert_matches, slice, str::FromStr};
 
     const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
@@ -3061,7 +3061,7 @@ mod test {
         add_block_to_ledger(
             &mut ledger_db,
             BLOCK_VERSION,
-            &vec![
+            &[
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
@@ -3216,7 +3216,7 @@ mod test {
         add_block_to_ledger(
             &mut ledger_db,
             BLOCK_VERSION,
-            &vec![
+            &[
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
@@ -3232,7 +3232,7 @@ mod test {
         add_block_to_ledger(
             &mut ledger_db,
             BLOCK_VERSION,
-            &vec![
+            &[
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
                 AccountKey::random(&mut rng).default_subaddress(),
@@ -3953,7 +3953,7 @@ mod test {
         add_block_to_ledger(
             &mut ledger_db,
             BLOCK_VERSION,
-            &[recipient.clone()],
+            slice::from_ref(&recipient),
             Amount::new(DEFAULT_PER_RECIPIENT_AMOUNT, Mob::ID),
             &[KeyImage::from(1), KeyImage::from(2), KeyImage::from(3)],
             &mut rng,
@@ -4063,7 +4063,7 @@ mod test {
         add_block_to_ledger(
             &mut ledger_db,
             BLOCK_VERSION,
-            &[recipient.clone()],
+            slice::from_ref(&recipient),
             Amount::new(DEFAULT_PER_RECIPIENT_AMOUNT, Mob::ID),
             &[KeyImage::from(4), KeyImage::from(5), KeyImage::from(6)],
             &mut rng,
@@ -4258,7 +4258,13 @@ mod test {
             create_tx_out(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng);
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
+        add_txos_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            slice::from_ref(&tx_out),
+            &mut rng,
+        )
+        .unwrap();
 
         // A request with a valid confirmation number and monitor ID should return
         // Verified
@@ -5103,7 +5109,7 @@ mod test {
         let receiver1 = AccountKey::random(&mut rng);
         let receiver2 = AccountKey::random(&mut rng);
 
-        let outlays = vec![
+        let outlays = [
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
@@ -5525,7 +5531,7 @@ mod test {
         // Generate random recipient.
         let receiver1 = AccountKey::random(&mut rng);
 
-        let outlays = vec![Outlay {
+        let outlays = [Outlay {
             value: 123,
             receiver: receiver1.default_subaddress(),
             tx_private_key: None,
@@ -6360,7 +6366,7 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 num_random_recipients,
-                &[sender_default_subaddress.clone()],
+                slice::from_ref(&sender_default_subaddress),
                 &[],
                 logger.clone(),
                 &mut rng,
@@ -6371,7 +6377,7 @@ mod test {
             let _ = add_block_to_ledger(
                 &mut ledger_db,
                 BLOCK_VERSION,
-                &[sender_default_subaddress.clone()],
+                slice::from_ref(&sender_default_subaddress),
                 Amount::new(DEFAULT_PER_RECIPIENT_AMOUNT, Mob::ID),
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
@@ -6558,7 +6564,7 @@ mod test {
         let receiver1 = AccountKey::random(&mut rng);
         let receiver2 = AccountKey::random(&mut rng);
 
-        let outlays = vec![
+        let outlays = [
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
@@ -6820,7 +6826,7 @@ mod test {
         let receiver1 = AccountKey::random(&mut rng);
         let receiver2 = AccountKey::random(&mut rng);
 
-        let outlays = vec![
+        let outlays = [
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
@@ -7007,7 +7013,7 @@ mod test {
         let receiver1 = AccountKey::random(&mut rng);
         let receiver2 = AccountKey::random(&mut rng);
 
-        let outlays = vec![
+        let outlays = [
             Outlay {
                 value: 10,
                 receiver: receiver1.default_subaddress(),
@@ -7157,7 +7163,7 @@ mod test {
         let receiver1 = AccountKey::random(&mut rng);
         let receiver2 = AccountKey::random_with_fog(&mut rng);
 
-        let outlays = vec![
+        let outlays = [
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
@@ -7287,7 +7293,7 @@ mod test {
         let receiver1 = AccountKey::random(&mut rng);
         let receiver2 = AccountKey::random_with_fog(&mut rng);
 
-        let outlays = vec![
+        let outlays = [
             Outlay {
                 value: 123,
                 receiver: receiver1.default_subaddress(),
@@ -7671,7 +7677,13 @@ mod test {
             &mut rng,
         );
 
-        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
+        add_txos_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            slice::from_ref(&tx_out),
+            &mut rng,
+        )
+        .unwrap();
 
         let tx_public_key = tx_out.public_key;
 
@@ -7785,7 +7797,13 @@ mod test {
             &mut rng,
         );
 
-        add_txos_to_ledger(&mut ledger_db, BLOCK_VERSION, &[tx_out.clone()], &mut rng).unwrap();
+        add_txos_to_ledger(
+            &mut ledger_db,
+            BLOCK_VERSION,
+            slice::from_ref(&tx_out),
+            &mut rng,
+        )
+        .unwrap();
 
         let tx_public_key = tx_out.public_key;
 

@@ -217,6 +217,10 @@ mod tests {
         Ed25519Public::try_from(vec![val; 32]).unwrap()
     }
 
+    fn one_range(range: RangeInclusive<BlockIndex>) -> Vec<RangeInclusive<BlockIndex>> {
+        std::iter::once(range).collect()
+    }
+
     #[test]
     fn load_toml_from_path() {
         let temp = TempDir::new().unwrap();
@@ -246,8 +250,8 @@ mod tests {
         assert_eq!(
             cfg.to_validity_map().unwrap(),
             [
-                (key_a, vec![0..=BlockIndex::MAX]),
-                (key_b, vec![0..=10]),
+                (key_a, one_range(0..=BlockIndex::MAX)),
+                (key_b, one_range(0..=10)),
                 (key_c, vec![0..=10, 20..=BlockIndex::MAX]),
             ]
             .into()
@@ -283,8 +287,8 @@ mod tests {
         assert_eq!(
             cfg.to_validity_map().unwrap(),
             [
-                (key_a, vec![0..=BlockIndex::MAX]),
-                (key_b, vec![0..=10]),
+                (key_a, one_range(0..=BlockIndex::MAX)),
+                (key_b, one_range(0..=10)),
                 (key_c, vec![0..=10, 20..=BlockIndex::MAX]),
             ]
             .into()
@@ -348,9 +352,9 @@ mod tests {
         assert_eq!(
             config.to_validity_map().unwrap(),
             [
-                (make_pub_key(0xAA), vec![0..=BlockIndex::MAX]),
-                (make_pub_key(0xBB), vec![0..=10]),
-                (make_pub_key(0xCC), vec![20..=BlockIndex::MAX])
+                (make_pub_key(0xAA), one_range(0..=BlockIndex::MAX)),
+                (make_pub_key(0xBB), one_range(0..=10)),
+                (make_pub_key(0xCC), one_range(20..=BlockIndex::MAX))
             ]
             .into()
         );
@@ -412,9 +416,9 @@ mod tests {
         assert_eq!(
             config.to_validity_map().unwrap(),
             [
-                (make_pub_key(0xAA), vec![0..=BlockIndex::MAX]),
-                (make_pub_key(0xBB), vec![0..=10]),
-                (make_pub_key(0xCC), vec![20..=BlockIndex::MAX])
+                (make_pub_key(0xAA), one_range(0..=BlockIndex::MAX)),
+                (make_pub_key(0xBB), one_range(0..=10)),
+                (make_pub_key(0xCC), one_range(20..=BlockIndex::MAX))
             ]
             .into()
         );

@@ -77,6 +77,7 @@ impl FogViewGrpcClient {
 impl FogViewConnection for FogViewGrpcClient {
     type Error = Error;
 
+    #[allow(clippy::result_large_err)]
     fn request(
         &mut self,
         start_from_user_event_id: i64,
@@ -133,7 +134,7 @@ impl Display for Error {
         write!(
             formatter,
             "Fog view connection error ({}): {}",
-            &self.uri, &self.error
+            self.uri, self.error
         )
     }
 }

@@ -7,7 +7,7 @@ use std::{env::var, path::PathBuf};
 
 fn main() {
     for (key, value) in std::env::vars() {
-        eprintln!("env:{}={}", &key, &value);
+        eprintln!("env:{key}={value}");
     }
 
     let mut compat_search_path =

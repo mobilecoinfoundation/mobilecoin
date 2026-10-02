@@ -656,7 +656,7 @@ mod ed25519_tests {
             ED25519_PKI_DER_PREFIX,
             "Our prefix doesn't match openssl prefix:\n{:X?}\n{:X?}",
             &bytes[0..16],
-            &ED25519_PKI_DER_PREFIX
+            ED25519_PKI_DER_PREFIX
         );
     }
 
@@ -707,7 +707,7 @@ mod ed25519_tests {
             ED25519_SPKI_DER_PREFIX,
             "Our prefix doesn't match openssl prefix:\n{:X?}\n{:X?}",
             &bytes[0..12],
-            &ED25519_SPKI_DER_PREFIX
+            ED25519_SPKI_DER_PREFIX
         );
     }
 }
