@@ -202,7 +202,7 @@ macro_rules! test_logger {
         }
         let name = type_name_of(f);
         let fn_name = name.strip_suffix("::f").unwrap_or(name);
-        mc_common::logger::create_test_logger(fn_name.to_string())
+        $crate::logger::create_test_logger(fn_name.to_string())
     }};
 }
 pub use test_logger;

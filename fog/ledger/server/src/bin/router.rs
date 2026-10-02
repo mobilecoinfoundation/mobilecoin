@@ -32,7 +32,7 @@ fn main() {
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
         "fog_ledger_router",
         &[(
-            "client_responser_id",
+            "client_responder_id",
             config.client_responder_id.to_string(),
         )],
     )
