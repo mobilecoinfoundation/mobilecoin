@@ -53,6 +53,7 @@ use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
     BuildInfoService, ConnectionUriGrpcioServer,
 };
+use mc_util_telemetry::{TraceContextExt, Tracer};
 use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
 use std::sync::{Arc, Mutex, RwLock};
@@ -496,9 +497,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Return response.
         Ok(api::GetPublicAddressResponse {
             public_address: Some((&subaddress).into()),
-            b58_code: wrapper
-                .b58_encode()
-                .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
+            b58_code: wrapper.b58_encode(),
         })
     }
 
@@ -666,9 +665,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             wrapper: Some(printable_wrapper::Wrapper::PaymentRequest(payment_request)),
         };
 
-        let encoded = wrapper
-            .b58_encode()
-            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
+        let encoded = wrapper.b58_encode();
 
         Ok(api::CreateRequestCodeResponse { b58_code: encoded })
     }
@@ -845,9 +842,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             )),
         };
 
-        let encoded = transfer_wrapper
-            .b58_encode()
-            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
+        let encoded = transfer_wrapper.b58_encode();
 
         Ok(api::CreateTransferCodeResponse { b58_code: encoded })
     }
@@ -894,9 +889,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             )),
         };
 
-        let encoded = wrapper
-            .b58_encode()
-            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
+        let encoded = wrapper.b58_encode();
 
         Ok(api::CreateAddressCodeResponse { b58_code: encoded })
     }
@@ -1559,9 +1552,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             )),
         };
 
-        let b58_code = transfer_wrapper
-            .b58_encode()
-            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
+        let b58_code = transfer_wrapper.b58_encode();
 
         // Construct response.
         Ok(api::GenerateTransferCodeTxResponse {
@@ -2263,9 +2254,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                         (&subaddress).into(),
                     )),
                 };
-                let encoded = wrapper
-                    .b58_encode()
-                    .map_err(|err| rpc_internal_error("wrapper.b58_encode", err, &self.logger))?;
+                let encoded = wrapper.b58_encode();
                 Ok(api::ProcessedTxOut {
                     monitor_id: monitor_id.to_vec(),
                     subaddress_index: src.subaddress_index,
@@ -2699,6 +2688,18 @@ macro_rules! build_api {
                     request: $service_request_type,
                     sink: UnarySink<$service_response_type>,
                 ) {
+                    let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+                    // Mobilecoind is often called by polling threads that don't
+                    // have a trace context (e.g. db polling thread). In those
+                    // cases, we don't want to record spans as they would be orphaned.
+                    let _guard = if parent_ctx.span().span_context().is_valid() {
+                        let tracer = mc_util_telemetry::tracer!();
+                        Some(parent_ctx
+                            .with_span(tracer.start_with_context(stringify!($service_function_name), &parent_ctx))
+                            .attach())
+                    } else {
+                        None
+                    };
                     let logger = rpc_logger(&ctx, &self.logger);
                     send_result(
                         ctx,
@@ -3472,7 +3473,7 @@ mod test {
                 (&account_key.subaddress(10)).into(),
             )),
         };
-        let b58_code = wrapper.b58_encode().unwrap();
+        let b58_code = wrapper.b58_encode();
         assert_eq!(response.b58_code, b58_code,);
 
         // Subaddress that is out of index or an invalid monitor id should error.
@@ -7358,7 +7359,7 @@ mod test {
                 (&receiver_public_address).into(),
             )),
         };
-        let b58_code = wrapper.b58_encode().unwrap();
+        let b58_code = wrapper.b58_encode();
 
         // Call pay address code.
         let request = api::PayAddressCodeRequest {
@@ -7428,7 +7429,7 @@ mod test {
                 (&receiver_public_address).into(),
             )),
         };
-        let b58_code = wrapper.b58_encode().unwrap();
+        let b58_code = wrapper.b58_encode();
 
         let test_amount = 345;
 

@@ -20,7 +20,7 @@ use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
     Authenticator,
 };
-use mc_util_telemetry::{tracer, BoxedTracer, Tracer};
+use mc_util_telemetry::{tracer, BoxedTracer, TraceContextExt, Tracer};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -265,6 +265,11 @@ where
         sink: UnarySink<attest::AuthMessage>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = parent_ctx
+            .with_span(tracer.start_with_context("auth", &parent_ctx))
+            .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);
@@ -283,6 +288,11 @@ where
         request: MultiViewStoreQueryRequest,
         sink: UnarySink<MultiViewStoreQueryResponse>,
     ) {
+        let tracer = mc_util_telemetry::tracer!();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = parent_ctx
+            .with_span(tracer.start_with_context("multi_view_store_query", &parent_ctx))
+            .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
                 return send_result(ctx, sink, err.into(), logger);

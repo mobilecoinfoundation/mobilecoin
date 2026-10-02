@@ -12,7 +12,7 @@ use mc_fog_api::fog_view::{
 use mc_fog_view_enclave_api::ViewEnclaveProxy;
 use mc_util_grpc::{check_request_chain_id, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::ServiceMetrics;
-use mc_util_telemetry::tracer;
+use mc_util_telemetry::{FutureExt as TelemetryFutureExt, TraceContextExt, Tracer};
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
@@ -61,6 +61,10 @@ where
         requests: RequestStream<FogViewRouterRequest>,
         responses: DuplexSink<FogViewRouterResponse>,
     ) {
+        let tracer = mc_util_telemetry::tracer!();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let tracing_ctx = parent_ctx.with_span(tracer.start_with_context("request", &parent_ctx));
+
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let logger = logger.clone();
             // TODO: Confirm that we don't need to perform the authenticator logic. I think
@@ -75,6 +79,7 @@ where
                 responses,
                 logger.clone(),
             )
+            .with_context(tracing_ctx)
             .map_err(move |err: grpcio::Error| log::error!(&logger, "failed to reply: {}", err))
             // TODO: Do stuff with the error
             .map(|_| ());
@@ -95,6 +100,11 @@ where
         sink: UnarySink<attest::AuthMessage>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+        let tracer = mc_util_telemetry::tracer!();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = parent_ctx
+            .with_span(tracer.start_with_context("auth", &parent_ctx))
+            .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
@@ -122,6 +132,11 @@ where
         request: attest::Message,
         sink: UnarySink<attest::Message>,
     ) {
+        let tracer = mc_util_telemetry::tracer!();
+        let parent_ctx = mc_util_telemetry::extract_context(&ctx);
+        let _guard = parent_ctx
+            .with_span(tracer.start_with_context("query", &parent_ctx))
+            .attach();
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = check_request_chain_id(&self.chain_id, &ctx) {
                 return send_result(ctx, sink, Err(err), logger);
@@ -133,7 +148,6 @@ where
 
             // This will block the async API. We should use some sort of differentiator...
             let shards = self.shards.read().expect("RwLock poisoned");
-            let tracer = tracer!();
             let result = block_on(router_request_handler::handle_query_request(
                 request,
                 self.enclave.clone(),

@@ -17,6 +17,7 @@ mc-ledger-db = { workspace = true }
 mc-mobilecoind-api = { workspace = true }
 mc-transaction-core = { workspace = true }
 mc-util-grpc = { workspace = true }
+mc-util-telemetry = { workspace = true }
 mc-watcher = { workspace = true }
 mc-watcher-api = { workspace = true }
 

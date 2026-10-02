@@ -42,12 +42,12 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
 /// encoded string, with a checksum prepended to it.
 impl printable::PrintableWrapper {
     /// Converts the proto to bytes and then encodes as b58
-    pub fn b58_encode(&self) -> Result<String, Error> {
+    pub fn b58_encode(&self) -> String {
         let wrapper_bytes = self.encode_to_vec();
         let mut bytes_vec = Vec::new();
         bytes_vec.extend_from_slice(&calculate_checksum(&wrapper_bytes));
         bytes_vec.extend_from_slice(&wrapper_bytes);
-        Ok(bs58::encode(&bytes_vec[..]).into_string())
+        bs58::encode(&bytes_vec[..]).into_string()
     }
 
     /// Converts a b58 string to bytes and then decodes to a proto
@@ -102,7 +102,7 @@ mod display_tests {
         let wrapper = PrintableWrapper {
             wrapper: Some(printable_wrapper::Wrapper::PublicAddress(public_address)),
         };
-        let encoded = wrapper.b58_encode().unwrap();
+        let encoded = wrapper.b58_encode();
         let decoded = PrintableWrapper::b58_decode(encoded).unwrap();
         assert_eq!(wrapper, decoded);
     }
@@ -127,7 +127,7 @@ mod display_tests {
     #[test_with_data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_encode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
         let wrapper = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
-        assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
+        assert_eq!(wrapper.b58_encode(), case.b58_encoded);
     }
 
     #[test_with_data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
@@ -160,7 +160,7 @@ mod display_tests {
     #[test_with_data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_encode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
         let wrapper = printable_wrapper_from_b58_encode_public_address_with_fog(&case);
-        assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
+        assert_eq!(wrapper.b58_encode(), case.b58_encoded);
     }
 
     #[test_with_data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
@@ -184,7 +184,7 @@ mod display_tests {
         let wrapper = PrintableWrapper {
             wrapper: Some(printable_wrapper::Wrapper::PaymentRequest(payment_request)),
         };
-        let encoded = wrapper.b58_encode().unwrap();
+        let encoded = wrapper.b58_encode();
         let decoded = PrintableWrapper::b58_decode(encoded).unwrap();
         assert_eq!(wrapper, decoded);
     }
@@ -206,7 +206,7 @@ mod display_tests {
                 transfer_payload.clone(),
             )),
         };
-        let encoded = wrapper.b58_encode().unwrap();
+        let encoded = wrapper.b58_encode();
         let decoded = PrintableWrapper::b58_decode(encoded).unwrap();
         assert_eq!(wrapper, decoded);
     }
@@ -218,7 +218,7 @@ mod display_tests {
         let wrapper = PrintableWrapper {
             wrapper: Some(printable_wrapper::Wrapper::PublicAddress(public_address)),
         };
-        let encoded = wrapper.b58_encode().unwrap();
+        let encoded = wrapper.b58_encode();
 
         // Change the checksum
         let mut vec_encoded = bs58::decode(encoded).into_vec().unwrap();
