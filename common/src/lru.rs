@@ -123,7 +123,7 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
             self.key_to_entry_index
                 .remove(&self.entries[index].as_ref().unwrap().0);
 
-            // Replace it with the new entry and put at at the front.
+            // Replace it with the new entry and put at the front.
             self.entries[index] = Some((key.clone(), val));
             self.key_to_entry_index.insert(key, index);
             self.used_indexes.push_front(index);

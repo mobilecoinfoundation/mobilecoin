@@ -24,7 +24,7 @@
 //! an allocated "owned" object is allocated by Rust code and passed back to
 //! foreign code, that foreign code takes ownership (takes over responsibility
 //! for disposing of the object), with the caveat that the actual memory
-//! deallocation needs be be performed by the original allocator. In practice,
+//! deallocation needs be performed by the original allocator. In practice,
 //! this usually means that any time foreign code calls a Rust FFI function that
 //! returns an owned object, the foreign code becomes responsible for later
 //! calling the corresponding "free" function, usually taking the form of
