@@ -59,7 +59,10 @@ pub struct TxOutSummaryUnblindingData {
     /// which introduces randomness into the cryptonote stealth addresses
     /// (tx_public_key and tx_target_key) of the TxOut.
     ///
-    /// If this output comes from an SCI then we may not know this.
+    /// This is required for every output with an `address`, including change
+    /// and other self-payments: the verifier recomputes the TxOut from it to
+    /// prove the output really goes to that address. Only outputs from an SCI,
+    /// which have no `address`, may omit it.
     #[cfg_attr(feature = "prost", prost(message, optional, tag = "3"))]
     pub tx_private_key: Option<RistrettoPrivate>,
 }
