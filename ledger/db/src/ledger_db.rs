@@ -436,8 +436,11 @@ impl LedgerDB {
         let env = Environment::new()
             .set_max_dbs(MAX_LMDB_DATABASES)
             .set_map_size(MAX_LMDB_FILE_SIZE)
-            // TODO - needed because currently our test cloud machines have slow disks.
-            .set_flags(EnvironmentFlags::NO_SYNC)
+            // NO_SYNC: TODO - needed because currently our test cloud machines have slow
+            // disks.
+            // NO_READAHEAD: appends do random lookups in hash-keyed indexes, so OS
+            // readahead on page faults mostly reads data that is never used.
+            .set_flags(EnvironmentFlags::NO_SYNC | EnvironmentFlags::NO_READAHEAD)
             .open(path)?;
 
         let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)?;
