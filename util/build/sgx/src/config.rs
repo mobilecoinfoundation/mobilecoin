@@ -180,7 +180,7 @@ impl ConfigBuilder {
     pub fn write_to_file(&self, config_path: &Path) {
         let mut config_file =
             File::create(config_path).expect("Could not create/truncate XML config file");
-        write!(config_file, "{}", &self).expect("Could not output string for SgxConfigBuilder");
+        write!(config_file, "{self}").expect("Could not output string for SgxConfigBuilder");
     }
 }
 

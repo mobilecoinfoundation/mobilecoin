@@ -122,11 +122,11 @@ pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + 
     // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're in
     //   one of two states:
     //
-    //      1. The closure didn't panic, in which case the return value was
-    //         filled in. We move it out of `data` and return it.
-    //      2. The closure panicked, in which case the return value wasn't
-    //         filled in. In this case the entire `data` union is invalid, so
-    //         there is no need to drop anything.
+    //      1. The closure didn't panic, in which case the return value was filled
+    //         in. We move it out of `data` and return it.
+    //      2. The closure panicked, in which case the return value wasn't filled
+    //         in. In this case the entire `data` union is invalid, so there is no
+    //         need to drop anything.
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.

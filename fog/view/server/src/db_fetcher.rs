@@ -161,7 +161,7 @@ impl DbFetcher {
     }
 
     /// Get a locked reference to the shared state.
-    fn shared_state(&self) -> MutexGuard<DbFetcherSharedState> {
+    fn shared_state(&self) -> MutexGuard<'_, DbFetcherSharedState> {
         self.shared_state.lock().expect("mutex poisoned")
     }
 }
@@ -392,7 +392,7 @@ where
         may_have_more_work
     }
 
-    fn shared_state(&self) -> MutexGuard<DbFetcherSharedState> {
+    fn shared_state(&self) -> MutexGuard<'_, DbFetcherSharedState> {
         self.shared_state.lock().expect("mutex poisoned")
     }
 }

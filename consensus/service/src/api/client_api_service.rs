@@ -84,7 +84,7 @@ pub struct ClientApiService {
     /// Passes proposed transactions to the consensus service.
     propose_tx_callback: ProposeTxCallback,
     /// Returns true if this node is able to process proposed transactions.
-    is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
+    is_serving_fn: Arc<dyn Fn() -> bool + Sync + Send>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
     /// Information kept regarding sessions between clients and consensus
@@ -100,7 +100,7 @@ impl ClientApiService {
         ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
         mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
-        is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
+        is_serving_fn: Arc<dyn Fn() -> bool + Sync + Send>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
         tracked_sessions: Arc<Mutex<LruCache<ClientSession, ClientSessionTracking>>>,

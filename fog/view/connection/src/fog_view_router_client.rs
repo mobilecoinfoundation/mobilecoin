@@ -241,7 +241,7 @@ pub enum Error {
     Cipher(CipherError),
 
     /// Attestation errors.
-    Attestation(AttestAkeError),
+    Attestation(Box<AttestAkeError>),
 
     /// Grpc errors.
     Grpc(grpcio::Error),
@@ -279,6 +279,6 @@ impl From<UriConversionError> for Error {
 
 impl From<AttestAkeError> for Error {
     fn from(err: AttestAkeError) -> Self {
-        Self::Attestation(err)
+        Self::Attestation(Box::new(err))
     }
 }

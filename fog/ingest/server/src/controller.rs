@@ -1164,7 +1164,7 @@ where
     }
 
     // Helper which eases syntax around getting a lock on the state
-    fn get_state(&self) -> MutexGuard<IngestControllerState> {
+    fn get_state(&self) -> MutexGuard<'_, IngestControllerState> {
         self.controller_state.lock().expect("mutex poisoned")
     }
 

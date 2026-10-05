@@ -343,7 +343,7 @@ impl State {
     pub async fn handle_status(&self) -> Result<FaucetStatus, String> {
         // Get up-to-date balances for all the tokens we are tracking
         let mut balances: HashMap<TokenId, u64> = Default::default();
-        for (token_id, _) in self.faucet_payout_amounts.iter() {
+        for token_id in self.faucet_payout_amounts.keys() {
             let req = api::GetBalanceRequest {
                 monitor_id: self.monitor_id.clone(),
                 token_id: **token_id,

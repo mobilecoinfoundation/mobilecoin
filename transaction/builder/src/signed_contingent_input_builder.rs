@@ -475,13 +475,13 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         }
 
         self.required_outputs_and_secrets
-            .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
+            .sort_by_key(|(tx_out, _)| tx_out.public_key);
 
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
             self.required_outputs_and_secrets.drain(..).unzip();
 
         self.partial_fill_outputs
-            .sort_by(|a, b| a.tx_out.public_key.cmp(&b.tx_out.public_key));
+            .sort_by_key(|item| item.tx_out.public_key);
 
         let input_rules = InputRules {
             required_outputs: outputs,

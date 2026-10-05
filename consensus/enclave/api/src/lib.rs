@@ -352,7 +352,7 @@ mod well_formed_tx_context_tests {
         let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
         let c = WellFormedTxContext::new(88, Default::default(), 0, vec![], vec![], vec![]);
 
-        let mut contexts = vec![a, b, c];
+        let mut contexts = [a, b, c];
         contexts.sort();
 
         let priorities: Vec<_> = contexts.iter().map(|context| context.priority).collect();

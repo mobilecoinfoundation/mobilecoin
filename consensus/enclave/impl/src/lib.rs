@@ -918,7 +918,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Sort outputs and key images. This removes ordering information which could be
         // used to infer the per-transaction relationships among outputs and/or
         // key images.
-        outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
+        outputs.sort_by_key(|output| output.public_key);
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
@@ -1556,7 +1556,7 @@ mod tests {
                     add_txos_to_ledger(
                         &mut ledger,
                         block_version,
-                        &[spendable_output.clone()],
+                        core::slice::from_ref(&spendable_output),
                         &mut rng,
                     )
                     .unwrap();
@@ -1726,9 +1726,7 @@ mod tests {
             let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
             let mut new_transactions = Vec::new();
-            for i in 0..num_transactions {
-                let tx_out = &block_zero_contents.outputs[i];
-
+            for tx_out in block_zero_contents.outputs.iter().take(num_transactions) {
                 let tx = create_transaction(
                     block_version,
                     &ledger,
@@ -1837,9 +1835,11 @@ mod tests {
             let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
             let mut new_transactions = Vec::new();
-            for i in 0..num_transactions - 1 {
-                let tx_out = &block_zero_contents.outputs[i];
-
+            for tx_out in block_zero_contents
+                .outputs
+                .iter()
+                .take(num_transactions - 1)
+            {
                 let tx = create_transaction(
                     block_version,
                     &ledger,
@@ -1951,9 +1951,7 @@ mod tests {
             let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
             let mut new_transactions = Vec::new();
-            for i in 0..num_transactions {
-                let tx_out = &block_zero_contents.outputs[i];
-
+            for tx_out in block_zero_contents.outputs.iter().take(num_transactions) {
                 let tx = create_transaction(
                     block_version,
                     &ledger,
@@ -2057,9 +2055,7 @@ mod tests {
             let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
             let mut new_transactions = Vec::new();
-            for i in 0..num_transactions {
-                let tx_out = &block_zero_contents.outputs[i];
-
+            for tx_out in block_zero_contents.outputs.iter().take(num_transactions) {
                 let tx = create_transaction(
                     block_version,
                     &ledger,
@@ -2145,9 +2141,7 @@ mod tests {
             let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
             let mut new_transactions = Vec::new();
-            for i in 0..num_transactions {
-                let tx_out = &block_zero_contents.outputs[i];
-
+            for tx_out in block_zero_contents.outputs.iter().take(num_transactions) {
                 let tx = create_transaction(
                     block_version,
                     &ledger,

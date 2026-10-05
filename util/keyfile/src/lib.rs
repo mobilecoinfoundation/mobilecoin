@@ -137,15 +137,14 @@ pub fn read_b58pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, st
     if let Some(printable_wrapper::Wrapper::PublicAddress(address)) = wrapper.wrapper.as_ref() {
         address.try_into().map_err(to_io_error)
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(std::io::Error::other(
             "Printable Wrapper did not contain public address",
         ))
     }
 }
 
 fn to_io_error<E: 'static + std::error::Error + Send + Sync>(err: E) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
+    std::io::Error::other(Box::new(err))
 }
 
 #[cfg(test)]

@@ -211,7 +211,7 @@ lazy_static! {
     /// Switchable app logger support.
     static ref SWITCHABLE_APP_LOGGER: slog_atomic::AtomicSwitchCtrl<(), io::Error> =
         slog_atomic::AtomicSwitch::new(
-            slog::Discard.map_err(|_| io::Error::new(io::ErrorKind::Other, "should not happen"))
+            slog::Discard.map_err(|_| io::Error::other("should not happen"))
         )
         .ctrl();
 }
@@ -221,10 +221,8 @@ pub fn create_app_logger<T: slog::SendSyncRefUnwindSafeKV + 'static>(
     values: slog::OwnedKV<T>,
 ) -> (Logger, slog_scope::GlobalLoggerGuard) {
     // Put a root logger in the slog-atomic object
-    SWITCHABLE_APP_LOGGER.set(
-        Mutex::new(create_root_logger())
-            .map_err(|_| io::Error::new(io::ErrorKind::Other, "mutex error")),
-    );
+    SWITCHABLE_APP_LOGGER
+        .set(Mutex::new(create_root_logger()).map_err(|_| io::Error::other("mutex error")));
 
     // Get the root logger
     let root_logger = Logger::root(SWITCHABLE_APP_LOGGER.drain().fuse(), o!());
@@ -261,10 +259,8 @@ pub fn create_app_logger<T: slog::SendSyncRefUnwindSafeKV + 'static>(
 
 /// The hack that re-initializes the app logger.
 pub fn recreate_app_logger() {
-    SWITCHABLE_APP_LOGGER.set(
-        Mutex::new(create_root_logger())
-            .map_err(|_| io::Error::new(io::ErrorKind::Other, "mutex error")),
-    );
+    SWITCHABLE_APP_LOGGER
+        .set(Mutex::new(create_root_logger()).map_err(|_| io::Error::other("mutex error")));
 }
 
 // `MaybeMcSrcValue` allows us to selectively include "mc.src" in our logging

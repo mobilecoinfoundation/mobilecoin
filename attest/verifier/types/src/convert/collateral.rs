@@ -25,7 +25,7 @@ impl TryFrom<&prost::Collateral> for Collateral {
         let mut pck_crl_issuer_chain = der_chain_to_pem(&value.pck_crl_issuer_chain)?;
         sgx_collateral.pck_crl_issuer_chain =
             pck_crl_issuer_chain.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.pck_crl_issuer_chain_size = pck_crl_issuer_chain.as_bytes().len() as u32;
+        sgx_collateral.pck_crl_issuer_chain_size = pck_crl_issuer_chain.len() as u32;
 
         let mut root_ca_crl = value.root_ca_crl.clone();
         root_ca_crl.push(b'\0');
@@ -40,21 +40,20 @@ impl TryFrom<&prost::Collateral> for Collateral {
         let mut tcb_info_issuer_chain = der_chain_to_pem(&value.tcb_info_issuer_chain)?;
         sgx_collateral.tcb_info_issuer_chain =
             tcb_info_issuer_chain.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.tcb_info_issuer_chain_size = tcb_info_issuer_chain.as_bytes().len() as u32;
+        sgx_collateral.tcb_info_issuer_chain_size = tcb_info_issuer_chain.len() as u32;
 
         let mut tcb_info = value.tcb_info.clone();
         sgx_collateral.tcb_info = tcb_info.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.tcb_info_size = tcb_info.as_bytes().len() as u32;
+        sgx_collateral.tcb_info_size = tcb_info.len() as u32;
 
         let mut qe_identity_issuer_chain = der_chain_to_pem(&value.qe_identity_issuer_chain)?;
         sgx_collateral.qe_identity_issuer_chain =
             qe_identity_issuer_chain.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.qe_identity_issuer_chain_size =
-            qe_identity_issuer_chain.as_bytes().len() as u32;
+        sgx_collateral.qe_identity_issuer_chain_size = qe_identity_issuer_chain.len() as u32;
 
         let mut qe_identity = value.qe_identity.clone();
         sgx_collateral.qe_identity = qe_identity.as_mut_ptr() as *mut core::ffi::c_char;
-        sgx_collateral.qe_identity_size = qe_identity.as_bytes().len() as u32;
+        sgx_collateral.qe_identity_size = qe_identity.len() as u32;
 
         Ok(Collateral::try_from(&sgx_collateral)?)
     }

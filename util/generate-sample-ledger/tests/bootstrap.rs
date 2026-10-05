@@ -1,8 +1,4 @@
-use std::{
-    env::{args, set_current_dir},
-    path::PathBuf,
-    process::Command,
-};
+use std::{env::set_current_dir, path::PathBuf, process::Command};
 use tempfile::TempDir;
 
 // Test that the bootstrap binary works with basic config
@@ -19,21 +15,22 @@ use tempfile::TempDir;
 // this can't be done right now.)
 #[test]
 fn test_exercise_bootstrap() {
-    let me = PathBuf::from(args().next().unwrap());
-    let bin = me.parent().unwrap().parent().unwrap();
-    println!("bin = {bin:?}");
+    let generate_sample_ledger = PathBuf::from(env!("CARGO_BIN_EXE_generate-sample-ledger"));
+    let sample_keys = generate_sample_ledger.with_file_name("sample-keys");
+    println!("generate-sample-ledger = {generate_sample_ledger:?}");
+    println!("sample-keys = {sample_keys:?}");
 
     let dir = TempDir::new().unwrap();
     set_current_dir(dir.path()).unwrap();
     println!("dir = {dir:?}");
 
-    assert!(Command::new(bin.join("sample-keys"))
+    assert!(Command::new(sample_keys)
         .args(["--num", "5"])
         .status()
         .expect("sample-keys")
         .success());
 
-    assert!(Command::new(bin.join("generate-sample-ledger"))
+    assert!(Command::new(generate_sample_ledger)
         .args(["--txs", "10"])
         .status()
         .expect("generate-sample-ledger")

@@ -69,8 +69,7 @@ impl InputCredentials {
         let mut ring_and_proofs: Vec<(TxOut, TxOutMembershipProof)> =
             ring.into_iter().zip(membership_proofs).collect();
 
-        ring_and_proofs
-            .sort_by(|(tx_out_a, _), (tx_out_b, _)| tx_out_a.public_key.cmp(&tx_out_b.public_key));
+        ring_and_proofs.sort_by_key(|(tx_out, _)| tx_out.public_key);
 
         let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) =
             ring_and_proofs.into_iter().unzip();

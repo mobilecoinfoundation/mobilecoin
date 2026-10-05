@@ -70,7 +70,7 @@ impl RwLockInfo {
         let ret: SysError;
         self.spinlock.lock();
         {
-            if self.busy == u32::max_value() {
+            if self.busy == u32::MAX {
                 ret = Err(libc::EAGAIN);
             } else {
                 self.busy += 1;
@@ -131,7 +131,7 @@ impl SgxThreadRwLock {
                 return Err(libc::EDEADLK);
             }
 
-            if rwlockinfo.readers_num == u32::max_value() {
+            if rwlockinfo.readers_num == u32::MAX {
                 rwlockinfo.mutex.unlock();
                 rwlockinfo.deref_busy();
                 return Err(libc::EAGAIN);
@@ -164,7 +164,7 @@ impl SgxThreadRwLock {
             let mut ret = Ok(());
             if rwlockinfo.writer_thread == thread::thread_self() {
                 ret = Err(libc::EDEADLK);
-            } else if rwlockinfo.readers_num == u32::max_value() {
+            } else if rwlockinfo.readers_num == u32::MAX {
                 ret = Err(libc::EAGAIN);
             } else if rwlockinfo.writers_num > 0 {
                 ret = Err(libc::EBUSY);
@@ -203,7 +203,7 @@ impl SgxThreadRwLock {
                 return Err(libc::EDEADLK);
             }
 
-            if rwlockinfo.writers_num == u32::max_value() {
+            if rwlockinfo.writers_num == u32::MAX {
                 rwlockinfo.mutex.unlock();
                 rwlockinfo.deref_busy();
                 return Err(libc::EAGAIN);
@@ -242,7 +242,7 @@ impl SgxThreadRwLock {
             let mut ret = Ok(());
             if rwlockinfo.writer_thread == thread::thread_self() {
                 ret = Err(libc::EDEADLK);
-            } else if rwlockinfo.writers_num == u32::max_value() {
+            } else if rwlockinfo.writers_num == u32::MAX {
                 ret = Err(libc::EAGAIN);
             } else if rwlockinfo.readers_num > 0 || rwlockinfo.writer_thread != SGX_THREAD_T_NULL {
                 ret = Err(libc::EBUSY);
@@ -396,7 +396,7 @@ impl<T: ?Sized> SgxRwLock<T> {
     /// # Panics
     ///
     /// This function might panic when called if the lock is already held by the current thread.
-    pub fn read(&self) -> LockResult<SgxRwLockReadGuard<T>> {
+    pub fn read(&self) -> LockResult<SgxRwLockReadGuard<'_, T>> {
         unsafe {
             let ret = self.inner.read();
             match ret {
@@ -424,7 +424,7 @@ impl<T: ?Sized> SgxRwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
-    pub fn try_read(&self) -> TryLockResult<SgxRwLockReadGuard<T>> {
+    pub fn try_read(&self) -> TryLockResult<SgxRwLockReadGuard<'_, T>> {
         unsafe {
             let ret = self.inner.try_read();
             match ret {
@@ -452,7 +452,7 @@ impl<T: ?Sized> SgxRwLock<T> {
     /// # Panics
     ///
     /// This function might panic when called if the lock is already held by the current thread.
-    pub fn write(&self) -> LockResult<SgxRwLockWriteGuard<T>> {
+    pub fn write(&self) -> LockResult<SgxRwLockWriteGuard<'_, T>> {
         unsafe {
             let ret = self.inner.write();
             match ret {
@@ -480,7 +480,7 @@ impl<T: ?Sized> SgxRwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
-    pub fn try_write(&self) -> TryLockResult<SgxRwLockWriteGuard<T>> {
+    pub fn try_write(&self) -> TryLockResult<SgxRwLockWriteGuard<'_, T>> {
         unsafe {
             let ret = self.inner.try_write();
             match ret {

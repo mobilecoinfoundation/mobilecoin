@@ -1,5 +1,5 @@
 edition = "2021"
-wrap_comments = true
+wrap_comments = false
 imports_granularity = "Crate"
 
 ignore = [

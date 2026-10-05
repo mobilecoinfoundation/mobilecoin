@@ -308,9 +308,9 @@ mod test {
         assert_eq!(output_data.results.len(), 50);
 
         // Each element should contain a proof-of-membership.
-        for i in 0..output_data.results.len() {
-            let tx_out = output_data.results[i].output.clone();
-            let proof = output_data.results[i].proof.clone();
+        for result in &output_data.results {
+            let tx_out = result.output.clone();
+            let proof = result.proof.clone();
             assert_eq!(proof.highest_index, highest_index as u64);
 
             // The proof should correspond to the TxOut it accompanies.

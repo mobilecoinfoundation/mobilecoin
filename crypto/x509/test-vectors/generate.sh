@@ -64,7 +64,6 @@ function make_intermediate_ca() {
 		-key "${!DIR}/private/ca.key" \
 		-new \
 		-sha256 \
-		-extensions v3_intermediate_ca \
 		-out "${!DIR}/req/ca.csr"
 
 	"${OPENSSL}" ca \
@@ -132,7 +131,6 @@ init_ca_dir "${OK_PENULTIMATE8_DIR}"
 	-key "${OK_PENULTIMATE_DIR}/private/ca.key" \
 	-new \
 	-sha256 \
-	-extensions v3_penultimate_ca \
 	-out "${OK_PENULTIMATE_DIR}/req/ca.csr"
 
 "${OPENSSL}" ca \
@@ -159,7 +157,6 @@ init_ca_dir "${OK_PENULTIMATE8_DIR}"
 	-key "${OK_PENULTIMATE_DIR}/private/leaf.key" \
 	-new \
 	-sha256 \
-	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE_DIR}/req/leaf.csr"
 
 "${OPENSSL}" ca \
@@ -217,7 +214,6 @@ make_intermediate_ca 7
 	-key "${OK_PENULTIMATE8_DIR}/private/ca.key" \
 	-new \
 	-sha256 \
-	-extensions v3_penultimate_ca \
 	-out "${OK_PENULTIMATE8_DIR}/req/ca.csr"
 
 "${OPENSSL}" ca \
@@ -244,7 +240,6 @@ make_intermediate_ca 7
 	-key "${OK_PENULTIMATE8_DIR}/private/leaf.key" \
 	-new \
 	-sha256 \
-	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE8_DIR}/req/leaf.csr"
 
 "${OPENSSL}" ca \
@@ -300,7 +295,6 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_
 	-key "${OK_PENULTIMATE_DIR}/private/expired.key" \
 	-new \
 	-sha256 \
-	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE_DIR}/req/expired.csr"
 
 "${OPENSSL}" ca \
@@ -336,7 +330,6 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_leaf_exp
 	-key "${OK_PENULTIMATE_DIR}/private/too_soon.key" \
 	-new \
 	-sha256 \
-	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE_DIR}/req/too_soon.csr"
 
 "${OPENSSL}" ca \

@@ -213,7 +213,7 @@ mod tests {
     use mc_fog_recovery_db_iface::IngressPublicKeyStatus;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::cmp::min;
+    use std::{cmp::min, slice};
 
     #[test_with_logger]
     fn next_blocks_empty(logger: Logger) {
@@ -239,10 +239,16 @@ mod tests {
 
         let expected_state = HashMap::from_iter(vec![(rec.key, rec.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Repeated call should result in the same expected result.
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Advancing to the next block should advance the expected result.
         for i in 0..10 {
@@ -252,13 +258,16 @@ mod tests {
                 HashMap::from_iter(vec![(rec.key, rec.status.start_block + i + 1)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec)),
                 expected_state,
                 "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
-            assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+            assert_eq!(
+                block_tracker.next_blocks(slice::from_ref(&rec)),
+                expected_state
+            );
         }
     }
 
@@ -279,10 +288,16 @@ mod tests {
         };
         let expected_state = HashMap::from_iter(vec![(rec.key, rec.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Repeated call should result in the same expected result.
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Advancing to the next block should advance the expected result.
         for i in 0..10 {
@@ -291,10 +306,16 @@ mod tests {
             let expected_state =
                 HashMap::from_iter(vec![(rec.key, rec.status.start_block + i + 1)]);
 
-            assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+            assert_eq!(
+                block_tracker.next_blocks(slice::from_ref(&rec)),
+                expected_state
+            );
 
             // Repeated call should result in the same expected result.
-            assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+            assert_eq!(
+                block_tracker.next_blocks(slice::from_ref(&rec)),
+                expected_state
+            );
         }
     }
 
@@ -321,10 +342,16 @@ mod tests {
         // unless this key is declared lost
         let expected_state = HashMap::from_iter(vec![(key, 123)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Repeated call should result in the same expected result.
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Advancing to the next block should return the same result.
         for i in 0..49 {
@@ -333,13 +360,16 @@ mod tests {
             let expected_state = HashMap::from_iter(vec![(key, 123 + i + 1)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec)),
                 expected_state,
                 "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
-            assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+            assert_eq!(
+                block_tracker.next_blocks(slice::from_ref(&rec)),
+                expected_state
+            );
         }
         block_tracker.block_processed(rec.key, rec.status.start_block + 49);
 
@@ -368,10 +398,16 @@ mod tests {
 
         let expected_state = HashMap::from_iter(vec![(rec.key, rec.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Repeated call should result in the same expected result.
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Advancing to the next block should advance the expected result.
         for i in 0..10 {
@@ -382,13 +418,16 @@ mod tests {
                 HashMap::from_iter(vec![(rec.key, rec.status.start_block + i + 1)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec)),
                 expected_state,
                 "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
-            assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+            assert_eq!(
+                block_tracker.next_blocks(slice::from_ref(&rec)),
+                expected_state
+            );
         }
     }
 
@@ -441,7 +480,10 @@ mod tests {
         // last-sacnned block
         let expected_state = HashMap::from_iter(vec![(rec.key, rec.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec)),
+            expected_state
+        );
 
         // Advancing to the next block should advance the expected result.
         for i in 0..20 {
@@ -451,13 +493,16 @@ mod tests {
                 HashMap::from_iter(vec![(rec.key, rec.status.start_block + i + 1)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec)),
                 expected_state,
                 "i = {i}"
             );
 
             // Repeated call should result in the same expected result.
-            assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+            assert_eq!(
+                block_tracker.next_blocks(slice::from_ref(&rec)),
+                expected_state
+            );
         }
 
         block_tracker.block_processed(rec.key, rec.status.start_block + 20);
@@ -494,26 +539,41 @@ mod tests {
 
         let expected_state = HashMap::from_iter(vec![(rec1.key, rec1.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec1.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec1)),
+            expected_state
+        );
 
         // Repeated call should result in the same expected result.
-        assert_eq!(block_tracker.next_blocks(&[rec1.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec1)),
+            expected_state
+        );
 
         // Try again with the second ingestable range.
         let expected_state = HashMap::from_iter(vec![(rec2.key, rec2.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec2.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec2)),
+            expected_state
+        );
 
         // Advancing the first one should not affect the second.
         block_tracker.block_processed(rec1.key, rec1.status.start_block);
 
         let expected_state = HashMap::from_iter(vec![(rec1.key, rec1.status.start_block + 1)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec1.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec1)),
+            expected_state
+        );
 
         let expected_state = HashMap::from_iter(vec![(rec2.key, rec2.status.start_block)]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec2.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec2)),
+            expected_state
+        );
 
         // Try with both.
         let expected_state = HashMap::from_iter(vec![
@@ -577,7 +637,7 @@ mod tests {
 
         for i in 0..10 {
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec)),
                 (rec.status.start_block + i, None)
             );
 
@@ -586,7 +646,7 @@ mod tests {
             // When there is only one key, we aren't considered blocked on it,
             // because the last thing it scanned is the highest thing we know of
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec)),
                 (rec.status.start_block + i + 1, None)
             );
         }
@@ -610,7 +670,7 @@ mod tests {
         };
 
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+            block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec)),
             (0, None)
         );
 
@@ -620,7 +680,7 @@ mod tests {
             // When there is only one key, we aren't considered blocked on it,
             // because the last thing it scanned is the highest thing we know of
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec)),
                 (rec.status.start_block + i + 1, None)
             );
         }
@@ -645,7 +705,7 @@ mod tests {
         };
 
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+            block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec)),
             (0, None)
         );
 
@@ -655,7 +715,7 @@ mod tests {
             // When there is only one key, we aren't considered blocked on it,
             // because the last thing it scanned is the highest thing we know of
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec)),
                 (rec.status.start_block + i + 1, None)
             );
         }
@@ -906,7 +966,7 @@ mod tests {
             let expected_state = HashMap::from_iter(vec![(rec1.key, index)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec1.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec1)),
                 expected_state,
                 "i = {i}"
             );
@@ -917,7 +977,7 @@ mod tests {
             // Check that highest fully processed block count matches what we expect
             let expected = (index + 1, None);
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec1)),
                 expected,
                 "i = {i}"
             );
@@ -926,12 +986,15 @@ mod tests {
         // Check that next blocks value matches what we expect
         let expected_state = HashMap::from_iter(vec![]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec1.clone()]), expected_state);
+        assert_eq!(
+            block_tracker.next_blocks(slice::from_ref(&rec1)),
+            expected_state
+        );
 
         // Check that highest fully processed block count matches what we expect
         let expected = (17, None);
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
+            block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec1)),
             expected
         );
 
@@ -1000,7 +1063,7 @@ mod tests {
             let expected_state = HashMap::from_iter(vec![(rec1.key, index)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec1.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec1)),
                 expected_state,
                 "i = {i}"
             );
@@ -1011,7 +1074,7 @@ mod tests {
             // Check that highest fully processed block count matches what we expect
             let expected = (index + 1, None);
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec1)),
                 expected,
                 "i = {i}"
             );
@@ -1027,7 +1090,7 @@ mod tests {
             let expected_state = HashMap::from_iter(vec![(rec1.key, index)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec1.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec1)),
                 expected_state,
                 "i = {i}"
             );
@@ -1038,7 +1101,7 @@ mod tests {
             // Check that highest fully processed block count matches what we expect
             let expected = (index + 1, None);
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec1)),
                 expected,
                 "i = {i}"
             );
@@ -1139,7 +1202,7 @@ mod tests {
             let expected_state = HashMap::from_iter(vec![(rec1.key, index)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec1.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec1)),
                 expected_state,
                 "i = {i}"
             );
@@ -1150,7 +1213,7 @@ mod tests {
             // Check that highest fully processed block count matches what we expect
             let expected = (index + 1, None);
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec1)),
                 expected,
                 "i = {i}"
             );
@@ -1166,7 +1229,7 @@ mod tests {
             let expected_state = HashMap::from_iter(vec![(rec1.key, index)]);
 
             assert_eq!(
-                block_tracker.next_blocks(&[rec1.clone()]),
+                block_tracker.next_blocks(slice::from_ref(&rec1)),
                 expected_state,
                 "i = {i}"
             );
@@ -1177,7 +1240,7 @@ mod tests {
             // Check that highest fully processed block count matches what we expect
             let expected = (index + 1, None);
             assert_eq!(
-                block_tracker.highest_fully_processed_block_count(&[rec1.clone()]),
+                block_tracker.highest_fully_processed_block_count(slice::from_ref(&rec1)),
                 expected,
                 "i = {i}"
             );

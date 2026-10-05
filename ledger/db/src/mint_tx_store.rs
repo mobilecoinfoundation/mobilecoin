@@ -413,7 +413,12 @@ mod tests {
         let mint_tx2 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         assert_eq!(
-            mint_tx_store.write_mint_txs(0, &[mint_tx2.clone()], &mint_config_store, &mut db_txn),
+            mint_tx_store.write_mint_txs(
+                0,
+                std::slice::from_ref(&mint_tx2),
+                &mint_config_store,
+                &mut db_txn,
+            ),
             Err(Error::Lmdb(lmdb::Error::KeyExist))
         );
         drop(db_txn);
@@ -456,7 +461,12 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store
-            .write_mint_txs(0, &[mint_tx1.clone()], &mint_config_store, &mut db_txn)
+            .write_mint_txs(
+                0,
+                std::slice::from_ref(&mint_tx1),
+                &mint_config_store,
+                &mut db_txn,
+            )
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -464,7 +474,12 @@ mod tests {
         let mint_tx2 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         assert_eq!(
-            mint_tx_store.write_mint_txs(0, &[mint_tx2.clone()], &mint_config_store, &mut db_txn),
+            mint_tx_store.write_mint_txs(
+                0,
+                std::slice::from_ref(&mint_tx2),
+                &mint_config_store,
+                &mut db_txn,
+            ),
             Err(Error::Lmdb(lmdb::Error::KeyExist))
         );
         drop(db_txn);
@@ -639,8 +654,12 @@ mod tests {
 
         // The mint limit we get in the error will be dependent on the order of the mint
         // configurations, so we should accept both possibitilies.
-        match mint_tx_store.write_mint_txs(0, &[mint_tx1.clone()], &mint_config_store, &mut db_txn)
-        {
+        match mint_tx_store.write_mint_txs(
+            0,
+            std::slice::from_ref(&mint_tx1),
+            &mint_config_store,
+            &mut db_txn,
+        ) {
             Ok(()) => panic!("Unexpected success"),
             Err(Error::MintLimitExceeded(mint_amount, minted_so_far, mint_limit)) => {
                 assert_eq!(mint_amount, mint_tx1.prefix.amount);
@@ -715,7 +734,12 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store
-            .write_mint_txs(1, &[mint_tx3.clone()], &mint_config_store, &mut db_txn)
+            .write_mint_txs(
+                1,
+                std::slice::from_ref(&mint_tx3),
+                &mint_config_store,
+                &mut db_txn,
+            )
             .unwrap();
         db_txn.commit().unwrap();
 

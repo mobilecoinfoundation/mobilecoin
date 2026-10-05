@@ -113,7 +113,7 @@ impl SgxSpinlock {
         }
     }
 
-    pub fn lock(&self) -> SgxSpinlockGuard {
+    pub fn lock(&self) -> SgxSpinlockGuard<'_> {
         unsafe {
             self.inner.lock();
             SgxSpinlockGuard::new(self)

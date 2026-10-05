@@ -354,7 +354,7 @@ impl<T: ?Sized> SgxMutex<T> {
     ///
     /// This function might panic when called if the lock is already held by
     /// the current thread.
-    pub fn lock(&self) -> LockResult<SgxMutexGuard<T>> {
+    pub fn lock(&self) -> LockResult<SgxMutexGuard<'_, T>> {
         unsafe {
             let _ = self.inner.lock();
             SgxMutexGuard::new(self)
@@ -377,7 +377,7 @@ impl<T: ?Sized> SgxMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(&self) -> TryLockResult<SgxMutexGuard<T>> {
+    pub fn try_lock(&self) -> TryLockResult<SgxMutexGuard<'_, T>> {
         unsafe {
             match self.inner.try_lock() {
                 Ok(_) => Ok(SgxMutexGuard::new(self)?),
