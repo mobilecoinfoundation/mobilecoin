@@ -719,10 +719,11 @@ impl<
 
                         let latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
                             Ok(x) => Some(x.signed_at()),
-                            // Note, a block signature will be missing if the corresponding block was
-                            // not processed by an enclave participating in
-                            // consensus. For example, unsigned blocks can be
-                            // created by a validator node that falls behind its peers and
+                            // Note, a block signature will be missing if the corresponding block
+                            // was not processed by an enclave
+                            // participating in consensus. For example,
+                            // unsigned blocks can be created by a
+                            // validator node that falls behind its peers and
                             // enters into catchup.
                             Err(LedgerDbError::NotFound) => {
                                 log::trace!(
