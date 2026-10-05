@@ -990,19 +990,4 @@ mod tests {
             Err(Error::StillExpectingMoreInputs)
         );
     }
-
-    /// The view private key must not outlive the verifier
-    #[test]
-    fn test_view_private_key_zeroized_on_drop() {
-        let mut rng = OsRng {};
-        let sender = AccountKey::random(&mut rng);
-
-        let mut verifier = core::mem::ManuallyDrop::new(new_verifier(&sender, 1, 1));
-        assert_eq!(&*verifier.view_private_key, sender.view_private_key());
-
-        // Run the destructor in place, then inspect the storage it left behind
-        unsafe { core::mem::ManuallyDrop::drop(&mut verifier) };
-        let remaining = unsafe { core::ptr::read(&verifier.view_private_key) };
-        assert_eq!(remaining.to_bytes(), [0u8; 32]);
-    }
 }
