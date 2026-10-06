@@ -118,7 +118,7 @@ where
         let mut output = vec![0u8; chaining_key_len * 2];
         kdf.expand(&[], &mut output)?;
 
-        // wrap material material into a secretvec so it's zeroed.
+        // wrap material into a SecretSlice so it's zeroed.
         let output = SecretSlice::from(output);
         let output_slice = output.expose_secret();
 
@@ -166,7 +166,7 @@ where
         );
         kdf.expand(&[], &mut output)?;
 
-        // wrap it into a secretvec so it'z zeroed.
+        // wrap it into a SecretSlice so it'z zeroed.
         let output = SecretSlice::from(output);
         let output_slice = output.expose_secret();
 
@@ -291,7 +291,7 @@ where
         let mut output = vec![0u8; digest_len * 2];
         kdf.expand(&[], &mut output)?;
 
-        // wrap key material in a secretvec to ensure it's zeroed
+        // wrap key material in a SecretSlice to ensure it's zeroed
         let output = SecretSlice::from(output);
         let output_slice = output.expose_secret();
 
