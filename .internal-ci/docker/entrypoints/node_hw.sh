@@ -151,10 +151,8 @@ then
     if archive_curl "${MC_TX_SOURCE_URL}"
     then
         echo "Remote archive ledger found - restore or update ledger with ledger-from-archive"
-        echo "  Note: RUST_LOG=warn so we don't get 1m+ lines of logs"
-        echo "  Please be patient"
 
-        RUST_LOG=warn /usr/bin/ledger-from-archive --ledger-db "${MC_LEDGER_PATH}"
+        RUST_LOG=info /usr/bin/ledger-from-archive --ledger-db "${MC_LEDGER_PATH}"
 
         # We just want to warm up the ledger storage.
         # Wait here looping over ledger-from-archive until we are ready to start the node.
