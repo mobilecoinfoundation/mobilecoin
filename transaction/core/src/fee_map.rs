@@ -116,7 +116,7 @@ impl FeeMap {
 
         if let Some((token_id, fee)) = minimum_fees
             .iter()
-            .find(|(_token_id, fee)| (**fee % (1 << SMALLEST_MINIMUM_FEE_LOG2)) != 0)
+            .find(|(_token_id, fee)| !(**fee).is_multiple_of(1 << SMALLEST_MINIMUM_FEE_LOG2))
         {
             return Err(Error::InvalidFeeNotDivisible(*token_id, *fee));
         }

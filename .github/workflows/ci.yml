@@ -121,7 +121,9 @@ jobs:
     - uses: mobilecoinofficial/gh-actions/setup-node@v0
       if: steps.cache.outputs.cache-hit != 'true'
       with:
-        node-version: 18
+        # wasm-bindgen uses WebAssembly reference types, whose function-reference
+        # interop crashes in Node 18's V8. Use the current LTS runtime instead.
+        node-version: 24
 
     - name: Install wasm-pack
       if: steps.cache.outputs.cache-hit != 'true'

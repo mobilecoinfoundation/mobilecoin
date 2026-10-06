@@ -29,9 +29,9 @@ impl From<DecodeError> for Error {
     fn from(src: DecodeError) -> Self {
         match src {
             DecodeError::InvalidByte(_, _)
-            | DecodeError::InvalidLastSymbol(_, _)
+            | DecodeError::InvalidLastSymbol { .. }
             | DecodeError::InvalidPadding => Error::InvalidInput,
-            DecodeError::InvalidLength => Error::InvalidInputLength,
+            DecodeError::InvalidLength(_) => Error::InvalidInputLength,
         }
     }
 }

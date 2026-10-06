@@ -10,7 +10,7 @@ use core::cmp::min;
 use digest::{core_api::BlockSizeUser, Digest};
 use displaydoc::Display;
 use generic_array::{typenum::Unsigned, GenericArray};
-use secrecy::{ExposeSecret, SecretVec};
+use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
 
 const MAX_BYTES_SENT: u64 = (1u64 << 56) + 4;
@@ -51,14 +51,14 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     fn rekey(&mut self) -> Result<Self, CipherError> {
         let nonce = Self::nonce_to_arr(u64::MAX);
         let msg = vec![0u8; Self::KeySize::to_usize()];
-        let key = SecretVec::new(self.encrypt(
+        let key = SecretSlice::from(self.encrypt(
             &nonce,
             Payload {
                 msg: &msg[..],
                 aad: &[],
             },
         )?);
-        let keyslice = key.expose_secret().as_slice();
+        let keyslice = key.expose_secret();
         Ok(Self::new(&GenericArray::clone_from_slice(
             &keyslice[..Self::KeySize::to_usize()],
         )))
@@ -138,8 +138,8 @@ impl<Cipher: NoiseCipher> CipherState<Cipher> {
     pub fn initialize_key(&mut self, key: Option<Vec<u8>>) -> Result<(), CipherError> {
         match key {
             Some(key) => {
-                let key = SecretVec::new(key);
-                let key_slice = key.expose_secret().as_slice();
+                let key = SecretSlice::from(key);
+                let key_slice = key.expose_secret();
                 if key_slice.len() != Cipher::KeySize::to_usize() {
                     return Err(CipherError::KeyLength);
                 }

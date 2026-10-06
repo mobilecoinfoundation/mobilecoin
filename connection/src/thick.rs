@@ -46,7 +46,7 @@ use mc_util_serial::encode;
 use mc_util_telemetry::InjectContext;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
 use opentelemetry::Context;
-use secrecy::{ExposeSecret, SecretVec};
+use secrecy::{ExposeSecret, SecretSlice};
 use sha2::Sha512;
 use std::{
     cmp::Ordering,
@@ -437,7 +437,7 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
             .expect("no enclave_connection even though attest succeeded");
 
         // Don't leave the plaintext serialization floating around
-        let tx_plaintext = SecretVec::new(encode(tx));
+        let tx_plaintext = SecretSlice::from(encode(tx));
         let tx_ciphertext =
             enclave_connection.encrypt(&[], tx_plaintext.expose_secret().as_ref())?;
         let msg = Message {

@@ -270,7 +270,7 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
         }
 
         // If the next entry is the zeroth entry, store c_zero
-        if (i + 1) % ring_size == 0 {
+        if (i + 1).is_multiple_of(*ring_size) {
             self.zeroth_challenge = Some(c);
         }
 

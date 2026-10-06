@@ -323,7 +323,7 @@ macro_rules! impl_base64str_for_bytestruct {
             fn from_base64(s: &str) -> core::result::Result<Self, $crate::traits::EncodingError> {
                 use base64::Engine;
 
-                if s.len() % 4 != 0 {
+                if !s.len().is_multiple_of(4) {
                     return Err($crate::traits::EncodingError::InvalidInputLength);
                 }
 
@@ -363,7 +363,7 @@ macro_rules! impl_hexstr_for_bytestruct {
             type Error = $crate::traits::EncodingError;
 
             fn from_hex(s: &str) -> core::result::Result<Self, $crate::traits::EncodingError> {
-                if s.len() % 2 != 0 {
+                if !s.len().is_multiple_of(2) {
                     return Err($crate::traits::EncodingError::InvalidInputLength);
                 }
 

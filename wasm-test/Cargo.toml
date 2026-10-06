@@ -18,8 +18,13 @@ mc-crypto-keys = { workspace = true }
 mc-transaction-builder = { workspace = true }
 mc-transaction-core = { workspace = true }
 
-# These are required since they enable feature flags needed for wasm builds
-getrandom = { workspace = true, features = ["js"] }
+# These direct dependencies select JavaScript backends; this crate does not call
+# getrandom itself. Exercise the workspace's current getrandom 0.4 backend.
+getrandom = { workspace = true, features = ["wasm_js"] }
+# mc-transaction-builder and mc-rand (through mc-common) use rand 0.8, which
+# resolves a separate getrandom 0.2 package through rand_core 0.6. Cargo does not
+# unify features across versions, so its older `js` backend must also be enabled.
+getrandom-02 = { workspace = true, features = ["js"] }
 rand = { workspace = true, features = ["getrandom"] }
 
 # Used for very basic testing

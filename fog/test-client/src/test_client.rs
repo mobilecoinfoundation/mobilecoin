@@ -23,8 +23,8 @@ use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, Amount, Token};
 use mc_transaction_extra::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
-    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Context, Key, Span,
-    SpanKind, Tracer,
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Context, Key, KeyValue,
+    Span, SpanKind, Tracer,
 };
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
@@ -621,7 +621,10 @@ impl TestClient {
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
             .start(&tracer);
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(transfer_data.block_count as i64));
+        span.set_attribute(KeyValue::new(
+            TELEMETRY_BLOCK_INDEX_KEY,
+            transfer_data.block_count as i64,
+        ));
 
         let _active = mark_span_as_active(span);
 
@@ -939,7 +942,10 @@ impl TestClient {
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
             .start(&tracer);
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(transfer_data.block_count as i64));
+        span.set_attribute(KeyValue::new(
+            TELEMETRY_BLOCK_INDEX_KEY,
+            transfer_data.block_count as i64,
+        ));
         let _active = mark_span_as_active(span);
 
         let start = Instant::now();
@@ -1075,7 +1081,7 @@ impl TestClient {
 
                 // Every two rounds through all the clients, we switch whether we are doing
                 // partial fills or non-partial fills.
-                let is_partial_fill = ((ti / (2 * client_count)) % 2) == 0;
+                let is_partial_fill = (ti / (2 * client_count)).is_multiple_of(2);
 
                 self.test_atomic_swap(
                     token_id1,
