@@ -90,11 +90,11 @@ impl UntrustedAllocation {
         let total_mem_kb = mem_kb + TOTAL_MEM_FOOTPRINT_KB.fetch_add(mem_kb, Ordering::SeqCst);
         global_log::info!("Untrusted is allocating oram storage: count = {}, data_size = {}, meta_size = {}, mem = {} KB. Total mem allocated this way = {} KB", count, data_item_size, meta_item_size, mem_kb, total_mem_kb);
         assert!(
-            data_item_size % 8 == 0,
+            data_item_size.is_multiple_of(8),
             "data item size is not good: {data_item_size}"
         );
         assert!(
-            meta_item_size % 8 == 0,
+            meta_item_size.is_multiple_of(8),
             "meta item size is not good: {meta_item_size}"
         );
 

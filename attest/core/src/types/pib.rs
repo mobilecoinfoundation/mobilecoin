@@ -27,7 +27,7 @@ impl FromBase64 for PlatformInfoBlob {
     type Error = EncodingError;
 
     fn from_base64(src: &str) -> Result<Self, EncodingError> {
-        if src.len() % 4 != 0 {
+        if !src.len().is_multiple_of(4) {
             return Err(EncodingError::InvalidInputLength);
         }
 
@@ -56,7 +56,7 @@ impl FromHex for PlatformInfoBlob {
     fn from_hex(src: &str) -> Result<Self, EncodingError> {
         const PIB_PREFIX_LEN: usize = 4;
 
-        let owned_src = if src.len() % 2 != 0 {
+        let owned_src = if !src.len().is_multiple_of(2) {
             "0".to_owned() + src
         } else {
             src.to_owned()

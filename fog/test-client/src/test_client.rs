@@ -1081,7 +1081,7 @@ impl TestClient {
 
                 // Every two rounds through all the clients, we switch whether we are doing
                 // partial fills or non-partial fills.
-                let is_partial_fill = ((ti / (2 * client_count)) % 2) == 0;
+                let is_partial_fill = (ti / (2 * client_count)).is_multiple_of(2);
 
                 self.test_atomic_swap(
                     token_id1,

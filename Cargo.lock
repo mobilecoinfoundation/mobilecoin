@@ -7016,6 +7016,7 @@ dependencies = [
 name = "mc-wasm-test"
 version = "7.1.0"
 dependencies = [
+ "getrandom 0.2.17",
  "getrandom 0.4.3",
  "mc-account-keys",
  "mc-api",

@@ -239,6 +239,7 @@ fs_extra = "1"
 futures = "0.3"
 generic-array = { version = "0.14", default-features = false }
 getrandom = "0.4"
+getrandom-02 = { package = "getrandom", version = "0.2" }
 grpcio = { version = "0.13", default-features = false }
 grpcio-compiler = { version = "0.13", default-features = false }
 hashbrown = { version = "0.17", default-features = false }

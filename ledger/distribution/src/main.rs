@@ -373,7 +373,7 @@ fn main() {
                 }
 
                 // Check if we just completed a bucket.
-                if (cur_block_index + 1) % bucket_size != 0 {
+                if !(cur_block_index + 1).is_multiple_of(*bucket_size) {
                     continue;
                 }
 

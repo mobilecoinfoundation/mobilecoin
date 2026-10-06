@@ -268,7 +268,7 @@ impl ReqwestTransactionsFetcher {
 
         // Try and fetch a merged block if we stand a chance of finding one.
         for bucket in self.merged_blocks_bucket_sizes.iter() {
-            if block_index % bucket == 0 {
+            if block_index.is_multiple_of(*bucket) {
                 log::debug!(
                     self.logger,
                     "Attempting to fetch a merged block for #{} (bucket size {})",

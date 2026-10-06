@@ -380,7 +380,7 @@ fn test_ingest_enclave_overflow(logger: Logger) {
             // make some tx outs, each for alice or bob
             let tx_outs: Vec<_> = (0..TXS_PER_CHUNK)
                 .map(|_| {
-                    let pub_addr = if rng.next_u32() % 2 == 0 {
+                    let pub_addr = if rng.next_u32().is_multiple_of(2) {
                         &alice_public_address
                     } else {
                         &bob_public_address

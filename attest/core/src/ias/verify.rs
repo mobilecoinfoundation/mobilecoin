@@ -471,12 +471,12 @@ mod test {
 
         data.timestamp = "invalid".to_string();
 
-        assert_eq!(
-            data.parse_timestamp(),
-            Err(VerifyError::TimestampParse(
-                "invalid".into(),
-                "input contains invalid characters".into()
-            ))
-        );
+        match data.parse_timestamp() {
+            Err(VerifyError::TimestampParse(timestamp, reason)) => {
+                assert_eq!(timestamp, "invalid");
+                assert!(!reason.is_empty());
+            }
+            result => panic!("unexpected timestamp parse result: {result:?}"),
+        }
     }
 }

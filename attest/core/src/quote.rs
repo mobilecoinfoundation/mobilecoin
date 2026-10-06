@@ -421,7 +421,7 @@ impl FromBase64 for Quote {
     /// is a binary-incompatible partial structure, minus the signature length
     /// and data.
     fn from_base64(s: &str) -> Result<Self, QuoteError> {
-        if s.len() % 4 != 0 {
+        if !s.len().is_multiple_of(4) {
             return Err(EncodingError::InvalidInputLength.into());
         }
 

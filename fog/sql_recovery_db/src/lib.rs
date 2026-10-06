@@ -3620,7 +3620,9 @@ mod tests {
         // expiration.
         let expiration_buffer = Duration::from_secs(1).as_secs() as i64;
         let expiration_timestamp: i64 = Utc::now().timestamp() + expiration_buffer;
-        let expiration = NaiveDateTime::from_timestamp_opt(expiration_timestamp, 0).unwrap();
+        let expiration = chrono::DateTime::from_timestamp(expiration_timestamp, 0)
+            .unwrap()
+            .naive_utc();
 
         let result = db.get_expired_invocations(expiration);
 
@@ -3651,7 +3653,9 @@ mod tests {
         // expiration.
         let expiration_buffer = Duration::from_secs(1).as_secs() as i64;
         let expiration_timestamp: i64 = Utc::now().timestamp() + expiration_buffer;
-        let expiration = NaiveDateTime::from_timestamp_opt(expiration_timestamp, 0).unwrap();
+        let expiration = chrono::DateTime::from_timestamp(expiration_timestamp, 0)
+            .unwrap()
+            .naive_utc();
 
         // Sleep to ensure that this second ingest invocation is not expired.
         std::thread::sleep(Duration::from_secs(2));
