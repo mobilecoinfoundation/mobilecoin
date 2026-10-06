@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [7.2.0]
+
+### Fixed
+
+- Make PrintableWrapper::b58_encode infallible ([#4095])
+- Fix telemetry tags and test logger macro ([#4101])
+- Add LMDB NO_READAHEAD and improve logging ([#4105])
+
+### Changed
+
+- Add test_logger macro ([#4083])
+- Support the new otlp tracing in fog and consensus ([#4086])
+- Use postgres 18.1.1 in CD runs ([#4088])
+- Add tracing context extractor and injector ([#4089])
+- Add distribitued tracing through fog ledger router ([#4090])
+- Fix fog ledger distributed tracing (#4091])
+- Propagate trace context through mobilecoind block_provider ([#4092])
+- Add distributed tracing to fog view ([#4093])
+- Remove some stray traces/spans ([#4094])
+
+[#4083]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4083
+[#4086]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4086
+[#4088]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4088
+[#4089]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4089
+[#4090]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4090
+[#4091]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4091
+[#4092]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4092
+[#4093]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4093
+[#4094]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4094
+[#4095]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4095
+[#4101]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4101
+[#4105]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4105
+
 ## [7.1.0]
 
 ### Changed

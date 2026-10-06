@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-api"
-version = "7.1.0"
+version = "7.2.0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2021"
