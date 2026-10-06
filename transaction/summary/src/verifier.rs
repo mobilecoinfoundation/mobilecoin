@@ -874,7 +874,6 @@ mod tests {
         verifier.digest_input(&tx_in_summary, &unmasked_amount, report)
     }
 
-    /// Declaring two inputs but streaming one must not produce a digest
     #[test]
     fn test_finalize_rejects_missing_inputs() {
         let mut rng = OsRng {};
