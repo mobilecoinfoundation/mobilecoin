@@ -57,7 +57,6 @@ cargo-emit = { workspace = true }
 [dev-dependencies]
 mc-util-serial = { workspace = true }
 
-bincode = { workspace = true }
 hex = { workspace = true }
 pem = { workspace = true }
 rand = { workspace = true }

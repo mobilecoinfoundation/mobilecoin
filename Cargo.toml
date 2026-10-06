@@ -206,7 +206,6 @@ async-channel = "2"
 backtrace = "0.3"
 balanced-tree-index = "2"
 base64 = { version = "0.23", default-features = false }
-bincode = "1"
 bitflags = { version = "2", default-features = false }
 blake2 = { version = "0.10", default-features = false }
 bs58 = "0.5"

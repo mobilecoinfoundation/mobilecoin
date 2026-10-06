@@ -538,6 +538,7 @@ mod test {
     extern crate std;
 
     use super::*;
+    use mc_util_serial::{deserialize, serialize};
     use std::format;
 
     const QUOTE_OK: &str = include_str!("../data/test/quote_ok.txt");
@@ -572,9 +573,8 @@ mod test {
     fn serde_round_trip() {
         let quote =
             Quote::from_base64(QUOTE_OK).expect("Could not create quote from base64 string");
-        let serialized = bincode::serialize(&quote).expect("Could not serialize quote.");
-        let quote2: Quote =
-            bincode::deserialize(&serialized).expect("Could not deserialize quote.");
+        let serialized = serialize(&quote).expect("Could not serialize quote.");
+        let quote2: Quote = deserialize(&serialized).expect("Could not deserialize quote.");
         assert_eq!(quote, quote2);
     }
 
