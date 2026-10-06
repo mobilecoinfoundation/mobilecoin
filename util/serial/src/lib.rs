@@ -53,7 +53,7 @@ pub mod encode {
 
 /// Serialize the given data structure.
 ///
-/// Forward mc_util_serial::serialize to serde_cbor::to_vec.
+/// Forwards serialization to `serde_cbor::to_vec`.
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail.
 pub fn serialize<T>(value: &T) -> Result<Vec<u8>, encode::Error>
