@@ -8,9 +8,10 @@ rust-version = { workspace = true }
 
 # Declare as an empty workspace to not confuse cargo.
 [workspace]
+resolver = "3"
 
 [workspace.package]
-rust-version = "1.85.0"
+rust-version = "1.99.0"
 
 [lib]
 crate-type = ["staticlib"]

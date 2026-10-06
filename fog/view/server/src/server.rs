@@ -26,7 +26,7 @@ use mc_util_grpc::{
     TokenAuthenticator,
 };
 use mc_util_telemetry::{
-    block_span_builder, start_block_span, telemetry_static_key, tracer, Key, Span,
+    block_span_builder, start_block_span, telemetry_static_key, tracer, Key, KeyValue, Span,
 };
 use std::{
     sync::{
@@ -515,7 +515,10 @@ where
                     .with_start_time(fetch_start)
                     .with_end_time(fetch_end)
                     .start(&tracer);
-            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
+            span.set_attribute(KeyValue::new(
+                TELEMETRY_BLOCK_INDEX_KEY,
+                fetched_records.block_index as i64,
+            ));
             span.end_with_timestamp(fetch_end);
 
             let mut span = start_block_span(
@@ -523,7 +526,10 @@ where
                 "add_records_to_enclave",
                 fetched_records.block_index,
             );
-            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
+            span.set_attribute(KeyValue::new(
+                TELEMETRY_BLOCK_INDEX_KEY,
+                fetched_records.block_index as i64,
+            ));
 
             self.add_records_to_enclave(
                 fetched_records.ingress_key,

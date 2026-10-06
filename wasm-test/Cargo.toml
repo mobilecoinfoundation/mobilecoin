@@ -19,7 +19,7 @@ mc-transaction-builder = { workspace = true }
 mc-transaction-core = { workspace = true }
 
 # These are required since they enable feature flags needed for wasm builds
-getrandom = { workspace = true, features = ["js"] }
+getrandom = { workspace = true, features = ["wasm_js"] }
 rand = { workspace = true, features = ["getrandom"] }
 
 # Used for very basic testing

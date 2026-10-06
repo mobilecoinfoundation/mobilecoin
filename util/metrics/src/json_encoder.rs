@@ -24,22 +24,18 @@ impl Encoder for JsonEncoder {
         let mut export_me: HashMap<String, f64> = HashMap::default();
 
         for mf in metric_familys {
-            let name = mf.get_name();
+            let name = mf.name();
             let metric_type = mf.get_field_type();
 
             for m in mf.get_metric() {
                 match metric_type {
                     MetricType::COUNTER => {
-                        export_me.insert(
-                            flatten_metric_with_labels(name, m),
-                            m.get_counter().get_value(),
-                        );
+                        export_me
+                            .insert(flatten_metric_with_labels(name, m), m.get_counter().value());
                     }
                     MetricType::GAUGE => {
-                        export_me.insert(
-                            flatten_metric_with_labels(name, m),
-                            m.get_gauge().get_value(),
-                        );
+                        export_me
+                            .insert(flatten_metric_with_labels(name, m), m.get_gauge().value());
                     }
                     MetricType::HISTOGRAM => {
                         // write the sum and counts
@@ -91,7 +87,7 @@ fn flatten_metric_with_labels(name: &str, metric: &Metric) -> String {
         let values: Vec<&str> = metric
             .get_label()
             .iter()
-            .map(LabelPair::get_value)
+            .map(LabelPair::value)
             .filter(|&x| !x.is_empty())
             .collect();
         let values = values.join(".");

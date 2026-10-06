@@ -14,7 +14,7 @@ use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use hkdf::{InvalidLength, SimpleHkdf};
 use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
-use secrecy::{ExposeSecret, SecretVec};
+use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -49,7 +49,7 @@ where
     DigestAlgo: NoiseDigest,
 {
     hash: HandshakeHash<DigestAlgo>,
-    chaining_key: SecretVec<u8>,
+    chaining_key: SecretSlice<u8>,
     cipher_state: CipherState<Cipher>,
     _kex: PhantomData<KexAlgo>,
 }
@@ -70,7 +70,7 @@ where
     /// and "unkeyed" cipher state.
     fn from(protocol_name: ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>) -> Self {
         let hash = HandshakeHash::from(protocol_name);
-        let chaining_key = SecretVec::new(Vec::from(hash.as_ref()));
+        let chaining_key = SecretSlice::from(Vec::from(hash.as_ref()));
         let cipher_state = CipherState::default();
 
         Self {
@@ -108,7 +108,7 @@ where
     /// applied to our internal cipher state.
     pub fn mix_key(&mut self, input_key_material: KexAlgo::Secret) -> Result<(), SymmetricError> {
         let kdf = SimpleHkdf::<DigestAlgo>::new(
-            Some(self.chaining_key.expose_secret().as_slice()),
+            Some(self.chaining_key.expose_secret()),
             input_key_material.as_ref(),
         );
 
@@ -119,8 +119,8 @@ where
         kdf.expand(&[], &mut output)?;
 
         // wrap material material into a secretvec so it's zeroed.
-        let output = SecretVec::new(output);
-        let output_slice = output.expose_secret().as_slice();
+        let output = SecretSlice::from(output);
+        let output_slice = output.expose_secret();
 
         // update cipher state
         self.cipher_state.initialize_key(Some(Vec::from(
@@ -128,7 +128,7 @@ where
         )))?;
 
         // save chaining key
-        self.chaining_key = SecretVec::new(Vec::from(&output_slice[..chaining_key_len]));
+        self.chaining_key = SecretSlice::from(Vec::from(&output_slice[..chaining_key_len]));
         Ok(())
     }
 
@@ -161,14 +161,14 @@ where
         let mut output = vec![0u8; chaining_key_len + hash_len + key_len];
 
         let kdf = SimpleHkdf::<DigestAlgo>::new(
-            Some(self.chaining_key.expose_secret().as_slice()),
+            Some(self.chaining_key.expose_secret()),
             input_key_material.as_ref(),
         );
         kdf.expand(&[], &mut output)?;
 
         // wrap it into a secretvec so it'z zeroed.
-        let output = SecretVec::new(output);
-        let output_slice = output.expose_secret().as_slice();
+        let output = SecretSlice::from(output);
+        let output_slice = output.expose_secret();
 
         // update hash
         self.mix_hash(&output_slice[chaining_key_len..(chaining_key_len + hash_len)]);
@@ -179,7 +179,7 @@ where
         )))?;
 
         // save chaining key
-        self.chaining_key = SecretVec::new(Vec::from(&output_slice[..chaining_key_len]));
+        self.chaining_key = SecretSlice::from(Vec::from(&output_slice[..chaining_key_len]));
         Ok(())
     }
 
@@ -282,8 +282,7 @@ where
     type Error = SymmetricError;
 
     fn try_into(self) -> Result<SymmetricOutput<Cipher, KexAlgo::Public>, SymmetricError> {
-        let kdf =
-            SimpleHkdf::<DigestAlgo>::new(Some(self.chaining_key.expose_secret().as_slice()), &[]);
+        let kdf = SimpleHkdf::<DigestAlgo>::new(Some(self.chaining_key.expose_secret()), &[]);
 
         let key_len = Cipher::KeySize::to_usize();
         let digest_len = DigestAlgo::OutputSize::to_usize();
@@ -293,8 +292,8 @@ where
         kdf.expand(&[], &mut output)?;
 
         // wrap key material in a secretvec to ensure it's zeroed
-        let output = SecretVec::new(output);
-        let output_slice = output.expose_secret().as_slice();
+        let output = SecretSlice::from(output);
+        let output_slice = output.expose_secret();
 
         // initiator-to-responder
         let mut initiator_cipher = CipherState::default();

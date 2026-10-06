@@ -9,8 +9,8 @@ pub use opentelemetry::{
 };
 
 use opentelemetry::{
-    global::tracer_provider,
-    trace::{SpanBuilder, TraceId, TracerProvider},
+    trace::{SpanBuilder, TraceId},
+    InstrumentationScope,
 };
 use std::borrow::Cow;
 mod extractor;
@@ -55,15 +55,14 @@ pub fn versioned_tracer(
     version: Option<&'static str>,
     schema_url: Option<&'static str>,
 ) -> BoxedTracer {
-    let provider = tracer_provider();
-    let mut builder = provider.tracer_builder(name);
+    let mut builder = InstrumentationScope::builder(name);
     if let Some(version) = version {
         builder = builder.with_version(version);
     }
     if let Some(schema_url) = schema_url {
         builder = builder.with_schema_url(schema_url);
     }
-    builder.build()
+    opentelemetry::global::tracer_with_scope(builder.build())
 }
 
 /// Creates a context when an explicit context is required. Useful when tracing

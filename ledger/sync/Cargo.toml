@@ -37,7 +37,7 @@ mc-attestation-verifier = { workspace = true }
 mockall = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
 rand = { workspace = true }
-reqwest = { workspace = true, features = ["blocking", "rustls-tls", "gzip"] }
+reqwest = { workspace = true, features = ["blocking", "rustls", "gzip"] }
 retry = { workspace = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 tempfile = { workspace = true }

@@ -33,5 +33,5 @@ pub fn slot_round_salted_keccak(
     concatenation.extend(round_index_bytes.iter());
     concatenation.extend(bytes.iter());
 
-    U256::from(fast_hash(&concatenation))
+    U256::from_big_endian(&fast_hash(&concatenation))
 }

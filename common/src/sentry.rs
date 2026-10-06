@@ -23,13 +23,12 @@ pub fn init() -> Option<sentry::ClientInitGuard> {
                 panic!("MC_BRANCH cannot contain '/'");
             }
 
-            let guard = sentry::init(sentry::apply_defaults(sentry::ClientOptions {
-                attach_stacktrace: true,
-                dsn: dsn.parse().ok(),
-                default_integrations: true,
-                environment: Some(branch.into()),
-                ..Default::default()
-            }));
+            let mut options = sentry::ClientOptions::default();
+            options.attach_stacktrace = true;
+            options.dsn = dsn.parse().ok();
+            options.default_integrations = true;
+            options.environment = Some(branch.into());
+            let guard = sentry::init(sentry::apply_defaults(options));
 
             sentry::configure_scope(|scope| {
                 // Add our GIT commit to each message.

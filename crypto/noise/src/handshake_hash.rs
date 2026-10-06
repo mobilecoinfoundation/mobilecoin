@@ -12,7 +12,7 @@ use core::{
 use digest::Digest;
 use generic_array::{typenum::Unsigned, GenericArray};
 use mc_crypto_keys::Kex;
-use secrecy::{ExposeSecret, SecretVec};
+use secrecy::{ExposeSecret, SecretSlice};
 use zeroize::Zeroize;
 
 /// This helper type is designed to encapsulate the hash/session ID, built
@@ -22,7 +22,7 @@ use zeroize::Zeroize;
 /// `h = HASH(h || data)` construction happens in a lot of places. This type,
 /// therefore, is the `h`.
 pub struct HandshakeHash<DigestAlgo: Digest> {
-    hash: SecretVec<u8>,
+    hash: SecretSlice<u8>,
     _digest: PhantomData<DigestAlgo>,
 }
 
@@ -35,7 +35,7 @@ pub struct HandshakeHash<DigestAlgo: Digest> {
 /// of the specification.
 impl<DigestAlgo: Digest> AsRef<[u8]> for HandshakeHash<DigestAlgo> {
     fn as_ref(&self) -> &[u8] {
-        self.hash.expose_secret().as_slice()
+        self.hash.expose_secret()
     }
 }
 
@@ -57,7 +57,7 @@ impl<DigestAlgo: Digest> AddAssign<&[u8]> for HandshakeHash<DigestAlgo> {
         hasher.update(self.as_ref());
         hasher.update(data);
         let mut result = hasher.finalize();
-        self.hash = SecretVec::new(result.to_vec());
+        self.hash = SecretSlice::from(result.to_vec());
         result.zeroize();
     }
 }
@@ -91,7 +91,7 @@ where
             hasher.update(proto);
             hasher.finalize()
         };
-        let hash = SecretVec::new(result.to_vec());
+        let hash = SecretSlice::from(result.to_vec());
         result.zeroize();
 
         Self {
@@ -104,7 +104,7 @@ where
 /// A HandshakeHash may be consumed to reveal the result.
 impl<DigestAlgo: Digest> From<HandshakeHash<DigestAlgo>> for Vec<u8> {
     fn from(src: HandshakeHash<DigestAlgo>) -> Vec<u8> {
-        src.hash.expose_secret().clone()
+        src.hash.expose_secret().to_vec()
     }
 }
 

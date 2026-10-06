@@ -48,7 +48,7 @@ mc-util-logger-macros = { workspace = true, optional = true }
 mc-util-serial = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
 rand_core = { workspace = true }
-sentry = { workspace = true, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "serde_json", "slog"], optional = true }
+sentry = { workspace = true, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "slog"], optional = true }
 serde = { workspace = true, features = ["alloc", "derive"] }
 sha3 = { workspace = true }
 siphasher = { workspace = true }

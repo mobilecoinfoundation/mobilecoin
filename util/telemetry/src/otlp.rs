@@ -1,11 +1,11 @@
 use displaydoc::Display;
-use opentelemetry::{global, global::BoxedTracer, trace::TraceError, KeyValue};
-use opentelemetry_sdk::{propagation::TraceContextPropagator, trace, Resource};
+use opentelemetry::{global, global::BoxedTracer, KeyValue};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 
 #[derive(Debug, Display)]
 pub enum Error {
     /// Trace error: {0}
-    Trace(TraceError),
+    Trace(opentelemetry_otlp::ExporterBuildError),
 
     /// Get hostname error: {0}
     GetHostname(std::io::Error),
@@ -54,12 +54,14 @@ pub fn setup_default_tracer_with_tags(
         tags.push(KeyValue::new(*key, value.clone()));
     }
 
-    let provider = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-        .with_trace_config(trace::Config::default().with_resource(Resource::new(tags)))
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .build()
         .map_err(Error::Trace)?;
+    let provider = SdkTracerProvider::builder()
+        .with_resource(Resource::builder_empty().with_attributes(tags).build())
+        .with_batch_exporter(exporter)
+        .build();
     global::set_tracer_provider(provider);
 
     Ok(Some(global::tracer(service_name)))

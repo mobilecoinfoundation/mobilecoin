@@ -6,7 +6,7 @@ use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockMeta
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::tx::TxOut;
-use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
+use mc_util_telemetry::{telemetry_static_key, tracer, Key, KeyValue, TraceContextExt, Tracer};
 use mc_watcher::{error::WatcherDBError, watcher_db::WatcherDB};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -177,8 +177,10 @@ where
                 break;
             }
             let block_data = tracer!().in_span("get_block_data", |cx| {
-                cx.span()
-                    .set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
+                cx.span().set_attribute(KeyValue::new(
+                    TELEMETRY_BLOCK_INDEX_KEY,
+                    self.next_block_index as i64,
+                ));
                 self.ledger_db.get_block_data(self.next_block_index)
             });
 
@@ -195,9 +197,10 @@ where
                 }
                 Ok(block_data) => {
                     let process_block_result = tracer!().in_span("process_block", |cx| {
-                        cx.span().set_attribute(
-                            TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64),
-                        );
+                        cx.span().set_attribute(KeyValue::new(
+                            TELEMETRY_BLOCK_INDEX_KEY,
+                            self.next_block_index as i64,
+                        ));
                         self.process_block(&block_data)
                     });
                     match process_block_result {

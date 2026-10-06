@@ -189,10 +189,10 @@ exclude = [
     "util/serial",
 ]
 
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
-rust-version = "1.85.0"
+rust-version = "1.99.0"
 
 [workspace.dependencies]
 aead = { version = "0.5", default-features = false }
@@ -205,14 +205,14 @@ assert_matches = "1"
 async-channel = "2"
 backtrace = "0.3"
 balanced-tree-index = "2"
-base64 = { version = "0.21", default-features = false }
+base64 = { version = "0.23", default-features = false }
 bincode = "1"
 bitflags = { version = "2", default-features = false }
 blake2 = { version = "0.10", default-features = false }
-bs58 = "0.4"
+bs58 = "0.5"
 bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
 cargo-emit = "0.2"
-cargo_metadata = "0.18"
+cargo_metadata = "0.23"
 cc = "1"
 cfg-if = "1"
 chrono = { version = "0.4", default-features = false }
@@ -220,7 +220,7 @@ clap = "4"
 clio = "0.3"
 cookie = "0.18"
 crc = { version = "3", default-features = false }
-criterion = "0.5"
+criterion = "0.8"
 crossbeam-channel = "0.5"
 ctr = "0.9"
 ctrlc = "3"
@@ -230,7 +230,7 @@ diesel = "2"
 diesel-derive-enum = "2"
 diesel_migrations = "2"
 digest = { version = "0.10", default-features = false }
-dirs = "5"
+dirs = "7"
 displaydoc = { version = "0.2", default-features = false }
 dyn-clone = "1"
 ed25519 = { version = "2", default-features = false }
@@ -238,18 +238,18 @@ ed25519-dalek = { version = "2", default-features = false }
 fs_extra = "1"
 futures = "0.3"
 generic-array = { version = "0.14", default-features = false }
-getrandom = "0.2"
+getrandom = "0.4"
 grpcio = { version = "0.13", default-features = false }
 grpcio-compiler = { version = "0.13", default-features = false }
 hashbrown = { version = "0.17", default-features = false }
-heapless = { version = "0.8", default-features = false }
+heapless = { version = "0.9", default-features = false }
 hex = { version = "0.4", default-features = false }
-hex-literal = "0.4"
+hex-literal = "1"
 hex_fmt = "0.3"
 hkdf = "0.12"
 hmac = "0.12"
-hostname = "0.3"
-itertools = "0.12"
+hostname = "0.4"
+itertools = "0.15"
 json = "0.12"
 lazy_static = "1"
 libc = "0.2"
@@ -273,22 +273,22 @@ mc-sgx-dcap-quoteverify = "0.12"
 mc-sgx-dcap-sys-types = { version = "0.12", default-features = false }
 mc-sgx-dcap-types = { version = "0.12", default-features = false }
 merlin = { version = "3", default-features = false }
-mockall = "0.12"
+mockall = "0.15"
 more-asserts = "0.3"
 num_cpus = "1"
 once_cell = { version = "1", default-features = false }
-opentelemetry = "0.25"
-opentelemetry-otlp = "0.25"
-opentelemetry_sdk = "0.25"
+opentelemetry = "0.31"
+opentelemetry-otlp = "0.31"
+opentelemetry_sdk = "0.31"
 p256 = { version = "0.13", default-features = false }
-pem = "3"
+pem = "4"
 percent-encoding = "2"
 pkg-config = "0.3"
 portpicker = "0.1"
 predicates = "3"
-primitive-types = "0.12"
+primitive-types = "0.14"
 proc-macro2 = "1"
-prometheus = "0.13"
+prometheus = "0.14"
 proptest = { version = "1", default-features = false }
 prost = { version = "0.11", default-features = false }
 prost-build = "0.11"
@@ -302,7 +302,7 @@ rand_core = { version = "0.6", default-features = false }
 rand_hc = { version = "0.3", default-features = false }
 rayon = "1"
 regex = "1"
-reqwest = { version = "0.11", default-features = false }
+reqwest = { version = "0.13", default-features = false }
 retry = "2"
 rjson = "0.3"
 rocket = "0.5"
@@ -310,18 +310,18 @@ rusoto_core = { version = "0.48", default-features = false }
 rusoto_s3 = { version = "0.48", default-features = false }
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
 scoped_threadpool = "0.1"
-secrecy = "0.8"
+secrecy = "0.10"
 semver = "1"
-sentry = { version = "0.32", default-features = false }
+sentry = { version = "0.49", default-features = false }
 serde = { version = "1", default-features = false }
 serde_cbor = { version = "0.11", default-features = false }
 serde_derive = "1"
-serde_json = { version = "1", default-features = false }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_with = { version = "3", default-features = false }
-serial_test = "3"
+serial_test = "4"
 sha2 = { version = "0.10", default-features = false }
 sha3 = { version = "0.10", default-features = false }
-signal-hook = "0.3"
+signal-hook = "0.4"
 signature = { version = "2", default-features = false }
 siphasher = "1"
 slip10_ed25519 = "0.1"
@@ -336,12 +336,12 @@ slog-term = "2"
 static_assertions = "1"
 stdext = "0.3"
 subtle = { version = "2", default-features = false }
-syn = "2"
+syn = "3"
 tempfile = "3"
 textwrap = "0.16"
-tiny-bip39 = "1"
+tiny-bip39 = "2"
 tokio = "1"
-toml = "0.8"
+toml = "1"
 url = "2"
 walkdir = "2"
 wasm-bindgen = "0.2"
@@ -350,7 +350,7 @@ x25519-dalek = { version = "2", default-features = false }
 x509-cert = { version = "0.2", default-features = false }
 x509-signature = "0.5"
 yaml-rust = "0.4"
-yare = "2"
+yare = "3"
 zeroize = { version = "1", default-features = false }
 
 mc-account-keys = { path = "account-keys", default-features = false }
