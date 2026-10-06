@@ -262,7 +262,6 @@ impl<
                 let block_index = block_data.block().index;
                 let mut span = block_span_builder(&tracer, "append_block", block_index)
                     .with_start_time(append_block_start)
-                    .with_end_time(append_block_end)
                     .start(&tracer);
                 span.end_with_timestamp(append_block_end);
             }

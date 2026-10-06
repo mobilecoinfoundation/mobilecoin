@@ -2,6 +2,8 @@ use displaydoc::Display;
 use opentelemetry::{global, global::BoxedTracer, KeyValue};
 use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 
+use crate::BlockTraceIdGenerator;
+
 #[derive(Debug, Display)]
 pub enum Error {
     /// Trace error: {0}
@@ -60,6 +62,7 @@ pub fn setup_default_tracer_with_tags(
         .map_err(Error::Trace)?;
     let provider = SdkTracerProvider::builder()
         .with_resource(Resource::builder_empty().with_attributes(tags).build())
+        .with_id_generator(BlockTraceIdGenerator::default())
         .with_batch_exporter(exporter)
         .build();
     global::set_tracer_provider(provider);

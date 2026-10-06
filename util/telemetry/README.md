@@ -11,8 +11,9 @@ We are using opentelemtry as the backend for collecting traces and displaying th
 There are two environment variables that affect the exporting of traces:
 - `MC_TELEMETRY` - This needs to be set to `1` or `true` in order for traces to
   be exported
-- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` - this is where your OpenTelemetry
-  collector is running. The default value is `127.0.0.1:4317`.
+- `OTEL_EXPORTER_OTLP_ENDPOINT` - this is where your OpenTelemetry collector is
+  running. The default value is `http://localhost:4317`. HTTPS requires enabling
+  TLS support in `util/telemetry/Cargo.toml` and configuring the exporter.
 
 ## How do I add tracing to my crate?
 

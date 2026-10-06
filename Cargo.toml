@@ -277,9 +277,9 @@ mockall = "0.15"
 more-asserts = "0.3"
 num_cpus = "1"
 once_cell = { version = "1", default-features = false }
-opentelemetry = "0.31"
-opentelemetry-otlp = "0.31"
-opentelemetry_sdk = "0.31"
+opentelemetry = "0.33"
+opentelemetry-otlp = "0.33"
+opentelemetry_sdk = "0.33"
 p256 = { version = "0.13", default-features = false }
 pem = "4"
 percent-encoding = "2"
