@@ -8,9 +8,11 @@ use std::{
     time::Duration,
 };
 
-use mc_attest_ake::{AuthResponseInput, ClientInitiate, Start, Transition};
+use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest;
-use mc_attest_enclave_api::{ClientSession, EnclaveMessage, NonceSession};
+use mc_attest_enclave_api::{
+    ClientSession, EnclaveMessage, Error as AttestEnclaveError, NonceSession,
+};
 use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -21,17 +23,22 @@ use mc_fog_block_provider::LocalBlockProvider;
 use mc_fog_ledger_enclave::{
     CheckKeyImagesResponse, KeyImageData, LedgerEnclave, LedgerSgxEnclave, ENCLAVE_FILE,
 };
-use mc_fog_ledger_enclave_api::UntrustedKeyImageQueryResponse;
+use mc_fog_ledger_enclave_api::{Error as LedgerEnclaveError, UntrustedKeyImageQueryResponse};
 use mc_fog_ledger_server::{
     sharding_strategy::EpochShardingStrategy, DbPollSharedState, KeyImageService,
     KeyImageStoreServer, LedgerStoreConfig, ShardingStrategy,
 };
 use mc_fog_test_infra::get_enclave_path;
-use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
+use mc_fog_types::{
+    common::BlockRange,
+    ledger::{CheckKeyImagesRequest, KeyImageQuery},
+};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
 use mc_rand::CryptoRng;
+use mc_sgx_report_cache_untrusted::ReportCache;
 use mc_util_grpc::AnonymousAuthenticator;
+use mc_util_metrics::IntGauge;
 use mc_util_test_helper::{RngExt, RngType, SeedableRng};
 use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
@@ -41,6 +48,14 @@ use portpicker::pick_unused_port;
 use sha2::Sha512;
 use tempfile::TempDir;
 use url::Url;
+
+lazy_static::lazy_static! {
+    static ref TEST_ATTESTATION_EVIDENCE_TIMESTAMP: IntGauge = IntGauge::new(
+        "test_attestation_evidence_timestamp".to_owned(),
+        "Test attestation evidence timestamp".to_owned(),
+    )
+    .unwrap();
+}
 
 fn uri_for_test(port: u16) -> KeyImageStoreUri {
     // If a load-balancer were set up in the middle here
@@ -134,6 +149,32 @@ impl<R: CryptoRng> TestingContext<R> {
     }
 }
 
+fn connect_client<R: CryptoRng>(
+    enclave: &LedgerSgxEnclave,
+    responder_id: &ResponderId,
+    rng: &mut R,
+) -> (Ready<Aes256Gcm>, ClientSession) {
+    let initiator = Start::new(responder_id.to_string());
+    let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
+    let (initiator, auth_request_output) = initiator
+        .try_next(rng, init_input)
+        .expect("Could not encrypt auth message.");
+
+    let auth_message = attest::AuthMessage::from(auth_request_output);
+    let (client_auth_response, client_session) = enclave
+        .client_accept(auth_message.into())
+        .expect("Unable to connect a dummy client to the enclave.");
+
+    let auth_message = attest::AuthMessage::from(client_auth_response);
+    let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
+    let auth_response_event = AuthResponseInput::new(auth_message.into(), [identity], None);
+    let (noise_connection, _verification_report) = initiator
+        .try_next(rng, auth_response_event)
+        .expect("Could not get a Noise connection from the initiator.");
+
+    (noise_connection, client_session)
+}
+
 #[test_with_logger]
 pub fn direct_key_image_store_check(logger: Logger) {
     const TEST_NAME: &str = "direct_key_image_store_check";
@@ -203,30 +244,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
         .add_key_image_data(vec![test_key_image])
         .expect("Error adding key image data to the enclave.");
 
-    // Set up the client's end of the encrypted connection.
-    let initiator = Start::new(responder_id.to_string());
-
-    let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
-    let (initiator, auth_request_output) = initiator
-        .try_next(&mut rng, init_input)
-        .expect("Could not encrypt auth message.");
-
-    // Authenticate our "client" with the server.
-    let auth_message = attest::AuthMessage::from(auth_request_output);
-    let (client_auth_response, client_session) = enclave
-        .client_accept(auth_message.into())
-        .expect("Unable to connect a dummy \"client\" connection to the enclave.");
-
-    // We will need to double-convert, ClientAuthResponse -> AuthMessage ->
-    // AuthResponseOutput
-    let auth_message = attest::AuthMessage::from(client_auth_response);
-    // Initiator accepts responder's message.
-    let identity = mc_fog_ledger_enclave_measurement::mr_signer_identity(None);
-    let auth_response_event = AuthResponseInput::new(auth_message.into(), [identity], None);
-    // Should be a valid noise connection at this point.
-    let (mut noise_connection, _verification_report) = initiator
-        .try_next(&mut rng, auth_response_event)
-        .expect("Could not get a noise connection and verification report from the initiator.");
+    let (mut noise_connection, client_session) = connect_client(&enclave, &responder_id, &mut rng);
 
     //Construct our request.
     let key_images_request = CheckKeyImagesRequest {
@@ -304,4 +322,94 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     // The key image result code for a spent key image is 1.
     assert_eq!(test_results, &[(test_key_image.key_image, 1)]);
+}
+
+#[test_with_logger]
+fn rejects_redirected_ledger_response(logger: Logger) {
+    const OMAP_CAPACITY: u64 = 256;
+
+    let responder_id = ResponderId::from_str("ledger-response-routing.test:3223").unwrap();
+    let enclave = LedgerSgxEnclave::new(
+        get_enclave_path(ENCLAVE_FILE),
+        &responder_id,
+        OMAP_CAPACITY,
+        logger.clone(),
+    );
+    let mut rng = RngType::from_seed([0; 32]);
+
+    ReportCache::new(
+        enclave.clone(),
+        &TEST_ATTESTATION_EVIDENCE_TIMESTAMP,
+        logger,
+    )
+    .update_enclave_report_cache()
+    .expect("Could not cache attestation evidence.");
+
+    let backend_request = enclave
+        .ledger_store_init(responder_id.clone())
+        .expect("Could not initialize the ledger store session.");
+    let (backend_response, _frontend_session) = enclave
+        .frontend_accept(backend_request)
+        .expect("Could not accept the ledger store session.");
+    enclave
+        .ledger_store_connect(responder_id.clone(), backend_response)
+        .expect("Could not connect the ledger store session.");
+
+    let mut key_image_bytes = [0u8; 32];
+    rng.fill(&mut key_image_bytes);
+    let key_image = key_image_bytes.try_into().unwrap();
+    enclave
+        .add_key_image_data(vec![KeyImageData {
+            key_image,
+            block_index: 1,
+            timestamp: 255,
+        }])
+        .expect("Could not add key image data.");
+
+    let (mut victim_noise, victim_session) = connect_client(&enclave, &responder_id, &mut rng);
+    let (_attacker_noise, attacker_session) = connect_client(&enclave, &responder_id, &mut rng);
+    assert_ne!(victim_session, attacker_session);
+
+    let request = CheckKeyImagesRequest {
+        queries: vec![KeyImageQuery {
+            key_image,
+            start_block: 1,
+        }],
+    };
+    let ciphertext = victim_noise
+        .encrypt(&[], &mc_util_serial::encode(&request))
+        .expect("Could not encrypt the victim request.");
+    let sealed_query = enclave
+        .decrypt_and_seal_query(EnclaveMessage {
+            aad: vec![],
+            channel_id: victim_session,
+            data: ciphertext,
+        })
+        .expect("Could not decrypt and seal the victim request.");
+
+    let backend_query = enclave
+        .create_multi_key_image_store_query_data(sealed_query.clone())
+        .expect("Could not create the ledger store query.")
+        .pop()
+        .expect("Expected a ledger store query.");
+    let backend_response = enclave
+        .check_key_image_store(
+            backend_query,
+            UntrustedKeyImageQueryResponse {
+                processed_block_range: BlockRange::new(0, 2),
+                last_known_block_cumulative_txo_count: 1,
+                latest_block_version: *MAX_BLOCK_VERSION,
+                max_block_version: *MAX_BLOCK_VERSION,
+            },
+        )
+        .expect("Could not process the ledger store query.");
+
+    let mut redirected_query = sealed_query;
+    redirected_query.channel_id = attacker_session;
+    let responses = BTreeMap::from([(responder_id, backend_response)]);
+
+    assert_eq!(
+        enclave.collate_shard_query_responses(redirected_query, responses),
+        Err(LedgerEnclaveError::Attest(AttestEnclaveError::InvalidState))
+    );
 }
