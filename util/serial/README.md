@@ -12,5 +12,5 @@ The goal of this crate is to provide a single common interface to whatever
 third-party serialization library we choose, so that we can easily change it
 later.
 
-Please call into this crate rather than talking to bincode etc. directly, for
-data that is being passed to / from the enclave
+Please call into this crate rather than talking to third-party serialization
+libraries directly, for data that is being passed to / from the enclave.
