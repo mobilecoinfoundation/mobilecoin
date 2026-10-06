@@ -513,7 +513,6 @@ where
             let mut span =
                 block_span_builder(&tracer, "fetch_records_list", fetched_records.block_index)
                     .with_start_time(fetch_start)
-                    .with_end_time(fetch_end)
                     .start(&tracer);
             span.set_attribute(KeyValue::new(
                 TELEMETRY_BLOCK_INDEX_KEY,
