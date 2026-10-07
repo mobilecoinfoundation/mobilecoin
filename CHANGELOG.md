@@ -12,6 +12,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - Make PrintableWrapper::b58_encode infallible ([#4095])
 - Fix telemetry tags and test logger macro ([#4101])
+- Hardening pass over mc-transaction-summary's streaming verifier. ([#4104])
 - Add LMDB NO_READAHEAD and improve logging ([#4105])
 
 ### Changed
@@ -37,6 +38,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#4094]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4094
 [#4095]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4095
 [#4101]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4101
+[#4104]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4104
 [#4105]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4105
 
 ## [7.1.0]
