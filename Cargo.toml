@@ -207,7 +207,7 @@ backtrace = "0.3"
 balanced-tree-index = "2"
 base64 = { version = "0.23", default-features = false }
 bitflags = { version = "2", default-features = false }
-blake2 = { version = "0.10", default-features = false }
+blake2 = { version = "0.11", default-features = false }
 bs58 = "0.5"
 bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
 cargo-emit = "0.2"
@@ -228,7 +228,8 @@ der = { version = "0.7", default-features = false }
 diesel = "2"
 diesel-derive-enum = "2"
 diesel_migrations = "2"
-digest = { version = "0.10", default-features = false }
+digest = { version = "0.11", default-features = false }
+digest-10 = { package = "digest", version = "0.10", default-features = false }
 dirs = "7"
 displaydoc = { version = "0.2", default-features = false }
 dyn-clone = "1"
@@ -246,8 +247,8 @@ heapless = { version = "0.9", default-features = false }
 hex = { version = "0.4", default-features = false }
 hex-literal = "1"
 hex_fmt = "0.3"
-hkdf = "0.12"
-hmac = "0.12"
+hkdf = "0.13"
+hmac = "0.13"
 hostname = "0.4"
 itertools = "0.15"
 json = "0.12"
@@ -319,8 +320,9 @@ serde_derive = "1"
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_with = { version = "3", default-features = false }
 serial_test = "4"
-sha2 = { version = "0.10", default-features = false }
-sha3 = { version = "0.10", default-features = false }
+sha2 = { version = "0.11", default-features = false }
+sha2-10 = { package = "sha2", version = "0.10", default-features = false }
+sha3 = { version = "0.12", default-features = false }
 signal-hook = "0.4"
 signature = { version = "2", default-features = false }
 siphasher = "1"

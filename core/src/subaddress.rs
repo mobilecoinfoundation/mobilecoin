@@ -41,7 +41,8 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPrivate) {
             digest.update(SUBADDRESS_DOMAIN_TAG);
             digest.update(a.as_bytes());
             digest.update(n.as_bytes());
-            Scalar::from_hash(digest)
+            let output: [u8; 64] = digest.finalize().into();
+            Scalar::from_bytes_mod_order_wide(&output)
         };
 
         // Return private subaddress keys
@@ -70,7 +71,8 @@ impl Subaddress for (&RootViewPrivate, &RootSpendPublic) {
             digest.update(SUBADDRESS_DOMAIN_TAG);
             digest.update(a.as_bytes());
             digest.update(n.as_bytes());
-            Scalar::from_hash(digest)
+            let output: [u8; 64] = digest.finalize().into();
+            Scalar::from_bytes_mod_order_wide(&output)
         };
 
         let b = RistrettoPrivate::from(Hs);
