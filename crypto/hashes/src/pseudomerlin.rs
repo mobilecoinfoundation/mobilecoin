@@ -1,5 +1,7 @@
-use digest::{generic_array, Digest};
-use generic_array::typenum::{IsGreaterOrEqual, B1, U32};
+use digest::{
+    typenum::{IsGreaterOrEqual, B1, U32},
+    Digest,
+};
 use mc_crypto_digestible::DigestTranscript;
 
 /// An object which implements the DigestTranscript API over a cryptographic

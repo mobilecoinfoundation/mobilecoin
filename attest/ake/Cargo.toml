@@ -11,7 +11,6 @@ default = ["std"]
 std = [
     "mc-attest-verifier/std",
     "mc-attest-core/std",
-    "digest/std",
     "serde/std",
 ]
 sgx-sim = ["mc-attest-verifier/sgx-sim"]

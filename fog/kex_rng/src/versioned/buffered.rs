@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{BufferedRng, Error, KexRngCore, KexRngPubkey, NewFromKex, StoredRng};
-use digest::generic_array::{typenum::Unsigned, GenericArray};
+use generic_array::{typenum::Unsigned, GenericArray};
 use mc_crypto_keys::{Kex, KeyError};
 use mc_util_repr_bytes::ReprBytes;
 use rand_core::{CryptoRng, RngCore};

@@ -86,7 +86,8 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
     let mut hasher = Blake2b512::new();
     hasher.update(HASH_TO_SCALAR_DOMAIN_TAG);
     hasher.update(point.compress().as_bytes());
-    Scalar::from_hash(hasher)
+    let output: [u8; 64] = hasher.finalize().into();
+    Scalar::from_bytes_mod_order_wide(&output)
 }
 
 /// Creates target_key `Hs( r * C ) * G + D` for an output sent to

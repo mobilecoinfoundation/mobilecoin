@@ -6,7 +6,7 @@
 use super::*;
 
 use displaydoc::Display;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use mc_common::time::TimeProvider;
 use sha2::Sha256;
 use std::time::Duration;
