@@ -4018,6 +4018,7 @@ dependencies = [
  "digest 0.10.7",
  "displaydoc",
  "generic-array",
+ "hex-literal",
  "hkdf",
  "mc-crypto-hashes",
  "mc-crypto-keys",
