@@ -21,11 +21,12 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Support the new otlp tracing in fog and consensus ([#4086])
 - Use postgres 18.1.1 in CD runs ([#4088])
 - Add tracing context extractor and injector ([#4089])
-- Add distribitued tracing through fog ledger router ([#4090])
+- Add distributed tracing through fog ledger router ([#4090])
 - Fix fog ledger distributed tracing (#4091])
 - Propagate trace context through mobilecoind block_provider ([#4092])
 - Add distributed tracing to fog view ([#4093])
 - Remove some stray traces/spans ([#4094])
+- chore: fix lints for rustc nightly-2025-12-05 ([#4110])
 
 [#4083]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4083
 [#4086]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4086
@@ -40,6 +41,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#4101]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4101
 [#4104]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4104
 [#4105]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4105
+[#4110]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4110
 
 ## [7.1.0]
 
