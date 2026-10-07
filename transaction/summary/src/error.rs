@@ -6,7 +6,7 @@ use mc_transaction_types::{AmountError, BlockVersionError};
 use mc_util_zip_exact::ZipExactError;
 
 /// An error which can occur when verifying a TxSummary against unblinding data
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum Error {
     /// Unexpected Output
     UnexpectedOutput,
