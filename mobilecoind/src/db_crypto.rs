@@ -3,10 +3,7 @@
 //! Helper for managing database encryption.
 
 use aes_gcm::{
-    aead::{
-        generic_array::{sequence::Split, GenericArray},
-        Aead,
-    },
+    aead::{array::typenum::Unsigned, Aead, Key, Nonce},
     AeadCore, Aes256Gcm, Error as AeadError, KeyInit, KeySizeUser,
 };
 use displaydoc::Display;
@@ -293,13 +290,7 @@ impl DbCryptoProvider {
     /// Expands the password into an encryption key and a nonce.
     fn expand_password(
         password: &[u8],
-    ) -> Result<
-        (
-            GenericArray<u8, <Aes256Gcm as KeySizeUser>::KeySize>,
-            GenericArray<u8, <Aes256Gcm as AeadCore>::NonceSize>,
-        ),
-        DbCryptoError,
-    > {
+    ) -> Result<(Key<Aes256Gcm>, Nonce<Aes256Gcm>), DbCryptoError> {
         // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey,
         // second 32 for nonce
         let mut hasher = Blake2b512::new();
@@ -307,8 +298,13 @@ impl DbCryptoProvider {
         hasher.update(password);
         let result = hasher.finalize();
 
-        let (key, remainder) = Split::<u8, <Aes256Gcm as KeySizeUser>::KeySize>::split(result);
-        let (nonce, _remainder) = Split::<u8, <Aes256Gcm as AeadCore>::NonceSize>::split(remainder);
+        let (key, remainder) = result.split_at(<Aes256Gcm as KeySizeUser>::KeySize::USIZE);
+        let (nonce, _) = remainder.split_at(<Aes256Gcm as AeadCore>::NonceSize::USIZE);
+
+        let key = Key::<Aes256Gcm>::try_from(key)
+            .expect("key length is determined by Aes256Gcm::KeySize");
+        let nonce = Nonce::<Aes256Gcm>::try_from(nonce)
+            .expect("nonce length is determined by Aes256Gcm::NonceSize");
 
         Ok((key, nonce))
     }
