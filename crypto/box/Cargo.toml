@@ -11,9 +11,9 @@ rust-version = { workspace = true }
 mc-crypto-hashes = { workspace = true }
 mc-crypto-keys = { workspace = true }
 
-aead = { workspace = true, features = ["alloc"] }
 digest = { workspace = true }
 displaydoc = { workspace = true }
+generic-array = { workspace = true }
 hkdf = { workspace = true }
 mc-oblivious-aes-gcm = { workspace = true, features = ["aes", "alloc", "zeroize"] }
 rand_core = { workspace = true }

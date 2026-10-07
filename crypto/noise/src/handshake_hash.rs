@@ -3,7 +3,7 @@
 //! Helper structure for handling AKE message transcripts (hashes)
 
 use crate::{patterns::HandshakePattern, protocol_name::ProtocolName};
-use aead::AeadMut;
+use aead::Aead;
 use alloc::vec::Vec;
 use core::{
     marker::PhantomData,
@@ -73,7 +73,7 @@ impl<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
-    Cipher: AeadMut,
+    Cipher: Aead,
     DigestAlgo: Digest,
     ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>: AsRef<str>,
 {

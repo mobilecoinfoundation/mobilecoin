@@ -3,7 +3,7 @@
 //! A set of static ZWTs designed to aid the handling of noise protocol strings.
 
 use crate::patterns::{HandshakeIX, HandshakeNX, HandshakePattern};
-use aead::AeadMut;
+use aead::Aead;
 use aes_gcm::Aes256Gcm;
 use core::marker::PhantomData;
 use digest::Digest;
@@ -34,7 +34,7 @@ pub struct ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
-    Cipher: AeadMut,
+    Cipher: Aead,
     DigestAlgo: Digest,
 {
     _pattern: PhantomData<Handshake>,
@@ -48,7 +48,7 @@ impl<Handshake, KexAlgo, Cipher, DigestAlgo> Clone
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
-    Cipher: AeadMut,
+    Cipher: Aead,
     DigestAlgo: Digest,
 {
     fn clone(&self) -> Self {
@@ -66,7 +66,7 @@ impl<Handshake, KexAlgo, Cipher, DigestAlgo> Default
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
-    Cipher: AeadMut,
+    Cipher: Aead,
     DigestAlgo: Digest,
 {
     fn default() -> Self {

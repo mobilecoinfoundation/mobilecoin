@@ -31,15 +31,14 @@
 //!   functionality can be used to assist.
 
 use aes::{
-    cipher::{KeyIvInit, StreamCipher},
+    cipher::{array::Array, IvSizeUser, KeyIvInit, KeySizeUser, StreamCipher},
     Aes256,
 };
 use core::str::Utf8Error;
 use ctr::Ctr64BE;
 use displaydoc::Display;
 use generic_array::{
-    sequence::Split,
-    typenum::{U32, U48, U66},
+    typenum::{Sum, U66},
     GenericArray,
 };
 use hkdf::Hkdf;
@@ -55,6 +54,9 @@ use sha2::Sha512;
 use zeroize::Zeroize;
 
 type Aes256Ctr = Ctr64BE<Aes256>;
+type Aes256CtrKeySize = <Aes256Ctr as KeySizeUser>::KeySize;
+type Aes256CtrIvSize = <Aes256Ctr as IvSizeUser>::IvSize;
+type Aes256CtrOkmSize = Sum<Aes256CtrKeySize, Aes256CtrIvSize>;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
 #[derive(Clone, Copy, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize)]
@@ -173,11 +175,11 @@ impl MemoPayload {
         let shared_secret = CompressedRistrettoPublic::from(shared_secret);
         let kdf = Hkdf::<Sha512>::new(Some(b"mc-memo-okm"), shared_secret.as_ref());
         // OKM is "output key material", see RFC HKDF for discussion of terms
-        let mut okm = GenericArray::<u8, U48>::default();
+        let mut okm = Array::<u8, Aes256CtrOkmSize>::default();
         kdf.expand(b"", okm.as_mut_slice())
             .expect("Digest output size is insufficient");
 
-        let (key, nonce) = Split::<u8, U32>::split(okm);
+        let (key, nonce) = okm.split::<Aes256CtrKeySize>();
 
         // Apply AES-256 in counter mode to the buffer
         let mut aes256ctr = Aes256Ctr::new(&key, &nonce);
