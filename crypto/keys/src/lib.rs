@@ -74,9 +74,9 @@ pub use crate::{
 // Engine for base64 strings
 pub(crate) use base64::engine::general_purpose::STANDARD as BASE64_ENGINE;
 
-pub use digest_10::Digest;
+pub use digest::Digest;
 pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
-pub use schnorrkel_og::SignatureError as SchnorrkelError;
+pub use schnorrkel::SignatureError as SchnorrkelError;
 pub use signature::{
     DigestSigner, DigestVerifier, Error as SignatureError, SignatureEncoding, Signer, Verifier,
 };

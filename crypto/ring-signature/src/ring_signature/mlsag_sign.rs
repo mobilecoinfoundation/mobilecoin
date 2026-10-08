@@ -12,8 +12,8 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 use crate::{
     ring_signature::{
-        challenge, hash_to_point, CurveScalar, Error, KeyImage, PedersenGens, Ring, Scalar,
-        B_BLINDING,
+        challenge, hash_to_point, random_scalar, CurveScalar, Error, KeyImage, PedersenGens, Ring,
+        Scalar, B_BLINDING,
     },
     Commitment,
 };
@@ -164,8 +164,8 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
             if i == params.real_index {
                 continue;
             }
-            r[2 * i].scalar = Scalar::random(&mut rng);
-            r[2 * i + 1].scalar = Scalar::random(&mut rng);
+            r[2 * i].scalar = random_scalar(&mut rng);
+            r[2 * i + 1].scalar = random_scalar(&mut rng);
         }
 
         Ok(Self {
@@ -173,8 +173,8 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
             I,
             key_image,
             output_commitment,
-            alpha_0: Scalar::random(&mut rng),
-            alpha_1: Scalar::random(&mut rng),
+            alpha_0: random_scalar(&mut rng),
+            alpha_1: random_scalar(&mut rng),
             ring_count: 0,
             real_input: None,
             real_challenge: None,
