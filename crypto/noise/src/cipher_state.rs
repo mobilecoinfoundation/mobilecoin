@@ -4,12 +4,12 @@
 
 use alloc::vec;
 
-use aead::{AeadMut, Error as AeadError, KeyInit, Payload};
+use aead::{Aead, Error as AeadError, Key, KeyInit, Nonce, Payload};
 use alloc::vec::Vec;
 use core::cmp::min;
 use digest::{core_api::BlockSizeUser, Digest};
 use displaydoc::Display;
-use generic_array::{typenum::Unsigned, GenericArray};
+use generic_array::typenum::Unsigned;
 use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
 
@@ -39,10 +39,10 @@ impl From<AeadError> for CipherError {
 
 /// A trait to handle cipher-specific weirdness in the noise framework.
 ///
-/// Specifically, this trait and `aead::AeadMut` should cover the requirements
+/// Specifically, this trait and `aead::Aead` should cover the requirements
 /// of [section 4.2](http://noiseprotocol.org/noise.html#cipher-functions) of
 /// the spec.
-pub trait NoiseCipher: AeadMut + KeyInit + Sized {
+pub trait NoiseCipher: Aead + KeyInit + Sized {
     /// Generic re-keying method, will be called by NoiseCipher implementations
     /// for legit ciphers.
     ///
@@ -51,17 +51,12 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     fn rekey(&mut self) -> Result<Self, CipherError> {
         let nonce = Self::nonce_to_arr(u64::MAX);
         let msg = vec![0u8; Self::KeySize::to_usize()];
-        let key = SecretSlice::from(self.encrypt(
-            &nonce,
-            Payload {
-                msg: &msg[..],
-                aad: &[],
-            },
-        )?);
+        let key = SecretSlice::from(self.encrypt(&nonce, &msg[..])?);
         let keyslice = key.expose_secret();
-        Ok(Self::new(&GenericArray::clone_from_slice(
-            &keyslice[..Self::KeySize::to_usize()],
-        )))
+        Ok(Self::new(
+            &Key::<Self>::try_from(&keyslice[..Self::KeySize::to_usize()])
+                .expect("key length is determined by KeySize"),
+        ))
     }
 
     /// This method is an extension to the noise framework in order to support
@@ -70,7 +65,7 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     /// The default implementation provided here will do the normal fixed-
     /// overhead modes, however.
     fn ciphertext_len(plaintext_len: usize) -> usize {
-        plaintext_len + Self::CiphertextOverhead::to_usize() + Self::TagSize::to_usize()
+        plaintext_len + Self::TagSize::to_usize()
     }
 
     /// Generate a nonce byte structure for this cipher. Cipher-specific
@@ -82,7 +77,7 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     ///
     /// The default implementation will create a byte array from the bytes
     /// of the given nonce, in big-ending encoding.
-    fn nonce_to_arr(nonce: u64) -> GenericArray<u8, Self::NonceSize> {
+    fn nonce_to_arr(nonce: u64) -> Nonce<Self> {
         Self::nonce_bytes_to_arr(&nonce.to_be_bytes()[..])
     }
 
@@ -95,13 +90,13 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     ///
     /// ```ignore
     /// impl NoiseCipher for MyCipher {
-    ///     fn nonce_to_arr(nonce: u64) -> GenericArray<u8, Self::NonceSize> {
+    ///     fn nonce_to_arr(nonce: u64) -> Nonce<Self> {
     ///         Self::nonce_bytes_to_arr(&self.nonce.to_le_bytes()[..])
     ///     }
     /// }
     /// ```
-    fn nonce_bytes_to_arr(nonce_bytes: &[u8]) -> GenericArray<u8, Self::NonceSize> {
-        let mut retval = GenericArray::default();
+    fn nonce_bytes_to_arr(nonce_bytes: &[u8]) -> Nonce<Self> {
+        let mut retval = Nonce::<Self>::default();
         let nonce_len = retval.len();
         if nonce_len > 0 {
             let nonce_slice = retval.as_mut_slice();
@@ -113,7 +108,7 @@ pub trait NoiseCipher: AeadMut + KeyInit + Sized {
     }
 }
 
-impl<C> NoiseCipher for C where C: AeadMut + KeyInit + Sized {}
+impl<C> NoiseCipher for C where C: Aead + KeyInit + Sized {}
 
 // Essentially an alias for Digest + BlockSizeUser + Clone.
 pub trait NoiseDigest: Digest + BlockSizeUser + Clone {}
@@ -143,7 +138,9 @@ impl<Cipher: NoiseCipher> CipherState<Cipher> {
                 if key_slice.len() != Cipher::KeySize::to_usize() {
                     return Err(CipherError::KeyLength);
                 }
-                self.cipher = Some(Cipher::new(&GenericArray::clone_from_slice(key_slice)));
+                self.cipher = Some(Cipher::new(
+                    &Key::<Cipher>::try_from(key_slice).map_err(|_| CipherError::KeyLength)?,
+                ));
             }
             None => {
                 self.cipher = None;

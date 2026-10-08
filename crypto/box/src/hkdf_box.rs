@@ -1,11 +1,12 @@
 use crate::{
     aead::{
-        generic_array::{
-            sequence::{Concat, Split},
-            typenum::{Sum, Unsigned},
-            ArrayLength, GenericArray,
-        },
-        AeadInPlace, Error as AeadError, KeyInit,
+        array::{Array, ArraySize},
+        AeadInOut, Error as AeadError, Key, KeyInit, Nonce,
+    },
+    generic_array::{
+        sequence::Concat,
+        typenum::{Sum, Unsigned},
+        ArrayLength, GenericArray,
     },
     traits::{CryptoBox, Error},
 };
@@ -34,7 +35,7 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + BlockSizeUser + Clone,
-    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
+    AeadAlgo: AeadInOut + KeyInit + CtAeadDecrypt,
 {
     _kex: PhantomData<KexAlgo>,
     _digest: PhantomData<DigestAlgo>,
@@ -46,11 +47,12 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + BlockSizeUser + Clone,
-    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
+    AeadAlgo: AeadInOut + KeyInit + CtAeadDecrypt,
     // Note: I think all of these bounds should go away after RFC 2089 is implemented
     // https://github.com/rust-lang/rfcs/blob/master/text/2089-implied-bounds.md
     <<KexAlgo as Kex>::Public as ReprBytes>::Size:
         ArrayLength<u8> + Unsigned + Add<AeadAlgo::TagSize>,
+    AeadAlgo::TagSize: ArrayLength<u8>,
     Sum<<KexAlgo::Public as ReprBytes>::Size, AeadAlgo::TagSize>: ArrayLength<u8>,
     GenericArray<u8, <<KexAlgo as Kex>::Public as ReprBytes>::Size>: Concat<
         u8,
@@ -63,7 +65,7 @@ where
     >,
     AeadAlgo::KeySize: Add<AeadAlgo::NonceSize>,
     Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>:
-        ArrayLength<u8> + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
+        ArraySize + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
 {
     type FooterSize = Sum<<KexAlgo::Public as ReprBytes>::Size, AeadAlgo::TagSize>;
 
@@ -84,7 +86,8 @@ where
 
         // AES
         let aead = AeadAlgo::new(&aes_key);
-        let mac = aead.encrypt_in_place_detached(&aes_nonce, &[], buffer)?;
+        let mac = aead.encrypt_inout_detached(&aes_nonce, &[], buffer.into())?;
+        let mac = GenericArray::<u8, AeadAlgo::TagSize>::clone_from_slice(mac.as_slice());
 
         // Tag is curve_point_bytes || aes_mac_bytes
         Ok(curve_point_bytes.concat(mac))
@@ -108,9 +111,10 @@ where
         let (aes_key, aes_nonce) = Self::kdf_step(&shared_secret);
 
         // AES
-        let mac_ref = <&GenericArray<u8, AeadAlgo::TagSize>>::from(
+        let mac_ref = <&Array<u8, AeadAlgo::TagSize>>::try_from(
             &tag[<KexAlgo::Public as ReprBytes>::Size::USIZE..],
-        );
+        )
+        .expect("tag length is determined by TagSize");
         let aead = AeadAlgo::new(&aes_key);
         Ok(aead.ct_decrypt_in_place_detached(&aes_nonce, &[], buffer, mac_ref))
     }
@@ -121,26 +125,21 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + BlockSizeUser + Clone,
-    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
+    AeadAlgo: AeadInOut + KeyInit + CtAeadDecrypt,
     AeadAlgo::KeySize: Add<AeadAlgo::NonceSize>,
     Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>:
-        ArrayLength<u8> + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
+        ArraySize + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
 {
     /// KDF part, factored out to avoid duplication
     /// This part must produce the key and IV/nonce for Aead, from the IKM,
     /// using Hkdf.
-    fn kdf_step(
-        dh_secret: &KexAlgo::Secret,
-    ) -> (
-        GenericArray<u8, AeadAlgo::KeySize>,
-        GenericArray<u8, AeadAlgo::NonceSize>,
-    ) {
+    fn kdf_step(dh_secret: &KexAlgo::Secret) -> (Key<AeadAlgo>, Nonce<AeadAlgo>) {
         let kdf = SimpleHkdf::<DigestAlgo>::new(Some(b"dei-salty-box"), dh_secret.as_ref());
-        let mut okm = GenericArray::<u8, Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>>::default();
+        let mut okm = Array::<u8, Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>>::default();
         kdf.expand(b"aead-key-iv", okm.as_mut_slice())
             .expect("Digest output size is insufficient");
 
-        let (key, nonce) = Split::<u8, AeadAlgo::KeySize>::split(okm);
+        let (key, nonce) = okm.split::<AeadAlgo::KeySize>();
         (key, nonce)
     }
 }
@@ -150,7 +149,7 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + BlockSizeUser + Clone,
-    AeadAlgo: AeadInPlace + KeyInit + CtAeadDecrypt,
+    AeadAlgo: AeadInOut + KeyInit + CtAeadDecrypt,
 {
     fn default() -> Self {
         Self {

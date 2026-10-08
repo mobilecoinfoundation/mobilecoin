@@ -1,10 +1,10 @@
-use crate::aead::{
+use crate::{
+    aead::Error as AeadError,
     generic_array::{
         sequence::{Concat, Split},
         typenum::{Diff, Sum, Unsigned},
         ArrayLength, GenericArray,
     },
-    Error as AeadError,
 };
 use alloc::vec::Vec;
 use core::ops::{Add, Sub};
@@ -109,7 +109,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         &self,
         rng: &mut T,
         key: &KexAlgo::Public,
-        buffer: &mut impl aead::Buffer,
+        buffer: &mut impl crate::aead::Buffer,
     ) -> Result<(), AeadError> {
         let footer = self.encrypt_in_place_detached(rng, key, buffer.as_mut())?;
         buffer.extend_from_slice(&footer)
@@ -133,7 +133,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     fn decrypt_in_place(
         &self,
         key: &KexAlgo::Private,
-        cryptogram: &mut impl aead::Buffer,
+        cryptogram: &mut impl crate::aead::Buffer,
     ) -> Result<CtDecryptResult, Error> {
         // Extract the footer from end of ciphertext, doing bounds checks
         if cryptogram.len() < Self::FooterSize::USIZE {

@@ -1,25 +1,26 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use aes_gcm::aead::{AeadInPlace, KeyInit};
+use aes_gcm::aead::{
+    array::{typenum::Unsigned, Array, ArraySize},
+    AeadInOut, Key, KeyInit, Nonce as AeadNonce,
+};
 use alloc::{vec, vec::Vec};
-use generic_array::{typenum, ArrayLength, GenericArray};
 use rand_core::{CryptoRng, RngCore};
 use subtle::Choice;
-use typenum::Unsigned;
 
 use crate::{CipherError, MessageCipher};
 
 /// Implement [MessageCipher] trait around an `AesGcm` object that does rekeying
-pub struct AeadMessageCipher<C: KeyInit + AeadInPlace> {
+pub struct AeadMessageCipher<C: KeyInit + AeadInOut> {
     // ciphers is a list of ciphers, and the keys we used to make them
-    ciphers: Vec<(C, GenericArray<u8, C::KeySize>)>,
+    ciphers: Vec<(C, Key<C>)>,
     // nonce is the current nonce, starts from 0 every time we re-key.
     nonce: Nonce<C::NonceSize>,
 }
 
-impl<C: AeadInPlace + KeyInit> MessageCipher for AeadMessageCipher<C> {
+impl<C: AeadInOut + KeyInit> MessageCipher for AeadMessageCipher<C> {
     fn new<T: CryptoRng + RngCore>(rng: &mut T) -> Self {
-        let mut key: GenericArray<u8, C::KeySize> = Default::default();
+        let mut key: Key<C> = Default::default();
         rng.fill_bytes(key.as_mut_slice());
         Self {
             ciphers: vec![(C::new(&key), key)],
@@ -52,7 +53,7 @@ impl<C: AeadInPlace + KeyInit> MessageCipher for AeadMessageCipher<C> {
             // need to get a new key and reset the nonce
             // Keep choosing random keys until we get a new one
             let key = {
-                let mut key: GenericArray<u8, C::KeySize> = Default::default();
+                let mut key: Key<C> = Default::default();
 
                 loop {
                     rng.fill_bytes(key.as_mut_slice());
@@ -95,9 +96,10 @@ impl<C: AeadInPlace + KeyInit> MessageCipher for AeadMessageCipher<C> {
         if key_num >= self.ciphers.len() as u64 {
             return Err(CipherError::UnknownKey);
         }
-        let nonce = GenericArray::clone_from_slice(
+        let nonce = AeadNonce::<C>::try_from(
             &ciphertext[ciphertext.len() - nonce_offset..ciphertext.len()],
-        );
+        )
+        .expect("nonce length was checked above");
 
         // Remove the footer, then decrypt using AesGcm and the nonce
         let mut result = ciphertext;
@@ -117,11 +119,11 @@ impl<C: AeadInPlace + KeyInit> MessageCipher for AeadMessageCipher<C> {
 
 /// A representation of a nonce suitable for e.g. AES, supporting inc(),
 /// copy_to_slice(), and other functions
-struct Nonce<L: ArrayLength<u8>> {
-    bytes: GenericArray<u8, L>,
+struct Nonce<L: ArraySize> {
+    bytes: Array<u8, L>,
 }
 
-impl<L: ArrayLength<u8>> Nonce<L> {
+impl<L: ArraySize> Nonce<L> {
     pub fn new() -> Self {
         Self {
             bytes: Default::default(),
@@ -146,7 +148,7 @@ impl<L: ArrayLength<u8>> Nonce<L> {
         }
     }
 
-    pub fn as_bytes(&self) -> &GenericArray<u8, L> {
+    pub fn as_bytes(&self) -> &Array<u8, L> {
         &self.bytes
     }
 }

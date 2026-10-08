@@ -8,9 +8,9 @@ use crate::{
     protocol_name::ProtocolName,
     symmetric_state::{SymmetricError, SymmetricOutput, SymmetricState},
 };
+use aead::array::typenum::Unsigned;
 use alloc::vec::Vec;
 use displaydoc::Display;
-use generic_array::typenum::Unsigned;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -326,9 +326,8 @@ where
     ) -> Result<Vec<u8>, HandshakeError> {
         // Create an output buffer large enough to encrypt our payload and any tokens
         // into
-        let mut retval = Vec::with_capacity(
-            tokens.len() * 32 + payload.len() + Cipher::CiphertextOverhead::to_usize(),
-        );
+        let mut retval =
+            Vec::with_capacity(tokens.len() * 32 + payload.len() + Cipher::TagSize::to_usize());
 
         for token in tokens {
             match token {

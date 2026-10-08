@@ -46,6 +46,7 @@ mc-util-zip-exact = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+hex-literal = { workspace = true }
 
 mc-crypto-digestible-test-utils = { workspace = true }
 mc-crypto-ring-signature = { workspace = true, features = ["proptest"] }
