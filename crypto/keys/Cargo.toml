@@ -39,7 +39,7 @@ default = [
 
 base64 = { workspace = true }
 curve25519-dalek = { workspace = true, features = ["rand_core"] }
-digest = { workspace = true }
+digest-10 = { workspace = true }
 displaydoc = { workspace = true }
 ed25519 = { workspace = true }
 ed25519-dalek = { workspace = true, features = ["rand_core", "digest"] }
@@ -55,7 +55,7 @@ rand_core = { workspace = true }
 rand_hc = { workspace = true }
 schnorrkel-og = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
-sha2 = { workspace = true }
+sha2-10 = { workspace = true }
 signature = { workspace = true, features = ["digest"] }
 static_assertions = { workspace = true }
 subtle = { workspace = true }

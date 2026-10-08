@@ -84,7 +84,7 @@ mod tests {
     use super::*;
     use crate::versioned::BufferedKexRng;
     use alloc::vec;
-    use digest::generic_array::GenericArray;
+    use generic_array::GenericArray;
     use mc_crypto_keys::{Ristretto, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
 

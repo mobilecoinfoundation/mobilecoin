@@ -45,7 +45,6 @@ mc-fog-view-protocol = { workspace = true }
 
 # third party
 clap = { workspace = true, features = ["derive", "env"] }
-digest = { workspace = true }
 hex = { workspace = true }
 rand_core = { workspace = true }
 rand_hc = { workspace = true }

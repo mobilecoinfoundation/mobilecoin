@@ -9,8 +9,7 @@ use core::{
     marker::PhantomData,
     ops::{Add, AddAssign},
 };
-use digest::Digest;
-use generic_array::{typenum::Unsigned, GenericArray};
+use digest::{typenum::Unsigned, Digest, Output};
 use mc_crypto_keys::Kex;
 use secrecy::{ExposeSecret, SecretSlice};
 use zeroize::Zeroize;
@@ -83,7 +82,7 @@ where
         let proto = src.as_ref().as_bytes();
         let proto_len = proto.len();
         let mut result = if proto_len <= DigestAlgo::OutputSize::to_usize() {
-            let mut result = GenericArray::default();
+            let mut result = Output::<DigestAlgo>::default();
             result[..proto_len].copy_from_slice(proto);
             result
         } else {

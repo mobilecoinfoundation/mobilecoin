@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 
 use base64::Engine;
 use core::fmt::{Debug, Formatter, Result as FmtResult};
-use digest::generic_array::typenum::U32;
+use digest_10::generic_array::typenum::U32;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{derive_core_cmp_from_as_ref, derive_repr_bytes_from_as_ref_and_try_from};
@@ -28,7 +28,7 @@ use serde::{
     ser::{Serialize, Serializer},
 };
 
-use sha2::Sha256;
+use sha2_10::Sha256;
 use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 

@@ -17,11 +17,9 @@ rust-version = { workspace = true }
 [features]
 default = ["std"]
 std = [
-    "digest/std",
     "displaydoc/std",
     "mc-common/std",
     "mc-util-encodings/std",
-    "sha2/std",
 ]
 
 [dependencies]

@@ -13,8 +13,8 @@ mc-crypto-keys = { workspace = true }
 mc-util-from-random = { workspace = true }
 mc-util-repr-bytes = { workspace = true }
 
-digest = { workspace = true }
 displaydoc = { workspace = true }
+generic-array = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
 rand_core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

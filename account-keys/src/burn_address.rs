@@ -76,7 +76,8 @@ pub fn burn_address() -> PublicAddress {
 fn burn_address_spend_public() -> RistrettoPoint {
     let mut hasher = Blake2b512::new();
     hasher.update(BURN_ADDRESS_DOMAIN_SEPARATOR);
-    RistrettoPoint::from_hash(hasher)
+    let output: [u8; 64] = hasher.finalize().into();
+    RistrettoPoint::from_uniform_bytes(&output)
 }
 
 // The burn address view public key, in the curve25519-dalek ristretto point
