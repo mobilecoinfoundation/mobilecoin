@@ -12,7 +12,7 @@ mc-crypto-keys = { workspace = true }
 merlin = { workspace = true }
 rand_core = { workspace = true }
 rand_hc = { workspace = true }
-schnorrkel-og = { workspace = true }
+schnorrkel = { workspace = true }
 
 [dev-dependencies]
 mc-util-from-random = { workspace = true }

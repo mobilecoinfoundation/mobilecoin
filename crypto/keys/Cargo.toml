@@ -38,11 +38,11 @@ default = [
 [dependencies]
 
 base64 = { workspace = true }
-curve25519-dalek = { workspace = true, features = ["rand_core"] }
-digest-10 = { workspace = true }
+curve25519-dalek = { workspace = true }
+digest = { workspace = true }
 displaydoc = { workspace = true }
 ed25519 = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["rand_core", "digest"] }
+ed25519-dalek = { workspace = true, features = ["digest"] }
 hex = { workspace = true }
 hex_fmt = { workspace = true }
 
@@ -53,9 +53,9 @@ mc-util-repr-bytes = { workspace = true }
 mc-util-serial = { workspace = true, optional = true }
 rand_core = { workspace = true }
 rand_hc = { workspace = true }
-schnorrkel-og = { workspace = true }
+schnorrkel = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
-sha2-10 = { workspace = true }
+sha2 = { workspace = true }
 signature = { workspace = true, features = ["digest"] }
 static_assertions = { workspace = true }
 subtle = { workspace = true }

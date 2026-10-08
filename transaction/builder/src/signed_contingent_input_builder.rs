@@ -24,6 +24,12 @@ use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
+fn random_scalar(rng: &mut (impl RngCore + CryptoRng)) -> Scalar {
+    let mut bytes = [0u8; 64];
+    rng.fill_bytes(&mut bytes);
+    Scalar::from_bytes_mod_order_wide(&bytes)
+}
+
 /// Helper utility for creating signed contingent inputs with required outputs,
 /// and attaching fog hint and memos as appropriate.
 ///
@@ -512,7 +518,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         tx_in.proofs.clear();
         let ring = SignableInputRing::try_from(self.input_credentials)?;
 
-        let pseudo_output_blinding = Scalar::random(rng);
+        let pseudo_output_blinding = random_scalar(rng);
 
         let mlsag = ring_signer.sign(
             &tx_in

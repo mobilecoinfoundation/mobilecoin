@@ -16,7 +16,7 @@ serde = ["dep:serde", "mc-core-types/serde"]
 default = ["bip39"]
 
 [dependencies]
-curve25519-dalek = { workspace = true }
+curve25519-dalek = { workspace = true, features = ["digest"] }
 ed25519-dalek = { workspace = true }
 generic-array = { workspace = true, features = ["more_lengths"] }
 hkdf = { workspace = true }

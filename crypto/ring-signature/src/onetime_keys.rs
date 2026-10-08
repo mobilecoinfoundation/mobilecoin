@@ -86,8 +86,7 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
     let mut hasher = Blake2b512::new();
     hasher.update(HASH_TO_SCALAR_DOMAIN_TAG);
     hasher.update(point.compress().as_bytes());
-    let output: [u8; 64] = hasher.finalize().into();
-    Scalar::from_bytes_mod_order_wide(&output)
+    Scalar::from_hash(hasher)
 }
 
 /// Creates target_key `Hs( r * C ) * G + D` for an output sent to
@@ -272,8 +271,8 @@ mod tests {
     // Should return `r * D`.
     fn test_create_tx_public_key() {
         run_with_several_seeds(|mut rng| {
-            let r = Scalar::random(&mut rng);
-            let D = RistrettoPoint::random(&mut rng);
+            let r = crate::ring_signature::random_scalar(&mut rng);
+            let D = crate::ring_signature::random_ristretto_point(&mut rng);
 
             let expected = RistrettoPublic::from(r * D);
 
