@@ -10,7 +10,10 @@ use config::LedgerFromArchiveConfig;
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{create_ledger_in, Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use std::path::Path;
+use std::{path::Path, time::Instant};
+
+/// Log an info-level progress message every this many blocks.
+const BLOCK_LOG_INTERVAL: u64 = 10_000;
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -41,13 +44,37 @@ fn main() {
         }
 
         // Try and get the block.
-        log::info!(logger, "Attempting to fetch block {}", block_index,);
-        match transactions_fetcher.get_block_data_by_index(block_index, None) {
+        // At this point the transactions fetcher has already downloaded the necessary
+        // data for the block. Use debug to see the downloads and timings.
+        if block_index % BLOCK_LOG_INTERVAL == 0 {
+            log::info!(
+                logger,
+                "Appending block range {}-{} to ledger",
+                block_index,
+                block_index + BLOCK_LOG_INTERVAL - 1
+            );
+        }
+        let fetch_start = Instant::now();
+        let result = transactions_fetcher.get_block_data_by_index(block_index, None);
+        log::debug!(
+            logger,
+            "Fetching block {} took {:?}",
+            block_index,
+            fetch_start.elapsed()
+        );
+        match result {
             Ok(block_data) => {
                 // Append new data to the ledger
+                let append_start = Instant::now();
                 local_ledger
                     .append_block_data(&block_data)
-                    .unwrap_or_else(|_| panic!("Could not append block {block_index:?}"))
+                    .unwrap_or_else(|_| panic!("Could not append block {block_index:?}"));
+                log::debug!(
+                    logger,
+                    "Appended block {} to ledger took {:?}",
+                    block_index,
+                    append_start.elapsed()
+                );
             }
             Err(err) => {
                 log::info!(

@@ -24,6 +24,7 @@ use mc_transaction_types::{
     domain_separators::EXTENDED_MESSAGE_AND_TX_SUMMARY_DOMAIN_TAG, Amount, AmountError,
     BlockVersion, MaskedAmount, TxInSummary, TxOutSummary, UnmaskedAmount,
 };
+use zeroize::Zeroizing;
 
 /// A streaming transaction summary verifier for use in hardware wallets,
 /// with a dual purpose.
@@ -52,7 +53,7 @@ use mc_transaction_types::{
 pub struct TxSummaryStreamingVerifierCtx {
     // The account view private key of the transaction signer.
     // This is used to identify outputs addressed to ourselves regardless of subaddress
-    view_private_key: RistrettoPrivate,
+    view_private_key: Zeroizing<RistrettoPrivate>,
 
     // The account change address for matching outputs
     change_address: PublicSubaddress,
@@ -85,6 +86,10 @@ impl TxSummaryStreamingVerifierCtx {
     /// * expected_num_inputs of the Tx
     /// * view_private_key of the signer, to identify self-payment outputs
     ///
+    /// A valid Tx has at least one input and one output. Zero counts are
+    /// accepted here but every subsequent step will fail, so no digest can be
+    /// produced for such a Tx.
+    ///
     /// Returns:
     /// * A properly initialized TxSummaryStreamingVerifier
     pub fn new(
@@ -101,11 +106,16 @@ impl TxSummaryStreamingVerifierCtx {
 
         // Append start of TxSummary object
         transcript.append_agg_header(b"tx_summary", b"TxSummary");
-        // Append start of TxSummary.outputs list
-        transcript.append_seq_header(b"outputs", expected_num_outputs);
+        // Append start of TxSummary.outputs list. A zero count is rejected by
+        // `check_nonzero_counts` on every later call, so this context can never
+        // produce a digest. Skipping the header here only avoids the transcript's
+        // debug assertion on zero-length sequences, so the case stays testable.
+        if expected_num_outputs != 0 {
+            transcript.append_seq_header(b"outputs", expected_num_outputs);
+        }
 
         Self {
-            view_private_key,
+            view_private_key: Zeroizing::new(view_private_key),
             block_version,
             transcript,
             expected_num_outputs,
@@ -126,6 +136,7 @@ impl TxSummaryStreamingVerifierCtx {
         tx_private_key: Option<&RistrettoPrivate>,
         mut report: impl TransactionReport,
     ) -> Result<(), Error> {
+        self.check_nonzero_counts()?;
         if self.output_count >= self.expected_num_outputs {
             return Err(Error::UnexpectedOutput);
         }
@@ -133,43 +144,41 @@ impl TxSummaryStreamingVerifierCtx {
         // Now try to verify the recipient. This is either ourselves, or someone else
         // with the listed address, or this is associated to an SCI.
 
-        // If we view-key matched the output, then it belongs to one of our subaddresses
-        if let Some(amount) = self.view_key_match(tx_out_summary)? {
-            // If we have address information
-            if let Some((address_hash, address)) = address.as_ref() {
-                // Check whether this is to our change address
-                if address.view_public_key() == self.change_address.view_public_key()
-                    && address.spend_public_key() == self.change_address.spend_public_key()
-                {
-                    // If this is to our change address, subtract this from the total inputs
-                    report.change_sub(amount)?;
-                } else {
-                    // Otherwise, add this as an output to ourself
-                    report.output_add(TransactionEntity::OurAddress(*address_hash), amount)?;
-                }
-            } else {
-                // If we _don't_ have address information but it's to our own address...
-                return Err(Error::MissingOutputAddress);
-            }
-
-        // If we didn't match the output, and we have address information, this
-        // belongs to someone else
-        } else if let Some((address_hash, address)) = address.as_ref() {
-            // Otherwise, this belongs to another address
-
-            let amount = Amount::new(unmasked_amount.value, unmasked_amount.token_id.into());
-            // In this case, we are given the address of who is supposed to have received
-            // this.
+        // If we have address information, the output must be exactly the one that
+        // `TxOut::new` would produce for that address, amount and tx_private_key.
+        // This binds the target key, public key and masked amount to the address,
+        // so a host cannot present an output it controls as going to us.
+        if let Some((address_hash, address)) = address.as_ref() {
             let tx_private_key = tx_private_key.as_ref().ok_or(Error::MissingTxPrivateKey)?;
-            // Let's try to verify that the TxOutSummary is as expected
+            let amount = Amount::new(unmasked_amount.value, unmasked_amount.token_id.into());
             let expected =
                 Self::expected_tx_out_summary(self.block_version, amount, address, tx_private_key)?;
-            if &expected == tx_out_summary {
-                // Add as an output to the report
-                report.output_add(TransactionEntity::OtherAddress(*address_hash), amount)?;
-            } else {
+            if &expected != tx_out_summary {
                 return Err(Error::AddressVerificationFailed);
             }
+
+            if address.view_public_key() == self.change_address.view_public_key()
+                && address.spend_public_key() == self.change_address.spend_public_key()
+            {
+                // If this is to our change address, subtract this from the total inputs
+                report.change_sub(amount)?;
+            } else if self.view_key_match(tx_out_summary)?.is_some() {
+                // If we view-key matched the output, it is to one of our subaddresses.
+                //
+                // NOTE: the host knows our view private key, so it can construct an
+                // address which view-key matches but which it controls. The amount and
+                // address hash shown are still exact; only the "ours" label is
+                // host-influenced. Proving ownership requires deriving the subaddress
+                // from the account spend public key, which this API does not yet do.
+                report.output_add(TransactionEntity::OurAddress(*address_hash), amount)?;
+            } else {
+                // Otherwise, this belongs to someone else
+                report.output_add(TransactionEntity::OtherAddress(*address_hash), amount)?;
+            }
+
+        // If we _don't_ have address information but it's to our own address...
+        } else if self.view_key_match(tx_out_summary)?.is_some() {
+            return Err(Error::MissingOutputAddress);
 
         // If we didn't match the output, and we don't have address information,
         // this is an SCI
@@ -223,6 +232,7 @@ impl TxSummaryStreamingVerifierCtx {
         tx_in_summary_unblinding_data: &UnmaskedAmount,
         mut report: impl TransactionReport,
     ) -> Result<(), Error> {
+        self.check_nonzero_counts()?;
         if self.output_count != self.expected_num_outputs {
             return Err(Error::StillExpectingMoreOutputs);
         }
@@ -279,6 +289,17 @@ impl TxSummaryStreamingVerifierCtx {
         digest: &mut [u8; 32],
         mut report: impl TransactionReport,
     ) -> Result<(), Error> {
+        // Every declared output and input must have been streamed and verified,
+        // otherwise the report shown to the user is incomplete and the digest
+        // cannot match any valid Tx.
+        self.check_nonzero_counts()?;
+        if self.output_count != self.expected_num_outputs {
+            return Err(Error::StillExpectingMoreOutputs);
+        }
+        if self.input_count != self.expected_num_inputs {
+            return Err(Error::StillExpectingMoreInputs);
+        }
+
         report.network_fee_set(fee)?;
         report.tombstone_block_set(tombstone_block)?;
 
@@ -293,6 +314,19 @@ impl TxSummaryStreamingVerifierCtx {
         // Extract the digest
         self.transcript.extract_digest(digest);
 
+        Ok(())
+    }
+
+    // Internal: A valid Tx has at least one input and one output. A zero count
+    // can never match a real Tx, and the transcript does not support
+    // zero-length sequence headers, so refuse to make any progress.
+    fn check_nonzero_counts(&self) -> Result<(), Error> {
+        if self.expected_num_outputs == 0 {
+            return Err(Error::StillExpectingMoreOutputs);
+        }
+        if self.expected_num_inputs == 0 {
+            return Err(Error::StillExpectingMoreInputs);
+        }
         Ok(())
     }
 
@@ -360,7 +394,8 @@ mod tests {
     use rand::rngs::OsRng;
 
     use crate::{report::TotalKind, TxSummaryUnblindingReport};
-    use mc_account_keys::AccountKey;
+    use mc_account_keys::{AccountKey, PublicAddress};
+    use mc_crypto_ring_signature::onetime_keys::recover_public_subaddress_spend_key;
     use mc_transaction_core::{tx::TxOut, BlockVersion};
     use mc_transaction_types::TokenId;
     use mc_util_from_random::FromRandom;
@@ -379,6 +414,9 @@ mod tests {
 
     #[derive(Clone, Debug, PartialEq)]
     struct TxOutReportTest {
+        /// Expected result of streaming the outputs. On error, only `changes`
+        /// recorded before the failing output are checked.
+        result: Result<(), Error>,
         /// Inputs spent in the transaction
         inputs: Vec<(InputType, Amount)>,
         /// Outputs produced by the transaction
@@ -407,6 +445,15 @@ mod tests {
         Other,
         /// A swap output (not used in existing reports)
         Swap,
+        /// Claimed as our change address, but the target key belongs to the
+        /// attacker. The amount still unmasks under our view key.
+        ForgedChange,
+        /// Claimed as our own (non-change) address, but the target key
+        /// belongs to the attacker. The amount still unmasks under our view
+        /// key.
+        ForgedOurself,
+        /// A genuine change output streamed without its tx_private_key
+        ChangeWithoutKey,
     }
 
     #[test]
@@ -417,11 +464,13 @@ mod tests {
         let sender = AccountKey::random(&mut rng);
         let receiver = AccountKey::random(&mut rng);
         let swap = AccountKey::random(&mut rng);
+        let attacker = AccountKey::random(&mut rng);
 
         let sender_subaddress = sender.default_subaddress();
         let change_subaddress = sender.change_subaddress();
         let target_subaddress = receiver.default_subaddress();
         let swap_subaddress = swap.default_subaddress();
+        let attacker_spend_public = *attacker.default_subaddress().spend_public_key();
 
         // Set common token id / amounts for later use
         let token_id = TokenId::from(9);
@@ -432,6 +481,7 @@ mod tests {
         let tests = &[
             // Output to ourself, should show output to our address and total of output + fee
             TxOutReportTest {
+                result: Ok(()),
                 inputs: vec![(InputType::Owned, Amount::new(amount.value + fee, token_id))],
                 outputs: vec![(OutputTarget::Ourself, amount)],
                 changes: vec![(
@@ -443,6 +493,7 @@ mod tests {
             },
             // Output to our change address, should show no outputs with balance change = fee
             TxOutReportTest {
+                result: Ok(()),
                 inputs: vec![
                     (
                         InputType::Owned,
@@ -458,6 +509,7 @@ mod tests {
             },
             // Output to someone else, should show their address and total of output + fee
             TxOutReportTest {
+                result: Ok(()),
                 inputs: vec![(InputType::Owned, Amount::new(amount.value + fee, token_id))],
                 outputs: vec![(OutputTarget::Other, amount)],
                 changes: vec![(
@@ -469,6 +521,7 @@ mod tests {
             },
             // Basic SCI. consuming entire swap, inputs should not count towards totals
             TxOutReportTest {
+                result: Ok(()),
                 inputs: vec![
                     // Our input, sent to SCI
                     (InputType::Owned, Amount::new(10_000 + fee, token_id)),
@@ -498,6 +551,7 @@ mod tests {
             },
             // Partial SCI
             TxOutReportTest {
+                result: Ok(()),
                 inputs: vec![
                     // Our input, owned by us
                     (InputType::Owned, Amount::new(7_500 + fee, token_id)),
@@ -528,6 +582,53 @@ mod tests {
                     (TokenId::from(2), TotalKind::Sci, 150_i128),
                 ],
             },
+            // A host that knows our view private key declares an attacker-owned
+            // output as change. It must be rejected rather than silently
+            // subtracted from the total, and the earlier payment must already
+            // be in the report (proving the change output is the one rejected).
+            TxOutReportTest {
+                result: Err(Error::AddressVerificationFailed),
+                // Never streamed (outputs fail first); declared so the count is non-zero
+                inputs: vec![(InputType::Owned, Amount::new(1_000_100 + fee, token_id))],
+                outputs: vec![
+                    (OutputTarget::Other, Amount::new(100, token_id)),
+                    (OutputTarget::ForgedChange, Amount::new(1_000_000, token_id)),
+                ],
+                changes: vec![(
+                    TransactionEntity::OtherAddress(ShortAddressHash::from(&target_subaddress)),
+                    token_id,
+                    100,
+                )],
+                totals: vec![],
+            },
+            // Same substitution, but claimed as a payment to our own address
+            TxOutReportTest {
+                result: Err(Error::AddressVerificationFailed),
+                // Never streamed (outputs fail first); declared so the count is non-zero
+                inputs: vec![(InputType::Owned, Amount::new(1_000_100 + fee, token_id))],
+                outputs: vec![
+                    (OutputTarget::Other, Amount::new(100, token_id)),
+                    (
+                        OutputTarget::ForgedOurself,
+                        Amount::new(1_000_000, token_id),
+                    ),
+                ],
+                changes: vec![(
+                    TransactionEntity::OtherAddress(ShortAddressHash::from(&target_subaddress)),
+                    token_id,
+                    100,
+                )],
+                totals: vec![],
+            },
+            // A change output cannot be verified without its tx_private_key
+            TxOutReportTest {
+                result: Err(Error::MissingTxPrivateKey),
+                // Never streamed (outputs fail first); declared so the count is non-zero
+                inputs: vec![(InputType::Owned, Amount::new(amount.value + fee, token_id))],
+                outputs: vec![(OutputTarget::ChangeWithoutKey, amount)],
+                changes: vec![],
+                totals: vec![],
+            },
         ];
 
         // Run tests
@@ -549,49 +650,47 @@ mod tests {
             );
 
             // Build and process TxOuts
+            let mut result = Ok(());
             for (target, amount) in &t.outputs {
                 println!("Add output {target:?}: {amount:?}");
 
                 // Select target address
                 let receive_subaddress = match target {
-                    OutputTarget::Ourself => &sender_subaddress,
-                    OutputTarget::Change => &change_subaddress,
+                    OutputTarget::Ourself | OutputTarget::ForgedOurself => &sender_subaddress,
+                    OutputTarget::Change
+                    | OutputTarget::ForgedChange
+                    | OutputTarget::ChangeWithoutKey => &change_subaddress,
                     OutputTarget::Other => &target_subaddress,
                     OutputTarget::Swap => &swap_subaddress,
                 };
 
-                // Setup keys for TxOut
-                let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-                let txout_shared_secret =
-                    create_shared_secret(receive_subaddress.view_public_key(), &tx_private_key);
+                // Build a genuine TxOut to the selected address
+                let (mut tx_out_summary, unmasked_amount, tx_private_key) =
+                    build_output(&mut rng, receive_subaddress, *amount);
+                tx_out_summary.associated_to_input_rules = target == &OutputTarget::Swap;
 
-                // Construct TxOut object
-                let tx_out = TxOut::new(
-                    BlockVersion::THREE,
-                    *amount,
-                    receive_subaddress,
-                    &tx_private_key,
-                    Default::default(),
-                )
-                .unwrap();
-
-                // Build TxOut unblinding
-                let masked_amount = tx_out.get_masked_amount().unwrap();
-                let (amount, blinding) = masked_amount.get_value(&txout_shared_secret).unwrap();
-                let unmasked_amount = UnmaskedAmount {
-                    value: amount.value,
-                    token_id: *amount.token_id,
-                    blinding: blinding.into(),
-                };
-
-                // Build TxOut summary
-                let target_key = create_tx_out_target_key(&tx_private_key, receive_subaddress);
-                let tx_out_summary = TxOutSummary {
-                    masked_amount: Some(masked_amount.clone()),
-                    target_key: target_key.into(),
-                    public_key: tx_out.public_key,
-                    associated_to_input_rules: target == &OutputTarget::Swap,
-                };
+                // Forge the target key to Hs(r·C)·G + D_attacker where requested
+                if matches!(
+                    target,
+                    OutputTarget::ForgedChange | OutputTarget::ForgedOurself
+                ) {
+                    let forged = create_tx_out_target_key(
+                        &tx_private_key,
+                        &PublicSubaddress {
+                            view_public: (*receive_subaddress.view_public_key()).into(),
+                            spend_public: attacker_spend_public.into(),
+                        },
+                    );
+                    // Sanity check: the attacker, not us, can spend this output
+                    let recovered = recover_public_subaddress_spend_key(
+                        sender.view_private_key(),
+                        &forged,
+                        &RistrettoPublic::try_from(&tx_out_summary.public_key).unwrap(),
+                    );
+                    assert_eq!(recovered, attacker_spend_public);
+                    assert_ne!(&recovered, receive_subaddress.spend_public_key());
+                    tx_out_summary.target_key = forged.into();
+                }
 
                 // Set address for normal outputs, not provided for SCIs
                 let address = match target != &OutputTarget::Swap {
@@ -602,55 +701,48 @@ mod tests {
                     false => None,
                 };
 
-                // Digest TxOout + Summary with verifier
-                verifier
-                    .digest_output(
-                        &tx_out_summary,
-                        &unmasked_amount,
-                        address,
-                        Some(&tx_private_key),
-                        &mut report,
-                    )
-                    .unwrap();
+                // Omit the tx_private_key where requested
+                let tx_private_key = match target {
+                    OutputTarget::ChangeWithoutKey => None,
+                    _ => Some(&tx_private_key),
+                };
+
+                // Digest TxOut + Summary with verifier
+                if let Err(e) = verifier.digest_output(
+                    &tx_out_summary,
+                    &unmasked_amount,
+                    address,
+                    tx_private_key,
+                    &mut report,
+                ) {
+                    result = Err(e);
+                    break;
+                }
+            }
+
+            // Check the outcome of streaming the outputs
+            assert_eq!(result, t.result, "Result mismatch");
+            if result.is_err() {
+                // Only the outputs recorded before the failure are checked
+                let changes: Vec<_> = report
+                    .outputs
+                    .iter()
+                    .map(|(e, t, v)| (e.clone(), *t, *v))
+                    .collect();
+                assert_eq!(&changes, &t.changes, "Output mismatch");
+                continue;
             }
 
             // Build and process TxIns?
             for (kind, amount) in &t.inputs {
                 println!("Add input: {amount:?}");
 
-                // Setup keys for TxOut (kx against sender key as this is an input)
-                let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-                let txout_shared_secret =
-                    create_shared_secret(sender_subaddress.view_public_key(), &tx_private_key);
-
-                // Construct TxOut object
-                let tx_out = TxOut::new(
-                    BlockVersion::THREE,
-                    *amount,
-                    &sender_subaddress,
-                    &tx_private_key,
-                    Default::default(),
-                )
-                .unwrap();
-
-                let masked_amount = tx_out.get_masked_amount().unwrap();
-
-                // Build TxIn summary
-                let input_rules_digest = match kind {
+                // Build a genuine input owned by the sender
+                let (mut tx_in_summary, unmasked_amount) =
+                    build_input(&mut rng, &sender_subaddress, *amount);
+                tx_in_summary.input_rules_digest = match kind {
                     InputType::Owned => Vec::new(),
                     InputType::Sci => vec![0u8; 32],
-                };
-                let tx_in_summary = TxInSummary {
-                    pseudo_output_commitment: *masked_amount.commitment(),
-                    input_rules_digest,
-                };
-
-                // Build TxIn unblinding
-                let (amount, blinding) = masked_amount.get_value(&txout_shared_secret).unwrap();
-                let unmasked_amount = UnmaskedAmount {
-                    value: amount.value,
-                    token_id: *amount.token_id,
-                    blinding: blinding.into(),
                 };
 
                 // Digest transaction input
@@ -679,5 +771,222 @@ mod tests {
                 .collect();
             assert_eq!(&changes, &t.changes, "Output mismatch");
         }
+    }
+
+    /// Build a verifier for `sender` with a zero extended message digest
+    fn new_verifier(
+        sender: &AccountKey,
+        num_outputs: usize,
+        num_inputs: usize,
+    ) -> TxSummaryStreamingVerifierCtx {
+        let change = sender.change_subaddress();
+        TxSummaryStreamingVerifierCtx::new(
+            &[0u8; 32],
+            BlockVersion::THREE,
+            num_outputs,
+            num_inputs,
+            *sender.view_private_key(),
+            PublicSubaddress {
+                view_public: (*change.view_public_key()).into(),
+                spend_public: (*change.spend_public_key()).into(),
+            },
+        )
+    }
+
+    /// Build a genuine TxOut to `recipient`, returning its summary, unblinding
+    /// data and tx_private_key
+    fn build_output(
+        rng: &mut OsRng,
+        recipient: &PublicAddress,
+        amount: Amount,
+    ) -> (TxOutSummary, UnmaskedAmount, RistrettoPrivate) {
+        let tx_private_key = RistrettoPrivate::from_random(rng);
+        let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
+        let tx_out = TxOut::new(
+            BlockVersion::THREE,
+            amount,
+            recipient,
+            &tx_private_key,
+            Default::default(),
+        )
+        .unwrap();
+        let masked_amount = tx_out.get_masked_amount().unwrap();
+        let (amount, blinding) = masked_amount.get_value(&shared_secret).unwrap();
+        let unmasked_amount = UnmaskedAmount {
+            value: amount.value,
+            token_id: *amount.token_id,
+            blinding: blinding.into(),
+        };
+        let tx_out_summary = TxOutSummary {
+            masked_amount: Some(masked_amount.clone()),
+            target_key: create_tx_out_target_key(&tx_private_key, recipient).into(),
+            public_key: tx_out.public_key,
+            associated_to_input_rules: false,
+        };
+        (tx_out_summary, unmasked_amount, tx_private_key)
+    }
+
+    /// Build a genuine input owned by `owner`, returning its summary and
+    /// unblinding data
+    fn build_input(
+        rng: &mut OsRng,
+        owner: &PublicAddress,
+        amount: Amount,
+    ) -> (TxInSummary, UnmaskedAmount) {
+        let (tx_out_summary, unmasked_amount, _) = build_output(rng, owner, amount);
+        let tx_in_summary = TxInSummary {
+            pseudo_output_commitment: *tx_out_summary.masked_amount.unwrap().commitment(),
+            input_rules_digest: Vec::new(),
+        };
+        (tx_in_summary, unmasked_amount)
+    }
+
+    /// Stream one genuine payment to `receiver` through `verifier`
+    fn stream_payment(
+        rng: &mut OsRng,
+        verifier: &mut TxSummaryStreamingVerifierCtx,
+        receiver: &AccountKey,
+        amount: Amount,
+        report: &mut TxSummaryUnblindingReport<16>,
+    ) -> Result<(), Error> {
+        let recipient = receiver.default_subaddress();
+        let (tx_out_summary, unmasked_amount, tx_private_key) =
+            build_output(rng, &recipient, amount);
+        verifier.digest_output(
+            &tx_out_summary,
+            &unmasked_amount,
+            Some((ShortAddressHash::from(&recipient), &recipient)),
+            Some(&tx_private_key),
+            report,
+        )
+    }
+
+    /// Stream one genuine input owned by `sender` through `verifier`
+    fn stream_input(
+        rng: &mut OsRng,
+        verifier: &mut TxSummaryStreamingVerifierCtx,
+        sender: &AccountKey,
+        amount: Amount,
+        report: &mut TxSummaryUnblindingReport<16>,
+    ) -> Result<(), Error> {
+        let (tx_in_summary, unmasked_amount) =
+            build_input(rng, &sender.default_subaddress(), amount);
+        verifier.digest_input(&tx_in_summary, &unmasked_amount, report)
+    }
+
+    #[test]
+    fn test_finalize_rejects_missing_inputs() {
+        let mut rng = OsRng {};
+        let sender = AccountKey::random(&mut rng);
+        let receiver = AccountKey::random(&mut rng);
+        let token_id = TokenId::from(9);
+        let mut report = TxSummaryUnblindingReport::<16>::default();
+
+        let mut verifier = new_verifier(&sender, 1, 2);
+        stream_payment(
+            &mut rng,
+            &mut verifier,
+            &receiver,
+            Amount::new(100, token_id),
+            &mut report,
+        )
+        .unwrap();
+        stream_input(
+            &mut rng,
+            &mut verifier,
+            &sender,
+            Amount::new(150, token_id),
+            &mut report,
+        )
+        .unwrap();
+
+        let mut digest = [0u8; 32];
+        assert_eq!(
+            verifier.finalize(Amount::new(50, token_id), 1234, &mut digest, &mut report),
+            Err(Error::StillExpectingMoreInputs)
+        );
+    }
+
+    /// Declaring two outputs but streaming one must not produce a digest
+    #[test]
+    fn test_finalize_rejects_missing_outputs() {
+        let mut rng = OsRng {};
+        let sender = AccountKey::random(&mut rng);
+        let receiver = AccountKey::random(&mut rng);
+        let token_id = TokenId::from(9);
+        let mut report = TxSummaryUnblindingReport::<16>::default();
+
+        let mut verifier = new_verifier(&sender, 2, 1);
+        stream_payment(
+            &mut rng,
+            &mut verifier,
+            &receiver,
+            Amount::new(100, token_id),
+            &mut report,
+        )
+        .unwrap();
+
+        let mut digest = [0u8; 32];
+        assert_eq!(
+            verifier.finalize(Amount::new(50, token_id), 1234, &mut digest, &mut report),
+            Err(Error::StillExpectingMoreOutputs)
+        );
+    }
+
+    /// A transaction with no outputs can never be valid, so the verifier must
+    /// refuse to make progress on it rather than produce a digest
+    #[test]
+    fn test_zero_outputs_rejected() {
+        let mut rng = OsRng {};
+        let sender = AccountKey::random(&mut rng);
+        let token_id = TokenId::from(9);
+        let mut report = TxSummaryUnblindingReport::<16>::default();
+
+        let mut verifier = new_verifier(&sender, 0, 1);
+        assert_eq!(
+            stream_input(
+                &mut rng,
+                &mut verifier,
+                &sender,
+                Amount::new(150, token_id),
+                &mut report,
+            ),
+            Err(Error::StillExpectingMoreOutputs)
+        );
+
+        let mut digest = [0u8; 32];
+        assert_eq!(
+            verifier.finalize(Amount::new(50, token_id), 1234, &mut digest, &mut report),
+            Err(Error::StillExpectingMoreOutputs)
+        );
+    }
+
+    /// A transaction with no inputs can never be valid, so the verifier must
+    /// refuse to make progress on it rather than produce a digest
+    #[test]
+    fn test_zero_inputs_rejected() {
+        let mut rng = OsRng {};
+        let sender = AccountKey::random(&mut rng);
+        let receiver = AccountKey::random(&mut rng);
+        let token_id = TokenId::from(9);
+        let mut report = TxSummaryUnblindingReport::<16>::default();
+
+        let mut verifier = new_verifier(&sender, 1, 0);
+        assert_eq!(
+            stream_payment(
+                &mut rng,
+                &mut verifier,
+                &receiver,
+                Amount::new(100, token_id),
+                &mut report,
+            ),
+            Err(Error::StillExpectingMoreInputs)
+        );
+
+        let mut digest = [0u8; 32];
+        assert_eq!(
+            verifier.finalize(Amount::new(50, token_id), 1234, &mut digest, &mut report),
+            Err(Error::StillExpectingMoreInputs)
+        );
     }
 }
