@@ -9,7 +9,7 @@
 //! cryptography operations, and this crate provides a way to create signatures
 //! that is compatible with these key pairs.
 
-pub use schnorrkel_og::{Signature, SignatureError, SIGNATURE_LENGTH};
+pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 

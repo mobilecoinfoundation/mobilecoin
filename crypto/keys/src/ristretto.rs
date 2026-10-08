@@ -16,7 +16,7 @@ use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
-use digest_10::generic_array::typenum::{U32, U64};
+use digest::typenum::{U32, U64};
 use hex_fmt::HexFmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
@@ -27,7 +27,7 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
-use schnorrkel_og::{
+use schnorrkel::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
 };
@@ -46,6 +46,21 @@ use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
+
+// curve25519-dalek 5 uses rand_core 0.10, while MobileCoin's randomness traits
+// still use rand_core 0.6. These reproduce the previous `random` methods
+// exactly: fill 64 bytes, then apply the corresponding uniform map.
+fn random_scalar<R: CryptoRng + RngCore>(csprng: &mut R) -> Scalar {
+    let mut bytes = [0u8; 64];
+    csprng.fill_bytes(&mut bytes);
+    Scalar::from_bytes_mod_order_wide(&bytes)
+}
+
+fn random_ristretto_point<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPoint {
+    let mut bytes = [0u8; 64];
+    csprng.fill_bytes(&mut bytes);
+    RistrettoPoint::from_uniform_bytes(&bytes)
+}
 
 /// A Ristretto-format private scalar
 #[derive(Clone, Copy, Default, Digestible, Zeroize)]
@@ -190,7 +205,7 @@ impl<T: Digestible> DigestibleSigner<RistrettoSignature, T> for RistrettoPrivate
 
 impl FromRandom for RistrettoPrivate {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPrivate {
-        Self(Scalar::random(csprng))
+        Self(random_scalar(csprng))
     }
 }
 
@@ -251,7 +266,7 @@ impl KexEphemeralPrivate for RistrettoEphemeralPrivate {
 
 impl FromRandom for RistrettoEphemeralPrivate {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        Self(Scalar::random(csprng))
+        Self(random_scalar(csprng))
     }
 }
 
@@ -278,7 +293,7 @@ impl AsRef<RistrettoPoint> for RistrettoPublic {
 
 impl FromRandom for RistrettoPublic {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPublic {
-        Self(RistrettoPoint::random(csprng))
+        Self(random_ristretto_point(csprng))
     }
 }
 
@@ -341,7 +356,7 @@ impl RistrettoPublic {
         message: &[u8],
         signature: &RistrettoSignature,
     ) -> Result<(), SchnorrkelError> {
-        let ctx = schnorrkel_og::signing_context(context);
+        let ctx = schnorrkel::signing_context(context);
         let pubkey = SchnorrkelPublic::from_point(*self.as_ref());
         pubkey.verify(ctx.bytes(message), &signature.try_into()?)
     }
@@ -551,7 +566,7 @@ impl From<CompressedRistretto> for CompressedRistrettoPublic {
 
 impl FromRandom for CompressedRistrettoPublic {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> CompressedRistrettoPublic {
-        Self::from(RistrettoPoint::random(csprng))
+        Self::from(random_ristretto_point(csprng))
     }
 }
 

@@ -95,7 +95,7 @@ mod commitment_tests {
     fn test_new() {
         run_with_several_seeds(|mut rng| {
             let value = rng.next_u64();
-            let blinding = Scalar::random(&mut rng);
+            let blinding = crate::ring_signature::random_scalar(&mut rng);
             let gens = generators(rng.next_u64());
 
             let commitment = Commitment::new(value, blinding, &gens);

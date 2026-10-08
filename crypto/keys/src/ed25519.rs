@@ -7,8 +7,8 @@ use crate::{
     DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
     SignatureEncoding, SignatureError, Signer, Verifier,
 };
-use digest_10::{
-    generic_array::typenum::{U32, U64},
+use digest::{
+    typenum::{U32, U64},
     Digest,
 };
 use ed25519::{Signature, SignatureBytes};
@@ -207,12 +207,16 @@ impl DistinguishedEncoding for Ed25519Public {
     }
 }
 
-impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Public {
-    fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
+impl<D: Digest<OutputSize = U64> + digest::Update> DigestVerifier<D, Ed25519Signature>
+    for Ed25519Public
+{
+    fn verify_digest<F: Fn(&mut D) -> Result<(), SignatureError>>(
+        &self,
+        f: F,
+        signature: &Ed25519Signature,
+    ) -> Result<(), SignatureError> {
         let sig = DalekSignature::from(&signature.to_bytes());
-        self.0
-            .verify_prehashed(digest, None, &sig)
-            .map_err(|_e| SignatureError::new())
+        self.0.verify_digest(f, &sig)
     }
 }
 
@@ -310,8 +314,9 @@ impl PrivateKey for Ed25519Private {
 
 impl FromRandom for Ed25519Private {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        let signing_key = SigningKey::generate(csprng);
-        Self(signing_key.to_bytes())
+        let mut secret_key = [0u8; 32];
+        csprng.fill_bytes(&mut secret_key);
+        Self(secret_key)
     }
 }
 
@@ -348,19 +353,28 @@ impl Ed25519Pair {
     }
 }
 
-impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519Pair {
-    fn try_sign_digest(&self, digest: D) -> Result<Ed25519Signature, SignatureError> {
-        let sig = self.0.sign_prehashed(digest, None)?;
+impl<D: Digest<OutputSize = U64> + digest::Update> DigestSigner<D, Ed25519Signature>
+    for Ed25519Pair
+{
+    fn try_sign_digest<F: Fn(&mut D) -> Result<(), SignatureError>>(
+        &self,
+        f: F,
+    ) -> Result<Ed25519Signature, SignatureError> {
+        let sig: DalekSignature = self.0.try_sign_digest(f)?;
         Ok(Ed25519Signature::new(sig.to_bytes()))
     }
 }
 
-impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Pair {
-    fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
+impl<D: Digest<OutputSize = U64> + digest::Update> DigestVerifier<D, Ed25519Signature>
+    for Ed25519Pair
+{
+    fn verify_digest<F: Fn(&mut D) -> Result<(), SignatureError>>(
+        &self,
+        f: F,
+        signature: &Ed25519Signature,
+    ) -> Result<(), SignatureError> {
         let sig = DalekSignature::from(&signature.to_bytes());
-        self.0
-            .verify_prehashed(digest, None, &sig)
-            .map_err(|_e| SignatureError::new())
+        self.0.verifying_key().verify_digest(f, &sig)
     }
 }
 
@@ -373,7 +387,9 @@ impl From<Ed25519Private> for Ed25519Pair {
 
 impl FromRandom for Ed25519Pair {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        Self(SigningKey::generate(csprng))
+        let mut secret_key = [0u8; 32];
+        csprng.fill_bytes(&mut secret_key);
+        Self(SigningKey::from_bytes(&secret_key))
     }
 }
 
@@ -504,10 +520,11 @@ mod ed25519_tests {
     use super::*;
     use crate::{ReprBytes, Unsigned};
     use mc_crypto_digestible::Digestible;
+    use mc_crypto_hashes::PseudoMerlin;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use semver::{Version, VersionReq};
-    use sha2_10::Sha512;
+    use sha2::Sha512;
     use std::{
         eprintln,
         process::Command,
@@ -520,33 +537,6 @@ mod ed25519_tests {
         a: u64,
         b: Vec<u8>,
         c: u32,
-    }
-
-    // Ed25519-dalek 2.x uses digest 0.10, while mc-crypto-hashes has moved to
-    // digest 0.11. Keep this test transcript on the version required by the
-    // prehashed-signature API until the signature crates are upgraded together.
-    struct Sha512Transcript {
-        inner: Sha512,
-    }
-
-    impl DigestTranscript for Sha512Transcript {
-        fn new() -> Self {
-            Self {
-                inner: Sha512::new(),
-            }
-        }
-
-        fn append_bytes(&mut self, context: &'static [u8], data: impl AsRef<[u8]>) {
-            self.inner.update((context.len() as u32).to_le_bytes());
-            self.inner.update(context);
-            let data = data.as_ref();
-            self.inner.update((data.len() as u32).to_le_bytes());
-            self.inner.update(data);
-        }
-
-        fn extract_digest(self, output: &mut [u8; 32]) {
-            output.copy_from_slice(&self.inner.finalize()[..32]);
-        }
     }
 
     // FIXME: use test vectors from the RFC.
@@ -575,16 +565,27 @@ mod ed25519_tests {
             c: 54321,
         };
 
-        let mut hasher = Sha512Transcript::new();
+        let mut hasher = PseudoMerlin(Sha512::new());
         data.append_to_transcript(b"test", &mut hasher);
+        let digest = hasher.inner;
         let sig = pair
-            .try_sign_digest(hasher.inner)
+            .try_sign_digest(|hasher: &mut Sha512| {
+                *hasher = digest.clone();
+                Ok(())
+            })
             .expect("Failed to sign digest");
 
-        let mut hasher = Sha512Transcript::new();
+        let mut hasher = PseudoMerlin(Sha512::new());
         data.append_to_transcript(b"test", &mut hasher);
-        pair.verify_digest(hasher.inner, &sig)
-            .expect("Failed to validate digest signature");
+        let digest = hasher.inner;
+        pair.verify_digest(
+            |hasher: &mut Sha512| {
+                *hasher = digest.clone();
+                Ok(())
+            },
+            &sig,
+        )
+        .expect("Failed to validate digest signature");
     }
 
     // Test that our (typenum) constant for the size of Ed25519 matches the

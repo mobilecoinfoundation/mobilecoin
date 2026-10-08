@@ -207,7 +207,7 @@ impl RingMLSAG {
 #[cfg(test)]
 mod mlsag_tests {
     use super::*;
-    use crate::generators;
+    use crate::{generators, ring_signature::random_scalar};
     use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_util_from_random::FromRandom;
@@ -244,7 +244,7 @@ mod mlsag_tests {
                 let target_key = CompressedRistrettoPublic::from_random(rng);
                 let commitment = {
                     let value = rng.next_u64();
-                    let blinding = Scalar::random(rng);
+                    let blinding = random_scalar(rng);
                     CompressedCommitment::new(value, blinding, &generator)
                 };
                 ring.push(ReducedTxOut {
@@ -258,7 +258,7 @@ mod mlsag_tests {
             let onetime_private_key = RistrettoPrivate::from_random(rng);
 
             let value = rng.next_u64();
-            let blinding = Scalar::random(rng);
+            let blinding = random_scalar(rng);
             let commitment = CompressedCommitment::new(value, blinding, &generator);
 
             let reduced_tx_out = ReducedTxOut {
@@ -328,7 +328,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
 
             let params =
                 RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
@@ -351,7 +351,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let signature = params.sign(&mut rng).unwrap();
@@ -367,7 +367,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_value = rng.next_u64();
             params.value = wrong_value;
@@ -386,7 +386,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             // The ring contains num_mixins + 1 elements, with indices 0..num_mixins.
             // This is the smallest out of bounds index.
@@ -409,7 +409,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let signature = params.sign(&mut rng).unwrap();
@@ -428,7 +428,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_onetime_private_key = RistrettoPrivate::from_random(&mut rng);
             params.onetime_private_key = wrong_onetime_private_key;
@@ -450,7 +450,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             // Sign with an input value that differs from the real input's amount commitment.
@@ -475,7 +475,7 @@ mod mlsag_tests {
             // Sign with an input blinding that differs from the real input's amount commitment.
             {
                 let mut params = params;
-                let wrong_blinding = Scalar::random(&mut rng);
+                let wrong_blinding = random_scalar(&mut rng);
 
                 params.blinding = wrong_blinding;
 
@@ -501,7 +501,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let mut signature = params.sign(&mut rng).unwrap();
@@ -531,7 +531,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let mut signature = params.sign(&mut rng).unwrap();
@@ -555,7 +555,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let signature = params.sign(&mut rng).unwrap();
@@ -581,7 +581,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let signature = params.sign(&mut rng).unwrap();
@@ -605,7 +605,7 @@ mod mlsag_tests {
             {
                 let index = (rng.next_u64() as usize) % num_mixins;
                 let value = rng.next_u64();
-                let blinding = Scalar::random(&mut rng);
+                let blinding = random_scalar(&mut rng);
                 params.ring[index].commitment = CompressedCommitment::new(value, blinding, &params.generator);
 
                 let result = signature.verify(&params.message, &params.ring, &output_commitment);
@@ -624,7 +624,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
            let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let signature = params.sign(&mut rng).unwrap();
@@ -647,7 +647,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
 
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -692,7 +692,7 @@ mod mlsag_tests {
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: RngType = SeedableRng::from_seed(seed);
-            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let pseudo_output_blinding = random_scalar(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
             let signature = params.sign(&mut rng).unwrap();

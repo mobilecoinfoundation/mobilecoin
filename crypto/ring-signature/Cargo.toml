@@ -36,7 +36,7 @@ proptest = ["dep:proptest", "default"]
 
 [dependencies]
 
-curve25519-dalek = { workspace = true }
+curve25519-dalek = { workspace = true, features = ["digest"] }
 
 # External dependencies
 displaydoc = { workspace = true }

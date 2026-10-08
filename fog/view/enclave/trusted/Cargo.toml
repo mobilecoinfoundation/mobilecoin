@@ -74,9 +74,9 @@ overflow-checks = false
 
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
-bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "92936118c1aeed883ce254354a62f98081b4dd62" }
 
-# curve25519-dalek and sha2 use 0.2, while aes and polyval use 0.3; patch both
+# Some transitive dependencies use cpufeatures 0.2 while others use 0.3; patch both
 # versions to avoid executing CPUID in SGX.
 cpufeatures-02 = { package = "cpufeatures", git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "f04659dd5dd39fd2f02a4bf14c39a39825d1c8d3" }
 cpufeatures-03 = { package = "cpufeatures", git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "b2e29356134eaec02a9c848cc6c1b2e8c244b20c" }
@@ -85,8 +85,8 @@ cpufeatures-03 = { package = "cpufeatures", git = "https://github.com/mobilecoin
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "f82523478a1dd813ca381c190175355d249a8123" }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "f82523478a1dd813ca381c190175355d249a8123" }
 
-# Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
+# curve25519-dalek 5 support is merged upstream but not yet published.
+schnorrkel = { git = "https://github.com/w3f/schnorrkel.git", rev = "322b17595e7798485a1b5a9a83d9ca69bd41b2ed" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
