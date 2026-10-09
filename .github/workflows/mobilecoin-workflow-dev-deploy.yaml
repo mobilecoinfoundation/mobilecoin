@@ -42,12 +42,12 @@ on:
         description: "View/Ledger Shard size in blocks"
         type: string
         required: false
-        default: "20000"
+        default: "2000"
       shard_exceed_block_height_by:
         description: "View/Ledger New shards should start this many blocks before the end of the current shard"
         type: string
         required: false
-        default: "5000"
+        default: "500"
       tokens_file:
         description: "Tokens File"
         type: string
