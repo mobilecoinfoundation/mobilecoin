@@ -61,10 +61,11 @@ To run the unittest tests locally, you need to start a local postgres instance, 
 sudo service postgresql start
 
 # create a postgres user
-sudo -u postgres createuser --superuser $USER
+sudo su -
+sudo -u postgres createuser --superuser <login user>
 
 # Run the tests
-cargo test
+TEST_DATABASE_URL=postgres:// cargo test
 ```
 
 If you don't want to run the tests in docker, you can set up postgres locally, on Ubuntu, by following these instructions:
