@@ -42,7 +42,7 @@ on:
         description: "View/Ledger Shard size in blocks"
         type: string
         required: false
-        default: "2000"
+        default: "4000"
       shard_exceed_block_height_by:
         description: "View/Ledger New shards should start this many blocks before the end of the current shard"
         type: string
