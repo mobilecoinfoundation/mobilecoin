@@ -79,6 +79,7 @@ mc-util-serial = { workspace = true }
 mc-util-test-helper = { workspace = true }
 mc-util-uri = { workspace = true }
 
+chrono = { workspace = true }
 portpicker = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }

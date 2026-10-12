@@ -5021,6 +5021,7 @@ dependencies = [
 name = "mc-fog-view-server"
 version = "7.2.0"
 dependencies = [
+ "chrono",
  "clap 4.5.1",
  "displaydoc",
  "futures",
