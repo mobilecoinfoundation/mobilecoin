@@ -40,7 +40,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
 use mc_util_uri::{ConnectionUri, FogUri};
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use std::collections::{HashMap, HashSet};
 
 /// Default number of blocks used for calculating transaction tombstone block
@@ -346,8 +346,7 @@ impl Client {
         let inputs = self
             .tx_data
             .get_transaction_inputs(required_input_amount, TARGET_NUM_INPUTS)?;
-        let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, None, rng)?;
+        let (inputs, rings) = self.get_inputs_and_rings(&inputs, None, rng)?;
 
         let tombstone_block = self.compute_tombstone_block()?;
 
@@ -403,8 +402,7 @@ impl Client {
 
         // Only one input can be used, otherwise defragmentation is required
         let inputs = self.tx_data.get_transaction_inputs(offered, 1)?;
-        let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, None, rng)?;
+        let (inputs, rings) = self.get_inputs_and_rings(&inputs, None, rng)?;
 
         assert_eq!(inputs.len(), 1);
         assert_eq!(rings.len(), 1);
@@ -698,10 +696,9 @@ impl Client {
                 .map(|owned_tx_out| owned_tx_out.amount.value)
                 .sum();
 
-            let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
             // Pass the sci.tx_out_global_indices as indices that we must avoid selecting
-            let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> =
-                self.get_rings(&inputs, Some(&sci_tx_out_global_indices), rng)?;
+            let (inputs, rings) =
+                self.get_inputs_and_rings(&inputs, Some(&sci_tx_out_global_indices), rng)?;
 
             // Add the inputs we selected for this token id
             add_inputs_to_tx_builder(&mut tx_builder, inputs, rings, &self.account_key)?;
@@ -719,49 +716,90 @@ impl Client {
         Ok(tx_builder.build(&ring_signer, EmptyMemoBuilder, rng)?)
     }
 
-    /// Helper: Get merkle proofs corresponding to a given set of our inputs
+    /// Helper: Fetch merkle proofs for our true inputs and sample rings of
+    /// mixins for them, using a single `GetOutputs` request.
     ///
-    /// This is needed when building transactions.
+    /// The fog ledger merkle proof service is not oblivious: the untrusted
+    /// server process sees every index that is requested. Requesting the true
+    /// inputs on their own (and the mixins in a separate request) would tell
+    /// the operator exactly which ring member is real. Instead, the true input
+    /// indices are shuffled in among the mixin indices and sent together, so
+    /// the operator only learns the ring membership, which becomes public once
+    /// the transaction lands anyway.
     ///
     /// # Arguments
-    /// * inputs: The OwnedTxOut records to get proofs for
+    /// * inputs: The OwnedTxOut records we intend to spend
+    /// * avoid_indices: Indices which are not allowed to be used as mixins
+    /// * rng: randomness
     ///
-    /// Returns
-    /// * A sequence of OwnedTxOut records with corresponding proofs of
-    ///   membership
-    ///
-    /// Note: The TxOut object returned by this function is the TxOut returned
-    /// from from ledger, not the one passed in. This is because the TxOut's
-    /// from fog view won't have the hint field, to save storage space.
-    /// Submitting those TxOuts to consensus will cause the transaction to be
-    /// rejected, because the merkle proof check will fail.
-    fn get_proofs(
+    /// # Returns
+    /// * The inputs, with their TxOut replaced by the copy from the ledger and
+    ///   paired with a membership proof. (The TxOut from fog view lacks the
+    ///   hint field, so submitting it would fail the merkle proof check.)
+    /// * One ring per input, each of `self.ring_size` elements, where the first
+    ///   element is the true input.
+    #[allow(clippy::type_complexity)]
+    fn get_inputs_and_rings<T: RngCore + CryptoRng>(
         &mut self,
         inputs: &[OwnedTxOut],
-    ) -> Result<Vec<(OwnedTxOut, TxOutMembershipProof)>> {
-        mc_common::trace_time!(self.logger, "MobileCoinClient.get_proofs");
+        avoid_indices: Option<&[u64]>,
+        rng: &mut T,
+    ) -> Result<(
+        Vec<(OwnedTxOut, TxOutMembershipProof)>,
+        Vec<Vec<(TxOut, TxOutMembershipProof)>>,
+    )> {
+        mc_common::trace_time!(self.logger, "MobileCoinClient.get_inputs_and_rings");
 
-        // Use the indices from the new TXOs to get corresponding merkle proofs of
-        // membership
-        let indices: Vec<u64> = inputs.iter().map(|input| input.global_index).collect();
+        let real_indices: Vec<u64> = inputs.iter().map(|input| input.global_index).collect();
+
+        let mut all_avoid_indices: HashSet<u64> = real_indices.iter().cloned().collect();
+        all_avoid_indices.extend(avoid_indices.unwrap_or_default().iter().cloned());
+
+        // Each ring is the true input plus (ring_size - 1) mixins.
+        let num_mixins_per_ring = self.ring_size.saturating_sub(1);
+        let num_mixins = inputs.len() * num_mixins_per_ring;
+        let sample_limit = self.tx_data.get_global_txo_count() as usize;
+
+        if sample_limit < num_mixins + all_avoid_indices.len() {
+            return Err(Error::InsufficientTxOutsInBlockchain(
+                num_mixins + all_avoid_indices.len(),
+                sample_limit,
+            ));
+        }
+
+        // Randomly sample distinct mixin indices, excluding forbidden indices
+        let mut mixin_indices: Vec<u64> = Vec::with_capacity(num_mixins);
+        let mut sampled: HashSet<u64> = HashSet::default();
+        while mixin_indices.len() < num_mixins {
+            let index = rng.gen_range(0..sample_limit) as u64;
+            if !all_avoid_indices.contains(&index) && sampled.insert(index) {
+                mixin_indices.push(index);
+            }
+        }
+
+        // Shuffle the true inputs in among the mixins before asking the server
+        let mut request_indices: Vec<u64> = real_indices
+            .iter()
+            .chain(mixin_indices.iter())
+            .cloned()
+            .collect();
+        request_indices.shuffle(rng);
 
         // FIXME: We are not sure whether this is a necessary parameter under ORAM.
         let merkle_root_block: u64 = 0;
 
         log::debug!(
             self.logger,
-            "Sending LedgerConnection:GetOutputs {:?}",
-            indices
+            "Sending LedgerConnection:GetOutputs {request_indices:?}"
         );
-        let outputs_and_proofs = self
+        let mut outputs_and_proofs: HashMap<u64, (TxOut, TxOutMembershipProof)> = self
             .fog_merkle_proof
-            .get_outputs(indices.clone(), merkle_root_block)?
+            .get_outputs(request_indices.clone(), merkle_root_block)?
             .results
             .iter()
-            .cloned()
             .enumerate()
             .map(|(idx, result)| {
-                if result.index != indices[idx] {
+                if request_indices.get(idx) != Some(&result.index) {
                     return Err(Error::FogMerkleProof(
                         "Server returned indices in an unexpected order".to_string(),
                     ));
@@ -773,115 +811,49 @@ impl Client {
                     Ok(None) => Err(Error::FogMerkleProof(
                         "Server did not find one of the outputs we need".to_string(),
                     )),
-                    Ok(Some(res)) => Ok(res),
+                    Ok(Some(res)) => Ok((result.index, res)),
                 }
             })
-            .collect::<Result<Vec<(TxOut, TxOutMembershipProof)>>>()?;
+            .collect::<Result<_>>()?;
 
-        log::info!(self.logger, "Retrieved {} TXOs", outputs_and_proofs.len());
-
-        assert_eq!(outputs_and_proofs.len(), inputs.len());
-
-        // This is where we replace the TxOut object with the one we got from fog ledger
-        Ok(outputs_and_proofs
-            .into_iter()
-            .zip(inputs.iter().cloned())
-            .map(|((tx_out, proof), owned_tx_out)| {
-                let mut owned_tx_out_result = owned_tx_out;
-                owned_tx_out_result.tx_out = tx_out;
-                (owned_tx_out_result, proof)
-            })
-            .collect())
-    }
-
-    /// Gets several rings' worth of mixin TxOuts, with proofs of membership.
-    ///
-    /// TODO: In discussions, some think the mixin distribution should
-    /// eventually be made "relatively close" to the global index of the
-    /// true input, but that is not implemented yet.
-    ///
-    /// # Arguments
-    /// * true_inputs: The true inputs and membership proofs for these
-    /// * avoid_indices: Indices which are not allowed to be used (if any)
-    /// * rng: randomness
-    ///
-    /// # Returns
-    /// Returns a collection of "rings", where each "ring" contains
-    /// self.ring_size elements, consisting of a TxOut and its membership proof
-    fn get_rings<T: RngCore + CryptoRng>(
-        &mut self,
-        true_inputs: &[(OwnedTxOut, TxOutMembershipProof)],
-        avoid_indices: Option<&[u64]>,
-        rng: &mut T,
-    ) -> Result<Vec<Vec<(TxOut, TxOutMembershipProof)>>> {
-        mc_common::trace_time!(self.logger, "MobileCoinClient.get_rings");
-
-        let mut all_avoid_indices: HashSet<u64> = true_inputs
-            .iter()
-            .map(|input| input.0.global_index)
-            .collect();
-
-        for idx in avoid_indices.unwrap_or_default().iter() {
-            all_avoid_indices.insert(*idx);
-        }
-
-        let num_rings = true_inputs.len();
-        let num_requested = num_rings * self.ring_size;
-        let sample_limit = self.tx_data.get_global_txo_count() as usize;
-
-        // Randomly sample `num_requested` TxOuts, without replacement, not using
-        // any of the indices we must avoid
-        if sample_limit < num_requested + all_avoid_indices.len() {
-            return Err(Error::InsufficientTxOutsInBlockchain(
-                sample_limit,
-                num_requested + all_avoid_indices.len(),
+        if outputs_and_proofs.len() != request_indices.len() {
+            return Err(Error::FogMerkleProof(
+                "Server returned an unexpected number of outputs".to_string(),
             ));
         }
 
-        let mut sampled_indices: HashSet<u64> = HashSet::default();
-        while sampled_indices.len() < num_requested {
-            let index = rng.gen_range(0..sample_limit) as u64;
-            if !all_avoid_indices.contains(&index) && !sampled_indices.contains(&index) {
-                sampled_indices.insert(index);
-            }
-        }
-        let indices: Vec<u64> = sampled_indices.iter().cloned().collect();
-        // FIXME: We are not sure whether this is a necessary parameter under ORAM.
-        let merkle_root_block: u64 = 0; // self.get_txo_cursor(); // cursor > 0 ? cursor - 1 : 0
-
-        let outputs_and_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
-            .fog_merkle_proof
-            .get_outputs(indices.clone(), merkle_root_block)?
-            .results
-            .iter()
-            .enumerate()
-            .map(|(idx, result)| {
-                if result.index != indices[idx] {
-                    panic!("unhandled: Server returned indices in an unexpected order");
-                }
-                match result.status() {
-                    Err(err) => {
-                        panic!("unhandled: Server failed to computer a merkle proof: {err}")
-                    }
-                    Ok(None) => panic!("unhandled: Server did not find one of the outputs we need"),
-                    Ok(Some(res)) => res,
-                }
+        let mut take = |index: u64| {
+            outputs_and_proofs.remove(&index).ok_or_else(|| {
+                Error::FogMerkleProof(format!("Server response is missing index {index}"))
             })
-            .collect();
+        };
 
-        // FIXME: reserve? iter tricks?
-        let mut rings_with_proofs: Vec<Vec<(TxOut, TxOutMembershipProof)>> = Vec::new();
-        let mut ring: Vec<(TxOut, TxOutMembershipProof)> = Vec::new();
-        for txo_and_proof in outputs_and_proofs.iter() {
-            ring.push(txo_and_proof.clone());
-            if ring.len() == self.ring_size {
-                rings_with_proofs.push(ring);
-                ring = Vec::new();
+        let mut inputs_with_proofs = Vec::with_capacity(inputs.len());
+        let mut rings = Vec::with_capacity(inputs.len());
+        for input in inputs {
+            let (tx_out, proof) = take(input.global_index)?;
+            let mut ring = Vec::with_capacity(self.ring_size);
+            ring.push((tx_out.clone(), proof.clone()));
+            for _ in 0..num_mixins_per_ring {
+                let mixin = mixin_indices
+                    .pop()
+                    .expect("enough mixins sampled for every ring");
+                ring.push(take(mixin)?);
             }
+            rings.push(ring);
+
+            let mut input = input.clone();
+            input.tx_out = tx_out;
+            inputs_with_proofs.push((input, proof));
         }
 
-        log::info!(self.logger, "Retrieved {:?} rings", rings_with_proofs.len());
-        Ok(rings_with_proofs)
+        log::info!(
+            self.logger,
+            "Retrieved {} inputs and {} rings",
+            inputs_with_proofs.len(),
+            rings.len()
+        );
+        Ok((inputs_with_proofs, rings))
     }
 
     /// Gets the approximate number of blocks in the ledger and adds
@@ -1093,7 +1065,7 @@ fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(
 }
 
 // Helper which builds `InputCredentials` given owned txo, and the results
-// of get_proofs, get_rings, and the account key which it uses to derive the
+// of get_inputs_and_rings, and the account key which it uses to derive the
 // one-time private key.
 fn input_credentials_helper(
     input_txo: OwnedTxOut,
