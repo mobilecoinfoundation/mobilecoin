@@ -22,9 +22,9 @@ RUN  apt-get update \
 # Install SGX/DCAP libraries.
 # Intel is not keeping old packages in their hosted ubuntu repository so
 # download the "repo" tarball from Intel and install the packages from there.
-ARG SGX_VERSION=2.25.100.3-noble1_amd64
-ARG DCAP_VERSION=1.22.100.3-noble1_amd64
-ARG DCAP_PKG_URL=https://download.01.org/intel-sgx/sgx-dcap/1.22/linux/distro/ubuntu24.04-server/sgx_debian_local_repo.tgz
+ARG SGX_VERSION=2.30.101.1-noble1_amd64
+ARG DCAP_VERSION=1.27.101.1-noble1_amd64
+ARG DCAP_PKG_URL=https://download.01.org/intel-sgx/sgx-dcap/1.27.1/linux/distro/ubuntu24.04-server/sgx_debian_local_repo.tgz
 ARG DCAP_PKG_BASE_PATH=/opt/sgx_debian_local_repo/pool/main
 
 RUN curl --retry 5 -fL "${DCAP_PKG_URL}" -o /opt/sgx_debian_local_repo.tgz \

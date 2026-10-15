@@ -39,7 +39,7 @@ jobs:
   build-rust-binaries:
     runs-on: mcf-dev-large-x64
     container:
-      image: mobilecoin/rust-sgx:v24.4.2
+      image: mobilecoin/rust-sgx:v24.4.3
     outputs:
       consensus_mrenclave: ${{ steps.build.outputs.consensus_mrenclave }}
       consensus_mrsigner: ${{ steps.build.outputs.consensus_mrsigner }}

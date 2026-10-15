@@ -1,6 +1,6 @@
 
 {
-  "image": "mobilecoin/fat-sgx-devcontainer:v24.4.2",
+  "image": "mobilecoin/fat-sgx-devcontainer:v24.4.3",
   "runArgs": [
     "--network=host"
   ],

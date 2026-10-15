@@ -86,19 +86,13 @@ use std::{
 ///
 /// **launch_token**
 ///
-/// A pointer to an sgx_launch_token_t object used to initialize the enclave to be
-/// created. Must not be NULL. The caller can provide an all-0 buffer as the sgx_
-/// launch_token_t object, in which case, the function will attempt to create a
-/// valid sgx_launch_token_t object and store it in the buffer. The caller should
-/// store the sgx_launch_token_t object and re-use it in future calls to create the
-/// same enclave. Certain platform configuration changes can invalidate a previously
-/// stored sgx_launch_token_t object. If the token provided is not valid,
-/// the function will attempt to update it to a valid one.
+/// Reserved by Intel SGX SDK 2.28 and later and ignored by enclave creation.
+/// Retained in this wrapper for API compatibility.
 ///
 /// **launch_token_updated**
 ///
-/// The output is 0 or 1. 0 indicates the launch token has not been updated. 1
-/// indicates the launch token has been updated.
+/// Reserved and ignored by Intel SGX SDK 2.28 and later. Retained for API
+/// compatibility; callers must not rely on this value being updated.
 ///
 /// **misc_attr**
 ///
