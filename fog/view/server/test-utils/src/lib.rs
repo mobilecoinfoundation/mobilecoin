@@ -366,8 +366,10 @@ pub fn add_block_data(
 pub fn wait_for_highest_block_to_load(
     db: &SqlRecoveryDb,
     store_servers: &[TestViewServer],
+    store_block_ranges: &[BlockRange],
     logger: &Logger,
 ) {
+    assert_eq!(store_servers.len(), store_block_ranges.len());
     let mut allowed_tries = 1000usize;
     loop {
         let db_num_blocks = db
@@ -386,9 +388,16 @@ pub fn wait_for_highest_block_to_load(
                  {max_server_num_blocks} > {db_num_blocks}"
             );
         }
-        if max_server_num_blocks == db_num_blocks
-            && server_num_blocks.iter().all(|num_blocks| *num_blocks > 0)
-        {
+        let all_shards_loaded =
+            server_num_blocks
+                .iter()
+                .zip(store_block_ranges)
+                .all(|(&processed, range)| {
+                    // A shard whose range has not started has no blocks to load.
+                    db_num_blocks <= range.start_block
+                        || processed >= range.end_block.min(db_num_blocks)
+                });
+        if all_shards_loaded {
             log::info!(logger, "Stopping, store block counts {server_num_blocks:?}");
             break;
         }

@@ -15,6 +15,7 @@ use yare::parameterized;
 #[parameterized(
 small_omap_one_store = { 512, 1, 6 },
 small_omap_multiple_stores = { 512, 6, 1 },
+small_omap_multiple_blocks_per_store = { 512, 2, 3 },
 large_omap_one_store = { 1048576, 1, 6 },
 large_omap_multiple_stores = { 1048576, 6, 1 },
 )]
@@ -23,7 +24,7 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
     let store_block_ranges =
         mc_fog_view_server_test_utils::create_block_ranges(store_count, blocks_per_store);
     let mut test_environment =
-        RouterTestEnvironment::new(omap_capacity, store_block_ranges, logger.clone());
+        RouterTestEnvironment::new(omap_capacity, store_block_ranges.clone(), logger.clone());
 
     let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
     let db = test_environment
@@ -103,7 +104,12 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
     db.decommission_ingest_invocation(&invoc_id1).unwrap();
     mc_fog_view_server_test_utils::add_block_data(&db, &invoc_id2, 5, 20, &txs[16..20]);
 
-    mc_fog_view_server_test_utils::wait_for_highest_block_to_load(&db, store_servers, &logger);
+    mc_fog_view_server_test_utils::wait_for_highest_block_to_load(
+        &db,
+        store_servers,
+        &store_block_ranges,
+        &logger,
+    );
 
     let router_client = test_environment.router_streaming_client.as_mut().unwrap();
     let nonsense_search_keys = vec![vec![50u8]];
