@@ -7,12 +7,12 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxLibraryCollection, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
 
-const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
-const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
+const SGX_LIBS: &[&str] = &["libsgx_urts"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim"];
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.25.100.3";
+const SGX_VERSION: &str = "2.30.101.1";
 
 fn main() {
     let env = Environment::default();

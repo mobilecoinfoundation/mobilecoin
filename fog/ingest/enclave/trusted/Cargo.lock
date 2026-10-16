@@ -50,7 +50,8 @@ dependencies = [
 [[package]]
 name = "aligned-array"
 version = "2.0.0"
-source = "git+https://github.com/eranrund/aligned-array.git?rev=fa257e47b3a05ed885a57d2a71c134908734621b#fa257e47b3a05ed885a57d2a71c134908734621b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34fcfb36622354ff5ff2bcb7e4216273564825726f4df16cb1e6af7547b66069"
 dependencies = [
  "generic-array",
  "subtle",
@@ -59,7 +60,8 @@ dependencies = [
 [[package]]
 name = "aligned-cmov"
 version = "3.0.0"
-source = "git+https://github.com/mobilecoinfoundation/mc-oblivious.git?rev=de654fea0cf963e358dae31a5598b000c87c482f#de654fea0cf963e358dae31a5598b000c87c482f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e91703befa851bf405b1236ad758c56bb9c24efff023a719d424c90a630045d0"
 dependencies = [
  "aligned-array",
  "generic-array",
@@ -95,7 +97,8 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 [[package]]
 name = "balanced-tree-index"
 version = "3.0.0"
-source = "git+https://github.com/mobilecoinfoundation/mc-oblivious.git?rev=de654fea0cf963e358dae31a5598b000c87c482f#de654fea0cf963e358dae31a5598b000c87c482f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96ba912d9a3c8332d46d1cfc73bc6df14d59b7de39f51dc9580c667f45ccef5d"
 dependencies = [
  "aligned-cmov",
  "rand_core",
@@ -1301,8 +1304,9 @@ dependencies = [
 
 [[package]]
 name = "mc-attestation-verifier"
-version = "0.4.4"
-source = "git+https://github.com/mobilecoinfoundation/attestation.git?rev=5d69473154f8ed7e84402d83a01428acedf4904e#5d69473154f8ed7e84402d83a01428acedf4904e"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c53f765e3563cbb106e6deae4d0a4f313cd55a418dcd1bb9a0e6c15098d4952b"
 dependencies = [
  "der",
  "displaydoc",
@@ -1776,7 +1780,8 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-map"
 version = "3.0.0"
-source = "git+https://github.com/mobilecoinfoundation/mc-oblivious.git?rev=de654fea0cf963e358dae31a5598b000c87c482f#de654fea0cf963e358dae31a5598b000c87c482f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dc3f91ee96f5fcb96bcab4aedb74f5f2e6ee1e0e8138084028a1883413ac499"
 dependencies = [
  "aligned-array",
  "aligned-cmov",
@@ -1789,7 +1794,8 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-ram"
 version = "3.0.0"
-source = "git+https://github.com/mobilecoinfoundation/mc-oblivious.git?rev=de654fea0cf963e358dae31a5598b000c87c482f#de654fea0cf963e358dae31a5598b000c87c482f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88fd1e0857087864585fd531abbea9464aa447b9e3e841f179891825ba7e7298"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
@@ -1800,7 +1806,8 @@ dependencies = [
 [[package]]
 name = "mc-oblivious-traits"
 version = "3.0.0"
-source = "git+https://github.com/mobilecoinfoundation/mc-oblivious.git?rev=de654fea0cf963e358dae31a5598b000c87c482f#de654fea0cf963e358dae31a5598b000c87c482f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb85c078bacf6a0e743cbeff4c6fc4666302f4058d709e6aca619e1b3ea0c232"
 dependencies = [
  "aligned-cmov",
  "balanced-tree-index",
@@ -1810,7 +1817,8 @@ dependencies = [
 [[package]]
 name = "mc-rand"
 version = "2.0.0"
-source = "git+https://github.com/mobilecoinfoundation/rand.git?rev=edda1b36ea51f73c4cd34b260d5186b3ef73d0c3#edda1b36ea51f73c4cd34b260d5186b3ef73d0c3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01848bce12ab2efe3598d50d28230cad397958da238a5c86e747cc46eda53d93"
 dependencies = [
  "cfg-if",
  "rand",
@@ -1846,8 +1854,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-build"
-version = "0.13.0"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1#2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84a44e6ef32a2a942b0cf23ab7fc592b6efcef74ab924f03f90c5e2823aea294"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -1855,8 +1864,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-sys-types"
-version = "0.13.0"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1#2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f657191ad565752304341a0cd705c6e5e473302e5b937bb2371b552b7469e06c"
 dependencies = [
  "bindgen 0.66.1",
  "cargo-emit",
@@ -1867,8 +1877,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-core-types"
-version = "0.13.0"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1#2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6eeb709efc6328d7c03cf662e18902241dfd9643a0df6ef07f9e1b41d7491947"
 dependencies = [
  "bitflags 2.13.2",
  "displaydoc",
@@ -1892,8 +1903,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-sys-types"
-version = "0.13.0"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1#2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6860f160e1281079ec6fff62e5a6fbfd44c67a5e341aa5e7b0faf0295e58fbe"
 dependencies = [
  "bindgen 0.66.1",
  "mc-sgx-core-build",
@@ -1902,8 +1914,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-dcap-types"
-version = "0.13.0"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1#2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2bbf4f23ff08e1d08540f2e21d674b614645f10fee2d56469794c0ef6b7e764"
 dependencies = [
  "const-oid",
  "displaydoc",
@@ -2003,8 +2016,9 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-util"
-version = "0.13.0"
-source = "git+https://github.com/mobilecoinfoundation/sgx.git?rev=2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1#2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fa88e36e9924065957105b2ed7101adb2b96b969f2aa22e463f9a43a8c82aed"
 
 [[package]]
 name = "mc-transaction-core"
@@ -2141,7 +2155,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 [[package]]
 name = "merlin"
 version = "4.0.0"
-source = "git+https://github.com/mobilecoinofficial/merlin.git?rev=f99baaddf207cd260f07c6c9485d034171c5e277#f99baaddf207cd260f07c6c9485d034171c5e277"
+source = "git+https://github.com/mobilecoinofficial/merlin.git?rev=0bf3a40f3bc6a7e1fba59988fc3ed563093c69c5#0bf3a40f3bc6a7e1fba59988fc3ed563093c69c5"
 dependencies = [
  "byteorder",
  "keccak",
@@ -2566,7 +2580,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.11.6"
-source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=f6199f4130e145bc4deadeea8daec5dc2cb23586#f6199f4130e145bc4deadeea8daec5dc2cb23586"
+source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=65300ab0d2efaf7853f6eaa8cf6930116850e30a#65300ab0d2efaf7853f6eaa8cf6930116850e30a"
 dependencies = [
  "arrayvec",
  "curve25519-dalek",

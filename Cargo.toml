@@ -259,18 +259,18 @@ log = "0.4"
 maplit = "1"
 mbedtls = { version = "0.8", default-features = false }
 mbedtls-sys-auto = "2"
-mc-attestation-verifier = "0.4"
+mc-attestation-verifier = "0.5"
 mc-oblivious-aes-gcm = { version = "0.11", default-features = false }
 mc-oblivious-map = "3"
 mc-oblivious-ram = "3"
 mc-oblivious-traits = "3"
 mc-rand = "2"
-mc-sgx-core-sys-types = "0.13"
-mc-sgx-core-types = "0.13"
-mc-sgx-dcap-ql = "0.13"
-mc-sgx-dcap-quoteverify = "0.13"
-mc-sgx-dcap-sys-types = { version = "0.13", default-features = false }
-mc-sgx-dcap-types = { version = "0.13", default-features = false }
+mc-sgx-core-sys-types = "0.14"
+mc-sgx-core-types = "0.14"
+mc-sgx-dcap-ql = "0.14"
+mc-sgx-dcap-quoteverify = "0.14"
+mc-sgx-dcap-sys-types = { version = "0.14", default-features = false }
+mc-sgx-dcap-types = { version = "0.14", default-features = false }
 merlin = { version = "4", default-features = false }
 mockall = "0.15"
 more-asserts = "0.3"
@@ -538,28 +538,11 @@ opt-level = 2
 lto = "thin"
 
 [patch.crates-io]
-mc-attestation-verifier = { git = "https://github.com/mobilecoinfoundation/attestation.git", rev = "5d69473154f8ed7e84402d83a01428acedf4904e" }
-
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "e7ba85f847fd2beaa67448711de60d6dfd6ac052" }
 
-# rand 0.10 support is not yet published for these MobileCoin crates.
-aligned-array = { git = "https://github.com/eranrund/aligned-array.git", rev = "fa257e47b3a05ed885a57d2a71c134908734621b" }
-aligned-cmov = { git = "https://github.com/mobilecoinfoundation/mc-oblivious.git", rev = "de654fea0cf963e358dae31a5598b000c87c482f" }
-balanced-tree-index = { git = "https://github.com/mobilecoinfoundation/mc-oblivious.git", rev = "de654fea0cf963e358dae31a5598b000c87c482f" }
-mc-oblivious-map = { git = "https://github.com/mobilecoinfoundation/mc-oblivious.git", rev = "de654fea0cf963e358dae31a5598b000c87c482f" }
-mc-oblivious-ram = { git = "https://github.com/mobilecoinfoundation/mc-oblivious.git", rev = "de654fea0cf963e358dae31a5598b000c87c482f" }
-mc-oblivious-traits = { git = "https://github.com/mobilecoinfoundation/mc-oblivious.git", rev = "de654fea0cf963e358dae31a5598b000c87c482f" }
-mc-rand = { git = "https://github.com/mobilecoinfoundation/rand.git", rev = "edda1b36ea51f73c4cd34b260d5186b3ef73d0c3" }
-merlin = { git = "https://github.com/mobilecoinofficial/merlin.git", rev = "f99baaddf207cd260f07c6c9485d034171c5e277" }
-
-# SGX 0.13 and rand 0.10 support are not yet published.
-mc-sgx-core-sys-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1" }
-mc-sgx-core-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1" }
-mc-sgx-dcap-ql = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1" }
-mc-sgx-dcap-quoteverify = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1" }
-mc-sgx-dcap-sys-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1" }
-mc-sgx-dcap-types = { git = "https://github.com/mobilecoinfoundation/sgx.git", rev = "2e4b90132a6f2a71a4d76ad2ca5c29ee8a7100d1" }
+# Additional rand 0.10 compatibility patches.
+merlin = { git = "https://github.com/mobilecoinofficial/merlin.git", rev = "0bf3a40f3bc6a7e1fba59988fc3ed563093c69c5" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "0bddacc981ac782ca2e2f8aa5ffa25ce0e3d8273" }
@@ -569,7 +552,7 @@ mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 
 # curve25519-dalek 5 and rand 0.10 support are not yet published upstream.
-schnorrkel = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "f6199f4130e145bc4deadeea8daec5dc2cb23586" }
+schnorrkel = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "65300ab0d2efaf7853f6eaa8cf6930116850e30a" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
