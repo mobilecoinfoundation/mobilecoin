@@ -19,14 +19,13 @@ mc-ledger-db = { workspace = true }
 mc-transaction-core = { workspace = true }
 mc-util-telemetry = { workspace = true }
 
+aws-config = { workspace = true }
+aws-sdk-s3 = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
 displaydoc = { workspace = true }
 prost = { workspace = true }
 retry = { workspace = true }
-# TODO: Replace with https://github.com/awslabs/aws-sdk-rust when it is ready.
-rusoto_core = { workspace = true, features = ["rustls"] }
-rusoto_s3 = { workspace = true, features = ["rustls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
