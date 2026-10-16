@@ -6,12 +6,14 @@
 
 use std::path::Path;
 
-use bip39::{Language, Mnemonic, MnemonicType};
 use clap::Parser;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
-use mc_core::{account::Account, slip10::Slip10KeyGenerator};
+use mc_core::{
+    account::Account,
+    slip10::{Count, Mnemonic, Slip10KeyGenerator},
+};
 use mc_crypto_ring_signature_signer::LocalRingSigner;
 use mc_transaction_core::AccountKey;
 use mc_transaction_signer::{read_input, write_output, Operations};
@@ -68,9 +70,9 @@ fn main() -> anyhow::Result<()> {
             // Generate or parse mnemonic
             let mnemonic = match &args.action {
                 Actions::Import { mnemonic, .. } => {
-                    Mnemonic::from_phrase(mnemonic, Language::English).unwrap()
+                    Mnemonic::from_phrase(mnemonic.as_str()).unwrap()
                 }
-                _ => Mnemonic::new(MnemonicType::Words24, Language::English),
+                _ => Mnemonic::generate(Count::Words24),
             };
 
             // Generate secrets object
@@ -94,7 +96,7 @@ fn main() -> anyhow::Result<()> {
         Actions::Signer(c) => {
             // Load account secrets
             let secrets: AccountSecrets = read_input(&args.secret_file)?;
-            let mnemonic = Mnemonic::from_phrase(&secrets.mnemonic, Language::English)?;
+            let mnemonic = Mnemonic::from_phrase(secrets.mnemonic.as_str())?;
 
             // Perform SLIP-0010 derivation
             let account_index = c.account_index();

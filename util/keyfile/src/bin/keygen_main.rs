@@ -3,8 +3,8 @@
 
 //! A CLI tool for generating individual MobileCoin identities
 
-use bip39::{Language, Mnemonic};
 use clap::Parser;
+use mc_core::slip10::Mnemonic;
 use mc_util_keyfile::{config::KeyConfig, keygen};
 use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
@@ -39,8 +39,7 @@ fn main() {
 
     let mut entropy = [0u8; 32];
     csprng.fill_bytes(&mut entropy[..]);
-    let mnemonic = Mnemonic::from_entropy(&entropy, Language::English)
-        .expect("Could not create mnemonic from entropy");
+    let mnemonic = Mnemonic::from_entropy(entropy).expect("Could not create mnemonic from entropy");
 
     println!("Writing to {path:?}");
 

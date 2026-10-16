@@ -8,9 +8,8 @@ use crate::{
     error::Error, read_keyfile, read_pubfile, read_root_entropy_keyfile, write_b58pubfile,
     write_keyfile, write_pubfile,
 };
-use bip39::{Language, Mnemonic};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use mc_core::slip10::Slip10KeyGenerator;
+use mc_core::slip10::{Mnemonic, Slip10KeyGenerator};
 use rand_core::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
@@ -78,8 +77,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
         let mut entropy = [0u8; 32];
         keys_rng.fill_bytes(&mut entropy[..]);
 
-        let mnemonic = Mnemonic::from_entropy(&entropy, Language::English)
-            .map_err(|_e| Error::MnemonicSize)?;
+        let mnemonic = Mnemonic::from_entropy(entropy).map_err(|_e| Error::MnemonicSize)?;
         write_keyfiles(
             path.as_ref(),
             &keyfile_name(i),

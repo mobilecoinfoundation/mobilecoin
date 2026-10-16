@@ -8,7 +8,7 @@
 //!
 //! As well as providing traits to create a Slip10Key from entropy and path,
 //! along with the canonical method of converting a BIP-39
-//! [`Mnemonic`](tiny_bip32::Mnemonic) with a given BIP-32 path into a
+//! `Mnemonic` with a given BIP-32 path into a
 //! [`Slip10Key`](Slip10Key) usable within MobileCoin.
 
 use curve25519_dalek::scalar::Scalar;
@@ -19,7 +19,11 @@ use zeroize::Zeroize;
 use mc_crypto_keys::RistrettoPrivate;
 
 #[cfg(feature = "bip39")]
-pub use bip39::{Language, Mnemonic};
+pub use bip0039::Count;
+
+/// An English BIP-39 mnemonic used for MobileCoin account derivation.
+#[cfg(feature = "bip39")]
+pub type Mnemonic = bip0039::Mnemonic<bip0039::English>;
 
 use crate::{
     account::Account,
@@ -111,7 +115,7 @@ pub trait Slip10KeyGenerator {
 
 // This lets us get to
 // let account: AccountKey =
-// Mnemonic::from_phrases().derive_slip10_key(account_index).into()
+// Mnemonic::from_phrase(phrase).derive_slip10_key(account_index).into()
 #[cfg(feature = "bip39")]
 impl Slip10KeyGenerator for Mnemonic {
     /// Derive a SLIP-0010 key for the specified account
@@ -119,7 +123,7 @@ impl Slip10KeyGenerator for Mnemonic {
         // We explicitly do not support passphrases for BIP-39 mnemonics, please
         // see the MobileCoin Key Derivation design specification, v1.0.0, for
         // design rationale.
-        let seed = bip39::Seed::new(&self, "");
+        let seed = zeroize::Zeroizing::new(self.to_seed(""));
 
         // This is constructing an `m/44/866/<idx>` BIP32 path for use by SLIP-0010.
         let path = wallet_path(account_index);
@@ -132,7 +136,7 @@ impl Slip10KeyGenerator for Mnemonic {
         //
         // This will also transform any "unhardened" path components into their
         // "hardened" version.
-        let key = slip10_ed25519::derive_ed25519_private_key(seed.as_bytes(), &path);
+        let key = slip10_ed25519::derive_ed25519_private_key(&seed[..], &path);
 
         Slip10Key(key)
     }
@@ -213,7 +217,7 @@ mod test {
     #[cfg(feature = "bip39")]
     fn mnemonic_into_account_key() {
         for data in MNEMONIC_TO_RISTRETTO_TESTS.iter() {
-            let mnemonic = Mnemonic::from_phrase(&data.phrase, Language::English)
+            let mnemonic = Mnemonic::from_phrase(data.phrase.as_str())
                 .expect("Could not read test phrase into mnemonic");
             let key = mnemonic.derive_slip10_key(data.account_index);
             let account_key = Account::from(&key);

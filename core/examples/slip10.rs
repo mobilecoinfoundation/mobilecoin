@@ -2,12 +2,11 @@
 
 //! SLIP-0010 example applet
 
-use bip39::Mnemonic;
 use clap::Parser;
 
 use mc_core::{
     account::{Account, RingCtAddress},
-    slip10::Slip10KeyGenerator,
+    slip10::{Count, Mnemonic, Slip10KeyGenerator},
     subaddress::Subaddress,
 };
 
@@ -34,10 +33,10 @@ fn main() -> anyhow::Result<()> {
 
     // Parse or derive mnemonic
     let mn = match &args.mnemonic {
-        Some(v) => Mnemonic::from_phrase(v, bip39::Language::English)?,
+        Some(v) => Mnemonic::from_phrase(v.as_str())?,
         None => {
             println!("WARNING: generating random mnemonic, this will not be stored");
-            Mnemonic::new(bip39::MnemonicType::Words24, bip39::Language::English)
+            Mnemonic::generate(Count::Words24)
         }
     };
     println!("Using mnemonic: {}", mn.phrase());
