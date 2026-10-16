@@ -391,7 +391,7 @@ mod tests {
 
     use alloc::{vec, vec::Vec};
 
-    use rand::rng;
+    use rand::{rng, CryptoRng};
 
     use crate::{report::TotalKind, TxSummaryUnblindingReport};
     use mc_account_keys::{AccountKey, PublicAddress};
@@ -796,7 +796,7 @@ mod tests {
     /// Build a genuine TxOut to `recipient`, returning its summary, unblinding
     /// data and tx_private_key
     fn build_output(
-        rng: &mut OsRng,
+        rng: &mut impl CryptoRng,
         recipient: &PublicAddress,
         amount: Amount,
     ) -> (TxOutSummary, UnmaskedAmount, RistrettoPrivate) {
@@ -829,7 +829,7 @@ mod tests {
     /// Build a genuine input owned by `owner`, returning its summary and
     /// unblinding data
     fn build_input(
-        rng: &mut OsRng,
+        rng: &mut impl CryptoRng,
         owner: &PublicAddress,
         amount: Amount,
     ) -> (TxInSummary, UnmaskedAmount) {
@@ -843,7 +843,7 @@ mod tests {
 
     /// Stream one genuine payment to `receiver` through `verifier`
     fn stream_payment(
-        rng: &mut OsRng,
+        rng: &mut impl CryptoRng,
         verifier: &mut TxSummaryStreamingVerifierCtx,
         receiver: &AccountKey,
         amount: Amount,
@@ -863,7 +863,7 @@ mod tests {
 
     /// Stream one genuine input owned by `sender` through `verifier`
     fn stream_input(
-        rng: &mut OsRng,
+        rng: &mut impl CryptoRng,
         verifier: &mut TxSummaryStreamingVerifierCtx,
         sender: &AccountKey,
         amount: Amount,
@@ -876,7 +876,7 @@ mod tests {
 
     #[test]
     fn test_finalize_rejects_missing_inputs() {
-        let mut rng = OsRng {};
+        let mut rng = rng();
         let sender = AccountKey::random(&mut rng);
         let receiver = AccountKey::random(&mut rng);
         let token_id = TokenId::from(9);
@@ -910,7 +910,7 @@ mod tests {
     /// Declaring two outputs but streaming one must not produce a digest
     #[test]
     fn test_finalize_rejects_missing_outputs() {
-        let mut rng = OsRng {};
+        let mut rng = rng();
         let sender = AccountKey::random(&mut rng);
         let receiver = AccountKey::random(&mut rng);
         let token_id = TokenId::from(9);
@@ -937,7 +937,7 @@ mod tests {
     /// refuse to make progress on it rather than produce a digest
     #[test]
     fn test_zero_outputs_rejected() {
-        let mut rng = OsRng {};
+        let mut rng = rng();
         let sender = AccountKey::random(&mut rng);
         let token_id = TokenId::from(9);
         let mut report = TxSummaryUnblindingReport::<16>::default();
@@ -965,7 +965,7 @@ mod tests {
     /// refuse to make progress on it rather than produce a digest
     #[test]
     fn test_zero_inputs_rejected() {
-        let mut rng = OsRng {};
+        let mut rng = rng();
         let sender = AccountKey::random(&mut rng);
         let receiver = AccountKey::random(&mut rng);
         let token_id = TokenId::from(9);
