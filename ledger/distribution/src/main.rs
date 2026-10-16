@@ -39,6 +39,28 @@ pub trait BlockHandler {
     fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]);
     /// Returns true if the `block_index` exists in the destination.
     fn block_exists(&self, block_index: BlockIndex) -> bool;
+
+    /// Find the first missing block, assuming uploads have no gaps.
+    fn first_block_to_handle(&self, num_blocks: u64) -> u64 {
+        // Keep the common case of a fully uploaded ledger to one HEAD request.
+        if num_blocks == 0 || self.block_exists(num_blocks - 1) {
+            return num_blocks;
+        }
+
+        // Sequential uploads make existence monotonic: all blocks before the
+        // first missing block exist, and all blocks after it are missing.
+        let mut low = 0;
+        let mut high = num_blocks - 1;
+        while low < high {
+            let mid = low + (high - low) / 2;
+            if self.block_exists(mid) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+        low
+    }
 }
 
 /// Configuration for ledger distribution.
@@ -452,13 +474,7 @@ fn first_block_to_handle(ledger_db: &LedgerDB, block_handler: &dyn BlockHandler)
     let num_blocks = ledger_db
         .num_blocks()
         .expect("Failed to get the number of blocks from the ledger database");
-    let last_upload_block = (0..num_blocks)
-        .rev()
-        .find(|block_index| block_handler.block_exists(*block_index));
-    match last_upload_block {
-        Some(last_upload_block) => last_upload_block + 1,
-        None => 0,
-    }
+    block_handler.first_block_to_handle(num_blocks)
 }
 
 #[cfg(test)]
@@ -469,9 +485,60 @@ mod test {
     use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
     use mc_transaction_core::AccountKey;
     use mc_util_test_helper::{RngType, SeedableRng};
-    use std::path::Path;
+    use std::{cell::Cell, path::Path};
     use tempfile::TempDir;
     use walkdir::WalkDir;
+
+    #[test]
+    fn resume_binary_search_handles_upload_boundaries() {
+        struct ContiguousBlocks {
+            uploaded: u64,
+            num_blocks: u64,
+            requests: Cell<u32>,
+        }
+
+        impl BlockHandler for ContiguousBlocks {
+            fn write_single_block(&mut self, _: &BlockData) {
+                unreachable!()
+            }
+
+            fn write_multiple_blocks(&mut self, _: &[BlockData]) {
+                unreachable!()
+            }
+
+            fn block_exists(&self, index: BlockIndex) -> bool {
+                assert!(index < self.num_blocks);
+                self.requests.set(self.requests.get() + 1);
+                index < self.uploaded
+            }
+        }
+
+        // Cover every upload boundary for small ledgers, including remote-ahead
+        // cases, plus u64::MAX-sized ledgers to catch arithmetic overflow.
+        let cases = (0..=64)
+            .flat_map(|num_blocks| (0..=num_blocks + 1).map(move |uploaded| (num_blocks, uploaded)))
+            .chain([0, u64::MAX / 2, u64::MAX - 1, u64::MAX].map(|uploaded| (u64::MAX, uploaded)));
+        for (num_blocks, uploaded) in cases {
+            let blocks = ContiguousBlocks {
+                uploaded,
+                num_blocks,
+                requests: Cell::new(0),
+            };
+            assert_eq!(
+                blocks.first_block_to_handle(num_blocks),
+                uploaded.min(num_blocks)
+            );
+            if num_blocks == 0 {
+                assert_eq!(blocks.requests.get(), 0);
+            } else if uploaded >= num_blocks {
+                assert_eq!(blocks.requests.get(), 1);
+            } else {
+                // One initial check, then at most one binary-search check per
+                // significant bit in num_blocks (BITS - leading_zeros).
+                assert!(blocks.requests.get() <= 1 + u64::BITS - num_blocks.leading_zeros());
+            }
+        }
+    }
 
     #[test]
     fn cli_parses_s3_destination() {
