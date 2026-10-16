@@ -9,13 +9,14 @@ readme = "README.md"
 rust-version = { workspace = true }
 
 [features]
-bip39 = ["dep:tiny-bip39", "dep:slip10_ed25519"]
+bip39 = ["dep:bip0039", "dep:slip10_ed25519"]
 internals = []
 serde = ["dep:serde", "mc-core-types/serde"]
 
 default = ["bip39"]
 
 [dependencies]
+bip0039 = { workspace = true, optional = true }
 curve25519-dalek = { workspace = true, features = ["digest"] }
 ed25519-dalek = { workspace = true }
 generic-array = { workspace = true }
@@ -23,7 +24,6 @@ hkdf = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 sha2 = { workspace = true }
 slip10_ed25519 = { workspace = true, optional = true }
-tiny-bip39 = { workspace = true, optional = true }
 zeroize = { workspace = true }
 
 mc-core-types = { workspace = true }

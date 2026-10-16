@@ -206,6 +206,7 @@ async-channel = "2"
 backtrace = "0.3"
 balanced-tree-index = "3"
 base64 = { version = "0.23", default-features = false }
+bip0039 = "0.14.2"
 bitflags = { version = "2", default-features = false }
 blake2 = { version = "0.11", default-features = false }
 bs58 = "0.5"
@@ -338,7 +339,6 @@ subtle = { version = "2", default-features = false }
 syn = "3"
 tempfile = "3"
 textwrap = "0.16"
-tiny-bip39 = "2"
 tokio = "1"
 toml = "1"
 url = "2"

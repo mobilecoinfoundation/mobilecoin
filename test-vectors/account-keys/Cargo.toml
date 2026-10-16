@@ -16,4 +16,3 @@ mc-test-vectors-definitions = { workspace = true }
 mc-util-test-vector = { workspace = true }
 
 hex = { workspace = true, features = ["alloc"] }
-tiny-bip39 = { workspace = true }

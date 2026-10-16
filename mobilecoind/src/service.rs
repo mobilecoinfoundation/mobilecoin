@@ -16,7 +16,6 @@ use crate::{
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use api::fog_ledger::{TxOutResult, TxOutResultCode};
-use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{
     burn_address, AccountKey, PublicAddress, RootIdentity, ShortAddressHash,
@@ -29,7 +28,7 @@ use mc_common::{
     HashMap,
 };
 use mc_connection::{BlockInfo, BlockchainConnection, UserTxConnection};
-use mc_core::slip10::Slip10KeyGenerator;
+use mc_core::slip10::{Count, Mnemonic, Slip10KeyGenerator};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
@@ -410,7 +409,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         _request: (),
     ) -> Result<api::GenerateMnemonicResponse, RpcStatus> {
-        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+        let mnemonic = Mnemonic::generate(Count::Words24);
 
         Ok(api::GenerateMnemonicResponse {
             mnemonic: mnemonic.phrase().to_string(),
@@ -446,7 +445,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         request: api::GetAccountKeyFromMnemonicRequest,
     ) -> Result<api::GetAccountKeyResponse, RpcStatus> {
-        let mnemonic = Mnemonic::from_phrase(&request.mnemonic, Language::English)
+        let mnemonic = Mnemonic::from_phrase(request.mnemonic.as_str())
             .map_err(|err| rpc_invalid_arg_error("mnemonic", err, &self.logger))?;
         let key = mnemonic.derive_slip10_key(request.account_index);
         let account_key = AccountKey::from(key);
@@ -716,11 +715,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Use bip39 or root entropy to construct AccountKey.
         let account_key = if !transfer_payload.bip39_entropy.is_empty() {
-            let mnemonic = Mnemonic::from_entropy(
-                transfer_payload.bip39_entropy.as_slice(),
-                Language::English,
-            )
-            .map_err(|err| rpc_internal_error("Mnemonic.from_entropy", err, &self.logger))?;
+            let mnemonic = Mnemonic::from_entropy(transfer_payload.bip39_entropy.as_slice())
+                .map_err(|err| rpc_internal_error("Mnemonic.from_entropy", err, &self.logger))?;
             let key = mnemonic.derive_slip10_key(0);
             AccountKey::from(key)
         } else {
@@ -798,7 +794,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // If we were provided with bip39 entropy, ensure it can be converted into a
         // mnemonic.
         if !request.bip39_entropy.is_empty()
-            && Mnemonic::from_entropy(request.bip39_entropy.as_slice(), Language::English).is_err()
+            && Mnemonic::from_entropy(request.bip39_entropy.as_slice()).is_err()
         {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
@@ -3348,12 +3344,12 @@ mod test {
 
         // call get entropy
         let response = client.generate_mnemonic(&()).unwrap();
-        let mnemonic_str = &response.mnemonic;
+        let mnemonic_str = response.mnemonic.as_str();
         assert_ne!(mnemonic_str, "");
 
         // Should be a valid mnemonic.
-        let mnemonic =
-            Mnemonic::from_phrase(mnemonic_str, Language::English).expect("invalid mnemonic_str");
+        let mnemonic = Mnemonic::from_phrase(mnemonic_str).expect("invalid mnemonic_str");
+        assert_eq!(mnemonic.phrase().split_whitespace().count(), 24);
         assert_eq!(mnemonic.entropy().len(), 32);
 
         assert_eq!(mnemonic.entropy(), response.bip39_entropy);
@@ -3371,8 +3367,7 @@ mod test {
         let mnemonic_str =
             "legal winner thank year wave sausage worth useful legal winner thank yellow";
         let expected_account_key = {
-            let mnemonic =
-                Mnemonic::from_phrase(mnemonic_str, Language::English).expect("from_phrase failed");
+            let mnemonic = Mnemonic::from_phrase(mnemonic_str).expect("from_phrase failed");
             let key = mnemonic.derive_slip10_key(666);
             AccountKey::from(key)
         };
@@ -3389,15 +3384,36 @@ mod test {
             AccountKey::try_from(response.account_key.as_ref().unwrap()).unwrap(),
         );
 
-        // Calling with no mnemonic or invalid mnemonic should error.
-        let request = api::GetAccountKeyFromMnemonicRequest::default();
-        assert!(client.get_account_key_from_mnemonic(&request).is_err());
-
+        // Whitespace normalization must not change the derived account.
         let request = api::GetAccountKeyFromMnemonicRequest {
-            mnemonic: "lol".to_string(),
-            ..Default::default()
+            mnemonic: format!("  {}\n", mnemonic_str.replace(' ', "\t")),
+            account_index: 666,
         };
-        assert!(client.get_account_key_from_mnemonic(&request).is_err());
+        let response = client.get_account_key_from_mnemonic(&request).unwrap();
+        assert_eq!(
+            expected_account_key,
+            AccountKey::try_from(response.account_key.as_ref().unwrap()).unwrap(),
+        );
+
+        // Invalid mnemonics must retain the INVALID_ARGUMENT RPC status.
+        for mnemonic in [
+            String::new(),
+            "lol".to_string(),
+            mnemonic_str.to_uppercase(),
+            mnemonic_str.replace("yellow", "not-a-word"),
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon".to_string(),
+        ] {
+            let request = api::GetAccountKeyFromMnemonicRequest {
+                mnemonic,
+                ..Default::default()
+            };
+            match client.get_account_key_from_mnemonic(&request) {
+                Err(GrpcError::RpcFailure(status)) => {
+                    assert_eq!(status.code(), RpcStatusCode::INVALID_ARGUMENT);
+                }
+                result => panic!("Expected INVALID_ARGUMENT, got {result:?}"),
+            }
+        }
     }
 
     #[test_with_logger]
@@ -6305,9 +6321,7 @@ mod test {
             .unwrap();
 
             // Use bip39 entropy to construct AccountKey.
-            let mnemonic =
-                Mnemonic::from_entropy(response.bip39_entropy.as_slice(), Language::English)
-                    .unwrap();
+            let mnemonic = Mnemonic::from_entropy(response.bip39_entropy.as_slice()).unwrap();
             let key = mnemonic.derive_slip10_key(0);
             let account_key = AccountKey::from(key);
 
@@ -7787,7 +7801,7 @@ mod test {
         let bip39_entropy = [4u8; 32];
 
         // Use bip39 entropy to construct AccountKey.
-        let mnemonic = Mnemonic::from_entropy(&bip39_entropy, Language::English).unwrap();
+        let mnemonic = Mnemonic::from_entropy(bip39_entropy).unwrap();
         let key = mnemonic.derive_slip10_key(0);
         let account_key = AccountKey::from(key);
 

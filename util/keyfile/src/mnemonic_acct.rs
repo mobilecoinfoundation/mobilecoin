@@ -4,10 +4,9 @@
 //! (either as protobuf or JSON strings) and converting them into AccountKey
 //! data structures.
 
-use bip39::{Language, Mnemonic};
 use displaydoc::Display;
 use mc_account_keys::AccountKey;
-use mc_core::slip10::Slip10KeyGenerator;
+use mc_core::slip10::{Mnemonic, Slip10KeyGenerator};
 use mc_rand::CryptoRng;
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -48,11 +47,8 @@ impl TryFrom<UncheckedMnemonicAccount> for AccountKey {
     type Error = Error;
 
     fn try_from(src: UncheckedMnemonicAccount) -> Result<AccountKey, Self::Error> {
-        let mnemonic = Mnemonic::from_phrase(
-            src.mnemonic.ok_or(Error::NoMnemonic)?.as_str(),
-            Language::English,
-        )
-        .map_err(|e| Error::InvalidMnemonic(format!("{e}")))?;
+        let mnemonic = Mnemonic::from_phrase(src.mnemonic.ok_or(Error::NoMnemonic)?.as_str())
+            .map_err(|e| Error::InvalidMnemonic(format!("{e}")))?;
         let slip10 = mnemonic.derive_slip10_key(src.account_index.ok_or(Error::NoAccountIndex)?);
         Ok(AccountKey::from(slip10).with_fog(
             src.fog_report_url.unwrap_or_default().as_str(),
@@ -67,7 +63,7 @@ impl UncheckedMnemonicAccount {
     pub fn random<T: CryptoRng>(rng: &mut T) -> Self {
         let mut entropy = [0u8; 32];
         rng.fill_bytes(&mut entropy[..]);
-        let mnemonic = Mnemonic::from_entropy(&entropy, Language::English);
+        let mnemonic = Mnemonic::from_entropy(entropy);
         match mnemonic {
             Ok(v) => Self {
                 mnemonic: Some(v.phrase().to_string()),

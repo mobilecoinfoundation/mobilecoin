@@ -12,9 +12,9 @@ pub mod config;
 pub mod keygen;
 
 use crate::error::Error;
-use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::printable::{printable_wrapper, PrintableWrapper};
+use mc_core::slip10::Mnemonic;
 use std::{
     fs::File,
     io::{Read, Write},
@@ -151,15 +151,14 @@ fn to_io_error<E: 'static + std::error::Error + Send + Sync>(err: E) -> std::io:
 mod testing {
 
     use super::*;
-    use bip39::{Language, MnemonicType};
-    use mc_core::slip10::Slip10KeyGenerator;
+    use mc_core::slip10::{Count, Slip10KeyGenerator};
 
     /// Test that round-tripping through a keyfile without fog gets the same
     /// result as creating the key directly.
     #[test]
     fn keyfile_roundtrip_no_fog() {
         let dir = tempfile::tempdir().expect("Could not create temp dir");
-        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+        let mnemonic = Mnemonic::generate(Count::Words24);
         let path = dir.path().join("no_fog");
         write_keyfile(&path, &mnemonic, 0, None, "", None).expect("Could not write keyfile");
         let expected = AccountKey::from(mnemonic.derive_slip10_key(0));
@@ -181,7 +180,7 @@ mod testing {
             .spki();
 
         let dir = tempfile::tempdir().expect("Could not create temp dir");
-        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+        let mnemonic = Mnemonic::generate(Count::Words24);
 
         let path = dir.path().join("with_fog");
         write_keyfile(
@@ -207,7 +206,7 @@ mod testing {
     /// and reading it back without fog details gets the same results.
     #[test]
     fn pubfile_roundtrip_no_fog() {
-        let mn = Mnemonic::new(MnemonicType::Words24, Language::English);
+        let mn = Mnemonic::generate(Count::Words24);
 
         let expected = AccountKey::from(mn.derive_slip10_key(0)).default_subaddress();
 
@@ -230,8 +229,7 @@ mod testing {
             .expect("Could not parse X509 certificate from DER bytes")
             .subject_public_key_info()
             .spki();
-        let slip10key =
-            Mnemonic::new(MnemonicType::Words24, Language::English).derive_slip10_key(0);
+        let slip10key = Mnemonic::generate(Count::Words24).derive_slip10_key(0);
         let expected = AccountKey::from(slip10key)
             .with_fog(fog_report_url, fog_report_id, fog_authority_spki)
             .default_subaddress();

@@ -46,7 +46,6 @@ rand_core = { workspace = true }
 rand_hc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
-tiny-bip39 = { workspace = true }
 x509-signature = { workspace = true }
 
 [dev-dependencies]

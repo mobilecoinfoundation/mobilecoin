@@ -1,8 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use bip39::{Language, Mnemonic};
 use mc_account_keys::{AccountKey, RootIdentity};
-use mc_core::slip10::Slip10KeyGenerator;
+use mc_core::slip10::{Mnemonic, Slip10KeyGenerator};
 use mc_test_vectors_definitions::account_keys::*;
 use mc_util_test_vector::write_jsonl;
 
@@ -131,7 +130,7 @@ fn main() {
                     .map(move |(entropy_hex, mnemonic_text)| {
                         let entropy =
                             hex::decode(*entropy_hex).expect("Could not parse entropy hex");
-                        let mnemonic = Mnemonic::from_phrase(mnemonic_text, Language::English)
+                        let mnemonic = Mnemonic::from_phrase(*mnemonic_text)
                             .expect("Could not parse mnemonic string");
 
                         assert_eq!(mnemonic.entropy(), entropy.as_slice());
