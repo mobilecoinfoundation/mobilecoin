@@ -18,7 +18,7 @@ use digest::{block_api::BlockSizeUser, Digest};
 use hkdf::SimpleHkdf;
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_oblivious_aes_gcm::{CtAeadDecrypt, CtDecryptResult};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// Represents a generic implementation of CryptoBox using Hkdf, a KexAlgo, and
 /// an Aead.
@@ -50,10 +50,9 @@ where
     AeadAlgo: AeadInOut + KeyInit + CtAeadDecrypt,
     // Note: I think all of these bounds should go away after RFC 2089 is implemented
     // https://github.com/rust-lang/rfcs/blob/master/text/2089-implied-bounds.md
-    <<KexAlgo as Kex>::Public as ReprBytes>::Size:
-        ArrayLength<u8> + Unsigned + Add<AeadAlgo::TagSize>,
-    AeadAlgo::TagSize: ArrayLength<u8>,
-    Sum<<KexAlgo::Public as ReprBytes>::Size, AeadAlgo::TagSize>: ArrayLength<u8>,
+    <<KexAlgo as Kex>::Public as ReprBytes>::Size: ArrayLength + Unsigned + Add<AeadAlgo::TagSize>,
+    AeadAlgo::TagSize: ArrayLength,
+    Sum<<KexAlgo::Public as ReprBytes>::Size, AeadAlgo::TagSize>: ArrayLength,
     GenericArray<u8, <<KexAlgo as Kex>::Public as ReprBytes>::Size>: Concat<
         u8,
         AeadAlgo::TagSize,
@@ -69,7 +68,7 @@ where
 {
     type FooterSize = Sum<<KexAlgo::Public as ReprBytes>::Size, AeadAlgo::TagSize>;
 
-    fn encrypt_in_place_detached<T: RngCore + CryptoRng>(
+    fn encrypt_in_place_detached<T: CryptoRng>(
         &self,
         rng: &mut T,
         key: &KexAlgo::Public,
@@ -87,7 +86,7 @@ where
         // AES
         let aead = AeadAlgo::new(&aes_key);
         let mac = aead.encrypt_inout_detached(&aes_nonce, &[], buffer.into())?;
-        let mac = GenericArray::<u8, AeadAlgo::TagSize>::clone_from_slice(mac.as_slice());
+        let mac = GenericArray::<u8, AeadAlgo::TagSize>::from_slice(mac.as_slice()).clone();
 
         // Tag is curve_point_bytes || aes_mac_bytes
         Ok(curve_point_bytes.concat(mac))

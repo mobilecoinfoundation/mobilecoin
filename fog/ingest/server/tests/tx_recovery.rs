@@ -13,7 +13,7 @@ use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_ingest_server_test_utils::IngestServerTestHelper;
 use mc_fog_test_infra::{mock_client::PassThroughViewClient, mock_users::UserPool};
 use mc_util_test_helper::RngType;
-use rand_core::RngCore;
+use rand_core::Rng;
 use std::{sync::Arc, thread::sleep, time::Duration};
 
 const NUM_USERS: usize = 5;
@@ -109,7 +109,7 @@ fn test_ingest_polling_integration(base_port: u16, mut rng: RngType, logger: Log
 }
 
 // Function for generating the random number of txs to put in a block
-fn gen_num_tx_for_block(rng: &mut impl RngCore) -> usize {
+fn gen_num_tx_for_block(rng: &mut impl Rng) -> usize {
     loop {
         let n = (rng.next_u64() % NUM_TX_PER_BLOCK) as usize;
         if n != 0 {

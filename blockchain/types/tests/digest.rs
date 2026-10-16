@@ -9,7 +9,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint, tokens::Mob, tx::TxOut, Amount, Token,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_test_helper::{RngCore, RngType as FixedRng, SeedableRng};
+use mc_util_test_helper::{Rng, RngType as FixedRng, SeedableRng};
 
 fn test_accounts() -> Vec<AccountKey> {
     let mut rng: FixedRng = SeedableRng::from_seed([12u8; 32]);

@@ -29,7 +29,7 @@ use mc_fog_report_resolver::FogResolver;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use mc_transaction_builder::{
     EmptyMemoBuilder, InputCredentials, RTHMemoBuilder, ReservedSubaddresses,
     SignedContingentInputBuilder, TransactionBuilder,
@@ -40,7 +40,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
 use mc_util_uri::{ConnectionUri, FogUri};
-use rand::{seq::SliceRandom, Rng};
+use rand::{seq::SliceRandom, RngExt};
 use std::collections::{HashMap, HashSet};
 
 /// Default number of blocks used for calculating transaction tombstone block
@@ -317,7 +317,7 @@ impl Client {
     /// * `target_address` - the recipient's address.
     /// * `rng` - Randomness.
     /// * `fee` - The transaction fee to use
-    pub fn build_transaction<T: RngCore + CryptoRng>(
+    pub fn build_transaction<T: CryptoRng>(
         &mut self,
         amount: Amount,
         target_address: &PublicAddress,
@@ -391,7 +391,7 @@ impl Client {
     /// * `offered` - The amount that we are offering
     /// * `requested` - The amount that we want in return
     /// * `rng` - Randomness.
-    pub fn build_swap_proposal<T: RngCore + CryptoRng>(
+    pub fn build_swap_proposal<T: CryptoRng>(
         &mut self,
         offered: Amount,
         requested: Amount,
@@ -494,7 +494,7 @@ impl Client {
     ///   This must be None if this is not a partial fill SCI.
     /// * `fee` - The transaction fee to use.
     /// * `rng` - Randomness.
-    pub fn build_swap_transaction<T: RngCore + CryptoRng>(
+    pub fn build_swap_transaction<T: CryptoRng>(
         &mut self,
         mut sci: SignedContingentInput,
         fill_amount: Option<Amount>,
@@ -739,7 +739,7 @@ impl Client {
     /// * One ring per input, each of `self.ring_size` elements, where the first
     ///   element is the true input.
     #[allow(clippy::type_complexity)]
-    fn get_inputs_and_rings<T: RngCore + CryptoRng>(
+    fn get_inputs_and_rings<T: CryptoRng>(
         &mut self,
         inputs: &[OwnedTxOut],
         avoid_indices: Option<&[u64]>,
@@ -771,7 +771,7 @@ impl Client {
         let mut mixin_indices: Vec<u64> = Vec::with_capacity(num_mixins);
         let mut sampled: HashSet<u64> = HashSet::default();
         while mixin_indices.len() < num_mixins {
-            let index = rng.gen_range(0..sample_limit) as u64;
+            let index = rng.random_range(0..sample_limit) as u64;
             if !all_avoid_indices.contains(&index) && sampled.insert(index) {
                 mixin_indices.push(index);
             }
@@ -955,7 +955,7 @@ impl Client {
 /// * `tombstone_block` - The block index after which this transaction is no
 ///   longer valid.
 /// * `rng` -
-fn build_transaction_helper<T: RngCore + CryptoRng>(
+fn build_transaction_helper<T: CryptoRng>(
     block_version: BlockVersion,
     fee_map: FeeMap,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,

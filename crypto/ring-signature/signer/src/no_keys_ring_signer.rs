@@ -4,7 +4,7 @@ use super::{OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use crate::traits::Error;
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{generators, RingMLSAG, Scalar};
-use rand_core::CryptoRngCore;
+use rand_core::CryptoRng;
 
 /// An implementation of RingSigner that holds no keys, and doesn't do any
 /// non-trivial derivation of the one-time private key.
@@ -24,7 +24,7 @@ impl RingSigner for NoKeysRingSigner {
         message: &[u8],
         ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
-        rng: &mut dyn CryptoRngCore,
+        rng: &mut dyn CryptoRng,
     ) -> Result<RingMLSAG, Error> {
         let real_input = ring
             .members

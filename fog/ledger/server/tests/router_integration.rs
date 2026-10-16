@@ -18,12 +18,12 @@ use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::{common::BlockRange, ledger::KeyImageResult};
 use mc_fog_uri::{FogLedgerUri, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, Amount, Token};
 use mc_util_test_helper::{RngType, SeedableRng};
 use mc_util_uri::{AdminUri, ConnectionUri};
 use mc_watcher::watcher_db::WatcherDB;
-use rand::thread_rng;
+use rand::rng;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -37,6 +37,7 @@ use tempfile::TempDir;
 use url::Url;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
+const INGESTION_TIMEOUT: Duration = Duration::from_secs(10);
 const TEST_URL: &str = "http://www.my_url1.com";
 const CHAIN_ID: &str = "local";
 
@@ -90,7 +91,7 @@ fn add_block_to_ledger(
     block_provider: &mut LocalBlockProvider<LedgerDB>,
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);
     let ledger_db = &mut block_provider.ledger;
@@ -122,7 +123,7 @@ fn add_block_to_ledger(
 }
 
 fn seed_block_provider(block_provider: &mut LocalBlockProvider<LedgerDB>) {
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     let alice = AccountKey::random_with_fog(&mut rng);
     let recipients = vec![alice.default_subaddress()];
@@ -134,7 +135,7 @@ fn populate_block_provider<'a>(
     block_provider: &mut LocalBlockProvider<LedgerDB>,
     blocks_config: impl IntoIterator<Item = &'a HashMap<PublicAddress, Vec<KeyImage>>>,
 ) {
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     for block in blocks_config.into_iter() {
         let recipients: Vec<_> = block.keys().cloned().collect();
@@ -142,12 +143,34 @@ fn populate_block_provider<'a>(
 
         add_block_to_ledger(block_provider, &recipients, &key_images, &mut rng);
     }
+}
 
-    // The stores are running on separate threads. We wait 16 times the
-    // their POLL_INTERVAL to account for number of threads in CI.
-    // This helps to ensure all the stores have had time to process the new
-    // blocks
-    std::thread::sleep(POLL_INTERVAL * 16);
+async fn wait_for_block_count(
+    client: &mut LedgerGrpcClient,
+    key_image: &KeyImage,
+    expected_num_blocks: u64,
+    expected_global_txo_count: u64,
+) {
+    let deadline = tokio::time::Instant::now() + INGESTION_TIMEOUT;
+    loop {
+        let response = client
+            .check_key_images(&[*key_image])
+            .await
+            .expect("check_key_images failed while waiting for block ingestion");
+        if response.num_blocks == expected_num_blocks
+            && response.global_txo_count == expected_global_txo_count
+        {
+            return;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "timed out waiting for block ingestion: expected {expected_num_blocks} blocks and \
+             {expected_global_txo_count} TXOs, got {} blocks and {} TXOs",
+            response.num_blocks,
+            response.global_txo_count
+        );
+        tokio::time::sleep(POLL_INTERVAL).await;
+    }
 }
 
 fn create_store(
@@ -397,6 +420,13 @@ async fn smoke_test() {
             }
         }
         populate_block_provider(&mut test_environment.block_provider, [block]);
+        wait_for_block_count(
+            &mut test_environment.router_client,
+            &block.values().next().expect("block must not be empty")[0],
+            block_index + 1,
+            (block_index * users_per_block) + 1,
+        )
+        .await;
         for keys in block.values() {
             for key in keys {
                 let response = test_environment
@@ -526,6 +556,13 @@ async fn overlapping_stores() {
             }
         }
         populate_block_provider(&mut test_environment.block_provider, [block]);
+        wait_for_block_count(
+            &mut test_environment.router_client,
+            &block.values().next().expect("block must not be empty")[0],
+            block_index + 1,
+            (block_index * users_per_block) + 1,
+        )
+        .await;
         for keys in block.values() {
             for key in keys {
                 let response = test_environment

@@ -8,7 +8,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::{
     generators, onetime_keys::recover_onetime_private_key, RingMLSAG, Scalar,
 };
-use rand_core::CryptoRngCore;
+use rand_core::CryptoRng;
 
 /// An implementation of RingSigner that holds private keys and derives one-time
 /// private keys
@@ -23,7 +23,7 @@ impl RingSigner for LocalRingSigner {
         message: &[u8],
         ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
-        rng: &mut dyn CryptoRngCore,
+        rng: &mut dyn CryptoRng,
     ) -> Result<RingMLSAG, Error> {
         let real_input = ring
             .members

@@ -11,7 +11,7 @@ use core::{
 use hex_fmt::HexFmt;
 use mc_sgx_core_types::QuoteNonce;
 use mc_util_encodings::{Error as EncodingError, FromHex, ToHex};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConstantTimeEq};
 
@@ -20,7 +20,7 @@ pub trait Nonce:
     AsRef<[u8]> + PartialEq + Sized + for<'bytes> TryFrom<&'bytes [u8]> + ConstantTimeEq
 {
     /// Generate a new nonce from random data
-    fn new<R: RngCore + CryptoRng>(csprng: &mut R) -> Result<Self, NonceError>
+    fn new<R: CryptoRng>(csprng: &mut R) -> Result<Self, NonceError>
     where
         NonceError: for<'bytes> From<<Self as TryFrom<&'bytes [u8]>>::Error>,
     {

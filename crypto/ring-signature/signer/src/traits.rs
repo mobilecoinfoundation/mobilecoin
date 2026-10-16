@@ -5,7 +5,7 @@ use displaydoc::Display;
 use mc_crypto_keys::{KeyError, RistrettoPrivate};
 use mc_crypto_ring_signature::{Error as RingSignatureError, ReducedTxOut, RingMLSAG, Scalar};
 use mc_transaction_types::Amount;
-use rand_core::CryptoRngCore;
+use rand_core::CryptoRng;
 use zeroize::Zeroize;
 
 #[cfg(feature = "serde")]
@@ -105,7 +105,7 @@ pub trait RingSigner {
         message: &[u8],
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
-        rng: &mut dyn CryptoRngCore,
+        rng: &mut dyn CryptoRng,
     ) -> Result<RingMLSAG, Error>;
 }
 
@@ -116,7 +116,7 @@ impl<S: RingSigner> RingSigner for &S {
         message: &[u8],
         signable_ring: &SignableInputRing,
         output_blinding: Scalar,
-        rng: &mut dyn CryptoRngCore,
+        rng: &mut dyn CryptoRng,
     ) -> Result<RingMLSAG, Error> {
         (*self).sign(message, signable_ring, output_blinding, rng)
     }

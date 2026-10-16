@@ -8,7 +8,8 @@ use std::path::Path;
 
 use clap::Parser;
 use log::debug;
-use rand_core::{CryptoRng, OsRng, RngCore};
+use rand::rng;
+use rand_core::CryptoRng;
 use serde::{de::DeserializeOwned, Serialize};
 
 use mc_core::keys::TxOutPublic;
@@ -170,7 +171,7 @@ impl Operations {
             &req.output_secrets(),
             Amount::new(prefix.fee, TokenId::from(prefix.fee_token_id)),
             &ctx,
-            &mut OsRng {},
+            &mut rng(),
         ) {
             Ok(v) => v,
             Err(e) => {
@@ -252,7 +253,7 @@ pub fn write_output(file_name: &str, value: &impl Serialize) -> anyhow::Result<(
 impl TxSignReq {
     /// Get prepared (but unsigned) ringct bulletproofs for later signing,
     /// note only one instance of this must be used between operations.
-    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
+    pub fn get_signing_data<RNG: CryptoRng>(
         &self,
         rng: &mut RNG,
     ) -> Result<

@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_util_serial::prost;
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 
 /// A message cipher is a symmetric cipher meant to be used by the enclave as an
@@ -17,13 +17,12 @@ use serde::{Deserialize, Serialize};
 /// and the key number in a ciphertext header. Rekeying happens under the hood
 /// when the counter is exhausted.
 pub trait MessageCipher {
-    fn new<R: CryptoRng + RngCore>(rng: &mut R) -> Self;
+    fn new<R: CryptoRng>(rng: &mut R) -> Self;
 
     // Encrypt plaintext bytes.
     // An allocation is required when using this API, but we reuse the allocation
     // made by caller.
-    fn encrypt_bytes<R: CryptoRng + RngCore>(&mut self, rng: &mut R, plaintext: Vec<u8>)
-        -> Vec<u8>;
+    fn encrypt_bytes<R: CryptoRng>(&mut self, rng: &mut R, plaintext: Vec<u8>) -> Vec<u8>;
     // Decrypt bytes produced by encrypt_bytes
     // An allocation is required when using this API, but we reuse the allocation
     // made by caller.
@@ -32,7 +31,7 @@ pub trait MessageCipher {
     ////
     // Helpers that incorporate prost serialization
     ////
-    fn encrypt<R: CryptoRng + RngCore, M: Message>(&mut self, rng: &mut R, msg: &M) -> Vec<u8> {
+    fn encrypt<R: CryptoRng, M: Message>(&mut self, rng: &mut R, msg: &M) -> Vec<u8> {
         let plaintext = mc_util_serial::encode(msg);
         self.encrypt_bytes(rng, plaintext)
     }

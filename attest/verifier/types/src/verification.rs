@@ -296,7 +296,7 @@ mod tests {
     use alloc::{format, vec};
     use mc_attest_untrusted::DcapQuotingEnclave;
     use mc_sgx_core_types::Report;
-    use mc_util_test_helper::Rng;
+    use mc_util_test_helper::RngExt;
 
     #[test]
     fn test_signature_debug() {
@@ -338,8 +338,8 @@ mod tests {
     #[test]
     fn evidence_kind_to_from_verification_report() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
-            let string_length = rng.gen_range(1..=100);
-            let chain_len = rng.gen_range(2..42);
+            let string_length = rng.random_range(1..=100);
+            let chain_len = rng.random_range(2..42);
             let report = VerificationReport {
                 sig: mc_util_test_helper::random_bytes_vec(32, &mut rng).into(),
                 chain: (1..=chain_len)

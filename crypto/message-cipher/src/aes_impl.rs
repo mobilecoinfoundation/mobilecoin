@@ -5,7 +5,7 @@ use aes_gcm::aead::{
     AeadInOut, Key, KeyInit, Nonce as AeadNonce,
 };
 use alloc::{vec, vec::Vec};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use subtle::Choice;
 
 use crate::{CipherError, MessageCipher};
@@ -19,7 +19,7 @@ pub struct AeadMessageCipher<C: KeyInit + AeadInOut> {
 }
 
 impl<C: AeadInOut + KeyInit> MessageCipher for AeadMessageCipher<C> {
-    fn new<T: CryptoRng + RngCore>(rng: &mut T) -> Self {
+    fn new<T: CryptoRng>(rng: &mut T) -> Self {
         let mut key: Key<C> = Default::default();
         rng.fill_bytes(key.as_mut_slice());
         Self {
@@ -28,11 +28,7 @@ impl<C: AeadInOut + KeyInit> MessageCipher for AeadMessageCipher<C> {
         }
     }
 
-    fn encrypt_bytes<R: RngCore + CryptoRng>(
-        &mut self,
-        rng: &mut R,
-        plaintext: Vec<u8>,
-    ) -> Vec<u8> {
+    fn encrypt_bytes<R: CryptoRng>(&mut self, rng: &mut R, plaintext: Vec<u8>) -> Vec<u8> {
         let mut result = plaintext;
 
         self.ciphers

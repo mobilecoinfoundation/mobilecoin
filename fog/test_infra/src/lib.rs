@@ -19,7 +19,7 @@ use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
 use mc_watcher_api::TimestampResultCode;
 use mock_users::UserPool;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use std::{env, path::PathBuf};
 
 /// Function for turning string constants into run-time enclave paths
@@ -68,12 +68,12 @@ pub fn get_enclave_path(filename: &str) -> PathBuf {
 /// * users: Users to make transactions for
 /// * I: IngestEndpoint where we will send tx's
 /// * V: ViewEndpoint where we will try to find tx's
-/// * rng: RngCore
+/// * rng: Rng
 /// * num_tx: Number of transactions in this block
 /// * global_txo_count: Total number of txos in the ledger already
 ///
 /// Returns: New global_txo_count
-pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
+pub fn test_block<T: CryptoRng, C: FogViewConnection>(
     users: &mut UserPool,
     ingest: &FogIngestGrpcClient,
     view: &mut C,

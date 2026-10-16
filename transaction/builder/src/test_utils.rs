@@ -21,7 +21,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_extra::UnsignedTx;
 use mc_util_from_random::FromRandom;
-use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
+use rand::{rngs::StdRng, CryptoRng, SeedableRng};
 
 /// Creates a TxOut that sends `value` to `recipient`.
 ///
@@ -35,7 +35,7 @@ use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 ///
 /// # Returns
 /// * A transaction output, and the shared secret for this TxOut.
-pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
+pub fn create_output<RNG: CryptoRng, FPR: FogPubkeyResolver>(
     block_version: BlockVersion,
     amount: Amount,
     recipient: &PublicAddress,
@@ -68,7 +68,7 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
 /// * `rng` - Randomness.
 ///
 /// Returns (ring, real_index)
-pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
+pub fn get_ring<RNG: CryptoRng, FPR: FogPubkeyResolver>(
     block_version: BlockVersion,
     amount: Amount,
     ring_size: usize,
@@ -119,7 +119,7 @@ pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
 /// * `rng` - Randomness.
 ///
 /// Returns (input_credentials)
-pub fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
+pub fn get_input_credentials<RNG: CryptoRng, FPR: FogPubkeyResolver>(
     block_version: BlockVersion,
     amount: Amount,
     account: &AccountKey,
@@ -164,7 +164,7 @@ pub fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
 }
 
 /// Uses TransactionBuilder to build a generic transaction for testing.
-pub fn get_unsigned_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>(
+pub fn get_unsigned_transaction<RNG: CryptoRng, FPR: FogPubkeyResolver + Clone>(
     block_version: BlockVersion,
     token_id: TokenId,
     num_inputs: usize,
@@ -216,7 +216,7 @@ pub fn get_unsigned_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver
 }
 
 /// Uses TransactionBuilder to build a generic transaction for testing.
-pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>(
+pub fn get_transaction<RNG: CryptoRng, FPR: FogPubkeyResolver + Clone>(
     block_version: BlockVersion,
     token_id: TokenId,
     num_inputs: usize,

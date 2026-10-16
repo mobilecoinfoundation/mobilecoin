@@ -6,7 +6,7 @@
 use bip39::{Language, Mnemonic};
 use clap::Parser;
 use mc_util_keyfile::{config::KeyConfig, keygen};
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 
 /// Keygen config.

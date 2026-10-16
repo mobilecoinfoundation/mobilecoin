@@ -4,7 +4,7 @@ use crate::{BufferedRng, Error, KexRngCore, KexRngPubkey, NewFromKex, StoredRng}
 use generic_array::{typenum::Unsigned, GenericArray};
 use mc_crypto_keys::{Kex, KeyError};
 use mc_util_repr_bytes::ReprBytes;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// A KexRngCore plus an output buffer to allow peeking, and a counter to allow
 /// knowing how many draws have been made. This allows to implement BufferedRng
@@ -78,7 +78,7 @@ where
     for<'privkey> KexAlgo::Public: From<&'privkey KexAlgo::EphemeralPrivate>,
     for<'privkey> KexAlgo::Public: From<&'privkey KexAlgo::Private>,
 {
-    fn new_from_ephemeral_static<T: RngCore + CryptoRng>(
+    fn new_from_ephemeral_static<T: CryptoRng>(
         rng: &mut T,
         pubkey: &KexAlgo::Public,
     ) -> (KexRngPubkey, Self) {

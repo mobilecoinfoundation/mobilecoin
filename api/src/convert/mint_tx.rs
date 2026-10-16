@@ -102,7 +102,7 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use mc_util_serial::{decode, encode};
     use prost::Message;
-    use rand_core::{RngCore, SeedableRng};
+    use rand_core::{Rng, SeedableRng};
     use rand_hc::Hc128Rng;
 
     #[test]

@@ -29,7 +29,7 @@ use mc_util_telemetry::{
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
-use rand::{thread_rng, Rng};
+use rand::{rng as thread_rng, RngExt};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -785,8 +785,8 @@ impl TestClient {
 
         // Note: McRng does not implement rand::Rng because rand historically
         // has not been no_std
-        let tok1_val = 1 + thread_rng().gen_range(0..self.policy.transfer_amount);
-        let tok2_val = 1 + thread_rng().gen_range(0..self.policy.transfer_amount);
+        let tok1_val = 1 + thread_rng().random_range(0..self.policy.transfer_amount);
+        let tok2_val = 1 + thread_rng().random_range(0..self.policy.transfer_amount);
 
         log::info!(
             self.logger,
@@ -835,7 +835,7 @@ impl TestClient {
         // In the partial fill case, counter-party decides how much to fill it
         // We'll choose a random number in the range [0, self.tok1_val].
         let (fill_amount, fractional_tok1_val) = if is_partial_fill {
-            let fractional_tok2_val = thread_rng().gen_range(0..tok2_val + 1);
+            let fractional_tok2_val = thread_rng().random_range(0..tok2_val + 1);
             // Because of the partial fill, the actual amount of tok1 transfered
             // to the source is going to be fractional_tok1_val, not tok1_val.
             // Similarly, the actual amount of tok2 transfered to target is less.

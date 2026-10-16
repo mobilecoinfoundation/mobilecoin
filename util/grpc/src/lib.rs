@@ -47,7 +47,7 @@ use grpcio::{
 };
 use mc_common::logger::{log, o, Level, Logger};
 use mc_util_metrics::ServiceMetrics;
-use rand::Rng;
+use rand::RngExt;
 use std::{
     fmt::Display,
     sync::atomic::{AtomicU64, Ordering},
@@ -337,9 +337,9 @@ lazy_static::lazy_static! {
     // users by leaking IP addresses.
 
     static ref RPC_LOGGER_CLIENT_ID_SEED: String = {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         std::iter::repeat(())
-            .map(|()| rng.sample(rand::distributions::Alphanumeric))
+            .map(|()| rng.sample(rand::distr::Alphanumeric))
             .take(32)
             .map(char::from)
             .collect()

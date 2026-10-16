@@ -30,9 +30,9 @@ use mc_fog_test_infra::get_enclave_path;
 use mc_fog_types::ledger::{CheckKeyImagesRequest, KeyImageQuery};
 use mc_fog_uri::{ConnectionUri, KeyImageStoreScheme, KeyImageStoreUri};
 use mc_ledger_db::{test_utils::recreate_ledger_db, LedgerDB};
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use mc_util_grpc::AnonymousAuthenticator;
-use mc_util_test_helper::{Rng, RngType, SeedableRng};
+use mc_util_test_helper::{RngExt, RngType, SeedableRng};
 use mc_util_uri::UriScheme;
 use mc_watcher::watcher_db::WatcherDB;
 
@@ -68,7 +68,7 @@ pub struct TestingContext<R> {
     pub watcher_path: TempDir,
 }
 
-impl<R: RngCore + CryptoRng> TestingContext<R> {
+impl<R: CryptoRng> TestingContext<R> {
     pub fn new(
         test_name: impl AsRef<str>,
         logger: Logger,
@@ -141,7 +141,7 @@ pub fn direct_key_image_store_check(logger: Logger) {
 
     let port = pick_unused_port().expect("No free ports");
 
-    let rng = RngType::from_entropy();
+    let rng = RngType::from_seed([0; 32]);
     let TestingContext {
         enclave,
         ledger,

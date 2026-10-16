@@ -362,9 +362,7 @@ pub fn add_block_data(
     .unwrap()
 }
 
-/// Wait until first server has added stuff to ORAM. Since all view servers
-/// should load ORAM at the same time, we could choose to wait for any view
-/// server.
+/// Wait until every server has added its assigned blocks to ORAM.
 pub fn wait_for_highest_block_to_load(
     db: &SqlRecoveryDb,
     store_servers: &[TestViewServer],
@@ -377,19 +375,26 @@ pub fn wait_for_highest_block_to_load(
             .unwrap()
             .map(|v| v + 1) // convert index to count
             .unwrap_or(0);
-        let server_num_blocks = get_highest_processed_block_count(store_servers);
-        if server_num_blocks > db_num_blocks {
+        let server_num_blocks: Vec<_> = store_servers
+            .iter()
+            .map(|server| server.highest_processed_block_count())
+            .collect();
+        let max_server_num_blocks = server_num_blocks.iter().copied().max().unwrap_or_default();
+        if max_server_num_blocks > db_num_blocks {
             panic!(
-                "Server num blocks should never be larger than db num blocks: {server_num_blocks} > {db_num_blocks}"
+                "Server num blocks should never be larger than db num blocks: \
+                 {max_server_num_blocks} > {db_num_blocks}"
             );
         }
-        if server_num_blocks == db_num_blocks {
-            log::info!(logger, "Stopping, block {}", server_num_blocks);
+        if max_server_num_blocks == db_num_blocks
+            && server_num_blocks.iter().all(|num_blocks| *num_blocks > 0)
+        {
+            log::info!(logger, "Stopping, store block counts {server_num_blocks:?}");
             break;
         }
         log::info!(
             logger,
-            "Waiting for server to catch up to db... {} < {}",
+            "Waiting for servers to catch up to db... {:?}, db block count {}",
             server_num_blocks,
             db_num_blocks
         );

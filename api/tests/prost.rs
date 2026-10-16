@@ -21,10 +21,10 @@ use mc_transaction_core::Amount;
 use mc_transaction_extra::SignedContingentInput;
 use mc_util_from_random::FromRandom;
 use mc_util_serial::round_trip_message;
-use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
+use mc_util_test_helper::{run_with_several_seeds, CryptoRng};
 
 // Generate some example root identities
-fn root_identity_examples<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<RootIdentity> {
+fn root_identity_examples<T: CryptoRng>(rng: &mut T) -> Vec<RootIdentity> {
     vec![
         RootIdentity::from_random(rng),
         RootIdentity::random_with_fog(rng, "fog://example.com", "", &[]),
@@ -35,7 +35,7 @@ fn root_identity_examples<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<RootIdenti
 }
 
 // Signed contingent input examples
-fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
+fn signed_contingent_input_examples<T: CryptoRng>(
     block_version: BlockVersion,
     rng: &mut T,
 ) -> Vec<SignedContingentInput> {

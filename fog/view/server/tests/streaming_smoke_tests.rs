@@ -113,9 +113,8 @@ fn test_streaming_integration(omap_capacity: u64, store_count: usize, blocks_per
     // - 1 new rng record (for invoc_id2)
     // - 1 missing block range
     // - 1 ingest decommissioning (for invoc_id1)
-    let result = block_on(router_client.query(0, 0, nonsense_search_keys.clone()));
-    assert!(result.is_ok());
-    let mut result = result.unwrap();
+    let mut result = block_on(router_client.query(0, 0, nonsense_search_keys.clone()))
+        .expect("initial streaming query failed");
 
     assert_eq!(result.highest_processed_block_count, 6);
     assert_eq!(result.next_start_from_user_event_id, 4);

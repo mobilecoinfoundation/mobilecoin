@@ -15,7 +15,7 @@ use mc_transaction_core::{
     fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, BlockVersion, MaskedAmount, Token,
 };
 use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use std::collections::{HashMap, HashSet};
 
 /// Constructs for the test
@@ -104,7 +104,7 @@ pub fn test_block_to_pairs(test_block: &TestBlock) -> Vec<(UserPrivate, TxOut)> 
 
 /// Make a random transaction targeted at a specific user via fog
 // FIXME: This should use TxOut::new instead
-pub fn make_random_tx<T: RngCore + CryptoRng>(
+pub fn make_random_tx<T: CryptoRng>(
     rng: &mut T,
     acct_server_pubkey: &RistrettoPublic,
     recipient: &FogHint,
@@ -129,7 +129,7 @@ pub fn make_random_tx<T: RngCore + CryptoRng>(
 
 impl UserPool {
     /// Make a new user pool with a given number of users
-    pub fn new<T: RngCore + CryptoRng>(num_users: usize, rng: &mut T) -> Self {
+    pub fn new<T: CryptoRng>(num_users: usize, rng: &mut T) -> Self {
         Self {
             users: (0..num_users)
                 .map(|_| (UserPrivate::random(rng), Default::default()))
@@ -190,7 +190,7 @@ impl UserPool {
     }
 
     /// Make a random test block, to be submitted as a block to ingest
-    pub fn random_test_block<T: RngCore + CryptoRng>(
+    pub fn random_test_block<T: CryptoRng>(
         &self,
         tx_count: usize,
         acct_server_pubkey: &RistrettoPublic,

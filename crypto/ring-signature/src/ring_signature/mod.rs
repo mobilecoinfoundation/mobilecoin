@@ -43,24 +43,6 @@ pub use self::{
 
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use rand_core::CryptoRngCore;
-
-// This is the implementation of `Scalar::random` from curve25519-dalek 4.
-// Keeping it here preserves rand_core 0.6 compatibility and consumes the same
-// 64 RNG bytes after upgrading to curve25519-dalek 5.
-pub(crate) fn random_scalar(rng: &mut impl CryptoRngCore) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_bytes_mod_order_wide(&bytes)
-}
-
-#[cfg(test)]
-pub(crate) fn random_ristretto_point(rng: &mut impl CryptoRngCore) -> RistrettoPoint {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    RistrettoPoint::from_uniform_bytes(&bytes)
-}
-
 /// The base point for blinding factors used with all amount commitments
 pub const B_BLINDING: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 

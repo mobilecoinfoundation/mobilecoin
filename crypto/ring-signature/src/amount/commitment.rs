@@ -88,14 +88,14 @@ mod commitment_tests {
     };
     use curve25519_dalek::ristretto::RistrettoPoint;
     use mc_util_test_helper::run_with_several_seeds;
-    use rand_core::RngCore;
+    use rand_core::Rng;
 
     #[test]
     // Commitment::new should create the correct RistrettoPoint.
     fn test_new() {
         run_with_several_seeds(|mut rng| {
             let value = rng.next_u64();
-            let blinding = crate::ring_signature::random_scalar(&mut rng);
+            let blinding = Scalar::random(&mut rng);
             let gens = generators(rng.next_u64());
 
             let commitment = Commitment::new(value, blinding, &gens);

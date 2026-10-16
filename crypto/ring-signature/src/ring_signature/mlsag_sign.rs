@@ -5,15 +5,15 @@
 use core::fmt::Debug;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
-use rand_core::CryptoRngCore;
+use rand_core::CryptoRng;
 use zeroize::Zeroize;
 
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 use crate::{
     ring_signature::{
-        challenge, hash_to_point, random_scalar, CurveScalar, Error, KeyImage, PedersenGens, Ring,
-        Scalar, B_BLINDING,
+        challenge, hash_to_point, CurveScalar, Error, KeyImage, PedersenGens, Ring, Scalar,
+        B_BLINDING,
     },
     Commitment,
 };
@@ -51,7 +51,7 @@ impl MlsagSignParams<'_> {
         ring: impl Ring,
         // Note: this `mut rng` can just be `rng` if this is merged upstream:
         // https://github.com/dalek-cryptography/curve25519-dalek/pull/394
-        rng: impl CryptoRngCore,
+        rng: impl CryptoRng,
         responses: &mut [CurveScalar],
     ) -> Result<(KeyImage, CurveScalar), Error> {
         let ring_size = ring.size();
@@ -128,7 +128,7 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
     /// buffers
     pub fn init<'a>(
         params: &'a MlsagSignParams<'a>,
-        mut rng: impl CryptoRngCore,
+        mut rng: impl CryptoRng,
         mut responses: R,
     ) -> Result<Self, Error> {
         let G = B_BLINDING;
@@ -164,8 +164,8 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
             if i == params.real_index {
                 continue;
             }
-            r[2 * i].scalar = random_scalar(&mut rng);
-            r[2 * i + 1].scalar = random_scalar(&mut rng);
+            r[2 * i].scalar = Scalar::random(&mut rng);
+            r[2 * i + 1].scalar = Scalar::random(&mut rng);
         }
 
         Ok(Self {
@@ -173,8 +173,8 @@ impl<R: AsRef<[CurveScalar]> + AsMut<[CurveScalar]>> MlsagSignCtx<R> {
             I,
             key_image,
             output_commitment,
-            alpha_0: random_scalar(&mut rng),
-            alpha_1: random_scalar(&mut rng),
+            alpha_0: Scalar::random(&mut rng),
+            alpha_1: Scalar::random(&mut rng),
             ring_count: 0,
             real_input: None,
             real_challenge: None,

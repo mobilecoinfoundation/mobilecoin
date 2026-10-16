@@ -15,7 +15,7 @@ crc = { workspace = true }
 ctr = { workspace = true }
 curve25519-dalek = { workspace = true }
 displaydoc = { workspace = true }
-generic-array = { workspace = true, features = ["serde", "more_lengths"] }
+generic-array = { workspace = true, features = ["serde"] }
 hex_fmt = { workspace = true }
 hkdf = { workspace = true }
 lazy_static = { workspace = true, features = ["spin_no_std"] }

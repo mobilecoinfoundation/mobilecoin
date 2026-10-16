@@ -108,7 +108,7 @@ fn worker_thread(
         })
         .expect("request");
     let rng_record = &(resp.rng_records[0]);
-    let private_key = FromRandom::from_random(&mut rand::thread_rng());
+    let private_key = FromRandom::from_random(&mut rand::rng());
     let rng = VersionedKexRng::try_from_kex_pubkey(&rng_record.pubkey, &private_key).expect("kex");
     let search_keys = rng.take(num_search_keys).collect::<Vec<Vec<u8>>>();
 

@@ -19,7 +19,7 @@ use mc_transaction_core::{
 };
 use mc_util_parse::load_css_file;
 use mc_util_uri::ConsensusClientUri;
-use rand::{thread_rng, RngCore};
+use rand::{rng, Rng};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -567,7 +567,7 @@ fn parse_tokens_file(path: &str) -> Result<TokensConfig, mc_consensus_service_co
 
 fn get_or_generate_nonce(nonce: Option<[u8; NONCE_LENGTH]>) -> Vec<u8> {
     nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
         rng.fill_bytes(&mut nonce);
         nonce

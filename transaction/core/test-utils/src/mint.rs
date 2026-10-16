@@ -4,7 +4,7 @@
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use mc_transaction_core::{
     mint::{
         constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx,
@@ -22,7 +22,7 @@ use mc_util_from_random::FromRandom;
 /// `rng` - Randomness source.
 pub fn create_mint_config_tx_and_signers(
     token_id: TokenId,
-    rng: &mut (impl RngCore + CryptoRng),
+    rng: &mut impl CryptoRng,
 ) -> (MintConfigTx, Vec<Ed25519Pair>) {
     let signer_1 = Ed25519Pair::from_random(rng);
     let signer_2 = Ed25519Pair::from_random(rng);
@@ -84,10 +84,7 @@ pub fn create_mint_config_tx_and_signers(
 /// # Arguments
 /// `token_id` - The token id to use.
 /// `rng` - Randomness source.
-pub fn create_mint_config_tx(
-    token_id: TokenId,
-    rng: &mut (impl RngCore + CryptoRng),
-) -> MintConfigTx {
+pub fn create_mint_config_tx(token_id: TokenId, rng: &mut impl CryptoRng) -> MintConfigTx {
     let (mint_config_tx, _signers) = create_mint_config_tx_and_signers(token_id, rng);
     mint_config_tx
 }
@@ -131,7 +128,7 @@ pub fn create_mint_tx_to_recipient(
     signers: &[Ed25519Pair],
     amount: u64,
     recipient: &PublicAddress,
-    rng: &mut (impl RngCore + CryptoRng),
+    rng: &mut impl CryptoRng,
 ) -> MintTx {
     let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
     rng.fill_bytes(&mut nonce);
@@ -162,7 +159,7 @@ pub fn create_mint_tx(
     token_id: TokenId,
     signers: &[Ed25519Pair],
     amount: u64,
-    rng: &mut (impl RngCore + CryptoRng),
+    rng: &mut impl CryptoRng,
 ) -> MintTx {
     let public_address = PublicAddress::new(
         &RistrettoPublic::from_random(rng),

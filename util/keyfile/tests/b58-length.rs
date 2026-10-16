@@ -1,6 +1,6 @@
 use mc_account_keys::{AccountKey, RootIdentity};
 use mc_api::printable::{printable_wrapper, PrintableWrapper};
-use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
+use mc_util_test_helper::{run_with_several_seeds, CryptoRng};
 
 // The limit which we require b58 addresses to be less than
 const B58_ADDRESS_LIMIT: usize = 255;
@@ -10,11 +10,7 @@ const DOMAIN_LIMIT: usize = 34;
 // Try making a fog address with this domain length, (and an rng), several
 // times. Return true if the b58 encoded public address sometimes matches or
 // exceeds B58_ADDRESS_LIMIT
-fn test_b58pub_length<T: RngCore + CryptoRng>(
-    domain_length: usize,
-    num_trials: usize,
-    rng: &mut T,
-) -> bool {
+fn test_b58pub_length<T: CryptoRng>(domain_length: usize, num_trials: usize, rng: &mut T) -> bool {
     let url = format!("fog://{}", "a".repeat(domain_length));
     for _ in 0..num_trials {
         let root_id = RootIdentity::random_with_fog(

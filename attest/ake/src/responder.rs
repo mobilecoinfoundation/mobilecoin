@@ -17,7 +17,7 @@ use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
     NoiseDigest, ProtocolName,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// A trait containing default implementations, used to tack repeatable chunks
 /// of code onto the "Start" state for use below.
@@ -35,7 +35,7 @@ trait ResponderTransitionMixin {
         ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>: AsRef<str>;
 
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
-        csprng: &mut (impl CryptoRng + RngCore),
+        csprng: &mut impl CryptoRng,
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
         dcap_evidence: DcapEvidence,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
@@ -81,7 +81,7 @@ impl ResponderTransitionMixin for Start {
     }
 
     fn handle_response<KexAlgo, Cipher, DigestAlgo>(
-        csprng: &mut (impl CryptoRng + RngCore),
+        csprng: &mut impl CryptoRng,
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
         dcap_evidence: DcapEvidence,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
@@ -131,7 +131,7 @@ where
 {
     type Error = Error;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         csprng: &mut R,
         input: NodeAuthRequestInput<KexAlgo, Cipher, DigestAlgo>,
@@ -186,7 +186,7 @@ where
 {
     type Error = Error;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         csprng: &mut R,
         input: ClientAuthRequestInput<KexAlgo, Cipher, DigestAlgo>,

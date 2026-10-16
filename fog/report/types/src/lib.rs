@@ -128,7 +128,7 @@ pub type FogReportResponses = BTreeMap<String, ReportResponse>;
 mod test {
     use super::*;
     use mc_crypto_digestible::MerlinTranscript;
-    use mc_util_test_helper::{Rng, RngCore};
+    use mc_util_test_helper::{Rng, RngExt};
 
     /// A fog report used with EPID attestation, prior to DCAP attestation
     #[derive(Clone, Digestible, Eq, PartialEq, Serialize, Deserialize, Message)]
@@ -168,7 +168,7 @@ mod test {
     #[test]
     fn epid_report_works_with_new_dcap_report() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
-            let string_length = rng.gen_range(1..=100);
+            let string_length = rng.random_range(1..=100);
             let epid_report = EpidReport {
                 fog_report_id: mc_util_test_helper::random_str(string_length, &mut rng),
                 report: mc_blockchain_test_utils::make_verification_report(&mut rng),

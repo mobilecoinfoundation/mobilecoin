@@ -22,7 +22,7 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use mc_util_logger_macros::test_with_logger;
-use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
+use mc_util_test_helper::{CryptoRng, Rng, RngType, SeedableRng};
 use std::collections::HashMap;
 
 // Test the ingest enclave impl tx processing
@@ -164,7 +164,7 @@ fn test_ingest_enclave(logger: Logger) {
 }
 
 // This fog hint has a valid curve point, but invalid magic bytes
-fn make_malformed_fog_hint<T: RngCore + CryptoRng>(
+fn make_malformed_fog_hint<T: CryptoRng>(
     ingress_pubkey: &RistrettoPublic,
     rng: &mut T,
 ) -> EncryptedFogHint {
@@ -177,7 +177,7 @@ fn make_malformed_fog_hint<T: RngCore + CryptoRng>(
 }
 
 // This fog hint has valid magic bytes, but an invalid curve point
-fn make_malformed_fog_hint2<T: RngCore + CryptoRng>(
+fn make_malformed_fog_hint2<T: CryptoRng>(
     ingress_pubkey: &RistrettoPublic,
     rng: &mut T,
 ) -> EncryptedFogHint {

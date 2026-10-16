@@ -209,12 +209,12 @@ mod block_tests {
         tokens::Mob, tx::TxOutMembershipHash, Amount, Token,
     };
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{get_seeded_rng, CryptoRng, RngCore};
+    use mc_util_test_helper::{get_seeded_rng, CryptoRng, Rng};
 
     // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
-    fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
+    fn get_block_contents<RNG: CryptoRng>(rng: &mut RNG) -> BlockContents {
         let (key_images, outputs) = get_key_images_and_outputs(rng);
         BlockContents {
             key_images,
@@ -223,9 +223,7 @@ mod block_tests {
         }
     }
 
-    fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(
-        rng: &mut RNG,
-    ) -> (Vec<KeyImage>, Vec<TxOut>) {
+    fn get_key_images_and_outputs<RNG: CryptoRng>(rng: &mut RNG) -> (Vec<KeyImage>, Vec<TxOut>) {
         let recipient = AccountKey::random(rng);
 
         let outputs: Vec<TxOut> = (0..8)
@@ -252,7 +250,7 @@ mod block_tests {
         (key_images, outputs)
     }
 
-    fn get_block<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
+    fn get_block<RNG: CryptoRng>(rng: &mut RNG) -> Block {
         let bytes = [14u8; 32];
         let parent_id = BlockID::try_from(&bytes[..]).unwrap();
 
@@ -273,7 +271,7 @@ mod block_tests {
         )
     }
 
-    fn get_block_with_no_memo<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
+    fn get_block_with_no_memo<RNG: CryptoRng>(rng: &mut RNG) -> Block {
         let bytes = [14u8; 32];
         let parent_id = BlockID::try_from(&bytes[..]).unwrap();
 

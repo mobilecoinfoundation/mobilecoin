@@ -6,7 +6,7 @@ use crate::{SqlRecoveryDb, SqlRecoveryDbConnectionConfig};
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use mc_common::logger::{log, Logger};
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{distr::Alphanumeric, rng, RngExt};
 use retry::{
     delay::{jitter, Fixed},
     retry,
@@ -29,7 +29,7 @@ impl SqlRecoveryDbTestContext {
     pub fn new(logger: Logger) -> Self {
         let db_name: String = format!(
             "fog_test_{}",
-            thread_rng()
+            rng()
                 .sample_iter(&Alphanumeric)
                 .take(10)
                 .map(char::from)

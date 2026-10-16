@@ -31,7 +31,7 @@ pub use fixed_buffer::FixedBuffer;
 #[cfg(test)]
 mod test {
     use super::*;
-    use generic_array::arr;
+    use generic_array::GenericArray;
     use hex_literal::hex;
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
@@ -120,8 +120,8 @@ mod test {
     #[test]
     fn test_round_trip_fixed_length() {
         let algo = VersionedCryptoBox::default();
-        let plaintext1 = arr![u8; 0, 1, 2, 3, 4, 4, 3, 2];
-        let plaintext2 = arr![u8; 42, 42, 42, 42, 78, 78, 78, 78];
+        let plaintext1 = GenericArray::from_array([0, 1, 2, 3, 4, 4, 3, 2]);
+        let plaintext2 = GenericArray::from_array([42, 42, 42, 42, 78, 78, 78, 78]);
 
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let a = RistrettoPrivate::from_random(&mut rng);

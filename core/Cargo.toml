@@ -18,7 +18,7 @@ default = ["bip39"]
 [dependencies]
 curve25519-dalek = { workspace = true, features = ["digest"] }
 ed25519-dalek = { workspace = true }
-generic-array = { workspace = true, features = ["more_lengths"] }
+generic-array = { workspace = true }
 hkdf = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 sha2 = { workspace = true }

@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};
 use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 
 /// The public error messages which can be included in this construction
@@ -321,7 +321,7 @@ where
     fn do_write_message(
         &mut self,
         tokens: Vec<Token>,
-        csprng: &mut (impl CryptoRng + RngCore),
+        csprng: &mut impl CryptoRng,
         payload: &[u8],
     ) -> Result<Vec<u8>, HandshakeError> {
         // Create an output buffer large enough to encrypt our payload and any tokens
@@ -416,7 +416,7 @@ where
     /// patterns left in our handshake.
     pub fn write_message(
         mut self,
-        csprng: &mut (impl CryptoRng + RngCore),
+        csprng: &mut impl CryptoRng,
         payload: &[u8],
     ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         // This method should not be capable of being called when there are no

@@ -48,4 +48,4 @@ zeroize = { workspace = true }
 [dev-dependencies]
 mc-transaction-core = { workspace = true, features = [] }
 mc-util-from-random = { workspace = true }
-rand = { workspace = true }
+rand = { workspace = true, features = ["thread_rng"] }

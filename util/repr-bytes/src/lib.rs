@@ -54,7 +54,7 @@ pub use generic_array::{typenum, ArrayLength, GenericArray};
 pub trait ReprBytes: Sized {
     /// A typenum representing the size, in bytes, of the canonical
     /// representation
-    type Size: ArrayLength<u8>;
+    type Size: ArrayLength;
 
     /// The error type which may be returned by from_bytes.
     type Error: Display;

@@ -12,7 +12,7 @@ use mc_fog_recovery_db_iface::{
 };
 use mc_fog_types::view::{RngRecord, TxOutSearchResultCode};
 use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Helper: Get num blocks processed or panic
 pub fn get_num_blocks(db: &impl RecoveryDb) -> u64 {
@@ -27,10 +27,7 @@ pub fn get_num_blocks(db: &impl RecoveryDb) -> u64 {
 ///   result with junk queries
 /// - Also add random rng records for a random user, check that they see the new
 ///   rng records as expected depending on cursor value
-pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
-    rng: &mut (impl RngCore + CryptoRng),
-    db: &DB,
-) {
+pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(rng: &mut impl CryptoRng, db: &DB) {
     let start_height = get_num_blocks(db);
     let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
     db.new_ingress_key(&ingress_key, start_height).unwrap();
@@ -158,7 +155,7 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
 
 /// Basic tests that missed blocks reporting works as expected
 pub fn recovery_db_missed_blocks_reporting(
-    rng: &mut (impl RngCore + CryptoRng),
+    rng: &mut impl CryptoRng,
     db: &(impl RecoveryDb + ReportDb),
 ) {
     let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
@@ -231,10 +228,7 @@ pub fn recovery_db_missed_blocks_reporting(
 }
 
 /// Basic tests that rng records decommissioning works as expected
-pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
-    rng: &mut (impl RngCore + CryptoRng),
-    db: &DB,
-) {
+pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(rng: &mut impl CryptoRng, db: &DB) {
     let ingress_key = CompressedRistrettoPublic::from_random(rng);
     db.new_ingress_key(&ingress_key, 0).unwrap();
 
@@ -488,10 +482,7 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
 /// Basic tests that creating, checking on, and retiring ingress keys works as
 /// expected
-pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(
-    mut rng: &mut (impl RngCore + CryptoRng),
-    db: &DB,
-) {
+pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(mut rng: &mut impl CryptoRng, db: &DB) {
     let ingress_key1 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
 
     assert_eq!(db.get_ingress_key_status(&ingress_key1).unwrap(), None);
@@ -606,7 +597,7 @@ pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(
 // Exercise recovery db apis for writing and reading tx_rows
 fn test_recovery_db_txs_new_apis(
     ingest_invocation_id: &IngestInvocationId,
-    rng: &mut impl RngCore,
+    rng: &mut impl Rng,
     block_index: u64,
     num_txs: usize,
     db: &impl RecoveryDb,
@@ -664,7 +655,7 @@ fn assert_rng_record_rows_were_recovered(
 
 /// Helper for sampling a random block
 pub fn random_block(
-    rng: &mut impl RngCore,
+    rng: &mut impl Rng,
     block_index: u64,
     num_txs: usize,
 ) -> (Block, Vec<ETxOutRecord>) {
@@ -681,7 +672,7 @@ pub fn random_block(
 }
 
 /// Helper for sampling a random ETxOutRecord
-pub fn random_tx_row(rng: &mut impl RngCore) -> ETxOutRecord {
+pub fn random_tx_row(rng: &mut impl Rng) -> ETxOutRecord {
     let mut result: ETxOutRecord = Default::default();
     result.search_key.resize(16, 0);
     result.payload.resize(64, 0);
@@ -691,7 +682,7 @@ pub fn random_tx_row(rng: &mut impl RngCore) -> ETxOutRecord {
 }
 
 /// Helper for sampling a random KexRngPubkey
-pub fn random_kex_rng_pubkey(rng: &mut impl RngCore) -> KexRngPubkey {
+pub fn random_kex_rng_pubkey(rng: &mut impl Rng) -> KexRngPubkey {
     KexRngPubkey {
         public_key: random_32_bytes(rng).to_vec(),
         version: rng.next_u32(),
@@ -699,7 +690,7 @@ pub fn random_kex_rng_pubkey(rng: &mut impl RngCore) -> KexRngPubkey {
 }
 
 /// Helper for sampling a random 32 bytes
-pub fn random_32_bytes(rng: &mut impl RngCore) -> [u8; 32] {
+pub fn random_32_bytes(rng: &mut impl Rng) -> [u8; 32] {
     let mut temp = [0u8; 32];
     rng.fill_bytes(&mut temp);
     temp

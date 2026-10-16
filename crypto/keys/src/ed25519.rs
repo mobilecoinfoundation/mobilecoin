@@ -22,7 +22,7 @@ use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
     derive_repr_bytes_from_as_ref_and_try_from,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use zeroize::Zeroize;
 
 #[cfg(feature = "alloc")]
@@ -313,7 +313,7 @@ impl PrivateKey for Ed25519Private {
 }
 
 impl FromRandom for Ed25519Private {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> Self {
         let mut secret_key = [0u8; 32];
         csprng.fill_bytes(&mut secret_key);
         Self(secret_key)
@@ -386,10 +386,8 @@ impl From<Ed25519Private> for Ed25519Pair {
 }
 
 impl FromRandom for Ed25519Pair {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        let mut secret_key = [0u8; 32];
-        csprng.fill_bytes(&mut secret_key);
-        Self(SigningKey::from_bytes(&secret_key))
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> Self {
+        Self(SigningKey::generate(csprng))
     }
 }
 

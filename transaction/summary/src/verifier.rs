@@ -391,7 +391,7 @@ mod tests {
 
     use alloc::{vec, vec::Vec};
 
-    use rand::rngs::OsRng;
+    use rand::rng;
 
     use crate::{report::TotalKind, TxSummaryUnblindingReport};
     use mc_account_keys::{AccountKey, PublicAddress};
@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     fn test_report_outputs() {
-        let mut rng = OsRng {};
+        let mut rng = rng();
 
         // Setup accounts for test report
         let sender = AccountKey::random(&mut rng);

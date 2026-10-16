@@ -50,7 +50,7 @@ use displaydoc::Display;
 use lazy_static::lazy_static;
 use mc_oblivious_traits::{HeapORAMStorage, ORAMStorage, ORAMStorageCreator};
 use mc_sgx_compat::sync::Mutex;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use subtle::ConstantTimeEq;
 use typenum::{PartialDiv, PowerOfTwo, Sum, Unsigned, U8};
 
@@ -114,9 +114,9 @@ fn make_aes_nonce(block_idx: u64, block_ctr: u64) -> Iv<CipherType> {
 /// it returns.
 pub struct OcallORAMStorage<DataSize, MetaSize>
 where
-    DataSize: ArrayLength<u8> + PowerOfTwo + PartialDiv<U8>,
-    MetaSize: ArrayLength<u8> + Add<ExtraMetaSize>,
-    Sum<MetaSize, ExtraMetaSize>: ArrayLength<u8> + PartialDiv<U8>,
+    DataSize: ArrayLength + PowerOfTwo + PartialDiv<U8>,
+    MetaSize: ArrayLength + Add<ExtraMetaSize>,
+    Sum<MetaSize, ExtraMetaSize>: ArrayLength + PartialDiv<U8>,
 {
     // The id returned from untrusted for the untrusted-side storage if any, or 0 if none.
     allocation_id: u64,
@@ -143,12 +143,12 @@ where
 
 impl<DataSize, MetaSize> OcallORAMStorage<DataSize, MetaSize>
 where
-    DataSize: ArrayLength<u8> + PowerOfTwo + PartialDiv<U8>,
-    MetaSize: ArrayLength<u8> + Add<ExtraMetaSize>,
-    Sum<MetaSize, ExtraMetaSize>: ArrayLength<u8> + PartialDiv<U8>,
+    DataSize: ArrayLength + PowerOfTwo + PartialDiv<U8>,
+    MetaSize: ArrayLength + Add<ExtraMetaSize>,
+    Sum<MetaSize, ExtraMetaSize>: ArrayLength + PartialDiv<U8>,
 {
     /// Create a new oram storage object for count items, with particular RNG
-    pub fn new<Rng: RngCore + CryptoRng>(count: u64, rng: &mut Rng) -> Self {
+    pub fn new<R: CryptoRng>(count: u64, rng: &mut R) -> Self {
         assert!(count != 0);
         assert!(count.is_power_of_two(), "count must be a power of two");
 
@@ -209,9 +209,9 @@ where
 
 impl<DataSize, MetaSize> Drop for OcallORAMStorage<DataSize, MetaSize>
 where
-    DataSize: ArrayLength<u8> + PowerOfTwo + PartialDiv<U8>,
-    MetaSize: ArrayLength<u8> + Add<ExtraMetaSize>,
-    Sum<MetaSize, ExtraMetaSize>: ArrayLength<u8> + PartialDiv<U8>,
+    DataSize: ArrayLength + PowerOfTwo + PartialDiv<U8>,
+    MetaSize: ArrayLength + Add<ExtraMetaSize>,
+    Sum<MetaSize, ExtraMetaSize>: ArrayLength + PartialDiv<U8>,
 {
     fn drop(&mut self) {
         if self.allocation_id != 0 {
@@ -225,9 +225,9 @@ where
 
 impl<DataSize, MetaSize> ORAMStorage<DataSize, MetaSize> for OcallORAMStorage<DataSize, MetaSize>
 where
-    DataSize: ArrayLength<u8> + PowerOfTwo + PartialDiv<U8>,
-    MetaSize: ArrayLength<u8> + Add<ExtraMetaSize>,
-    Sum<MetaSize, ExtraMetaSize>: ArrayLength<u8> + PartialDiv<U8>,
+    DataSize: ArrayLength + PowerOfTwo + PartialDiv<U8>,
+    MetaSize: ArrayLength + Add<ExtraMetaSize>,
+    Sum<MetaSize, ExtraMetaSize>: ArrayLength + PartialDiv<U8>,
 {
     fn len(&self) -> u64 {
         self.count
@@ -464,17 +464,14 @@ pub struct OcallORAMStorageCreator;
 
 impl<DataSize, MetaSize> ORAMStorageCreator<DataSize, MetaSize> for OcallORAMStorageCreator
 where
-    DataSize: ArrayLength<u8> + PowerOfTwo + PartialDiv<U8> + 'static,
-    MetaSize: ArrayLength<u8> + Add<ExtraMetaSize> + 'static,
-    Sum<MetaSize, ExtraMetaSize>: ArrayLength<u8> + PartialDiv<U8> + 'static,
+    DataSize: ArrayLength + PowerOfTwo + PartialDiv<U8> + 'static,
+    MetaSize: ArrayLength + Add<ExtraMetaSize> + 'static,
+    Sum<MetaSize, ExtraMetaSize>: ArrayLength + PartialDiv<U8> + 'static,
 {
     type Output = OcallORAMStorage<DataSize, MetaSize>;
     type Error = UntrustedStorageError;
 
-    fn create<Rng: RngCore + CryptoRng>(
-        size: u64,
-        rng: &mut Rng,
-    ) -> Result<Self::Output, Self::Error> {
+    fn create<R: CryptoRng>(size: u64, rng: &mut R) -> Result<Self::Output, Self::Error> {
         Ok(Self::Output::new(size, rng))
     }
 }
@@ -523,8 +520,8 @@ mod helpers {
 
     // Helper for invoking the checkout OCALL safely
     pub fn checkout_ocall<
-        DataSize: ArrayLength<u8> + PartialDiv<U8>,
-        MetaSize: ArrayLength<u8> + PartialDiv<U8>,
+        DataSize: ArrayLength + PartialDiv<U8>,
+        MetaSize: ArrayLength + PartialDiv<U8>,
     >(
         id: u64,
         idx: &[u64],
@@ -547,8 +544,8 @@ mod helpers {
     }
     // Helper for invoking the checkin OCALL safely
     pub fn checkin_ocall<
-        DataSize: ArrayLength<u8> + PartialDiv<U8>,
-        MetaSize: ArrayLength<u8> + PartialDiv<U8>,
+        DataSize: ArrayLength + PartialDiv<U8>,
+        MetaSize: ArrayLength + PartialDiv<U8>,
     >(
         id: u64,
         idx: &[u64],
@@ -608,7 +605,7 @@ mod helpers {
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use typenum::{U1024, U16};
 
-    fn a64_bytes<N: ArrayLength<u8>>(src: u8) -> A64Bytes<N> {
+    fn a64_bytes<N: ArrayLength>(src: u8) -> A64Bytes<N> {
         let mut result = A64Bytes::<N>::default();
         for byte in result.as_mut_slice() {
             *byte = src;
@@ -616,7 +613,7 @@ mod helpers {
         result
     }
 
-    fn a8_bytes<N: ArrayLength<u8>>(src: u8) -> A8Bytes<N> {
+    fn a8_bytes<N: ArrayLength>(src: u8) -> A8Bytes<N> {
         let mut result = A8Bytes::<N>::default();
         for byte in result.as_mut_slice() {
             *byte = src;
@@ -671,8 +668,8 @@ mod helpers {
 
     // Mocks the checkout ocall
     pub fn checkout_ocall<
-        DataSize: ArrayLength<u8> + PartialDiv<U8>,
-        MetaSize: ArrayLength<u8> + PartialDiv<U8>,
+        DataSize: ArrayLength + PartialDiv<U8>,
+        MetaSize: ArrayLength + PartialDiv<U8>,
     >(
         id: u64,
         idx: &[u64],
@@ -698,8 +695,8 @@ mod helpers {
 
     // Mocks the checkin ocall
     pub fn checkin_ocall<
-        DataSize: ArrayLength<u8> + PartialDiv<U8>,
-        MetaSize: ArrayLength<u8> + PartialDiv<U8>,
+        DataSize: ArrayLength + PartialDiv<U8>,
+        MetaSize: ArrayLength + PartialDiv<U8>,
     >(
         id: u64,
         idx: &[u64],

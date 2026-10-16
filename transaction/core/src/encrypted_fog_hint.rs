@@ -22,7 +22,7 @@ use prost::{
     encoding::{bytes, skip_field, DecodeContext, WireType},
     DecodeError, Message,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -79,7 +79,7 @@ impl From<&[u8; ENCRYPTED_FOG_HINT_LEN]> for EncryptedFogHint {
     #[inline]
     fn from(a: &[u8; ENCRYPTED_FOG_HINT_LEN]) -> Self {
         Self {
-            bytes: GenericArray::clone_from_slice(&a[..]),
+            bytes: *GenericArray::from_slice(&a[..]),
         }
     }
 }
@@ -90,7 +90,7 @@ impl<'bytes> TryFrom<&'bytes [u8]> for EncryptedFogHint {
     fn try_from(slice: &'bytes [u8]) -> Result<Self, ()> {
         if slice.len() == ENCRYPTED_FOG_HINT_LEN {
             Ok(Self {
-                bytes: GenericArray::clone_from_slice(slice),
+                bytes: *GenericArray::from_slice(slice),
             })
         } else {
             Err(())
@@ -103,7 +103,7 @@ impl EncryptedFogHint {
     #[inline]
     pub fn new(a: &[u8; ENCRYPTED_FOG_HINT_LEN]) -> Self {
         Self {
-            bytes: GenericArray::clone_from_slice(&a[..]),
+            bytes: *GenericArray::from_slice(&a[..]),
         }
     }
 
@@ -121,7 +121,7 @@ impl EncryptedFogHint {
     /// random plaintext. There are several ways we could sample that
     /// distribution but the simplest is to do exactly that. This is also
     /// future-proof if we later tweak the cryptobox implementation.
-    pub fn fake_onetime_hint<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    pub fn fake_onetime_hint<T: CryptoRng>(rng: &mut T) -> Self {
         // Make plaintext of the right size
         let plaintext = GenericArray::<
             u8,

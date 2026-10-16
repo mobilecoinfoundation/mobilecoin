@@ -17,7 +17,7 @@ use mc_transaction_core::{
 use mc_transaction_extra::UnsignedTx;
 use mc_transaction_summary::TxOutSummaryUnblindingData;
 use mc_transaction_types::{Amount, BlockVersion, UnmaskedAmount};
-use rand::{CryptoRng, RngCore};
+use rand::CryptoRng;
 use serde::{Deserialize, Serialize};
 
 /// The information we need to build an output TxOut
@@ -134,7 +134,7 @@ impl TxBlueprint {
 
     /// A helper for converting a TxBlueprint into a signed transaction, by
     /// building an unsigned transaction and then signing it.
-    pub fn sign<O: TxOutputsOrdering, S: RingSigner + ?Sized, RNG: CryptoRng + RngCore>(
+    pub fn sign<O: TxOutputsOrdering, S: RingSigner + ?Sized, RNG: CryptoRng>(
         &self,
         signer: &S,
         memo_builder: impl MemoBuilder,

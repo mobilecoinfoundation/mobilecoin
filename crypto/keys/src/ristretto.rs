@@ -25,7 +25,7 @@ use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
     derive_repr_bytes_from_as_ref_and_try_from, derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
-use rand_core::{CryptoRng, RngCore, SeedableRng};
+use rand_core::{CryptoRng, SeedableRng};
 use rand_hc::Hc128Rng;
 use schnorrkel::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
@@ -46,21 +46,6 @@ use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 
 use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
-
-// curve25519-dalek 5 uses rand_core 0.10, while MobileCoin's randomness traits
-// still use rand_core 0.6. These reproduce the previous `random` methods
-// exactly: fill 64 bytes, then apply the corresponding uniform map.
-fn random_scalar<R: CryptoRng + RngCore>(csprng: &mut R) -> Scalar {
-    let mut bytes = [0u8; 64];
-    csprng.fill_bytes(&mut bytes);
-    Scalar::from_bytes_mod_order_wide(&bytes)
-}
-
-fn random_ristretto_point<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPoint {
-    let mut bytes = [0u8; 64];
-    csprng.fill_bytes(&mut bytes);
-    RistrettoPoint::from_uniform_bytes(&bytes)
-}
 
 /// A Ristretto-format private scalar
 #[derive(Clone, Copy, Default, Digestible, Zeroize)]
@@ -147,9 +132,7 @@ impl RistrettoPrivate {
         let keypair = secret_key.to_keypair();
 
         // SigningContext provides domain separation for signature
-        let mut t = MerlinTranscript::new(b"SigningContext");
-        t.append_message(b"", context);
-        t.append_message(b"sign-bytes", message);
+        let t = schnorrkel::signing_context(context).bytes(message);
         // NOTE: This signature is deterministic due to using the above nonce as the rng
         // seed
         let csprng = Hc128Rng::from_seed(nonce);
@@ -204,8 +187,8 @@ impl<T: Digestible> DigestibleSigner<RistrettoSignature, T> for RistrettoPrivate
 }
 
 impl FromRandom for RistrettoPrivate {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPrivate {
-        Self(random_scalar(csprng))
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> RistrettoPrivate {
+        Self(Scalar::random(csprng))
     }
 }
 
@@ -265,8 +248,8 @@ impl KexEphemeralPrivate for RistrettoEphemeralPrivate {
 }
 
 impl FromRandom for RistrettoEphemeralPrivate {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
-        Self(random_scalar(csprng))
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> Self {
+        Self(Scalar::random(csprng))
     }
 }
 
@@ -292,8 +275,8 @@ impl AsRef<RistrettoPoint> for RistrettoPublic {
 }
 
 impl FromRandom for RistrettoPublic {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPublic {
-        Self(random_ristretto_point(csprng))
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> RistrettoPublic {
+        Self(RistrettoPoint::random(csprng))
     }
 }
 
@@ -565,8 +548,8 @@ impl From<CompressedRistretto> for CompressedRistrettoPublic {
 }
 
 impl FromRandom for CompressedRistrettoPublic {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> CompressedRistrettoPublic {
-        Self::from(random_ristretto_point(csprng))
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> CompressedRistrettoPublic {
+        Self::from(RistrettoPoint::random(csprng))
     }
 }
 
