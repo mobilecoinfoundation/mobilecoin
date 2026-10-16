@@ -14,7 +14,10 @@ use mc_crypto_keys::Ed25519Pair;
 use mc_transaction_core_test_utils::{get_outputs, Amount, KeyImage};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{random_bytes_vec, AccountKey, CryptoRng, PublicAddress, Rng};
-use std::{ops::Range, str::FromStr};
+use std::{
+    ops::{Bound, RangeBounds},
+    str::FromStr,
+};
 
 /// Get blocks with custom contents to simulate conditions seen in production.
 ///
@@ -135,10 +138,23 @@ pub fn make_block_id(rng: &mut impl CryptoRng) -> BlockID {
 // Keep deterministic fixtures stable across the rand 0.8 -> 0.10 migration.
 // rand 0.10 changed the single-sample integer range algorithm, which otherwise
 // shifts the RNG stream used to construct later blocks in `get_blocks`.
-fn legacy_random_range(rng: &mut impl Rng, range: Range<u32>) -> u32 {
-    assert!(!range.is_empty());
-    let low = range.start;
-    let range_len = range.end - range.start;
+fn legacy_random_range(rng: &mut impl Rng, range: impl RangeBounds<u32>) -> u32 {
+    let low = match range.start_bound() {
+        Bound::Included(&value) => value,
+        Bound::Excluded(&value) => value.checked_add(1).expect("empty range"),
+        Bound::Unbounded => u32::MIN,
+    };
+    let high = match range.end_bound() {
+        Bound::Included(&value) => value,
+        Bound::Excluded(&value) => value.checked_sub(1).expect("empty range"),
+        Bound::Unbounded => u32::MAX,
+    };
+    assert!(low <= high, "empty range");
+    let range_len = high.wrapping_sub(low).wrapping_add(1);
+    // A wrapped length represents the full u32 range.
+    if range_len == 0 {
+        return rng.next_u32();
+    }
     let zone = (range_len << range_len.leading_zeros()).wrapping_sub(1);
 
     loop {
@@ -154,14 +170,14 @@ fn legacy_random_range(rng: &mut impl Rng, range: Range<u32>) -> u32 {
 /// Generate a [QuorumSet] with the specified number of randomly generated node
 /// IDs.
 pub fn make_quorum_set_with_count(num_nodes: u32, rng: &mut impl CryptoRng) -> QuorumSet {
-    let threshold = legacy_random_range(rng, 1..num_nodes + 1);
+    let threshold = legacy_random_range(rng, 1..=num_nodes);
     let node_ids = (0..num_nodes).map(test_node_id).collect();
     QuorumSet::new_with_node_ids(threshold, node_ids)
 }
 
 /// Generate a [QuorumSet] with a random number of randomly generated node IDs.
 pub fn make_quorum_set(rng: &mut impl CryptoRng) -> QuorumSet {
-    make_quorum_set_with_count(legacy_random_range(rng, 1..43), rng)
+    make_quorum_set_with_count(legacy_random_range(rng, 1..=42), rng)
 }
 
 /// Generate a [VerificationReport] from random bytes.
@@ -216,6 +232,33 @@ mod tests {
     use super::*;
     use mc_blockchain_types::compute_block_id;
     use mc_util_test_helper::get_seeded_rng;
+
+    #[test]
+    fn test_legacy_random_range_equivalent_bounds() {
+        let mut inclusive_rng = get_seeded_rng();
+        let mut exclusive_rng = get_seeded_rng();
+        for _ in 0..256 {
+            assert_eq!(
+                legacy_random_range(&mut inclusive_rng, 1..=42),
+                legacy_random_range(&mut exclusive_rng, 1..43),
+            );
+        }
+        assert_eq!(inclusive_rng.next_u32(), exclusive_rng.next_u32());
+    }
+
+    #[test]
+    fn test_legacy_random_range_integer_limits() {
+        let mut rng = get_seeded_rng();
+        assert_eq!(legacy_random_range(&mut rng, ..=0), 0);
+        assert_eq!(legacy_random_range(&mut rng, u32::MAX..), u32::MAX);
+
+        let mut full_range_rng = get_seeded_rng();
+        let mut raw_rng = get_seeded_rng();
+        assert_eq!(
+            legacy_random_range(&mut full_range_rng, ..),
+            raw_rng.next_u32(),
+        );
+    }
 
     #[test]
     /// [get_blocks] should return blocks that match the configuration specified
