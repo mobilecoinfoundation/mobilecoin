@@ -18,14 +18,12 @@
 //! 0 = hkdf_blake2b_aes_256_gcm
 
 use crate::{
-    aead::{
-        generic_array::{
-            arr,
-            sequence::Concat,
-            typenum::{Unsigned, U50},
-            GenericArray,
-        },
-        Error as AeadError,
+    aead::Error as AeadError,
+    generic_array::{
+        arr,
+        sequence::Concat,
+        typenum::{Unsigned, U50},
+        GenericArray,
     },
     hkdf_box::HkdfBox,
     traits::{CryptoBox, Error},

@@ -195,9 +195,9 @@ resolver = "3"
 rust-version = "1.99.0"
 
 [workspace.dependencies]
-aead = { version = "0.5", default-features = false }
-aes = "0.8"
-aes-gcm = "0.10"
+aead = { version = "0.6", default-features = false }
+aes = "0.9"
+aes-gcm = "0.11"
 aligned-cmov = "2"
 anyhow = "1"
 assert_cmd = "2"
@@ -221,7 +221,7 @@ cookie = "0.18"
 crc = { version = "3", default-features = false }
 criterion = "0.8"
 crossbeam-channel = "0.5"
-ctr = "0.9"
+ctr = "0.10"
 ctrlc = "3"
 curve25519-dalek = { version = "4", default-features = false }
 der = { version = "0.7", default-features = false }
@@ -261,7 +261,7 @@ maplit = "1"
 mbedtls = { version = "0.8", default-features = false }
 mbedtls-sys-auto = "2"
 mc-attestation-verifier = "0.4"
-mc-oblivious-aes-gcm = { version = "0.10", default-features = false }
+mc-oblivious-aes-gcm = { version = "0.11", default-features = false }
 mc-oblivious-map = "2"
 mc-oblivious-ram = "2"
 mc-oblivious-traits = "2"

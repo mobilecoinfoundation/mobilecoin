@@ -12,7 +12,6 @@ mc-util-serial = { workspace = true }
 
 aes-gcm = { workspace = true }
 displaydoc = { workspace = true }
-generic-array = { workspace = true }
 rand_core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 subtle = { workspace = true, features = ["i128"] }

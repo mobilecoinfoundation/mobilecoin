@@ -34,10 +34,7 @@ extern crate alloc;
 use alloc::vec;
 
 use aes::{
-    cipher::{
-        generic_array::GenericArray as CipherGenericArray, IvSizeUser, KeyIvInit, KeySizeUser,
-        StreamCipher,
-    },
+    cipher::{Iv, Key, KeyIvInit, KeySizeUser, StreamCipher},
     Aes256,
 };
 use aligned_cmov::{typenum, A64Bytes, A8Bytes, ArrayLength, GenericArray};
@@ -102,12 +99,11 @@ lazy_static! {
 /// bit security should be acceptable
 type CipherType = Ctr64BE<Aes256>;
 /// Parameters of the cipher as typedefs (which eases syntax)
-type NonceSize = <CipherType as IvSizeUser>::IvSize;
 type KeySize = <CipherType as KeySizeUser>::KeySize;
 
 // Make an aes nonce per the docu
-fn make_aes_nonce(block_idx: u64, block_ctr: u64) -> CipherGenericArray<u8, NonceSize> {
-    let mut result = GenericArray::<u8, NonceSize>::default();
+fn make_aes_nonce(block_idx: u64, block_ctr: u64) -> Iv<CipherType> {
+    let mut result = Iv::<CipherType>::default();
     result[0..8].copy_from_slice(&block_idx.to_le_bytes());
     result[8..16].copy_from_slice(&block_ctr.to_le_bytes());
     result
@@ -139,7 +135,7 @@ where
     // This buffer contains metadata + extended_metadata for each checked out block (see README.md)
     meta_scratch_buffer: Vec<A8Bytes<Sum<MetaSize, ExtraMetaSize>>>,
     // An AES key
-    aes_key: CipherGenericArray<u8, KeySize>,
+    aes_key: Key<CipherType>,
     // The key we use when hashing ciphertexts to make merkle tree
     // Keeping this secret makes the hash functionally a mac
     hash_key: GenericArray<u8, KeySize>,
@@ -188,7 +184,7 @@ where
             vec![Default::default(); (treetop_max_count * 2) as usize]
         };
 
-        let mut aes_key = GenericArray::<u8, KeySize>::default();
+        let mut aes_key = Key::<CipherType>::default();
         rng.fill_bytes(aes_key.as_mut_slice());
         let mut hash_key = GenericArray::<u8, KeySize>::default();
         rng.fill_bytes(hash_key.as_mut_slice());
