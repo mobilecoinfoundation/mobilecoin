@@ -84,7 +84,7 @@ mod tests {
         let input_secret = InputSecret {
             onetime_key_derive_data: OneTimeKeyDeriveData::SubaddressIndex(10),
             amount: Amount::new(10000, TokenId::from(10)),
-            blinding: Scalar::random(&mut rng),
+            blinding: Scalar::from(42u64),
         };
 
         let external_input_secret: external::InputSecret = (&input_secret).into();
@@ -97,7 +97,7 @@ mod tests {
                 RistrettoPrivate::from_random(&mut rng),
             ),
             amount: Amount::new(10000, TokenId::from(10)),
-            blinding: Scalar::random(&mut rng),
+            blinding: Scalar::from(43u64),
         };
 
         let external_input_secret: external::InputSecret = (&input_secret).into();

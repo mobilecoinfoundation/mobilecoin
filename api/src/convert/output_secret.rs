@@ -33,17 +33,14 @@ mod tests {
     use crate::external;
     use curve25519_dalek::scalar::Scalar;
     use mc_transaction_core::{ring_ct::OutputSecret, Amount, TokenId};
-    use rand::{rngs::StdRng, SeedableRng};
 
     // Test converting between external::OutputSecret and
     // mc_transaction_core::ring_ct::OutputSecret
     #[test]
     fn test_output_secret_conversion() {
-        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-
         let output_secret = OutputSecret {
             amount: Amount::new(10000, TokenId::from(10)),
-            blinding: Scalar::random(&mut rng),
+            blinding: Scalar::from(42u64),
         };
 
         let output_secret_external: external::OutputSecret = (&output_secret).into();

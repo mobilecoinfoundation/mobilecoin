@@ -40,7 +40,7 @@
 
 use crate::{domain_separators::BURN_ADDRESS_DOMAIN_SEPARATOR, PublicAddress};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-use mc_crypto_hashes::{Blake2b512, Digest};
+use mc_crypto_hashes::Blake2b512;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 /// The constant chosen for the burn address view private key.
@@ -74,10 +74,7 @@ pub fn burn_address() -> PublicAddress {
 // mc-transaction-core, we hash a string descriptor using blake2b and then use
 // this to hash-to-curve.
 fn burn_address_spend_public() -> RistrettoPoint {
-    let mut hasher = Blake2b512::new();
-    hasher.update(BURN_ADDRESS_DOMAIN_SEPARATOR);
-    let output: [u8; 64] = hasher.finalize().into();
-    RistrettoPoint::from_uniform_bytes(&output)
+    RistrettoPoint::hash_from_bytes::<Blake2b512>(BURN_ADDRESS_DOMAIN_SEPARATOR.as_bytes())
 }
 
 // The burn address view public key, in the curve25519-dalek ristretto point

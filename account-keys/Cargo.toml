@@ -23,7 +23,7 @@ default = [
 
 [dependencies]
 
-curve25519-dalek = { workspace = true }
+curve25519-dalek = { workspace = true, features = ["digest"] }
 # External dependencies
 displaydoc = { workspace = true }
 hex_fmt = { workspace = true }

@@ -209,7 +209,7 @@ base64 = { version = "0.23", default-features = false }
 bitflags = { version = "2", default-features = false }
 blake2 = { version = "0.11", default-features = false }
 bs58 = "0.5"
-bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
+bulletproofs-og = { version = "3.0.0-pre.2", default-features = false }
 cargo-emit = "0.2"
 cargo_metadata = "0.23"
 cc = "1"
@@ -223,18 +223,17 @@ criterion = "0.8"
 crossbeam-channel = "0.5"
 ctr = "0.10"
 ctrlc = "3"
-curve25519-dalek = { version = "4", default-features = false }
+curve25519-dalek = { version = "5", default-features = false }
 der = { version = "0.7", default-features = false }
 diesel = "2"
 diesel-derive-enum = "2"
 diesel_migrations = "2"
 digest = { version = "0.11", default-features = false }
-digest-10 = { package = "digest", version = "0.10", default-features = false }
 dirs = "7"
 displaydoc = { version = "0.2", default-features = false }
 dyn-clone = "1"
-ed25519 = { version = "2", default-features = false }
-ed25519-dalek = { version = "2", default-features = false }
+ed25519 = { version = "3", default-features = false }
+ed25519-dalek = { version = "3", default-features = false }
 fs_extra = "1"
 futures = "0.3"
 generic-array = { version = "0.14", default-features = false }
@@ -309,7 +308,7 @@ rjson = "0.3"
 rocket = "0.5"
 rusoto_core = { version = "0.48", default-features = false }
 rusoto_s3 = { version = "0.48", default-features = false }
-schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
+schnorrkel = { version = "0.11.6", default-features = false }
 scoped_threadpool = "0.1"
 secrecy = "0.10"
 semver = "1"
@@ -321,10 +320,9 @@ serde_json = { version = "1", default-features = false, features = ["alloc"] }
 serde_with = { version = "3", default-features = false }
 serial_test = "4"
 sha2 = { version = "0.11", default-features = false }
-sha2-10 = { package = "sha2", version = "0.10", default-features = false }
 sha3 = { version = "0.12", default-features = false }
 signal-hook = "0.4"
-signature = { version = "2", default-features = false }
+signature = { version = "3", default-features = false }
 siphasher = "1"
 slip10_ed25519 = "0.1"
 slog = { version = "2", default-features = false }
@@ -348,7 +346,7 @@ url = "2"
 walkdir = "2"
 wasm-bindgen = "0.2"
 wasm-bindgen-test = "0.3"
-x25519-dalek = { version = "2", default-features = false }
+x25519-dalek = { version = "3", default-features = false }
 x509-cert = { version = "0.2", default-features = false }
 x509-signature = "0.5"
 yaml-rust = "0.4"
@@ -542,7 +540,7 @@ lto = "thin"
 
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
-bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "92936118c1aeed883ce254354a62f98081b4dd62" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "f82523478a1dd813ca381c190175355d249a8123" }
@@ -551,8 +549,8 @@ mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 
-# Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
+# curve25519-dalek 5 support is merged upstream but not yet published.
+schnorrkel = { git = "https://github.com/w3f/schnorrkel.git", rev = "322b17595e7798485a1b5a9a83d9ca69bd41b2ed" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.

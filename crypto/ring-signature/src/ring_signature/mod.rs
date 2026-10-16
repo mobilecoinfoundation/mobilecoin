@@ -43,6 +43,23 @@ pub use self::{
 
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use rand_core::CryptoRngCore;
+
+// This is the implementation of `Scalar::random` from curve25519-dalek 4.
+// Keeping it here preserves rand_core 0.6 compatibility and consumes the same
+// 64 RNG bytes after upgrading to curve25519-dalek 5.
+pub(crate) fn random_scalar(rng: &mut impl CryptoRngCore) -> Scalar {
+    let mut bytes = [0u8; 64];
+    rng.fill_bytes(&mut bytes);
+    Scalar::from_bytes_mod_order_wide(&bytes)
+}
+
+#[cfg(test)]
+pub(crate) fn random_ristretto_point(rng: &mut impl CryptoRngCore) -> RistrettoPoint {
+    let mut bytes = [0u8; 64];
+    rng.fill_bytes(&mut bytes);
+    RistrettoPoint::from_uniform_bytes(&bytes)
+}
 
 /// The base point for blinding factors used with all amount commitments
 pub const B_BLINDING: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
@@ -107,9 +124,8 @@ pub fn generators(token_id: u64) -> PedersenGens {
         hasher.update(buf);
     }
 
-    let output: [u8; 64] = hasher.finalize().into();
     PedersenGens {
-        B: RistrettoPoint::from_uniform_bytes(&output),
+        B: RistrettoPoint::from_hash(hasher),
         B_blinding: B_BLINDING,
     }
 }
@@ -119,8 +135,7 @@ pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
     let mut hasher = Blake2b512::new();
     hasher.update(HASH_TO_POINT_DOMAIN_TAG);
     hasher.update(ristretto_public.to_bytes());
-    let output: [u8; 64] = hasher.finalize().into();
-    RistrettoPoint::from_uniform_bytes(&output)
+    RistrettoPoint::from_hash(hasher)
 }
 
 // Compute the ring "challenge" H( message | key_image | L0 | R0 | L1 ).
@@ -138,8 +153,7 @@ pub(crate) fn challenge(
     hasher.update(L0.compress().as_bytes());
     hasher.update(R0.compress().as_bytes());
     hasher.update(L1.compress().as_bytes());
-    let output: [u8; 64] = hasher.finalize().into();
-    Scalar::from_bytes_mod_order_wide(&output)
+    Scalar::from_hash(hasher)
 }
 
 /// A reduced representation of a TxOut, appropriate for making MLSAG
