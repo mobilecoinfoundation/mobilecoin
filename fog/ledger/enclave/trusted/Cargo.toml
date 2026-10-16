@@ -70,7 +70,7 @@ overflow-checks = false
 mc-attestation-verifier = { git = "https://github.com/mobilecoinfoundation/attestation.git", rev = "5d69473154f8ed7e84402d83a01428acedf4904e" }
 
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
-bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "3598c592a8c05f50c4bff94e85baae9129c83aca" }
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "e7ba85f847fd2beaa67448711de60d6dfd6ac052" }
 
 # rand 0.10 support is not yet published for these MobileCoin crates.
 aligned-array = { git = "https://github.com/eranrund/aligned-array.git", rev = "fa257e47b3a05ed885a57d2a71c134908734621b" }

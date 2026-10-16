@@ -179,7 +179,7 @@ dependencies = [
 [[package]]
 name = "bulletproofs-og"
 version = "3.0.0-pre.2"
-source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=3598c592a8c05f50c4bff94e85baae9129c83aca#3598c592a8c05f50c4bff94e85baae9129c83aca"
+source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=e7ba85f847fd2beaa67448711de60d6dfd6ac052#e7ba85f847fd2beaa67448711de60d6dfd6ac052"
 dependencies = [
  "byteorder",
  "clear_on_drop",
