@@ -14,7 +14,7 @@ use mc_crypto_keys::Ed25519Pair;
 use mc_transaction_core_test_utils::{get_outputs, Amount, KeyImage};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{random_bytes_vec, AccountKey, CryptoRng, PublicAddress, Rng};
-use std::str::FromStr;
+use std::{ops::Range, str::FromStr};
 
 /// Get blocks with custom contents to simulate conditions seen in production.
 ///
@@ -135,13 +135,14 @@ pub fn make_block_id(rng: &mut impl CryptoRng) -> BlockID {
 // Keep deterministic fixtures stable across the rand 0.8 -> 0.10 migration.
 // rand 0.10 changed the single-sample integer range algorithm, which otherwise
 // shifts the RNG stream used to construct later blocks in `get_blocks`.
-fn legacy_random_range(rng: &mut impl Rng, low: u32, high: u32) -> u32 {
-    assert!(low < high);
-    let range = high - low;
-    let zone = (range << range.leading_zeros()).wrapping_sub(1);
+fn legacy_random_range(rng: &mut impl Rng, range: Range<u32>) -> u32 {
+    assert!(!range.is_empty());
+    let low = range.start;
+    let range_len = range.end - range.start;
+    let zone = (range_len << range_len.leading_zeros()).wrapping_sub(1);
 
     loop {
-        let product = u64::from(rng.next_u32()) * u64::from(range);
+        let product = u64::from(rng.next_u32()) * u64::from(range_len);
         let hi = (product >> 32) as u32;
         let lo = product as u32;
         if lo <= zone {
@@ -153,20 +154,20 @@ fn legacy_random_range(rng: &mut impl Rng, low: u32, high: u32) -> u32 {
 /// Generate a [QuorumSet] with the specified number of randomly generated node
 /// IDs.
 pub fn make_quorum_set_with_count(num_nodes: u32, rng: &mut impl CryptoRng) -> QuorumSet {
-    let threshold = legacy_random_range(rng, 1, num_nodes + 1);
+    let threshold = legacy_random_range(rng, 1..num_nodes + 1);
     let node_ids = (0..num_nodes).map(test_node_id).collect();
     QuorumSet::new_with_node_ids(threshold, node_ids)
 }
 
 /// Generate a [QuorumSet] with a random number of randomly generated node IDs.
 pub fn make_quorum_set(rng: &mut impl CryptoRng) -> QuorumSet {
-    make_quorum_set_with_count(legacy_random_range(rng, 1, 43), rng)
+    make_quorum_set_with_count(legacy_random_range(rng, 1..43), rng)
 }
 
 /// Generate a [VerificationReport] from random bytes.
 pub fn make_verification_report(rng: &mut impl CryptoRng) -> VerificationReport {
     let sig = random_bytes_vec(42, rng).into();
-    let chain_len = legacy_random_range(rng, 2, 42);
+    let chain_len = legacy_random_range(rng, 2..42);
     let chain = (1..=chain_len)
         .map(|n| random_bytes_vec(n as usize, rng))
         .collect();
