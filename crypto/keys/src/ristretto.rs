@@ -16,7 +16,7 @@ use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
-use digest::generic_array::typenum::{U32, U64};
+use digest_10::generic_array::typenum::{U32, U64};
 use hex_fmt::HexFmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};

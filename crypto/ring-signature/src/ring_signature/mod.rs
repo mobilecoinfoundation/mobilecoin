@@ -107,8 +107,9 @@ pub fn generators(token_id: u64) -> PedersenGens {
         hasher.update(buf);
     }
 
+    let output: [u8; 64] = hasher.finalize().into();
     PedersenGens {
-        B: RistrettoPoint::from_hash(hasher),
+        B: RistrettoPoint::from_uniform_bytes(&output),
         B_blinding: B_BLINDING,
     }
 }
@@ -118,7 +119,8 @@ pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
     let mut hasher = Blake2b512::new();
     hasher.update(HASH_TO_POINT_DOMAIN_TAG);
     hasher.update(ristretto_public.to_bytes());
-    RistrettoPoint::from_hash(hasher)
+    let output: [u8; 64] = hasher.finalize().into();
+    RistrettoPoint::from_uniform_bytes(&output)
 }
 
 // Compute the ring "challenge" H( message | key_image | L0 | R0 | L1 ).
@@ -136,7 +138,8 @@ pub(crate) fn challenge(
     hasher.update(L0.compress().as_bytes());
     hasher.update(R0.compress().as_bytes());
     hasher.update(L1.compress().as_bytes());
-    Scalar::from_hash(hasher)
+    let output: [u8; 64] = hasher.finalize().into();
+    Scalar::from_bytes_mod_order_wide(&output)
 }
 
 /// A reduced representation of a TxOut, appropriate for making MLSAG

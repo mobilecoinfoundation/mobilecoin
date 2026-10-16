@@ -1,9 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::KexRngCore;
-use digest::generic_array::{
-    sequence::Split,
-    typenum::{U16, U32},
+use generic_array::{
+    typenum::{Unsigned, U16, U32},
     GenericArray,
 };
 use mc_crypto_hashes::{Blake2b512, Digest};
@@ -27,7 +26,6 @@ impl KexRngCore<Ristretto> for KexRng20201124 {
         hasher.update(secret.as_slice());
         hasher.update(counter.to_le_bytes());
         let result = hasher.finalize();
-        let (output, _): (Output, _) = result.split();
-        output
+        Output::clone_from_slice(&result[..Self::OutputSize::USIZE])
     }
 }

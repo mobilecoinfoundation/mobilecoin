@@ -7,7 +7,7 @@
 
 #![no_std]
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use sha2::Sha512;
 

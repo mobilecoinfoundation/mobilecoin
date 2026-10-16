@@ -7,7 +7,7 @@ use crate::{
     DigestSigner, DigestVerifier, DistinguishedEncoding, KeyError, PrivateKey, PublicKey,
     SignatureEncoding, SignatureError, Signer, Verifier,
 };
-use digest::{
+use digest_10::{
     generic_array::typenum::{U32, U64},
     Digest,
 };
@@ -504,11 +504,10 @@ mod ed25519_tests {
     use super::*;
     use crate::{ReprBytes, Unsigned};
     use mc_crypto_digestible::Digestible;
-    use mc_crypto_hashes::PseudoMerlin;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use semver::{Version, VersionReq};
-    use sha2::Sha512;
+    use sha2_10::Sha512;
     use std::{
         eprintln,
         process::Command,
@@ -521,6 +520,33 @@ mod ed25519_tests {
         a: u64,
         b: Vec<u8>,
         c: u32,
+    }
+
+    // Ed25519-dalek 2.x uses digest 0.10, while mc-crypto-hashes has moved to
+    // digest 0.11. Keep this test transcript on the version required by the
+    // prehashed-signature API until the signature crates are upgraded together.
+    struct Sha512Transcript {
+        inner: Sha512,
+    }
+
+    impl DigestTranscript for Sha512Transcript {
+        fn new() -> Self {
+            Self {
+                inner: Sha512::new(),
+            }
+        }
+
+        fn append_bytes(&mut self, context: &'static [u8], data: impl AsRef<[u8]>) {
+            self.inner.update((context.len() as u32).to_le_bytes());
+            self.inner.update(context);
+            let data = data.as_ref();
+            self.inner.update((data.len() as u32).to_le_bytes());
+            self.inner.update(data);
+        }
+
+        fn extract_digest(self, output: &mut [u8; 32]) {
+            output.copy_from_slice(&self.inner.finalize()[..32]);
+        }
     }
 
     // FIXME: use test vectors from the RFC.
@@ -549,13 +575,13 @@ mod ed25519_tests {
             c: 54321,
         };
 
-        let mut hasher = PseudoMerlin(Sha512::default());
+        let mut hasher = Sha512Transcript::new();
         data.append_to_transcript(b"test", &mut hasher);
         let sig = pair
             .try_sign_digest(hasher.inner)
             .expect("Failed to sign digest");
 
-        let mut hasher = PseudoMerlin(Sha512::default());
+        let mut hasher = Sha512Transcript::new();
         data.append_to_transcript(b"test", &mut hasher);
         pair.verify_digest(hasher.inner, &sig)
             .expect("Failed to validate digest signature");

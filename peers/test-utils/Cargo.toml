@@ -26,7 +26,7 @@ hex = { workspace = true }
 rand = { workspace = true }
 rand_hc = { workspace = true }
 retry = { workspace = true }
-sha2 = { workspace = true, features = ["asm"] }
+sha2 = { workspace = true }
 
 [dev-dependencies]
 mc-common = { workspace = true, features = ["loggers"] }

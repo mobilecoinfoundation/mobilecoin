@@ -10,10 +10,10 @@ rust-version = { workspace = true }
 mc-test-vectors-definitions = { workspace = true }
 
 [build-dependencies]
-mc-account-keys = { workspace = true }
+mc-account-keys = { workspace = true, features = ["default"] }
 mc-core = { workspace = true, features = ["bip39"] }
 mc-test-vectors-definitions = { workspace = true }
 mc-util-test-vector = { workspace = true }
 
-hex = { workspace = true }
+hex = { workspace = true, features = ["alloc"] }
 tiny-bip39 = { workspace = true }

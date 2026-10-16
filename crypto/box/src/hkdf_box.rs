@@ -14,7 +14,7 @@ use core::{
     marker::PhantomData,
     ops::{Add, Sub},
 };
-use digest::{core_api::BlockSizeUser, Digest};
+use digest::{block_api::BlockSizeUser, Digest};
 use hkdf::SimpleHkdf;
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_oblivious_aes_gcm::{CtAeadDecrypt, CtDecryptResult};

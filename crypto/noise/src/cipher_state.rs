@@ -7,7 +7,7 @@ use alloc::vec;
 use aead::{Aead, Error as AeadError, Key, KeyInit, Nonce, Payload};
 use alloc::vec::Vec;
 use core::cmp::min;
-use digest::{core_api::BlockSizeUser, Digest};
+use digest::{block_api::BlockSizeUser, Digest};
 use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use secrecy::{ExposeSecret, SecretSlice};

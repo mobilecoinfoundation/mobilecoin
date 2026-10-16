@@ -108,19 +108,19 @@ pub trait Fingerprintable {
 }
 
 /// A fingerprint object, generic over digest output size
-pub struct Fingerprint<D: digest::OutputSizeUser>(
-    digest::generic_array::GenericArray<u8, D::OutputSize>,
+pub struct Fingerprint<D: digest_10::OutputSizeUser>(
+    digest_10::generic_array::GenericArray<u8, D::OutputSize>,
 );
 
 /// Debug impl for fingerprint objects
-impl<D: digest::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
+impl<D: digest_10::OutputSizeUser> core::fmt::Debug for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Fingerprint({self})")
     }
 }
 
 /// Display impl for fingerprint objects
-impl<D: digest::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
+impl<D: digest_10::OutputSizeUser> core::fmt::Display for Fingerprint<D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for i in 0..self.0.len() {
             match i < (self.0.len() - 1) {
@@ -257,7 +257,7 @@ pub trait Kex {
 #[cfg(test)]
 mod test {
     use alloc::string::ToString;
-    use sha2::Sha256;
+    use sha2_10::Sha256;
 
     use super::Fingerprint;
 

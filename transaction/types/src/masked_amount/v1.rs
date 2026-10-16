@@ -218,7 +218,8 @@ fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
     let mut hasher = Blake2b512::new();
     hasher.update(AMOUNT_VALUE_DOMAIN_TAG);
     hasher.update(shared_secret.to_bytes());
-    let scalar = Scalar::from_hash(hasher);
+    let output: [u8; 64] = hasher.finalize().into();
+    let scalar = Scalar::from_bytes_mod_order_wide(&output);
     let mut temp = [0u8; 8];
     temp.copy_from_slice(&scalar.as_bytes()[0..8]);
     u64::from_le_bytes(temp)
@@ -245,7 +246,8 @@ fn get_blinding(shared_secret: &RistrettoPublic) -> Scalar {
     let mut hasher = Blake2b512::new();
     hasher.update(AMOUNT_BLINDING_DOMAIN_TAG);
     hasher.update(shared_secret.to_bytes());
-    Scalar::from_hash(hasher)
+    let output: [u8; 64] = hasher.finalize().into();
+    Scalar::from_bytes_mod_order_wide(&output)
 }
 
 #[cfg(test)]
