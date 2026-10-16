@@ -23,7 +23,7 @@ use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Private, X25519Public};
 use mc_crypto_multisig::SignerSet;
-use mc_rand::{McRng, RngCore};
+use mc_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
@@ -55,7 +55,7 @@ impl Default for ConsensusServiceMockEnclave {
 }
 
 impl ConsensusServiceMockEnclave {
-    pub fn new(block_version: BlockVersion, csprng: &mut (impl RngCore + CryptoRng)) -> Self {
+    pub fn new(block_version: BlockVersion, csprng: &mut impl CryptoRng) -> Self {
         let signing_keypair = Arc::new(Ed25519Pair::from_random(csprng));
         let minting_trust_root_keypair = Arc::new(Ed25519Pair::from_random(csprng));
         let blockchain_config = Arc::new(Mutex::new(BlockchainConfig {

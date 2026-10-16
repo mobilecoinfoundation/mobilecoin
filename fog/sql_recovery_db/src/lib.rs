@@ -1618,7 +1618,7 @@ mod tests {
     use mc_fog_report_types::AttestationEvidence;
     use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, thread_rng, SeedableRng};
+    use rand::{rng, rngs::StdRng, SeedableRng};
 
     #[test_with_logger]
     fn test_new_ingest_invocation(logger: Logger) {
@@ -3603,7 +3603,7 @@ mod tests {
         let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
         let db = db_test_context.get_db_instance();
 
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
         db.new_ingress_key(&ingress_key, 0).unwrap();
 
@@ -3640,7 +3640,7 @@ mod tests {
         let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
         let db = db_test_context.get_db_instance();
 
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
         db.new_ingress_key(&ingress_key, 0).unwrap();
 

@@ -268,7 +268,7 @@ mod test {
 
     use super::*;
     use mc_common::logger::test_with_logger;
-    use mc_rand::{CryptoRng, RngCore};
+    use mc_rand::CryptoRng;
     use rand::{rngs::StdRng, SeedableRng};
     use tempfile::TempDir;
 
@@ -292,7 +292,7 @@ mod test {
         (env, t3_store)
     }
 
-    fn rnd_transparent_transaction(rng: &mut (impl CryptoRng + RngCore)) -> TransparentTransaction {
+    fn rnd_transparent_transaction(rng: &mut impl CryptoRng) -> TransparentTransaction {
         let mut sender_address_hash = [0u8; 16];
         rng.fill_bytes(&mut sender_address_hash);
 

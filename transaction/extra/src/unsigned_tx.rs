@@ -12,7 +12,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_summary::{TxOutSummaryUnblindingData, TxSummaryUnblindingData};
 use mc_transaction_types::{Amount, BlockVersion, TokenId, TxSummary, UnmaskedAmount};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 
 /// A structure containing an unsigned transaction together with the data
@@ -41,7 +41,7 @@ pub struct UnsignedTx {
 
 impl UnsignedTx {
     /// Sign the transaction signing data with a given signer
-    pub fn sign<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
+    pub fn sign<RNG: CryptoRng, S: RingSigner + ?Sized>(
         &self,
         signer: &S,
         fee_map: Option<&FeeMap>,
@@ -83,7 +83,7 @@ impl UnsignedTx {
     /// * TxSummaryUnblindingData
     /// * ExtendedMessageDigest This is a digest used in connection with the
     ///   TxSummary
-    pub fn get_signing_data<RNG: CryptoRng + RngCore>(
+    pub fn get_signing_data<RNG: CryptoRng>(
         &self,
         rng: &mut RNG,
     ) -> Result<

@@ -5,7 +5,7 @@
 //! The `Scalar` struct holds an integer \\(s < 2\^{255} \\) which
 //! represents an element of \\(\mathbb Z / \ell\\).
 
-use super::{random_scalar, Error};
+use super::Error;
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
@@ -13,7 +13,7 @@ use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_debug_and_display_hex_from_as_ref,
     derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use zeroize::Zeroize;
 
 #[cfg(feature = "prost")]
@@ -47,9 +47,9 @@ impl CurveScalar {
 }
 
 impl FromRandom for CurveScalar {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> Self {
         Self {
-            scalar: random_scalar(csprng),
+            scalar: Scalar::random(csprng),
         }
     }
 }

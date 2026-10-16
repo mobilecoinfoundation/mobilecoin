@@ -16,7 +16,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::{CryptoRng, Rng};
 use mc_transaction_builder::{
     InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilder,
     TransactionBuilder, TxOutContext,
@@ -32,7 +32,7 @@ use mc_transaction_extra::{
     SignedContingentInput, SignedContingentInputAmounts, TxOutConfirmationNumber,
 };
 use mc_util_uri::FogUri;
-use rand::Rng;
+use rand::RngExt;
 use std::{
     cmp::{max, Reverse},
     collections::BTreeMap,
@@ -190,7 +190,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         logger: Logger,
     ) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         Self {
             ledger_db,
             mobilecoind_db,
@@ -464,7 +464,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
         // Build and return the TxProposal object
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
@@ -564,7 +564,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         // Build and return the TxProposal object
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let sci = Self::build_sci(
             utxo,
             global_index,
@@ -691,7 +691,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }];
 
         // Build and return the TxProposal object
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
@@ -796,7 +796,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }];
 
         // Build and return the TxProposal object
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let tx_proposal = Self::build_tx_proposal(
             &inputs_with_proofs,
             rings,
@@ -1047,10 +1047,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Randomly sample `num_requested` indices of TxOuts to use as mixins.
         let mixin_indices: Vec<u64> = {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let mut samples: HashSet<u64> = HashSet::default();
             while samples.len() < num_requested {
-                let index = rng.gen_range(0..num_txos);
+                let index = rng.random_range(0..num_txos);
                 if excluded_tx_out_indices.contains(&index) {
                     continue;
                 }
@@ -1118,7 +1118,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
         fee_map: FeeMap,
-        rng: &mut (impl RngCore + CryptoRng),
+        rng: &mut impl CryptoRng,
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
         // Check that number of rings matches number of inputs.
@@ -1435,7 +1435,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         tombstone_block: BlockIndex,
         fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
-        rng: &mut (impl RngCore + CryptoRng),
+        rng: &mut impl CryptoRng,
         _logger: &Logger,
     ) -> Result<SignedContingentInput, Error> {
         // Check that we have at least one destination.

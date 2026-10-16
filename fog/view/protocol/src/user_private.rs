@@ -9,7 +9,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_types::view::TxOutRecord;
 use mc_transaction_core::fog_hint::FogHint;
 use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -43,7 +43,7 @@ impl UserPrivate {
 
     /// Make a random user (random private key)
     #[inline]
-    pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    pub fn random<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             view_key: RistrettoPrivate::from_random(rng),
         }

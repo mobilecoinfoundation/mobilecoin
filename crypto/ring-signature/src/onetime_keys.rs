@@ -271,8 +271,8 @@ mod tests {
     // Should return `r * D`.
     fn test_create_tx_public_key() {
         run_with_several_seeds(|mut rng| {
-            let r = crate::ring_signature::random_scalar(&mut rng);
-            let D = crate::ring_signature::random_ristretto_point(&mut rng);
+            let r = Scalar::random(&mut rng);
+            let D = RistrettoPoint::random(&mut rng);
 
             let expected = RistrettoPublic::from(r * D);
 

@@ -22,7 +22,7 @@ use mc_crypto_ring_signature::{
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -183,7 +183,7 @@ impl SigningData {
     ///
     /// Returns:
     /// * The SigningData
-    pub fn new<CSPRNG: RngCore + CryptoRng>(
+    pub fn new<CSPRNG: CryptoRng>(
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
         rings: &[InputRing],
@@ -228,7 +228,7 @@ impl SigningData {
     /// * The extended message digest
     ///
     /// (The latter two are MCIP #52 and only relevant on small HW wallets)
-    pub fn new_with_summary<CSPRNG: RngCore + CryptoRng>(
+    pub fn new_with_summary<CSPRNG: CryptoRng>(
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
         rings: &[InputRing],
@@ -479,7 +479,7 @@ impl SigningData {
     ///
     /// This must be passed the same set of rings used to create the signing
     /// data.
-    pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
+    pub fn sign<CSPRNG: CryptoRng, S: RingSigner + ?Sized>(
         self,
         rings: &[InputRing],
         signer: &S,
@@ -581,7 +581,7 @@ impl SignatureRctBulletproofs {
     /// * `fee` - Value of the implicit fee output.
     /// * `signer` - The ring signer entity (with spend private key)
     /// * `rng` - randomness
-    pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
+    pub fn sign<CSPRNG: CryptoRng, S: RingSigner + ?Sized>(
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
         input_rings: &[InputRing],
@@ -612,7 +612,7 @@ impl SignatureRctBulletproofs {
     /// * `output_commitments` - Output amount commitments.
     /// * `fee` - Amount of the implicit fee output. commitment
     /// * `rng` - randomness
-    pub fn verify<CSPRNG: RngCore + CryptoRng>(
+    pub fn verify<CSPRNG: CryptoRng>(
         &self,
         block_version: BlockVersion,
         tx_prefix: &TxPrefix,
@@ -875,12 +875,6 @@ impl SignatureRctBulletproofs {
     }
 }
 
-fn random_scalar(rng: &mut (impl RngCore + CryptoRng)) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_bytes_mod_order_wide(&bytes)
-}
-
 /// Computes appropriate pseudo-output blinding values for each input ring.
 ///
 /// Arguments:
@@ -895,7 +889,7 @@ fn random_scalar(rng: &mut (impl RngCore + CryptoRng)) -> Scalar {
 ///
 /// Post-conditions:
 /// * The sum_of_output blindings - sum_of_pseudo_output blindings = 0
-fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
+fn compute_pseudo_output_blindings<CSPRNG: CryptoRng>(
     rings: &[InputRing],
     output_secrets: &[OutputSecret],
     rng: &mut CSPRNG,
@@ -940,7 +934,7 @@ fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
                         // except this one.
                         sum_of_output_blindings - running_sum
                     } else {
-                        let random = random_scalar(rng);
+                        let random = Scalar::random(rng);
                         running_sum += random;
                         random
                     }
@@ -974,7 +968,7 @@ mod rct_bulletproofs_tests {
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{RngType, SeedableRng};
     use proptest::prelude::*;
-    use rand_core::RngCore;
+    use rand_core::Rng;
 
     extern crate std;
 
@@ -1001,7 +995,7 @@ mod rct_bulletproofs_tests {
             generators(self.tx_prefix.fee_token_id)
         }
 
-        fn random<RNG: RngCore + CryptoRng>(
+        fn random<RNG: CryptoRng>(
             block_version: BlockVersion,
             num_inputs: usize,
             num_mixins: usize,
@@ -1010,7 +1004,7 @@ mod rct_bulletproofs_tests {
             Self::random_mixed(block_version, num_inputs, num_mixins, 1, rng)
         }
 
-        fn random_mixed<RNG: RngCore + CryptoRng>(
+        fn random_mixed<RNG: CryptoRng>(
             block_version: BlockVersion,
             num_inputs: usize,
             num_mixins: usize,
@@ -1045,7 +1039,7 @@ mod rct_bulletproofs_tests {
                     let generator = generator_cache.get(tx_prefix.fee_token_id.into());
                     let commitment = {
                         let value = rng.next_u64();
-                        let blinding = random_scalar(rng);
+                        let blinding = Scalar::random(rng);
                         CompressedCommitment::new(value, blinding, generator)
                     };
                     ring_members.push(ReducedTxOut {
@@ -1058,7 +1052,7 @@ mod rct_bulletproofs_tests {
                 let onetime_private_key = RistrettoPrivate::from_random(rng);
 
                 let value = rng.next_u64();
-                let blinding = random_scalar(rng);
+                let blinding = Scalar::random(rng);
 
                 let token_id = TokenId::from(token_ids[i % token_ids.len()]);
                 let generator = generator_cache.get(token_id);
@@ -1098,7 +1092,7 @@ mod rct_bulletproofs_tests {
             let output_secrets: Vec<_> = rings
                 .iter()
                 .map(|ring| {
-                    let blinding = random_scalar(rng);
+                    let blinding = Scalar::random(rng);
                     OutputSecret {
                         amount: ring.input_secret.amount,
                         blinding,
@@ -1151,10 +1145,7 @@ mod rct_bulletproofs_tests {
             self.tx_prefix.fee_token_id = *amount.token_id;
         }
 
-        fn sign<RNG: RngCore + CryptoRng>(
-            &self,
-            rng: &mut RNG,
-        ) -> Result<SignatureRctBulletproofs, Error> {
+        fn sign<RNG: CryptoRng>(&self, rng: &mut RNG) -> Result<SignatureRctBulletproofs, Error> {
             SignatureRctBulletproofs::sign(
                 self.block_version,
                 &self.tx_prefix,
@@ -1166,7 +1157,7 @@ mod rct_bulletproofs_tests {
             )
         }
 
-        fn sign_without_balance_check<RNG: RngCore + CryptoRng>(
+        fn sign_without_balance_check<RNG: CryptoRng>(
             &self,
             rng: &mut RNG,
         ) -> Result<SignatureRctBulletproofs, Error> {
@@ -1383,7 +1374,7 @@ mod rct_bulletproofs_tests {
                 let values = [13; 6];
                 let blindings: Vec<Scalar> = values
                     .iter()
-                    .map(|_value| random_scalar(&mut rng))
+                    .map(|_value| Scalar::random(&mut rng))
                     .collect();
                 let (range_proof, _commitments) =
                     generate_range_proofs(&values, &blindings, &params.generator(), &mut rng).unwrap();
@@ -1422,7 +1413,7 @@ mod rct_bulletproofs_tests {
                 let values = [13; 6];
                 let blindings: Vec<Scalar> = values
                     .iter()
-                    .map(|_value| random_scalar(&mut rng))
+                    .map(|_value| Scalar::random(&mut rng))
                     .collect();
                 let (range_proof, _commitments) =
                     generate_range_proofs(&values, &blindings, &params.generator(), &mut rng).unwrap();

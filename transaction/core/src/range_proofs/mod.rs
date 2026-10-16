@@ -13,7 +13,7 @@ use bulletproofs_og::{BulletproofGens, PedersenGens as BPPedersenGens, RangeProo
 use curve25519_dalek::{ristretto::CompressedRistretto, scalar::Scalar};
 use mc_crypto_ring_signature::PedersenGens;
 use merlin::Transcript;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 pub mod error;
 use crate::domain_separators::BULLETPROOF_DOMAIN_TAG;
@@ -40,7 +40,7 @@ lazy_static! {
 /// # Returns
 /// The proof and the Pedersen commitments from `values` and `blindings` (padded
 /// to a power of 2).
-pub fn generate_range_proofs<T: RngCore + CryptoRng>(
+pub fn generate_range_proofs<T: CryptoRng>(
     values: &[u64],
     blindings: &[Scalar],
     pedersen_generators: &PedersenGens,
@@ -76,7 +76,7 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
 /// `commitments` - Commitments to secret values that lie in the range [0,2^64).
 /// `pedersen_generators` - Pedersen generators on which the commitments are
 /// based `rng` - Randomness.
-pub fn check_range_proofs<T: RngCore + CryptoRng>(
+pub fn check_range_proofs<T: CryptoRng>(
     range_proof: &RangeProof,
     commitments: &[CompressedRistretto],
     pedersen_generators: &PedersenGens,
@@ -135,12 +135,7 @@ pub mod tests {
     use crate::ring_signature::generators;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use mc_util_test_helper::get_seeded_rng;
-
-    fn random_scalar(rng: &mut impl rand_core::CryptoRngCore) -> Scalar {
-        let mut bytes = [0u8; 64];
-        rng.fill_bytes(&mut bytes);
-        Scalar::from_bytes_mod_order_wide(&bytes)
-    }
+    use rand_core::Rng;
 
     fn generate_and_check(values: Vec<u64>, blindings: Vec<Scalar>) {
         let mut rng = get_seeded_rng();
@@ -157,7 +152,7 @@ pub mod tests {
     fn test_pow2_number_of_inputs() {
         let mut rng = get_seeded_rng();
         let vals: Vec<u64> = (0..2).map(|_| rng.next_u64()).collect();
-        let blindings: Vec<Scalar> = vals.iter().map(|_| random_scalar(&mut rng)).collect();
+        let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
         generate_and_check(vals, blindings);
     }
 
@@ -165,7 +160,7 @@ pub mod tests {
     fn test_not_pow2_number_of_inputs() {
         let mut rng = get_seeded_rng();
         let vals: Vec<u64> = (0..9).map(|_| rng.next_u64()).collect();
-        let blindings: Vec<Scalar> = vals.iter().map(|_| random_scalar(&mut rng)).collect();
+        let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
         generate_and_check(vals, blindings);
     }
 
@@ -177,13 +172,13 @@ pub mod tests {
 
         let num_values: usize = 4;
         let values: Vec<u64> = (0..num_values).map(|_| rng.next_u64()).collect();
-        let blindings: Vec<Scalar> = (0..num_values).map(|_| random_scalar(&mut rng)).collect();
+        let blindings: Vec<Scalar> = (0..num_values).map(|_| Scalar::random(&mut rng)).collect();
         let (proof, commitments) =
             generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
         // Modify a commitment.
         let mut wrong_commitments = commitments;
-        wrong_commitments[0] = RistrettoPoint::mul_base(&random_scalar(&mut rng)).compress();
+        wrong_commitments[0] = RistrettoPoint::mul_base(&Scalar::random(&mut rng)).compress();
 
         match check_range_proofs(&proof, &wrong_commitments, &generators(0), &mut rng) {
             Ok(_) => panic!(),

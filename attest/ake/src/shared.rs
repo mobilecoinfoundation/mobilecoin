@@ -9,7 +9,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use mc_crypto_noise::{CipherError, NoiseCipher};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// Ready + Ciphertext => Ready + Vec-of-plaintext
 impl<Cipher> Transition<Ready<Cipher>, Ciphertext<'_, '_>, Vec<u8>> for Ready<Cipher>
@@ -18,7 +18,7 @@ where
 {
     type Error = CipherError;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         _csprng: &mut R,
         input: Ciphertext,
@@ -36,7 +36,7 @@ where
 {
     type Error = CipherError;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         _csprng: &mut R,
         input: Plaintext,
@@ -54,7 +54,7 @@ where
 {
     type Error = CipherError;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         _csprng: &mut R,
         input: NonceCiphertext<'_, '_>,
@@ -73,7 +73,7 @@ where
 {
     type Error = CipherError;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         _csprng: &mut R,
         input: NoncePlaintext<'_, '_>,

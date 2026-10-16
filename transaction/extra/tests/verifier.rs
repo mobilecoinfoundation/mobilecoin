@@ -21,13 +21,13 @@ use mc_transaction_summary::{verify_tx_summary, TotalKind, TransactionEntity};
 use mc_util_from_random::FromRandom;
 use mc_util_serial::encode;
 use rand::{rngs::StdRng, SeedableRng};
-use rand_core::CryptoRngCore;
+use rand_core::CryptoRng;
 use std::collections::BTreeMap;
 
 // Get an unsigned Tx and the sender account keys with the maximum allowed size
 // right now
 fn get_current_max_size_transaction(
-    rng: &mut impl CryptoRngCore,
+    rng: &mut impl CryptoRng,
 ) -> (UnsignedTx, AccountKey, AccountKey) {
     let sender = AccountKey::random_with_fog(rng);
     let recipient = AccountKey::random_with_fog(rng);
@@ -68,7 +68,7 @@ fn get_current_max_size_transaction(
 // Get an unsigned Tx and the sender account keys with the minimum possible size
 // right now
 fn get_current_min_size_transaction(
-    rng: &mut impl CryptoRngCore,
+    rng: &mut impl CryptoRng,
 ) -> (UnsignedTx, AccountKey, AccountKey) {
     let sender = AccountKey::random_with_fog(rng);
     let recipient = AccountKey::random_with_fog(rng);

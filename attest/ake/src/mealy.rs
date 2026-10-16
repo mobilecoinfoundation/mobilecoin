@@ -3,7 +3,7 @@
 //! A set of traits used to implement a rusty deterministic finite state
 //! transducer
 
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// A marker trait indicating a particular structure is a valid input for a
 /// transducer
@@ -31,7 +31,7 @@ pub trait Transition<NextState: State, InputEvent: Input, OutputEvent: Output>: 
     /// Consume this state and an input to produce a new state and output.
     ///
     /// Resulting states may not have transitions defined for them.
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         csprng: &mut R,
         input: InputEvent,

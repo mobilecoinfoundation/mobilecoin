@@ -4,7 +4,7 @@ use crate::{Error, KexRngPubkey, StoredRng};
 use generic_array::{ArrayLength, GenericArray};
 use mc_crypto_keys::Kex;
 use mc_util_repr_bytes::ReprBytes;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// Trait representing an object that can be created from a key exchange
 /// message, which might also contain versioning info.
@@ -12,7 +12,7 @@ use rand_core::{CryptoRng, RngCore};
 pub trait NewFromKex<KexAlgo: Kex>: Sized {
     /// Create self by ephemeral-static key exchange, using a new random private
     /// key
-    fn new_from_ephemeral_static<T: RngCore + CryptoRng>(
+    fn new_from_ephemeral_static<T: CryptoRng>(
         rng: &mut T,
         pubkey: &KexAlgo::Public,
     ) -> (KexRngPubkey, Self);
@@ -43,7 +43,7 @@ pub trait NewFromKex<KexAlgo: Kex>: Sized {
 /// constant, and a VERSION_ID number, which should be unique across this crate.
 pub trait KexRngCore<KexAlgo: Kex> {
     /// The number of bytes in an output
-    type OutputSize: ArrayLength<u8>;
+    type OutputSize: ArrayLength;
 
     /// The VERSION_ID used by this KexRngCore.
     /// These must be distinct per implementation that is incorporated into

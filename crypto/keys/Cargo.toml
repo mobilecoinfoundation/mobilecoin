@@ -38,11 +38,11 @@ default = [
 [dependencies]
 
 base64 = { workspace = true }
-curve25519-dalek = { workspace = true }
+curve25519-dalek = { workspace = true, features = ["rand_core"] }
 digest = { workspace = true }
 displaydoc = { workspace = true }
 ed25519 = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["digest"] }
+ed25519-dalek = { workspace = true, features = ["digest", "rand_core"] }
 hex = { workspace = true }
 hex_fmt = { workspace = true }
 

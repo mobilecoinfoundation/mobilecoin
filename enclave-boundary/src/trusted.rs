@@ -6,7 +6,7 @@ use mc_common::HashMap;
 use mc_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_types::sgx_status_t;
-use rand_core::RngCore;
+use rand_core::Rng;
 
 pub struct RetryBuffer {
     retry_data: Mutex<HashMap<u64, Vec<u8>>>,

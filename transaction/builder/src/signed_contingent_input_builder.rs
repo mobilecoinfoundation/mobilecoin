@@ -22,13 +22,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_extra::{SignedContingentInput, TxOutConfirmationNumber};
 use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
-
-fn random_scalar(rng: &mut (impl RngCore + CryptoRng)) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_bytes_mod_order_wide(&bytes)
-}
+use rand_core::CryptoRng;
 
 /// Helper utility for creating signed contingent inputs with required outputs,
 /// and attaching fog hint and memos as appropriate.
@@ -154,7 +148,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_required_output<RNG: CryptoRng + RngCore>(
+    pub fn add_required_output<RNG: CryptoRng>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -203,7 +197,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///   change output. These can both be obtained from an account key, but
     ///   this API does not require the account key.
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_required_change_output<RNG: CryptoRng + RngCore>(
+    pub fn add_required_change_output<RNG: CryptoRng>(
         &mut self,
         amount: Amount,
         change_destination: &ReservedSubaddresses,
@@ -246,7 +240,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn add_required_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+    fn add_required_output_with_fog_hint_address<RNG: CryptoRng>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -312,7 +306,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_partial_fill_output<RNG: CryptoRng + RngCore>(
+    pub fn add_partial_fill_output<RNG: CryptoRng>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -360,7 +354,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///   change output. These can both be obtained from an account key, but
     ///   this API does not require the account key.
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_partial_fill_change_output<RNG: CryptoRng + RngCore>(
+    pub fn add_partial_fill_change_output<RNG: CryptoRng>(
         &mut self,
         amount: Amount,
         change_destination: &ReservedSubaddresses,
@@ -402,7 +396,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn make_partial_fill_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+    fn make_partial_fill_output_with_fog_hint_address<RNG: CryptoRng>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -459,7 +453,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     }
 
     /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore>(
+    pub fn build<RNG: CryptoRng>(
         mut self,
         ring_signer: &impl RingSigner,
         rng: &mut RNG,
@@ -518,7 +512,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         tx_in.proofs.clear();
         let ring = SignableInputRing::try_from(self.input_credentials)?;
 
-        let pseudo_output_blinding = random_scalar(rng);
+        let pseudo_output_blinding = Scalar::random(rng);
 
         let mlsag = ring_signer.sign(
             &tx_in

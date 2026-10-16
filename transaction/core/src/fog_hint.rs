@@ -14,7 +14,7 @@ use mc_crypto_box::{
 use mc_crypto_keys::{
     CompressedRistrettoPublic, ReprBytes, Ristretto, RistrettoPrivate, RistrettoPublic,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use zeroize::Zeroize;
 
@@ -89,7 +89,7 @@ impl FogHint {
     ///
     /// # Returns
     /// * Encrypted fog hint payload, cannot fail
-    pub fn encrypt<T: RngCore + CryptoRng>(
+    pub fn encrypt<T: CryptoRng>(
         &self,
         ingest_server_pubkey: &RistrettoPublic,
         rng: &mut T,
@@ -166,7 +166,7 @@ mod testing {
     use super::*;
     use mc_util_from_random::FromRandom;
 
-    fn random_fog_hint<T: RngCore + CryptoRng>(rng: &mut T) -> FogHint {
+    fn random_fog_hint<T: CryptoRng>(rng: &mut T) -> FogHint {
         let view = RistrettoPublic::from_random(rng);
         FogHint::new(view)
     }

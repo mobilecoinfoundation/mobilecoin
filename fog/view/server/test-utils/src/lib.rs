@@ -362,14 +362,14 @@ pub fn add_block_data(
     .unwrap()
 }
 
-/// Wait until first server has added stuff to ORAM. Since all view servers
-/// should load ORAM at the same time, we could choose to wait for any view
-/// server.
+/// Wait until every server has added its assigned blocks to ORAM.
 pub fn wait_for_highest_block_to_load(
     db: &SqlRecoveryDb,
     store_servers: &[TestViewServer],
+    store_block_ranges: &[BlockRange],
     logger: &Logger,
 ) {
+    assert_eq!(store_servers.len(), store_block_ranges.len());
     let mut allowed_tries = 1000usize;
     loop {
         let db_num_blocks = db
@@ -377,19 +377,33 @@ pub fn wait_for_highest_block_to_load(
             .unwrap()
             .map(|v| v + 1) // convert index to count
             .unwrap_or(0);
-        let server_num_blocks = get_highest_processed_block_count(store_servers);
-        if server_num_blocks > db_num_blocks {
+        let server_num_blocks: Vec<_> = store_servers
+            .iter()
+            .map(|server| server.highest_processed_block_count())
+            .collect();
+        let max_server_num_blocks = server_num_blocks.iter().copied().max().unwrap_or_default();
+        if max_server_num_blocks > db_num_blocks {
             panic!(
-                "Server num blocks should never be larger than db num blocks: {server_num_blocks} > {db_num_blocks}"
+                "Server num blocks should never be larger than db num blocks: \
+                 {max_server_num_blocks} > {db_num_blocks}"
             );
         }
-        if server_num_blocks == db_num_blocks {
-            log::info!(logger, "Stopping, block {}", server_num_blocks);
+        let all_shards_loaded =
+            server_num_blocks
+                .iter()
+                .zip(store_block_ranges)
+                .all(|(&processed, range)| {
+                    // A shard whose range has not started has no blocks to load.
+                    db_num_blocks <= range.start_block
+                        || processed >= range.end_block.min(db_num_blocks)
+                });
+        if all_shards_loaded {
+            log::info!(logger, "Stopping, store block counts {server_num_blocks:?}");
             break;
         }
         log::info!(
             logger,
-            "Waiting for server to catch up to db... {} < {}",
+            "Waiting for servers to catch up to db... {:?}, db block count {}",
             server_num_blocks,
             db_num_blocks
         );

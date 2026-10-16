@@ -75,7 +75,7 @@ use mc_transaction_core::{
 // blocking
 use once_cell::race::OnceBox;
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// Domain separator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
@@ -159,7 +159,7 @@ impl SgxConsensusEnclave {
         }
     }
 
-    fn encrypt_well_formed_tx<R: RngCore + CryptoRng>(
+    fn encrypt_well_formed_tx<R: CryptoRng>(
         &self,
         well_formed_tx: &WellFormedTx,
         rng: &mut R,
@@ -212,7 +212,7 @@ impl SgxConsensusEnclave {
         root_element: &TxOutMembershipElement,
         config: &BlockchainConfig,
         ct_min_fees: &CtTokenMap<u64>,
-        rng: &mut (impl RngCore + CryptoRng),
+        rng: &mut impl CryptoRng,
     ) -> Result<Vec<Tx>> {
         // Short-circuit if there are no transactions.
         if well_formed_encrypted_txs_with_proofs.is_empty() {
@@ -1052,7 +1052,7 @@ mod tests {
         sign_mint_tx_prefix, AccountKey,
     };
     use mc_util_from_random::FromRandom;
-    use rand_core::SeedableRng;
+    use rand_core::{Rng, SeedableRng};
     use rand_hc::Hc128Rng;
 
     // The private keys here are only used by tests. They do not need to be

@@ -399,7 +399,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         _request: (),
     ) -> Result<api::GenerateRootEntropyResponse, RpcStatus> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let root_id = RootIdentity::from_random(&mut rng);
         Ok(api::GenerateRootEntropyResponse {
             root_entropy: root_id.root_entropy.as_ref().to_vec(),
@@ -2800,7 +2800,7 @@ mod test {
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_ledger_db::test_utils::add_txos_and_key_images_to_ledger;
     use mc_mobilecoind_api::{decoded_memo, transaction_memo_rth};
-    use mc_rand::RngCore;
+    use mc_rand::Rng;
     use mc_transaction_builder::{MemoBuilder, RTHMemoBuilder};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, RING_SIZE},

@@ -21,7 +21,7 @@ use mc_util_repr_bytes::{derive_core_cmp_from_as_ref, derive_repr_bytes_from_as_
 #[cfg(feature = "alloc")]
 use mc_util_repr_bytes::derive_into_vec_from_repr_bytes;
 
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 #[cfg(feature = "serde")]
 use serde::{
     de::{Deserialize, Deserializer, Error as DeserializeError, Visitor},
@@ -29,7 +29,7 @@ use serde::{
 };
 
 use sha2::Sha256;
-use x25519_dalek::{PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
+use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 
 /// The length in bytes of canonical representation of x25519 (public and
@@ -359,12 +359,7 @@ impl From<&X25519Public> for alloc::vec::Vec<u8> {
 }
 
 /// A KeyPair for use with an X25519 key exchange.
-///
-/// x25519-dalek 3's `EphemeralSecret` expects rand_core 0.10, while
-/// MobileCoin's randomness traits use rand_core 0.6. The private wrapper
-/// remains single-use even though its internal representation is a
-/// `StaticSecret`.
-pub struct X25519EphemeralPrivate(StaticSecret);
+pub struct X25519EphemeralPrivate(EphemeralSecret);
 
 impl PrivateKey for X25519EphemeralPrivate {
     type Public = X25519Public;
@@ -381,10 +376,8 @@ impl KexEphemeralPrivate for X25519EphemeralPrivate {
 }
 
 impl FromRandom for X25519EphemeralPrivate {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> X25519EphemeralPrivate {
-        let mut secret_key = [0u8; X25519_LEN];
-        csprng.fill_bytes(&mut secret_key);
-        X25519EphemeralPrivate(StaticSecret::from(secret_key))
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> X25519EphemeralPrivate {
+        X25519EphemeralPrivate(EphemeralSecret::random_from_rng(csprng))
     }
 }
 
@@ -406,7 +399,7 @@ impl PrivateKey for X25519Private {
 }
 
 impl FromRandom for X25519Private {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> X25519Private {
+    fn from_random<R: CryptoRng>(csprng: &mut R) -> X25519Private {
         let mut secret_key = [0u8; X25519_LEN];
         csprng.fill_bytes(&mut secret_key);
         X25519Private(StaticSecret::from(secret_key))

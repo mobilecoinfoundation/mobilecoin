@@ -16,9 +16,10 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{SgxEnvironment, SgxMode};
 use p256::{
     ecdsa::{signature::Signer, Signature, SigningKey},
+    elliptic_curve::Generate,
     pkcs8::{EncodePrivateKey, LineEnding},
 };
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
     env, fs,
@@ -203,7 +204,8 @@ fn create_certificate<'a>(
     issuer: impl Into<Option<Issuer<'a>>>,
     subject: &Subject,
 ) -> (String, SigningKey) {
-    let subject_signing_key = SigningKey::random(&mut *RNG.lock().expect("mutex poisoned"));
+    let subject_signing_key =
+        SigningKey::generate_from_rng(&mut *RNG.lock().expect("mutex poisoned"));
 
     // No issuer means it's self signed
     let issuer = issuer.into().unwrap_or_else(|| Issuer {
@@ -300,7 +302,7 @@ fn dcap_extensions() -> (Vec<u8>, Vec<u8>) {
 
     let ppid = sequence_of_2(
         "1.2.840.113741.1.13.1.1",
-        OctetString::new("1234562890123456").expect("failed to create octet string"),
+        OctetString::new(b"1234562890123456".to_vec()).expect("failed to create octet string"),
     );
 
     let mut tcb_sequence = SequenceOf::<_, 18>::new();
@@ -320,14 +322,14 @@ fn dcap_extensions() -> (Vec<u8>, Vec<u8>) {
     tcb_sequence.add(pce_svn).expect("failed to add pce svn");
     let cpu_svn = sequence_of_2(
         "1.2.840.113741.1.13.1.2.18",
-        OctetString::new("0000000000000000").expect("failed to create octet string"),
+        OctetString::new(b"0000000000000000".to_vec()).expect("failed to create octet string"),
     );
     tcb_sequence.add(cpu_svn).expect("failed to add cpu svn");
     let tcb = sequence_of_2("1.2.840.113741.1.13.1.2", tcb_sequence);
 
     let pce_id = sequence_of_2(
         "1.2.840.113741.1.13.1.3",
-        OctetString::new("12").expect("failed to create octet string"),
+        OctetString::new(b"12".to_vec()).expect("failed to create octet string"),
     );
     let fmspc = sequence_of_2(
         "1.2.840.113741.1.13.1.4",

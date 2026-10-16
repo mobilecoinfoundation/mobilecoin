@@ -22,7 +22,7 @@ default = ["serde", "alloc", "curve25519-dalek/default"]
 curve25519-dalek = { workspace = true }
 # External dependencies
 displaydoc = { workspace = true }
-generic-array = { workspace = true, features = ["serde", "more_lengths"] }
+generic-array = { workspace = true, features = ["serde"] }
 hex_fmt = { workspace = true }
 
 # MobileCoin dependencies

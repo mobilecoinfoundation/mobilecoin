@@ -22,7 +22,7 @@ use mc_transaction_core::{
     Amount, Token,
 };
 use mc_transaction_core_test_utils::{get_outputs, MockFogResolver, NoKeysRingSigner};
-use mc_util_test_helper::{CryptoRng, RngCore};
+use mc_util_test_helper::CryptoRng;
 use std::{cmp::Ordering, path::Path};
 use tempfile::TempDir;
 
@@ -48,7 +48,7 @@ impl TxOutputsOrdering for InverseTxOutputsOrdering {
 /// * `recipient` - The recipient of the new transaction.
 /// * `tombstone_block` - The tombstone block for the new transaction.
 /// * `rng` - The randomness used by this function
-pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
+pub fn create_transaction<L: Ledger, R: CryptoRng>(
     block_version: BlockVersion,
     ledger: &L,
     tx_out: &TxOut,
@@ -91,7 +91,7 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
 /// * `amount` - Amount to send.
 /// * `tombstone_block` - The tombstone block for the new transaction.
 /// * `rng` - The randomness used by this function
-pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
+pub fn create_transaction_with_amount<L: Ledger, R: CryptoRng>(
     block_version: BlockVersion,
     ledger: &L,
     tx_out: &TxOut,
@@ -128,7 +128,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 /// * `rng` - The randomness used by this function
 pub fn create_transaction_with_amount_and_comparer<
     L: Ledger,
-    R: RngCore + CryptoRng,
+    R: CryptoRng,
     O: TxOutputsOrdering,
 >(
     block_version: BlockVersion,
@@ -168,7 +168,7 @@ pub fn create_transaction_with_amount_and_comparer<
 /// * `rng` - The randomness used by this function
 pub fn create_transaction_with_amount_and_comparer_and_recipients<
     L: Ledger,
-    R: RngCore + CryptoRng,
+    R: CryptoRng,
     O: TxOutputsOrdering,
 >(
     block_version: BlockVersion,
@@ -286,7 +286,7 @@ pub fn initialize_ledger(
     ledger: &mut LedgerDB,
     n_blocks: u64,
     account_key: &AccountKey,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> Vec<BlockData> {
     let value: u64 = INITIALIZE_LEDGER_AMOUNT;
     let token_id = Mob::ID;
@@ -355,7 +355,7 @@ pub fn add_block_to_ledger(
     recipients: &[PublicAddress],
     output_amount: Amount,
     key_images: &[KeyImage],
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> Result<BlockData, Error> {
     let recipient_and_amount = recipients
         .iter()
@@ -377,7 +377,7 @@ pub fn add_txos_to_ledger(
     ledger_db: &mut LedgerDB,
     block_version: BlockVersion,
     outputs: &[TxOut],
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> Result<BlockData, Error> {
     add_txos_and_key_images_to_ledger(
         ledger_db,
@@ -401,7 +401,7 @@ pub fn add_txos_and_key_images_to_ledger(
     block_version: BlockVersion,
     outputs: Vec<TxOut>,
     key_images: Vec<KeyImage>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> Result<BlockData, Error> {
     let block_contents = BlockContents {
         key_images,
@@ -422,7 +422,7 @@ pub fn add_block_contents_to_ledger(
     ledger_db: &mut LedgerDB,
     block_version: BlockVersion,
     block_contents: BlockContents,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> Result<BlockData, Error> {
     let num_blocks = ledger_db.num_blocks()?;
     let new_block = if num_blocks > 0 {

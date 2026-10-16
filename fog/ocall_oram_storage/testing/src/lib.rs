@@ -14,7 +14,7 @@ mod testing {
     use mc_util_test_helper::run_with_several_seeds;
     use typenum::{U1024, U16};
 
-    fn a64_bytes<N: ArrayLength<u8>>(src: u8) -> A64Bytes<N> {
+    fn a64_bytes<N: ArrayLength>(src: u8) -> A64Bytes<N> {
         let mut result = A64Bytes::<N>::default();
         for byte in result.as_mut_slice() {
             *byte = src;
@@ -22,7 +22,7 @@ mod testing {
         result
     }
 
-    fn a8_bytes<N: ArrayLength<u8>>(src: u8) -> A8Bytes<N> {
+    fn a8_bytes<N: ArrayLength>(src: u8) -> A8Bytes<N> {
         let mut result = A8Bytes::<N>::default();
         for byte in result.as_mut_slice() {
             *byte = src;

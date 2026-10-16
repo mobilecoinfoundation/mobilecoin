@@ -973,7 +973,7 @@ mod ledger_db_test {
     };
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::get_seeded_rng;
-    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use rand::{rngs::StdRng, Rng, SeedableRng};
     use tempfile::TempDir;
     use test::Bencher;
 

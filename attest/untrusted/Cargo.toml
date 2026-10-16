@@ -24,7 +24,7 @@ mc-sgx-dcap-quoteverify = { workspace = true }
 mc-sgx-dcap-sys-types = { workspace = true }
 mc-sgx-dcap-types = { workspace = true }
 mc-sgx-types = { workspace = true }
-p256 = { workspace = true, features = ["ecdsa", "pem"] }
+p256 = { workspace = true, features = ["ecdsa", "pem", "std"] }
 sha2 = { workspace = true }
 
 [build-dependencies]

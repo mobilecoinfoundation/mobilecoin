@@ -22,11 +22,11 @@ pub use mint::{
 };
 
 use mc_crypto_keys::RistrettoPrivate;
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use mc_util_from_random::FromRandom;
 
 /// Generate a set of outputs that "mint" coins for each recipient.
-pub fn get_outputs<T: RngCore + CryptoRng>(
+pub fn get_outputs<T: CryptoRng>(
     block_version: BlockVersion,
     recipient_and_amount: &[(PublicAddress, Amount)],
     rng: &mut T,
@@ -47,10 +47,7 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
 }
 
 /// Generate a dummy txout for testing.
-pub fn create_test_tx_out(
-    block_version: BlockVersion,
-    rng: &mut (impl RngCore + CryptoRng),
-) -> TxOut {
+pub fn create_test_tx_out(block_version: BlockVersion, rng: &mut impl CryptoRng) -> TxOut {
     let account_key = AccountKey::random(rng);
     TxOut::new(
         block_version,

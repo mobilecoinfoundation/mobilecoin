@@ -14,7 +14,7 @@ use mc_sgx_css::{Error as SignatureError, Signature};
 use mc_util_build_script::{rerun_if_path_changed, CargoBuilder, Environment};
 use mc_util_build_sgx::{ConfigBuilder, SgxEnvironment, SgxMode, SgxSign};
 use pkg_config::{Config, Error as PkgConfigError};
-use rand::{thread_rng, RngCore};
+use rand::{rng, Rng};
 use std::{
     collections::HashSet,
     fs,
@@ -35,7 +35,7 @@ impl RngCallback for ThreadRngForMbedTls {
     #[inline(always)]
     unsafe extern "C" fn call(_: *mut c_void, data: *mut c_uchar, len: size_t) -> c_int {
         let outbuf = slice::from_raw_parts_mut(data, len);
-        let mut csprng = thread_rng();
+        let mut csprng = rng();
         csprng.fill_bytes(outbuf);
         0
     }

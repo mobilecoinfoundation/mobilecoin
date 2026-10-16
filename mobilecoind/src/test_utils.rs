@@ -22,7 +22,7 @@ use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{test_utils::recreate_ledger_db, Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api::MobilecoindApiClient, MobilecoindUri};
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint, onetime_keys::create_shared_secret,
     ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, FeeMap, Token, TokenId,
@@ -62,7 +62,7 @@ pub fn get_test_databases(
     known_recipients: &[PublicAddress],
     num_blocks: usize,
     logger: Logger,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
 ) -> (LedgerDB, Database) {
     let mut public_addresses: Vec<PublicAddress> = (0..num_random_recipients)
         .map(|_i| mc_account_keys::AccountKey::random(&mut rng).default_subaddress())
@@ -101,9 +101,7 @@ pub fn get_test_databases(
     (ledger_db, mobilecoind_db)
 }
 
-pub fn get_test_monitor_data_and_id(
-    rng: &mut (impl CryptoRng + RngCore),
-) -> (MonitorData, MonitorId) {
+pub fn get_test_monitor_data_and_id(rng: &mut impl CryptoRng) -> (MonitorData, MonitorId) {
     let account_key = AccountKey::random(rng);
 
     let data = MonitorData::new(
@@ -220,7 +218,7 @@ pub fn get_testing_environment(
     recipients: &[PublicAddress],
     monitors: &[MonitorData],
     logger: Logger,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
 ) -> (
     LedgerDB,
     Database,
@@ -321,7 +319,7 @@ pub fn wait_for_monitors(mobilecoind_db: &Database, ledger_db: &LedgerDB, logger
 pub fn create_tx_out(
     amount: Amount,
     recipient: &PublicAddress,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> (TxOut, RistrettoPublic) {
     let tx_private_key = RistrettoPrivate::from_random(rng);
     let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);

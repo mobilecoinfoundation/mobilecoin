@@ -16,7 +16,10 @@ use mc_sgx_dcap_sys_types::{
 };
 use mc_sgx_dcap_types::{Collateral, Quote3};
 use mc_sgx_types::sgx_report_body_t;
-use p256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
+use p256::{
+    ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey},
+    elliptic_curve::Generate,
+};
 use sha2::{Digest, Sha256};
 use std::{mem, str::FromStr};
 
@@ -31,7 +34,7 @@ impl SimQuotingEnclave {
         let mut quote_bytes = c_struct_as_bytes(&sgx_quote).to_vec();
 
         let mut rng = McRng;
-        let signing_key = SigningKey::random(&mut rng);
+        let signing_key = SigningKey::generate_from_rng(&mut rng);
         // Per <https://download.01.org/intel-sgx/latest/dcap-latest/linux/docs/Intel_SGX_ECDSA_QuoteLibReference_DCAP_API.pdf#%5B%7B%22num%22%3A75%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C69%2C687%2C0%5D>
         // the signature is only over the header and report body of the quote.
         let signing_size =
@@ -149,7 +152,7 @@ fn ecdsa_sig_data(signature: Signature, verifying_key: &VerifyingKey) -> sgx_ql_
     // contains the uncompressed key as `X` component followed by `Y` component.
     // We need to strip the tag byte off since it is not part of the
     // `attest_pub_key`.
-    let encoded_point = verifying_key.to_encoded_point(false);
+    let encoded_point = verifying_key.to_sec1_point(false);
     let verifying_key_bytes = &encoded_point.as_bytes()[1..];
 
     let hash = Sha256::digest(verifying_key_bytes);

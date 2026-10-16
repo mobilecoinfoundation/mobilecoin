@@ -13,7 +13,7 @@ use mc_transaction_core::{
     Amount, BlockVersion, EncryptedMemo, PublicAddress,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
+use mc_util_test_helper::{run_with_several_seeds, CryptoRng, Rng};
 use mc_watcher_api::TimestampResultCode;
 
 /// Test that many random instances of prosty QueryRequest round trip with
@@ -387,11 +387,11 @@ fn test_stored_kex_rng_round_trip_protobuf() {
 /// distributions e.g. MaskedAmount::from_random really make sense for any other
 /// use-case, we are just generating fuzz data basically.
 trait Sample {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self;
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self;
 }
 
 impl Sample for [u8; 16] {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         let mut result = [0u8; 16];
         rng.fill_bytes(&mut result);
         result
@@ -399,7 +399,7 @@ impl Sample for [u8; 16] {
 }
 
 impl Sample for [u8; 32] {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         let mut result = [0u8; 32];
         rng.fill_bytes(&mut result);
         result
@@ -407,7 +407,7 @@ impl Sample for [u8; 32] {
 }
 
 impl Sample for KexRngPubkey {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             public_key: <[u8; 32]>::sample(rng).to_vec(),
             version: rng.next_u32(),
@@ -416,7 +416,7 @@ impl Sample for KexRngPubkey {
 }
 
 impl Sample for mc_fog_types::view::RngRecord {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             ingest_invocation_id: rng.next_u64() as i64,
             pubkey: KexRngPubkey::sample(rng),
@@ -426,7 +426,7 @@ impl Sample for mc_fog_types::view::RngRecord {
 }
 
 impl Sample for mc_fog_types::view::DecommissionedIngestInvocation {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             ingest_invocation_id: rng.next_u64() as i64,
             last_ingested_block: rng.next_u64(),
@@ -435,7 +435,7 @@ impl Sample for mc_fog_types::view::DecommissionedIngestInvocation {
 }
 
 impl Sample for mc_fog_types::view::FixedTxOutSearchResult {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             search_key: <[u8; 32]>::sample(rng).to_vec(),
             ciphertext: <[u8; 32]>::sample(rng).to_vec(),
@@ -446,7 +446,7 @@ impl Sample for mc_fog_types::view::FixedTxOutSearchResult {
 }
 
 impl Sample for TxOut {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         let amount = Amount::new(rng.next_u32() as u64, rng.next_u64().into());
         TxOut::new(
             BlockVersion::MAX,
@@ -460,7 +460,7 @@ impl Sample for TxOut {
 }
 
 impl Sample for Option<EncryptedMemo> {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         let x = (rng.next_u32() % 256) as u8;
         if x & 1 == 1 {
             return None;
@@ -472,7 +472,7 @@ impl Sample for Option<EncryptedMemo> {
 }
 
 impl Sample for Range {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         let from = rng.next_u32() as u64;
         let to = from + rng.next_u32() as u64;
         Range { from, to }
@@ -480,13 +480,13 @@ impl Sample for Range {
 }
 
 impl Sample for TxOutMembershipHash {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         TxOutMembershipHash::from(<[u8; 32]>::sample(rng))
     }
 }
 
 impl Sample for TxOutMembershipElement {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         TxOutMembershipElement {
             range: Range::sample(rng),
             hash: TxOutMembershipHash::sample(rng),
@@ -495,7 +495,7 @@ impl Sample for TxOutMembershipElement {
 }
 
 impl Sample for TxOutMembershipProof {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         TxOutMembershipProof {
             index: rng.next_u32() as u64,
             highest_index: rng.next_u32() as u64,
@@ -507,7 +507,7 @@ impl Sample for TxOutMembershipProof {
 }
 
 impl Sample for mc_fog_types::ledger::OutputResult {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             index: rng.next_u64(),
             result_code: rng.next_u32(),
@@ -518,7 +518,7 @@ impl Sample for mc_fog_types::ledger::OutputResult {
 }
 
 impl Sample for mc_fog_types::ledger::KeyImageResult {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self {
             key_image: mc_transaction_core::ring_signature::KeyImage::sample(rng),
             spent_at: rng.next_u32() as u64,
@@ -530,7 +530,7 @@ impl Sample for mc_fog_types::ledger::KeyImageResult {
 }
 
 impl Sample for mc_transaction_core::ring_signature::KeyImage {
-    fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn sample<T: CryptoRng>(rng: &mut T) -> Self {
         Self::from(rng.next_u64())
     }
 }

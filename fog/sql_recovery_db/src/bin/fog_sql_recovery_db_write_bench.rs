@@ -6,7 +6,7 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
 use mc_util_from_random::FromRandom;
-use rand::{thread_rng, RngCore};
+use rand::{rng, Rng};
 use std::{
     env,
     time::{Duration, Instant},
@@ -16,7 +16,7 @@ fn main() {
     let database_url = env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable");
     let db = SqlRecoveryDb::new_from_url(&database_url, Default::default(), create_null_logger())
         .expect("failled connecting to database");
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
     db.new_ingress_key(&ingress_key, 0).unwrap();
@@ -118,7 +118,7 @@ fn main() {
         let c = std::sync::Arc::clone(&barrier);
 
         std::thread::spawn(move || {
-            let mut rng = thread_rng();
+            let mut rng = rng();
             let db =
                 SqlRecoveryDb::new_from_url(&database_url).expect("failled connecting to database");
             let nanos_in_1_second = Duration::from_secs(1).as_nanos();

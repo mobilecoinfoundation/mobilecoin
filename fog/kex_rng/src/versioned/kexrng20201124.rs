@@ -26,6 +26,6 @@ impl KexRngCore<Ristretto> for KexRng20201124 {
         hasher.update(secret.as_slice());
         hasher.update(counter.to_le_bytes());
         let result = hasher.finalize();
-        Output::clone_from_slice(&result[..Self::OutputSize::USIZE])
+        *Output::from_slice(&result[..Self::OutputSize::USIZE])
     }
 }

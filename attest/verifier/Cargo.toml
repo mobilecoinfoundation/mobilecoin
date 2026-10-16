@@ -48,9 +48,10 @@ mc-util-build-sgx = { workspace = true }
 
 cargo-emit = { workspace = true }
 chrono = { workspace = true, features = ["now"] }
+der = { workspace = true, features = ["heapless"] }
 hex = { workspace = true, features = ["std"] }
 lazy_static = { workspace = true }
-p256 = { workspace = true, features = ["ecdsa", "pem"] }
+p256 = { workspace = true, features = ["ecdsa", "pem", "std"] }
 rand = { workspace = true }
 rand_hc = { workspace = true }
 
@@ -61,5 +62,5 @@ mbedtls-sys-auto = { workspace = true }
 [dev-dependencies]
 mc-attest-untrusted = { workspace = true }
 mc-util-encodings = { workspace = true }
-p256 = { workspace = true }
+p256 = { workspace = true, features = ["std"] }
 textwrap = { workspace = true }

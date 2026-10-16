@@ -18,7 +18,7 @@ use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, NoiseDigest, ProtocolName,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// Helper function to create the output for an initiate
 fn parse_handshake_output<Handshake, KexAlgo, Cipher, DigestAlgo>(
@@ -60,7 +60,7 @@ where
 {
     type Error = Error;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         csprng: &mut R,
         _input: ClientInitiate<KexAlgo, Cipher, DigestAlgo>,
@@ -105,7 +105,7 @@ where
 {
     type Error = Error;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         csprng: &mut R,
         input: NodeInitiate<KexAlgo, Cipher, DigestAlgo>,
@@ -149,7 +149,7 @@ where
 {
     type Error = Error;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         _csprng: &mut R,
         input: AuthResponseInput,
@@ -197,7 +197,7 @@ where
 {
     type Error = Error;
 
-    fn try_next<R: CryptoRng + RngCore>(
+    fn try_next<R: CryptoRng>(
         self,
         _csprng: &mut R,
         input: UnverifiedAttestationEvidence,

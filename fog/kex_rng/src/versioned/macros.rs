@@ -33,7 +33,7 @@ macro_rules! impl_multiversion_kex_rng_enum {
         impl KexRng<$kex> for $enum_name {}
         impl NewFromKex<$kex> for $enum_name {
             // Just build the default version
-            fn new_from_ephemeral_static<T: RngCore + CryptoRng>(rng: &mut T, pubkey: &<$kex as Kex>::Public) -> (KexRngPubkey, Self) {
+            fn new_from_ephemeral_static<T: CryptoRng>(rng: &mut T, pubkey: &<$kex as Kex>::Public) -> (KexRngPubkey, Self) {
                 let (kex_pubkey, buf) = BufferedKexRng::<$def_type, $kex>::new_from_ephemeral_static(rng, pubkey);
                 (kex_pubkey, Self::$def_name(buf))
             }

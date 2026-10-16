@@ -96,14 +96,14 @@ mod compressed_commitment_tests {
         CompressedCommitment,
     };
     use curve25519_dalek::ristretto::CompressedRistretto;
-    use mc_util_test_helper::{run_with_several_seeds, RngCore};
+    use mc_util_test_helper::{run_with_several_seeds, Rng};
 
     #[test]
     // Commitment::new should create the correct RistrettoPoint.
     fn test_new() {
         run_with_several_seeds(|mut rng| {
             let value = rng.next_u64();
-            let blinding = crate::ring_signature::random_scalar(&mut rng);
+            let blinding = Scalar::random(&mut rng);
             let generator = generators(0);
 
             let commitment = CompressedCommitment::new(value, blinding, &generator);

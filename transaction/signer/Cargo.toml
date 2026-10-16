@@ -21,6 +21,7 @@ clap = { workspace = true, features = ["derive"] }
 displaydoc = { workspace = true }
 hex = { workspace = true }
 log = { workspace = true }
+rand = { workspace = true, features = ["thread_rng"] }
 rand_core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

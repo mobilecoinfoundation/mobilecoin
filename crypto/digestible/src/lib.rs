@@ -413,7 +413,7 @@ impl<T: DigestibleAsBytes> Digestible for T {
 // Built-in byte arrays
 impl<const N: usize> DigestibleAsBytes for [u8; N] {}
 
-impl<Length: ArrayLength<u8>> DigestibleAsBytes for GenericArray<u8, Length> {}
+impl<Length: ArrayLength> DigestibleAsBytes for GenericArray<u8, Length> {}
 
 // Implementation for tuples of Digestible
 // This is treated as an Agg in the abstract structure hashing schema,

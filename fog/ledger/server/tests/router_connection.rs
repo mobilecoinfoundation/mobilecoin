@@ -32,7 +32,7 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{GrpcRetryConfig, CHAIN_ID_MISMATCH_ERR_MSG};
-use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
+use mc_util_test_helper::{CryptoRng, RngType, SeedableRng};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{path::PathBuf, str::FromStr, sync::Arc, thread::sleep, time::Duration};
@@ -1068,7 +1068,7 @@ fn add_block_to_ledger(
     ledger_db: &mut LedgerDB,
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     watcher: &WatcherDB,
 ) -> u64 {
     let amount = Amount::new(10, Mob::ID);

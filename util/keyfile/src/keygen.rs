@@ -11,7 +11,7 @@ use crate::{
 use bip39::{Language, Mnemonic};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_core::slip10::Slip10KeyGenerator;
-use rand_core::{RngCore, SeedableRng};
+use rand_core::{Rng, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
     cmp::Ordering,

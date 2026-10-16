@@ -47,7 +47,7 @@ use mc_transaction_core::{
 };
 use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{rng, seq::SliceRandom, RngExt};
 use rayon::prelude::*;
 use retry::{delay, retry, OperationResult};
 use std::{
@@ -493,7 +493,7 @@ fn worker_thread_entry(
     let mut txs_created: usize = 0;
 
     let mut conns = get_conns(&config, &logger);
-    conns.shuffle(&mut thread_rng());
+    conns.shuffle(&mut rng());
 
     loop {
         let mut pending_spendable_txouts = Vec::<SpendableTxOut>::new();
@@ -693,7 +693,7 @@ fn build_tx(
     let utxos_with_proofs = get_membership_proofs(ledger_db, spendable_txouts);
     let rings = get_rings(ledger_db, config.ring_size, utxos_with_proofs.len());
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // Sanity
     assert_eq!(utxos_with_proofs.len(), rings.len());
@@ -844,10 +844,10 @@ fn get_rings(
 
     // Randomly sample `num_requested` TxOuts, without replacement and convert into
     // a Vec<u64>
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut sampled_indices: HashSet<u64> = HashSet::default();
     while sampled_indices.len() < num_requested {
-        let index = rng.gen_range(0..num_txos);
+        let index = rng.random_range(0..num_txos);
         sampled_indices.insert(index);
     }
     let sampled_indices_vec: Vec<u64> = sampled_indices.into_iter().collect();

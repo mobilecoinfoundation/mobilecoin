@@ -512,10 +512,10 @@ fn test_btree_map() {
 // Particularly, check that it is hashing the same way as a regular array
 #[test]
 fn test_generic_array() {
-    use generic_array::arr;
+    use generic_array::GenericArray;
 
     let array = [1u8, 2u8, 3u8];
-    let garray = arr![u8; 1, 2, 3];
+    let garray = GenericArray::from_array([1, 2, 3]);
     assert_eq!(
         array.digest32::<MerlinTranscript>(b"test"),
         garray.digest32::<MerlinTranscript>(b"test"),

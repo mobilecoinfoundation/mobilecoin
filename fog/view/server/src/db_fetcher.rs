@@ -409,6 +409,22 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
+    fn wait_for_last_scanned_block(db_fetcher: &DbFetcher, expected_block: u64) {
+        for _ in 0..500 {
+            let ingress_keys = db_fetcher.get_highest_processed_block_context();
+            if ingress_keys.len() == 1 && ingress_keys[0].last_scanned_block == Some(expected_block)
+            {
+                return;
+            }
+            sleep(Duration::from_millis(10));
+        }
+
+        panic!(
+            "timed out waiting for last scanned block {expected_block}; current context: {:?}",
+            db_fetcher.get_highest_processed_block_context()
+        );
+    }
+
     #[test_with_logger]
     fn basic_single_ingress_key(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -497,7 +513,7 @@ mod tests {
 
         assert!(db_fetcher.get_pending_fetched_records().is_empty()); // The previous call should have drained this
 
-        sleep(Duration::from_millis(100));
+        wait_for_last_scanned_block(&db_fetcher, 19);
 
         let ingress_keys = db_fetcher.get_highest_processed_block_context();
         assert_eq!(
@@ -543,7 +559,7 @@ mod tests {
 
         assert!(db_fetcher.get_pending_fetched_records().is_empty()); // The previous call should have drained this
 
-        sleep(Duration::from_millis(100));
+        wait_for_last_scanned_block(&db_fetcher, 29);
 
         let ingress_keys = db_fetcher.get_highest_processed_block_context();
         assert_eq!(
@@ -575,7 +591,7 @@ mod tests {
 
         assert!(db_fetcher.get_pending_fetched_records().is_empty());
 
-        sleep(Duration::from_millis(100));
+        wait_for_last_scanned_block(&db_fetcher, 49);
 
         let ingress_keys = db_fetcher.get_highest_processed_block_context();
         assert_eq!(

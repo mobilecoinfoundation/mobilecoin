@@ -9,7 +9,7 @@ use displaydoc::Display;
 //use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -187,7 +187,7 @@ where
     /// The public key and derived secret will be returned on success.
     fn new_secret(
         &self,
-        csprng: &mut (impl RngCore + CryptoRng),
+        csprng: &mut impl CryptoRng,
     ) -> (Self, <Self::KexEphemeralPrivate as KexPrivate>::Secret) {
         let our_privkey = <Self::KexEphemeralPrivate as FromRandom>::from_random(csprng);
         let our_pubkey: Self = (&our_privkey).into();

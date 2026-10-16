@@ -489,13 +489,13 @@ mod test {
     use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_ledger_db::{Ledger, LedgerDB};
-    use mc_rand::{CryptoRng, RngCore};
+    use mc_rand::CryptoRng;
     use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use tempfile::TempDir;
 
     fn setup_test_utxo_store(
-        mut rng: &mut (impl CryptoRng + RngCore),
+        mut rng: &mut impl CryptoRng,
         logger: &Logger,
     ) -> (Arc<Environment>, LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
         // Set up a db with 3 random recipients and 10 blocks.

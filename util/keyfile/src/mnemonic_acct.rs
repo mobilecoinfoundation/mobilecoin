@@ -8,7 +8,7 @@ use bip39::{Language, Mnemonic};
 use displaydoc::Display;
 use mc_account_keys::AccountKey;
 use mc_core::slip10::Slip10KeyGenerator;
-use mc_rand::{CryptoRng, RngCore};
+use mc_rand::CryptoRng;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +64,7 @@ impl TryFrom<UncheckedMnemonicAccount> for AccountKey {
 
 impl UncheckedMnemonicAccount {
     /// Construct an identity without fog and with a random mnemonic key
-    pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    pub fn random<T: CryptoRng>(rng: &mut T) -> Self {
         let mut entropy = [0u8; 32];
         rng.fill_bytes(&mut entropy[..]);
         let mnemonic = Mnemonic::from_entropy(&entropy, Language::English);
@@ -81,7 +81,7 @@ impl UncheckedMnemonicAccount {
     }
 
     /// Construct an identity with fog and with a random slip10 key
-    pub fn random_with_fog<T: RngCore + CryptoRng>(
+    pub fn random_with_fog<T: CryptoRng>(
         rng: &mut T,
         fog_report_url: &str,
         fog_report_id: &str,

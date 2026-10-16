@@ -36,7 +36,7 @@ use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerif
 use mc_util_from_random::FromRandom;
 #[cfg(feature = "prost")]
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -239,7 +239,7 @@ impl AuthorityVerifier for PublicAddress {
 }
 
 impl FromRandom for PublicAddress {
-    fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    fn from_random<T: CryptoRng>(rng: &mut T) -> Self {
         PublicAddress::new(
             &RistrettoPublic::from_random(rng),
             &RistrettoPublic::from_random(rng),
@@ -425,7 +425,7 @@ impl AccountKey {
 
     /// Create an account key with random secret keys, and no fog service
     /// (intended for tests).
-    pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    pub fn random<T: CryptoRng>(rng: &mut T) -> Self {
         Self::new(
             &RistrettoPrivate::from_random(rng),
             &RistrettoPrivate::from_random(rng),
@@ -435,7 +435,7 @@ impl AccountKey {
     /// Create an account key with random secret keys, and the fog service
     /// url "fog://example.com"
     /// (intended for tests).
-    pub fn random_with_fog<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    pub fn random_with_fog<T: CryptoRng>(rng: &mut T) -> Self {
         Self::new_with_fog(
             &RistrettoPrivate::from_random(rng),
             &RistrettoPrivate::from_random(rng),
@@ -624,7 +624,7 @@ impl ViewAccountKey {
     }
 
     /// Create a view account key with random keys
-    pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    pub fn random<T: CryptoRng>(rng: &mut T) -> Self {
         Self::new(
             RistrettoPrivate::from_random(rng),
             RistrettoPublic::from_random(rng),
@@ -726,7 +726,7 @@ mod account_key_tests {
     use mc_util_test_vector::TestVector;
     use mc_util_test_with_data::test_with_data;
     use rand::prelude::StdRng;
-    use rand_core::SeedableRng;
+    use rand_core::{Rng, SeedableRng};
 
     // Helper method to verify the signature of a public address
     fn verify_signature(subaddress: &PublicAddress, spki: &[u8]) {

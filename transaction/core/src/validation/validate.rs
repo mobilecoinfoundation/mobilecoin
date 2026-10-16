@@ -13,7 +13,7 @@ use crate::{
 };
 use alloc::{format, vec::Vec};
 use mc_common::HashSet;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 /// Determines if the transaction is valid, with respect to the provided
 /// context.
@@ -28,7 +28,7 @@ use rand_core::{CryptoRng, RngCore};
 /// * `minimum_fee` - The minimum fee for the token indicated by
 ///   tx.prefix.fee_token_id
 /// * `csprng` - Cryptographically secure random number generator.
-pub fn validate<R: RngCore + CryptoRng>(
+pub fn validate<R: CryptoRng>(
     tx: &Tx,
     current_block_index: u64,
     block_version: BlockVersion,
@@ -295,7 +295,7 @@ pub fn validate_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationR
 /// * The outputs have values in [0,2^64),
 /// * The transaction does not create or destroy mobilecoins.
 /// * The signature is valid according to the rules of this block version
-pub fn validate_signature<R: RngCore + CryptoRng>(
+pub fn validate_signature<R: CryptoRng>(
     block_version: BlockVersion,
     tx: &Tx,
     rng: &mut R,

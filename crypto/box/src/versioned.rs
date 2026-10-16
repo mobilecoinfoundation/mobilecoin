@@ -20,7 +20,6 @@
 use crate::{
     aead::Error as AeadError,
     generic_array::{
-        arr,
         sequence::Concat,
         typenum::{Unsigned, U50},
         GenericArray,
@@ -34,7 +33,7 @@ use displaydoc::Display;
 use mc_crypto_hashes::Blake2b512;
 use mc_crypto_keys::{Kex, Ristretto};
 use mc_oblivious_aes_gcm::{Aes256Gcm, CtDecryptResult};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 
 //
 // CONFIGURATION
@@ -117,7 +116,7 @@ impl CryptoBox<Ristretto> for VersionedCryptoBox {
     type FooterSize = U50;
 
     // Choose the algo based on self.selected_version
-    fn encrypt_in_place_detached<T: RngCore + CryptoRng>(
+    fn encrypt_in_place_detached<T: CryptoRng>(
         &self,
         rng: &mut T,
         key: &<Ristretto as Kex>::Public,
@@ -134,7 +133,10 @@ impl CryptoBox<Ristretto> for VersionedCryptoBox {
                 self.selected_version
             ),
         };
-        Ok(footer.concat(arr![u8; MAJOR_VERSION, self.selected_version]))
+        Ok(footer.concat(GenericArray::from_array([
+            MAJOR_VERSION,
+            self.selected_version,
+        ])))
     }
 
     // Choose the algo based on the version data in the ciphertext

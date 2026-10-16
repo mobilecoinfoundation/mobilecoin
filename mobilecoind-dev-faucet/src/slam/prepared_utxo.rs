@@ -13,7 +13,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockVersion, TokenId,
 };
-use rand::thread_rng;
+use rand::rng;
 
 /// A UTXO that has been prepared for transaction building, by collecting
 /// membership proofs and ring members.
@@ -155,7 +155,7 @@ impl PreparedUtxo {
         account_key: &AccountKey,
         network_state: &api::GetNetworkStatusResponse,
     ) -> Result<Tx, String> {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         // Get block version to target
         let block_version = network_state
             .last_block_info

@@ -253,7 +253,7 @@ mod test {
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPublic;
     use mc_ledger_db::{Ledger, LedgerDB};
-    use mc_rand::{CryptoRng, RngCore};
+    use mc_rand::CryptoRng;
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Token,
     };
@@ -263,7 +263,7 @@ mod test {
     const TEST_SUBADDRESS: u64 = 10;
 
     fn setup_test_processed_block_store(
-        mut rng: &mut (impl CryptoRng + RngCore),
+        mut rng: &mut impl CryptoRng,
         logger: &Logger,
     ) -> (
         Arc<Environment>,

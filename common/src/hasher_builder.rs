@@ -5,7 +5,7 @@
 
 use core::hash::BuildHasher;
 use mc_rand::McRng;
-use rand_core::RngCore;
+use rand_core::Rng;
 use siphasher::sip::SipHasher13;
 
 /// A `no_std`-compatible [BuildHasher] using [McRng].
