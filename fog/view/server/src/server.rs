@@ -17,7 +17,7 @@ use mc_common::{
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::fog_view;
 use mc_fog_recovery_db_iface::RecoveryDb;
-use mc_fog_types::ETxOutRecord;
+use mc_fog_types::{common::BlockRange, ETxOutRecord};
 use mc_fog_uri::{ConnectionUri, FogViewStoreUri};
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
@@ -363,6 +363,10 @@ where
                     break;
                 }
 
+                WorkerTickResult::Finished => {
+                    break;
+                }
+
                 WorkerTickResult::HasMoreWork => {}
 
                 WorkerTickResult::Sleep => {
@@ -409,6 +413,9 @@ where
     /// Keeps track of which blocks we have fed into the enclave.
     enclave_block_tracker: BlockTracker<SS>,
 
+    /// The range of blocks this server is responsible for.
+    block_range: BlockRange,
+
     /// Flag which the db fetcher sets to indicate when it has exhausted it's
     /// initial work.
     db_fetcher_readiness_indicator: ReadinessIndicator,
@@ -429,6 +436,9 @@ pub enum WorkerTickResult {
     StopRequested,
     HasMoreWork,
     Sleep,
+    /// Every block in the server's block range has been loaded, so there is
+    /// nothing left to poll the database for.
+    Finished,
 }
 
 /// Telemetry: block index currently being worked on.
@@ -467,6 +477,7 @@ where
             db,
             shared_state,
             db_fetcher,
+            block_range: sharding_strategy.get_block_range(),
             enclave_block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
             db_fetcher_readiness_indicator,
             server_readiness_indicator,
@@ -559,11 +570,16 @@ where
             .set(shared_state.highest_processed_block_count as i64);
 
         // Try to update the timestamp associated to highest_processed_block_count
-        if let Some(timestamp) =
-            self.get_block_signature_timestamp_for_block_count(highest_processed_block_count)
+        let timestamp_is_current = match self
+            .get_block_signature_timestamp_for_block_count(highest_processed_block_count)
         {
-            shared_state.highest_processed_block_signature_timestamp = timestamp;
-        }
+            Some(timestamp) => {
+                shared_state.highest_processed_block_signature_timestamp = timestamp;
+                true
+            }
+            // The origin block has no timestamp, so there is nothing to retry.
+            None => highest_processed_block_count <= 1,
+        };
 
         // Figure out if the highest known block count has changed, and if so update it
         // + the txo count in the shared state.
@@ -599,6 +615,32 @@ where
                     log::warn!(self.logger, "Unable to update last known block shared data: error while querying block count {}: {}", cur_highest_known_block_count, err);
                 }
             };
+        }
+
+        // Once every block in our range has been loaded into the enclave and the
+        // shared state reflects that, the data this server serves can no longer
+        // change, so stop polling the database.
+        if highest_processed_block_count >= self.block_range.end_block
+            && timestamp_is_current
+            && shared_state.last_known_block_count == cur_highest_known_block_count
+        {
+            drop(shared_state);
+
+            log::info!(
+                self.logger,
+                "Finished loading block range {}, no longer polling the database",
+                self.block_range
+            );
+
+            if let Err(err) = self.db_fetcher.stop() {
+                log::warn!(self.logger, "Failed stopping db fetcher: {:?}", err);
+            }
+
+            // The db fetcher may not have reported readiness yet if we finished
+            // during its initial pass.
+            self.server_readiness_indicator.set_ready();
+
+            return WorkerTickResult::Finished;
         }
 
         // Done with this tick.
