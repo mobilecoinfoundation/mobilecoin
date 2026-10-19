@@ -205,6 +205,34 @@ fn uploads_and_head_preserve_archive_layout(logger: Logger) {
 }
 
 #[test_with_logger]
+fn resume_binary_search_checks_single_block_keys(logger: Logger) {
+    with_timeout(move || {
+        let runtime = runtime();
+        let _guard = runtime.enter();
+        // Blocks 0..7 are uploaded; blocks 7..10 are missing.
+        let server = Server::new([404, 200, 404, 200]);
+        assert_eq!(
+            server
+                .writer("node/nested", logger)
+                .first_block_to_handle(10),
+            7
+        );
+        for index in [9, 4, 7, 6] {
+            let request = server.request();
+            assert_eq!(request.method_str(), "HEAD");
+            assert_eq!(
+                request.uri().path(),
+                format!(
+                    "/test-bucket/node/nested/{}",
+                    block_num_to_s3block_path(index).display()
+                )
+            );
+        }
+        assert!(server.requests.try_recv().is_err());
+    });
+}
+
+#[test_with_logger]
 fn missing_blocks_return_false(logger: Logger) {
     with_timeout(move || {
         let runtime = runtime();
