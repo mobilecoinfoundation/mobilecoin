@@ -150,7 +150,8 @@ impl S3BlockWriter {
                     .grace_period(Duration::from_secs(120))
                     .build(),
             )
-            // Keep Rusoto's path-style URLs.
+            // The blocks have dots, `.`, in the names. We use path style to be
+            // able to validate TLS certificates
             .force_path_style(true)
             .build();
         Self {
