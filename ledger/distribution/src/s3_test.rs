@@ -219,9 +219,9 @@ fn resume_binary_search_checks_single_block_keys(logger: Logger) {
         );
         for index in [9, 4, 7, 6] {
             let request = server.request();
-            assert_eq!(request.method, "HEAD");
+            assert_eq!(request.method_str(), "HEAD");
             assert_eq!(
-                request.path,
+                request.uri().path(),
                 format!(
                     "/test-bucket/node/nested/{}",
                     block_num_to_s3block_path(index).display()
