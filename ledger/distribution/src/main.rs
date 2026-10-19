@@ -72,8 +72,8 @@ pub struct StateData {
     next_block: BlockIndex,
 }
 
-// Select the source before validating: Rusoto falls back to us-east-1 when
-// the higher-priority environment variable is present but empty or invalid.
+/// Resolves the region by highest-priority source
+/// An empty or invalid value falls back to us-east-1
 async fn resolve_region(region: Option<String>) -> Region {
     let selected = match region {
         Some(region) => Some(region),
