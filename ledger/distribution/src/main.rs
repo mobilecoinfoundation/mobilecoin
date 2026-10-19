@@ -78,7 +78,7 @@ async fn resolve_region(region: Option<String>) -> Region {
     let selected = match region {
         Some(region) => Some(region),
         None => {
-            match std::env::var("AWS_DEFAULT_REGION").or_else(|_| std::env::var("AWS_REGION")) {
+            match std::env::var("AWS_REGION").or_else(|_| std::env::var("AWS_DEFAULT_REGION")) {
                 Ok(region) => Some(region),
                 Err(_) => ProfileFileRegionProvider::new()
                     .region()

@@ -16,7 +16,7 @@ Temporary credentials also require `AWS_SESSION_TOKEN`. AWS profiles can be sele
 
 Region names retain Rusoto 0.48 compatibility: canonical names such as `eu-west-2` and shorthand names such as `euwest2` are accepted case-insensitively. The accepted region set is unchanged; whitespace is not trimmed.
 
-The region is selected from the destination's first nonempty `?region=` parameter, then `AWS_DEFAULT_REGION`, `AWS_REGION`, the selected AWS profile, and finally `us-east-1`. An invalid nonempty URI region is rejected at startup. A present but empty or invalid environment region falls back immediately to `us-east-1`, without trying lower-priority sources. A missing or invalid profile region also falls back to `us-east-1`.
+The region is selected from the destination's first nonempty `?region=` parameter, then `AWS_REGION`, `AWS_DEFAULT_REGION`, the selected AWS profile, and finally `us-east-1`. An invalid nonempty URI region is rejected at startup. A present but empty or invalid environment region falls back immediately to `us-east-1`, without trying lower-priority sources. A missing or invalid profile region also falls back to `us-east-1`.
 
 ### Usage
 
