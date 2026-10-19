@@ -34,5 +34,6 @@ url = { workspace = true }
 [dev-dependencies]
 mc-ledger-db = { workspace = true, features = ["test_utils"] }
 mc-util-test-helper = { workspace = true }
+httpmock = { workspace = true }
 tempfile = { workspace = true }
 walkdir = { workspace = true }

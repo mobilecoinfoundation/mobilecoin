@@ -4,112 +4,49 @@
 //! credentials.
 
 use super::*;
+use httpmock::{HttpMockRequest, HttpMockResponse, MockServer};
 use mc_blockchain_types::BlockVersion;
 use mc_common::logger::test_with_logger;
 use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
 use mc_transaction_core::AccountKey;
 use mc_util_test_helper::{RngType, SeedableRng};
 use std::{
-    collections::{HashMap, VecDeque},
-    io::{BufRead, BufReader, Read, Write},
-    net::TcpListener,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicUsize, Ordering},
         mpsc::{channel, Receiver},
-        Arc,
     },
-    thread::{self, JoinHandle},
+    thread,
     time::Duration,
 };
 
-#[derive(Debug)]
-struct Request {
-    method: String,
-    path: String,
-    headers: HashMap<String, String>,
-    body: Vec<u8>,
-}
-
 struct Server {
-    endpoint: String,
-    requests: Receiver<Request>,
-    stop: Arc<AtomicBool>,
-    thread: Option<JoinHandle<()>>,
+    server: MockServer,
+    requests: Receiver<HttpMockRequest>,
 }
 
 impl Server {
     fn new(statuses: impl IntoIterator<Item = u16>) -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let endpoint = format!("http://{}", listener.local_addr().unwrap());
-        listener.set_nonblocking(true).unwrap();
+        let server = MockServer::start();
         let (sender, requests) = channel();
-        let stop = Arc::new(AtomicBool::new(false));
-        let thread_stop = stop.clone();
-        let mut statuses: VecDeque<_> = statuses.into_iter().collect();
-        let thread = thread::spawn(move || {
-            while !thread_stop.load(Ordering::Relaxed) {
-                let (mut stream, _) = match listener.accept() {
-                    Ok(connection) => connection,
-                    Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(1));
-                        continue;
-                    }
-                    Err(err) => panic!("accept failed: {err}"),
-                };
-                stream
-                    .set_read_timeout(Some(Duration::from_secs(5)))
-                    .unwrap();
-                stream
-                    .set_write_timeout(Some(Duration::from_secs(5)))
-                    .unwrap();
-                let mut reader = BufReader::new(&mut stream);
-                let mut line = String::new();
-                reader.read_line(&mut line).unwrap();
-                let mut parts = line.split_whitespace();
-                let method = parts.next().unwrap().to_owned();
-                // SDK operation query parameters do not change the object key.
-                let path = parts.next().unwrap().split('?').next().unwrap().to_owned();
-                let mut headers = HashMap::new();
-                loop {
-                    line.clear();
-                    reader.read_line(&mut line).unwrap();
-                    if line == "\r\n" {
-                        break;
-                    }
-                    let (name, value) = line.trim_end().split_once(':').unwrap();
-                    headers.insert(name.to_ascii_lowercase(), value.trim().to_owned());
-                }
-                let length = headers
-                    .get("content-length")
-                    .map_or(0, |v| v.parse().unwrap());
-                let mut body = vec![0; length];
-                reader.read_exact(&mut body).unwrap();
-                drop(reader);
-                let status = statuses.pop_front().unwrap_or(200);
-                write!(
-                    stream,
-                    "HTTP/1.1 {status} Response\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-                )
-                .unwrap();
-                sender
-                    .send(Request {
-                        method,
-                        path,
-                        headers,
-                        body,
-                    })
-                    .unwrap();
-            }
+        let statuses: Vec<_> = statuses.into_iter().collect();
+        let next = AtomicUsize::new(0);
+        server.mock(|_when, then| {
+            then.respond_with(move |request| {
+                sender.send(request.clone()).unwrap();
+                HttpMockResponse::builder()
+                    .status(
+                        statuses
+                            .get(next.fetch_add(1, Ordering::Relaxed))
+                            .copied()
+                            .unwrap_or(200),
+                    )
+                    .build()
+            });
         });
-        Self {
-            endpoint,
-            requests,
-            stop,
-            thread: Some(thread),
-        }
+        Self { server, requests }
     }
 
-    fn request(&self) -> Request {
+    fn request(&self) -> HttpMockRequest {
         self.requests.recv_timeout(Duration::from_secs(5)).unwrap()
     }
 
@@ -124,7 +61,7 @@ impl Server {
                 None,
                 "test",
             ))
-            .endpoint_url(&self.endpoint)
+            .endpoint_url(self.server.base_url())
     }
 
     fn writer(&self, prefix: &str, logger: Logger) -> S3BlockWriter {
@@ -134,13 +71,6 @@ impl Server {
             self.config(),
             logger,
         )
-    }
-}
-
-impl Drop for Server {
-    fn drop(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
-        self.thread.take().unwrap().join().unwrap();
     }
 }
 
@@ -211,10 +141,11 @@ fn blocks() -> Vec<BlockData> {
         .collect()
 }
 
-fn check_signed(request: &Request) {
-    assert!(request.headers["authorization"]
-        .starts_with("AWS4-HMAC-SHA256 Credential=test-access-key/"));
-    assert!(request.headers["authorization"].contains("/us-east-1/s3/aws4_request"));
+fn check_signed(request: &HttpMockRequest) {
+    let headers = request.headers();
+    let authorization = headers["authorization"].to_str().unwrap();
+    assert!(authorization.starts_with("AWS4-HMAC-SHA256 Credential=test-access-key/"));
+    assert!(authorization.contains("/us-east-1/s3/aws4_request"));
 }
 
 #[test_with_logger]
@@ -234,40 +165,40 @@ fn uploads_and_head_preserve_archive_layout(logger: Logger) {
 
             writer.write_single_block(&blocks[1]);
             let single = server.request();
-            assert_eq!(single.method, "PUT");
+            assert_eq!(single.method_str(), "PUT");
             assert_eq!(
-                single.path,
+                single.uri().path(),
                 format!("{base}/00/00/00/00/00/00/00/0000000000000001.pb")
             );
-            assert_eq!(single.headers["x-amz-acl"], "public-read");
-            assert_eq!(single.headers["x-amz-sdk-checksum-algorithm"], "CRC32");
-            assert!(!single.headers["x-amz-checksum-crc32"].is_empty());
+            assert_eq!(single.headers()["x-amz-acl"], "public-read");
+            assert_eq!(single.headers()["x-amz-sdk-checksum-algorithm"], "CRC32");
+            assert!(!single.headers()["x-amz-checksum-crc32"].is_empty());
             assert_eq!(
-                single.body,
+                single.body_ref(),
                 blockchain::ArchiveBlock::from(&blocks[1]).encode_to_vec()
             );
             check_signed(&single);
 
             writer.write_multiple_blocks(&blocks);
             let merged = server.request();
-            assert_eq!(merged.method, "PUT");
+            assert_eq!(merged.method_str(), "PUT");
             assert_eq!(
-                merged.path,
+                merged.uri().path(),
                 format!("{base}/merged-3/00/00/00/00/00/00/00/0000000000000000.pb")
             );
-            assert_eq!(merged.headers["x-amz-acl"], "public-read");
-            assert_eq!(merged.headers["x-amz-sdk-checksum-algorithm"], "CRC32");
-            assert!(!merged.headers["x-amz-checksum-crc32"].is_empty());
+            assert_eq!(merged.headers()["x-amz-acl"], "public-read");
+            assert_eq!(merged.headers()["x-amz-sdk-checksum-algorithm"], "CRC32");
+            assert!(!merged.headers()["x-amz-checksum-crc32"].is_empty());
             assert_eq!(
-                merged.body,
+                merged.body_ref(),
                 blockchain::ArchiveBlocks::from(blocks.as_slice()).encode_to_vec()
             );
             check_signed(&merged);
 
             assert!(writer.block_exists(1));
             let head = server.request();
-            assert_eq!(head.method, "HEAD");
-            assert_eq!(head.path, single.path);
+            assert_eq!(head.method_str(), "HEAD");
+            assert_eq!(head.uri().path(), single.uri().path());
             check_signed(&head);
         }
     });
@@ -280,7 +211,7 @@ fn missing_blocks_return_false(logger: Logger) {
         let _guard = runtime.enter();
         let server = Server::new([404]);
         assert!(!server.writer("prefix", logger).block_exists(0));
-        assert_eq!(server.request().method, "HEAD");
+        assert_eq!(server.request().method_str(), "HEAD");
     });
 }
 
@@ -293,8 +224,8 @@ fn forbidden_head_is_retried(logger: Logger) {
         assert!(server.writer("prefix", logger).block_exists(0));
         let first = server.request();
         let second = server.request();
-        assert_eq!(first.method, "HEAD");
-        assert_eq!(first.path, second.path);
+        assert_eq!(first.method_str(), "HEAD");
+        assert_eq!(first.uri().path(), second.uri().path());
     });
 }
 
@@ -309,14 +240,14 @@ fn transient_upload_failure_is_retried(logger: Logger) {
             .write_single_block(&blocks()[1]);
         let first = server.request();
         let second = server.request();
-        assert_eq!(first.method, "PUT");
-        assert_eq!(first.path, second.path);
-        assert_eq!(first.body, second.body);
+        assert_eq!(first.method_str(), "PUT");
+        assert_eq!(first.uri().path(), second.uri().path());
+        assert_eq!(first.body_ref(), second.body_ref());
         assert_eq!(
-            first.headers["x-amz-checksum-crc32"],
-            second.headers["x-amz-checksum-crc32"]
+            first.headers()["x-amz-checksum-crc32"],
+            second.headers()["x-amz-checksum-crc32"]
         );
-        assert_eq!(second.headers["x-amz-acl"], "public-read");
+        assert_eq!(second.headers()["x-amz-acl"], "public-read");
     });
 }
 
@@ -354,7 +285,7 @@ fn default_credentials_support_environment_and_profiles(logger: Logger) {
                 .env(CHILD_ENV, "1")
                 .env("AWS_CONFIG_FILE", config)
                 .env("AWS_SHARED_CREDENTIALS_FILE", credentials)
-                .env("AWS_ENDPOINT_URL_S3", &server.endpoint)
+                .env("AWS_ENDPOINT_URL_S3", server.server.base_url())
                 .env("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS", "false")
                 .env("AWS_EC2_METADATA_DISABLED", "true")
                 .env("AWS_REGION", "us-east-1")
@@ -390,9 +321,9 @@ fn default_credentials_support_environment_and_profiles(logger: Logger) {
                 "credential test failed: {output:?}"
             );
             let request = server.request();
-            assert_eq!(request.method, "HEAD");
+            assert_eq!(request.method_str(), "HEAD");
             assert_eq!(
-                request.headers["x-amz-security-token"],
+                request.headers()["x-amz-security-token"],
                 "test-session-token"
             );
             check_signed(&request);

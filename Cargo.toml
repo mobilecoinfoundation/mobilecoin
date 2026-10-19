@@ -251,6 +251,7 @@ hex_fmt = "0.3"
 hkdf = "0.13"
 hmac = "0.13"
 hostname = "0.4"
+httpmock = { version = "0.8", default-features = false }
 itertools = "0.15"
 json = "0.12"
 lazy_static = "1"
