@@ -4,7 +4,11 @@
 //! * Provides monitor configuration and status from MonitorId.
 //! * MonitorId is a hash of the instantiation parameters.
 
-use crate::{database_key::DatabaseByteArrayKey, db_crypto::DbCryptoProvider, error::Error};
+use crate::{
+    database_key::DatabaseByteArrayKey,
+    db_crypto::{CryptoContext, DbCryptoProvider},
+    error::Error,
+};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::AccountKey;
@@ -155,9 +159,6 @@ pub struct MonitorStore {
     /// Retain a reference to the Environment so the Database handles are valid.
     _env: Arc<Environment>,
 
-    /// Crypto provider, used for managing database encryption.
-    crypto_provider: DbCryptoProvider,
-
     /// Mapping of MonitorId -> MonitorData
     monitor_id_to_monitor_data: Database,
 
@@ -167,11 +168,7 @@ pub struct MonitorStore {
 
 /// A DB mapping account IDs to keys
 impl MonitorStore {
-    pub fn new(
-        env: Arc<Environment>,
-        crypto_provider: DbCryptoProvider,
-        logger: Logger,
-    ) -> Result<Self, Error> {
+    pub fn new(env: Arc<Environment>, logger: Logger) -> Result<Self, Error> {
         let monitor_id_to_monitor_data = env.create_db(
             Some(MONITOR_ID_TO_MONITOR_DATA_DB_NAME),
             DatabaseFlags::empty(),
@@ -179,7 +176,6 @@ impl MonitorStore {
 
         Ok(Self {
             _env: env,
-            crypto_provider,
             monitor_id_to_monitor_data,
             logger,
         })
@@ -189,14 +185,13 @@ impl MonitorStore {
     pub fn add(
         &self,
         db_txn: &mut RwTransaction<'_>,
+        crypto_provider: &DbCryptoProvider,
         data: &MonitorData,
     ) -> Result<MonitorId, Error> {
         let monitor_id = MonitorId::from(data);
         let key_bytes = monitor_id.as_bytes();
 
-        let value_bytes = self
-            .crypto_provider
-            .encrypt(&mc_util_serial::encode(data))?;
+        let value_bytes = crypto_provider.encrypt(&mc_util_serial::encode(data))?;
 
         log::trace!(self.logger, "adding new monitor {}: {:?}", monitor_id, data);
 
@@ -226,11 +221,12 @@ impl MonitorStore {
     pub fn get_data(
         &self,
         db_txn: &impl Transaction,
+        crypto_provider: &DbCryptoProvider,
         monitor_id: &MonitorId,
     ) -> Result<MonitorData, Error> {
         match db_txn.get(self.monitor_id_to_monitor_data, monitor_id) {
             Ok(value_bytes) => {
-                let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
+                let value_bytes = crypto_provider.decrypt(value_bytes)?;
                 let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
                 Ok(data)
             }
@@ -243,6 +239,7 @@ impl MonitorStore {
     pub fn get_map(
         &self,
         db_txn: &impl Transaction,
+        crypto_provider: &DbCryptoProvider,
     ) -> Result<HashMap<MonitorId, MonitorData>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.monitor_id_to_monitor_data)?;
 
@@ -254,7 +251,7 @@ impl MonitorStore {
                     .and_then(|(key_bytes, value_bytes)| {
                         let monitor_id = MonitorId::try_from(key_bytes)
                             .map_err(|_| Error::KeyDeserialization)?;
-                        let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
+                        let value_bytes = crypto_provider.decrypt(value_bytes)?;
                         let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
 
                         Ok((monitor_id, data))
@@ -282,15 +279,14 @@ impl MonitorStore {
     pub fn set_data(
         &self,
         db_txn: &mut RwTransaction<'_>,
+        crypto_provider: &DbCryptoProvider,
         monitor_id: &MonitorId,
         data: &MonitorData,
     ) -> Result<(), Error> {
         let key_bytes = monitor_id.to_vec();
         match db_txn.get(self.monitor_id_to_monitor_data, &key_bytes) {
             Ok(_value_bytes) => {
-                let new_value_bytes = self
-                    .crypto_provider
-                    .encrypt(&mc_util_serial::encode(data))?;
+                let new_value_bytes = crypto_provider.encrypt(&mc_util_serial::encode(data))?;
                 db_txn.put(
                     self.monitor_id_to_monitor_data,
                     &key_bytes,
@@ -304,22 +300,24 @@ impl MonitorStore {
         }
     }
 
-    /// Re-encrypt the encrypted parts of the database with a new password.
-    /// This will fail if the current password is not set in the crypto_provider
-    /// since part of the re-encryption process relies on being able to
-    /// decrypt the existing data.
-    pub fn re_encrypt(
+    /// Rewrite all monitors using candidate source and destination contexts.
+    /// The caller commits crypto metadata in this transaction, then activates
+    /// the destination context only after commit succeeds.
+    pub(crate) fn re_encrypt(
         &self,
         db_txn: &mut RwTransaction<'_>,
-        new_password: &[u8],
+        source: &CryptoContext,
+        destination: &CryptoContext,
     ) -> Result<(), Error> {
         let mut cursor = db_txn.open_rw_cursor(self.monitor_id_to_monitor_data)?;
 
-        for (key_bytes, value_bytes) in cursor.iter().filter_map(|r| r.ok()) {
-            let decrypted_bytes = self.crypto_provider.decrypt(value_bytes)?;
-            let encrypted_bytes = self
-                .crypto_provider
-                .encrypt_with_password(new_password, &decrypted_bytes)?;
+        for result in cursor.iter() {
+            let (key_bytes, value_bytes) = result?;
+            // LMDB owns the bytes returned by the iterator. Updating the record
+            // may change those bytes, so make our own copy of the key first.
+            let key_bytes = key_bytes.to_vec();
+            let decrypted_bytes = source.decrypt(value_bytes)?;
+            let encrypted_bytes = destination.encrypt(&decrypted_bytes)?;
             cursor.put(&key_bytes, &encrypted_bytes, WriteFlags::CURRENT)?;
         }
 

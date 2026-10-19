@@ -200,6 +200,7 @@ aes = "0.9"
 aes-gcm = "0.11"
 aligned-cmov = "3"
 anyhow = "1"
+argon2 = { version = "0.6", default-features = false, features = ["alloc"] }
 assert_cmd = "2"
 assert_matches = "1"
 async-channel = "2"

@@ -1,49 +1,79 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2026 The MobileCoin Foundation
 
-//! Helper for managing database encryption.
+//! Versioned database encryption. Legacy encryption is supported only for reads
+//! during migration.
 
 use aes_gcm::{
-    aead::{array::typenum::Unsigned, Aead, Key, Nonce},
+    aead::{array::typenum::Unsigned, Aead, Payload},
     AeadCore, Aes256Gcm, Error as AeadError, KeyInit, KeySizeUser,
 };
+use argon2::{Algorithm, Argon2, Params, Version};
 use displaydoc::Display;
 use lmdb::{
     Database, DatabaseFlags, Environment, Error as LmdbError, RwTransaction, Transaction,
     WriteFlags,
 };
 use mc_crypto_hashes::{Blake2b512, Digest};
-use std::sync::{Arc, Mutex};
+use rand::{rngs::SysRng, TryRng};
 
-/// Domain tag for database-wide encryption.
-pub const MOBILECOIND_DB_KEY_DOMAIN_TAG: &str = "mc_mobilecoind";
-
-/// Required password length.
-/// This is set to 32 bytes as the intended purpose is for the user to pass a
-/// hash of a password and not the actual password the user typed.
+/// Clients supply a 32-byte password hash, rather than a raw password.
 pub const PASSWORD_LEN: usize = 32;
-
-/// LMDB database name for storing metadata.
+/// Domain separator used by the old format, retained for migration reads.
+const LEGACY_DOMAIN: &[u8] = b"mc_mobilecoind";
+/// Domain separator for deriving v1 keys from the salt and password hash.
+const KEY_DOMAIN: &[u8] = b"mc_mobilecoind_db_v1";
+/// Authenticated context for v1 records: the key domain followed by the version
+/// byte.
+const RECORD_AAD: &[u8] = b"mc_mobilecoind_db_v1\x01";
+/// First byte of the encrypted record: version || nonce || ciphertext and tag.
+const RECORD_VERSION: u8 = 1;
+/// AES-256-GCM encryption key length (256 bits).
+const KEY_LEN: usize = <Aes256Gcm as KeySizeUser>::KeySize::USIZE;
+/// AES-256-GCM nonce length (96 bits).
+const NONCE_LEN: usize = <Aes256Gcm as AeadCore>::NonceSize::USIZE;
+/// AES-256-GCM authentication tag length (128 bits).
+const TAG_LEN: usize = <Aes256Gcm as AeadCore>::TagSize::USIZE;
+/// Random salt length (256 bits); re-encrypting the database creates a new
+/// salt.
+const SALT_LEN: usize = 32;
+/// LMDB database containing encryption metadata.
 const CRYPTO_DB_NAME: &str = "db_crypto";
+/// Metadata key for the password-check marker; its presence enables encryption.
+const ENCRYPTION_STATE_KEY: &[u8] = b"db_encrypted";
+/// Known marker plaintext used to verify the supplied password hash.
+const ENCRYPTION_STATE_VAL: &[u8] = b"true";
+/// Metadata key for the salt used to derive the current v1 encryption key.
+const KEY_SALT_KEY: &[u8] = b"key_salt";
 
-/// Key/value used for testing we have the correct encryption key.
-const ENCRYPTION_STATE_KEY: &str = "db_encrypted";
-const ENCRYPTION_STATE_VAL: &str = "true";
+/// Encryption scheme used to derive keys and decode encrypted database records.
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) enum CryptoFormat {
+    /// AES-256-GCM with a key and fixed nonce derived from the password hash.
+    /// Supported only for reading records during migration.
+    Legacy,
+    /// AES-256-GCM with a salted key and a fresh random nonce for each write.
+    /// Records contain a version byte, nonce, ciphertext, and authentication
+    /// tag.
+    V1,
+}
 
 /// Possible db crypto error types.
 #[derive(Debug, Display)]
 pub enum DbCryptoError {
     /// Invalid password length
     InvalidPasswordLength,
-
     /// Invalid password
     InvalidPassword,
-
     /// Password needed
     PasswordNeeded,
-
+    /// Invalid encrypted database format
+    InvalidFormat,
+    /// Legacy database requires migration before writing
+    MigrationRequired,
     /// AEAD: {0}
     Aead(AeadError),
-
+    /// Argon2: {0}
+    Argon2(argon2::Error),
     /// LMDB: {0}
     Lmdb(LmdbError),
 }
@@ -60,658 +90,481 @@ impl From<LmdbError> for DbCryptoError {
     }
 }
 
-/// Database crypto state that is shared between multiple threads.
-struct DbCryptoProviderState {
-    /// Is the database currently encrypted?
-    is_db_encrypted: bool,
-
-    /// The current encryption key, stored inside Arc/Mutex so that this object
-    /// could be safely shared.
-    /// This should only be set once the password has been determined to be
-    /// valid!
-    encryption_key: Vec<u8>,
-}
-
-/// Database encryption helper.
+/// A candidate context is independent of the live provider until commit. Do not
+/// derive Debug: this contains key material.
 #[derive(Clone)]
-pub struct DbCryptoProvider {
-    /// LMDB Environment (database).
-    env: Arc<Environment>,
-
-    /// Database used for testing whether we have the correct encryption key or
-    /// not.
-    database: Database,
-
-    /// Shared state.
-    state: Arc<Mutex<DbCryptoProviderState>>,
+pub(crate) enum CryptoContext {
+    Plaintext,
+    Legacy {
+        key: [u8; KEY_LEN],
+        nonce: [u8; NONCE_LEN],
+    },
+    V1 {
+        key: [u8; KEY_LEN],
+        salt: [u8; SALT_LEN],
+    },
 }
 
-impl DbCryptoProvider {
-    pub fn new(env: Arc<Environment>) -> Result<Self, DbCryptoError> {
-        let database = env.create_db(Some(CRYPTO_DB_NAME), DatabaseFlags::empty())?;
-
-        // Check if the database is currently encrypted.
-        let is_db_encrypted = {
-            let db_txn = env.begin_ro_txn()?;
-            match db_txn.get(database, &ENCRYPTION_STATE_KEY.as_bytes()) {
-                Ok(_test_val) => {
-                    // The encryption indicator key is present in the database, this means
-                    // encryption is enabled.
-                    true
-                }
-                Err(LmdbError::NotFound) => {
-                    // The encryption indicator key is not in the database, this means encryption is
-                    // not enabled.
-                    false
-                }
-                Err(err) => {
-                    return Err(err.into());
-                }
-            }
-        };
-
-        Ok(Self {
-            env,
-            database,
-            state: Arc::new(Mutex::new(DbCryptoProviderState {
-                is_db_encrypted,
-                encryption_key: vec![],
-            })),
-        })
-    }
-
-    /// Check if data is currently being encrypted.
-    pub fn is_db_encrypted(&self) -> bool {
-        let state = self.state.lock().expect("mutex poisoned");
-        state.is_db_encrypted
-    }
-
-    /// Check if a given password is the password used to encrypt data in the
-    /// db, and if so store it for future encryption/decryption operations.
-    pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), DbCryptoError> {
-        let mut state = self.state.lock().expect("mutex poisoned");
-        if state.is_db_encrypted {
-            // Database is encrypted, see if we can decrypt our test value with the provided
-            // password.
-            let db_txn = self.env.begin_ro_txn()?;
-            let test_val = db_txn.get(self.database, &ENCRYPTION_STATE_KEY.as_bytes())?;
-            let expected_val =
-                self.encrypt_with_password(password, ENCRYPTION_STATE_VAL.as_bytes())?;
-            if test_val == expected_val {
-                state.encryption_key = password.to_vec();
-                Ok(())
-            } else {
-                Err(DbCryptoError::InvalidPassword)
-            }
-        } else {
-            // Db is not encrypted, password should be empty.
-            if password.is_empty() {
-                assert!(state.encryption_key.is_empty());
-                Ok(())
-            } else {
-                Err(DbCryptoError::InvalidPassword)
-            }
-        }
-    }
-
-    /// Check if the database has been "unlocked" - meaning, whether we are able
-    /// to successfully decrypt data using the information in our state
-    /// object.
-    pub fn is_unlocked(&self) -> bool {
-        let state = self.state.lock().expect("mutex poisoned");
-        if state.is_db_encrypted {
-            // We're encrypted, and only unlocked if a password has been provided.
-            !state.encryption_key.is_empty()
-        } else {
-            // Not encrypted, so we're always unlocked. Sanity check that the key is empty.
-            assert!(state.encryption_key.is_empty());
-            true
-        }
-    }
-
-    /// Change the password that will be used for all future
-    /// encryption/decryption operations. This should only be called after
-    /// all existing data has been re-encrypted to the new password!
-    pub fn change_password(
-        &self,
-        mut db_txn: RwTransaction<'_>,
-        password: &[u8],
-    ) -> Result<(), DbCryptoError> {
-        let mut state = self.state.lock().expect("muted poisoned");
-
-        // The test value will be used to verify whether a given password is correct.
+impl CryptoContext {
+    /// Create a new encryption generation, even when reusing a password.
+    pub(crate) fn new(password: &[u8]) -> Result<Self, DbCryptoError> {
         if password.is_empty() {
-            if state.is_db_encrypted {
-                db_txn.del(self.database, &ENCRYPTION_STATE_KEY.as_bytes(), None)?;
-            }
-        } else {
-            if password.len() != PASSWORD_LEN {
-                return Err(DbCryptoError::InvalidPasswordLength);
-            }
-
-            db_txn.put(
-                self.database,
-                &ENCRYPTION_STATE_KEY.as_bytes(),
-                &self.encrypt_with_password(password, ENCRYPTION_STATE_VAL.as_bytes())?,
-                WriteFlags::empty(),
-            )?;
+            return Ok(Self::Plaintext);
         }
-
-        db_txn.commit()?;
-
-        if password.is_empty() {
-            state.is_db_encrypted = false;
-            state.encryption_key = vec![];
-        } else {
-            state.is_db_encrypted = true;
-            state.encryption_key = password.to_vec();
-        }
-
-        Ok(())
+        Self::validate_password_length(password)?;
+        let mut salt = [0; SALT_LEN];
+        SysRng
+            .try_fill_bytes(&mut salt)
+            .expect("Could not generate database encryption salt");
+        Self::from_salt(password, salt)
     }
 
-    /// Encrypt data with the currently set password.
-    pub fn encrypt(&self, plaintext_bytes: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
-        let state = self.state.lock().expect("mutex poisoned");
-        if state.is_db_encrypted {
-            if state.encryption_key.is_empty() {
-                return Err(DbCryptoError::PasswordNeeded);
-            }
-
-            let (key, nonce) = Self::expand_password(&state.encryption_key)?;
-
-            let cipher = Aes256Gcm::new(&key);
-
-            Ok(cipher.encrypt(&nonce, plaintext_bytes)?)
-        } else {
-            Ok(plaintext_bytes.to_vec())
-        }
-    }
-
-    /// Encrypt data with a specific password.
-    /// This is used when we want to re-encrypt data as a result of a password
-    /// change: 1. Go over all encrypted data, decrypt it with the current
-    /// password and re-encrypt with the    new password using this method.
-    /// 2. Once all data has been re-encrypted, call set_password so that future
-    /// operations use the    new password.
-    pub fn encrypt_with_password(
-        &self,
-        password: &[u8],
-        plaintext_bytes: &[u8],
-    ) -> Result<Vec<u8>, DbCryptoError> {
-        // Short-circuit when no password is being used.
-        if password.is_empty() {
-            return Ok(plaintext_bytes.to_vec());
-        }
-
+    fn validate_password_length(password: &[u8]) -> Result<(), DbCryptoError> {
         if password.len() != PASSWORD_LEN {
             return Err(DbCryptoError::InvalidPasswordLength);
         }
-
-        let (key, nonce) = Self::expand_password(password)?;
-
-        let cipher = Aes256Gcm::new(&key);
-        Ok(cipher.encrypt(&nonce, plaintext_bytes)?)
+        Ok(())
     }
 
-    /// Decrypt data with the currently set password.
-    pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
-        let state = self.state.lock().expect("mutex poisoned");
+    fn from_salt(password: &[u8], salt: [u8; SALT_LEN]) -> Result<Self, DbCryptoError> {
+        // Use RFC 9106's memory-constrained profile. Pin the parameters so changes
+        // to library defaults cannot change v1 key derivation.
+        let params = Params::new(64 * 1024, 3, 4, Some(KEY_LEN)).map_err(DbCryptoError::Argon2)?;
+        let mut key = [0; KEY_LEN];
+        Argon2::new(Algorithm::Argon2id, Version::V0x13, params)
+            .hash_password_into(password, &[KEY_DOMAIN, salt.as_slice()].concat(), &mut key)
+            .map_err(DbCryptoError::Argon2)?;
+        Ok(Self::V1 { key, salt })
+    }
 
-        // There are two scenarios in which a password won't be set:
-        // 1) When the db is not being encrypted, in which case we just return the
-        //    ciphertext back to the caller.
-        // 2) When the db is encrypted but has not yet been unlocked by calling
-        //    check_and_store_password. In order to provide a better user experience, we
-        //    test if that is the case before assuming no password is required. This
-        //    allows callers to get a meaningful error (PasswordNeeded) instead of prost
-        //    decode errors.
-        match (state.is_db_encrypted, state.encryption_key.is_empty()) {
-            // Db is not encrypted and password is empty
-            (false, true) => Ok(ciphertext.to_vec()),
+    fn legacy(password: &[u8]) -> Result<Self, DbCryptoError> {
+        Self::validate_password_length(password)?;
+        let mut hasher = Blake2b512::new();
+        hasher.update(LEGACY_DOMAIN);
+        hasher.update(password);
+        let digest = hasher.finalize();
+        Ok(Self::Legacy {
+            key: digest[..KEY_LEN].try_into().expect("32-byte key"),
+            nonce: digest[KEY_LEN..KEY_LEN + NONCE_LEN]
+                .try_into()
+                .expect("12-byte nonce"),
+        })
+    }
 
-            // Db is not encrypted and password is not empty (should never happen)
-            (false, false) => panic!("invalid db encryption state"),
-
-            // Db is encrypted but password is missing
-            (true, true) => Err(DbCryptoError::PasswordNeeded),
-
-            // Db is encrypted and we have a password
-            (true, false) => {
-                let (key, nonce) = Self::expand_password(&state.encryption_key)?;
-
-                let cipher = Aes256Gcm::new(&key);
-
-                Ok(cipher.decrypt(&nonce, ciphertext)?)
+    pub(crate) fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
+        match self {
+            Self::Plaintext => Ok(plaintext.to_vec()),
+            Self::Legacy { .. } => Err(DbCryptoError::MigrationRequired),
+            Self::V1 { key, .. } => {
+                let mut nonce = [0; NONCE_LEN];
+                SysRng
+                    .try_fill_bytes(&mut nonce)
+                    .expect("Could not generate database encryption nonce");
+                let cipher = Aes256Gcm::new(key.into());
+                let encrypted = cipher.encrypt(
+                    (&nonce).into(),
+                    Payload {
+                        msg: plaintext,
+                        aad: RECORD_AAD,
+                    },
+                )?;
+                let mut value = Vec::with_capacity(1 + NONCE_LEN + encrypted.len());
+                value.push(RECORD_VERSION);
+                value.extend_from_slice(&nonce);
+                value.extend_from_slice(&encrypted);
+                Ok(value)
             }
         }
     }
 
-    /// Expands the password into an encryption key and a nonce.
-    fn expand_password(
+    pub(crate) fn decrypt(&self, value: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
+        match self {
+            Self::Plaintext => Ok(value.to_vec()),
+            Self::Legacy { key, nonce } => {
+                Ok(Aes256Gcm::new(key.into()).decrypt(nonce.into(), value)?)
+            }
+            Self::V1 { key, .. } => {
+                if value.len() < 1 + NONCE_LEN + TAG_LEN || value[0] != RECORD_VERSION {
+                    return Err(DbCryptoError::InvalidFormat);
+                }
+                Ok(Aes256Gcm::new(key.into()).decrypt(
+                    (&value[1..1 + NONCE_LEN])
+                        .try_into()
+                        .map_err(|_| DbCryptoError::InvalidFormat)?,
+                    Payload {
+                        msg: &value[1 + NONCE_LEN..],
+                        aad: RECORD_AAD,
+                    },
+                )?)
+            }
+        }
+    }
+}
+
+/// Encryption state and metadata handle. Database owns this behind one RwLock;
+/// callers hold its guard for the entire LMDB operation, including commit and
+/// activation of a new context. Stores borrow this provider instead of sharing
+/// independently accessible copies.
+pub struct DbCryptoProvider {
+    database: Database,
+    format: CryptoFormat,
+    encrypted: bool,
+    context: Option<CryptoContext>,
+}
+
+impl DbCryptoProvider {
+    pub(crate) fn new(env: &Environment, format: CryptoFormat) -> Result<Self, DbCryptoError> {
+        let database = env.create_db(Some(CRYPTO_DB_NAME), DatabaseFlags::empty())?;
+        let txn = env.begin_ro_txn()?;
+        let encrypted = match txn.get(database, &ENCRYPTION_STATE_KEY) {
+            Ok(_) => true,
+            Err(LmdbError::NotFound) => false,
+            Err(err) => return Err(err.into()),
+        };
+        if encrypted && format == CryptoFormat::V1 {
+            Self::read_salt(database, &txn)?;
+        }
+        Ok(Self {
+            database,
+            format,
+            encrypted,
+            context: if encrypted {
+                None
+            } else {
+                Some(CryptoContext::Plaintext)
+            },
+        })
+    }
+
+    fn read_salt(
+        database: Database,
+        txn: &impl Transaction,
+    ) -> Result<[u8; SALT_LEN], DbCryptoError> {
+        match txn.get(database, &KEY_SALT_KEY) {
+            Ok(bytes) => bytes.try_into().map_err(|_| DbCryptoError::InvalidFormat),
+            Err(LmdbError::NotFound) => Err(DbCryptoError::InvalidFormat),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    pub(crate) fn is_db_encrypted(&self) -> bool {
+        self.encrypted
+    }
+
+    pub(crate) fn is_unlocked(&self) -> bool {
+        self.context.is_some()
+    }
+
+    pub(crate) fn context(&self) -> Result<&CryptoContext, DbCryptoError> {
+        self.context.as_ref().ok_or(DbCryptoError::PasswordNeeded)
+    }
+
+    /// Authenticate without unlocking the database. The caller can use the
+    /// returned context for migration, and activate it only after a
+    /// successful commit.
+    pub(crate) fn validate_password(
+        &self,
+        txn: &impl Transaction,
         password: &[u8],
-    ) -> Result<(Key<Aes256Gcm>, Nonce<Aes256Gcm>), DbCryptoError> {
-        // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey,
-        // second 32 for nonce
-        let mut hasher = Blake2b512::new();
-        hasher.update(MOBILECOIND_DB_KEY_DOMAIN_TAG);
-        hasher.update(password);
-        let result = hasher.finalize();
+    ) -> Result<CryptoContext, DbCryptoError> {
+        if !self.encrypted {
+            return if password.is_empty() {
+                Ok(CryptoContext::Plaintext)
+            } else {
+                Err(DbCryptoError::InvalidPassword)
+            };
+        }
+        CryptoContext::validate_password_length(password)?;
+        let context = match self.format {
+            CryptoFormat::Legacy => CryptoContext::legacy(password)?,
+            CryptoFormat::V1 => {
+                CryptoContext::from_salt(password, Self::read_salt(self.database, txn)?)?
+            }
+        };
+        let marker = txn.get(self.database, &ENCRYPTION_STATE_KEY)?;
+        match context.decrypt(marker) {
+            Ok(plaintext) if plaintext == ENCRYPTION_STATE_VAL => Ok(context),
+            Err(DbCryptoError::InvalidFormat) => Err(DbCryptoError::InvalidFormat),
+            _ => Err(DbCryptoError::InvalidPassword),
+        }
+    }
 
-        let (key, remainder) = result.split_at(<Aes256Gcm as KeySizeUser>::KeySize::USIZE);
-        let (nonce, _) = remainder.split_at(<Aes256Gcm as AeadCore>::NonceSize::USIZE);
+    /// Stage metadata in the same transaction as the monitor rewrites.
+    pub(crate) fn write_metadata(
+        &self,
+        txn: &mut RwTransaction<'_>,
+        context: &CryptoContext,
+    ) -> Result<(), DbCryptoError> {
+        match context {
+            CryptoContext::Plaintext => {
+                for key in [ENCRYPTION_STATE_KEY, KEY_SALT_KEY] {
+                    match txn.del(self.database, &key, None) {
+                        Ok(()) | Err(LmdbError::NotFound) => {}
+                        Err(err) => return Err(err.into()),
+                    }
+                }
+            }
+            CryptoContext::V1 { salt, .. } => {
+                let marker = context.encrypt(ENCRYPTION_STATE_VAL)?;
+                txn.put(
+                    self.database,
+                    &ENCRYPTION_STATE_KEY,
+                    &marker,
+                    WriteFlags::empty(),
+                )?;
+                txn.put(self.database, &KEY_SALT_KEY, salt, WriteFlags::empty())?;
+            }
+            CryptoContext::Legacy { .. } => return Err(DbCryptoError::MigrationRequired),
+        }
+        Ok(())
+    }
 
-        let key = Key::<Aes256Gcm>::try_from(key)
-            .expect("key length is determined by Aes256Gcm::KeySize");
-        let nonce = Nonce::<Aes256Gcm>::try_from(nonce)
-            .expect("nonce length is determined by Aes256Gcm::NonceSize");
+    /// Called only after commit (or validation of an already-current database),
+    /// while Database still holds the provider's write guard.
+    pub(crate) fn activate_context(&mut self, context: CryptoContext) {
+        assert!(!matches!(context, CryptoContext::Legacy { .. }));
+        self.format = CryptoFormat::V1;
+        self.encrypted = !matches!(context, CryptoContext::Plaintext);
+        self.context = Some(context);
+    }
 
-        Ok((key, nonce))
+    pub(crate) fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
+        self.context()?.encrypt(plaintext)
+    }
+
+    pub(crate) fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
+        self.context()?.decrypt(ciphertext)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aes_gcm::aead::Nonce;
     use tempfile::TempDir;
-    const TEST_DATA: &[u8; 10] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-    fn get_test_db_crypto_provider() -> (DbCryptoProvider, TempDir) {
-        let path = TempDir::new().expect("Could not make tempdir for ledger db");
+    #[test]
+    fn fresh_nonces_and_authenticated_envelopes() {
+        const NONCE_START: usize = 1; // The nonce follows the version byte.
+        const CIPHERTEXT_START: usize = NONCE_START + NONCE_LEN;
+        const RECORD_OVERHEAD: usize = CIPHERTEXT_START + TAG_LEN;
 
-        let env = Arc::new(
-            Environment::new()
-                .set_max_dbs(10)
-                .set_map_size(10000000)
-                .open(path.as_ref())
-                .unwrap(),
-        );
+        let context = CryptoContext::new(&[42; PASSWORD_LEN]).unwrap();
+        for plaintext in [b"".as_slice(), b"true", b"monitor data"] {
+            let first = context.encrypt(plaintext).unwrap();
+            let second = context.encrypt(plaintext).unwrap();
+            assert_eq!(first.len(), plaintext.len() + RECORD_OVERHEAD);
+            assert_eq!(first[0], RECORD_VERSION);
+            assert_ne!(
+                first[NONCE_START..CIPHERTEXT_START],
+                second[NONCE_START..CIPHERTEXT_START]
+            );
+            assert_eq!(context.decrypt(&first).unwrap(), plaintext);
+            assert_eq!(context.decrypt(&second).unwrap(), plaintext);
 
-        (DbCryptoProvider::new(env).unwrap(), path)
+            // Changing any envelope field must invalidate the record.
+            let tag_start = first.len() - TAG_LEN;
+            for (field, index) in [
+                ("version", 0),
+                ("nonce", NONCE_START),
+                ("authentication tag", tag_start),
+            ] {
+                let mut modified = first.clone();
+                modified[index] ^= 0x80;
+                assert!(
+                    context.decrypt(&modified).is_err(),
+                    "tampered {field} was accepted"
+                );
+            }
+            if !plaintext.is_empty() {
+                let mut modified = first.clone();
+                modified[CIPHERTEXT_START] ^= 0x80;
+                assert!(
+                    context.decrypt(&modified).is_err(),
+                    "tampered ciphertext was accepted"
+                );
+            }
+
+            for len in 0..RECORD_OVERHEAD {
+                assert!(
+                    context.decrypt(&first[..len]).is_err(),
+                    "truncated record of length {len} was accepted"
+                );
+            }
+        }
+
+        let encrypted = context.encrypt(b"monitor data").unwrap();
+        let wrong_password = CryptoContext::new(&[43; PASSWORD_LEN]).unwrap();
+        assert!(wrong_password.decrypt(&encrypted).is_err());
+
+        // A new context with the same password derives a new key from a fresh salt.
+        let same_password_new_salt = CryptoContext::new(&[42; PASSWORD_LEN]).unwrap();
+        assert!(same_password_new_salt.decrypt(&encrypted).is_err());
     }
 
     #[test]
-    fn test_pre_upgrade_ciphertext_compatibility() {
-        // Generated by DbCryptoProvider at commit b3582c6cc, using aes-gcm 0.10.3,
-        // with:
-        //
-        // let (crypto_provider, _) = get_test_db_crypto_provider();
-        // let ciphertext = crypto_provider
-        //     .encrypt_with_password(&[42; PASSWORD_LEN], b"true")
-        //     .unwrap();
-        const PASSWORD: [u8; PASSWORD_LEN] = [42; PASSWORD_LEN];
-        const PLAINTEXT: &[u8] = b"true";
-        const CIPHERTEXT: [u8; 20] = [
+    fn independent_wire_format_and_legacy_fixture() {
+        // Fixed fixture generated by the pre-upgrade implementation (aes-gcm 0.10.3).
+        let legacy_ciphertext = [
             0x3c, 0x5b, 0x8d, 0xc8, 0x25, 0xdf, 0xa9, 0xb1, 0x56, 0xc4, 0xde, 0xad, 0xb4, 0x05,
             0xae, 0x27, 0x69, 0xcd, 0xa6, 0x5d,
         ];
+        let legacy = CryptoContext::legacy(&[42; PASSWORD_LEN]).unwrap();
+        assert_eq!(legacy.decrypt(&legacy_ciphertext).unwrap(), b"true");
+        assert!(matches!(
+            legacy.encrypt(b"true"),
+            Err(DbCryptoError::MigrationRequired)
+        ));
 
-        // Write the pre-upgrade password marker directly, then reopen the provider so
-        // it observes an existing encrypted database.
-        let (crypto_provider, path) = get_test_db_crypto_provider();
-        let mut db_txn = crypto_provider.env.begin_rw_txn().unwrap();
-        db_txn
-            .put(
-                crypto_provider.database,
-                &ENCRYPTION_STATE_KEY.as_bytes(),
-                &CIPHERTEXT,
-                WriteFlags::empty(),
-            )
+        let salt = [9; SALT_LEN];
+        // Generated independently with argon2-cffi: Argon2id v19, m=65536,
+        // t=3, p=4, password=[42; 32], salt=b"mc_mobilecoind_db_v1" + [9; 32].
+        let key = hex::decode("676b2285f4ad2cf4d6f08744b3634d77c3c7c4f8e9d2bdc3fa507630f0647b8d")
             .unwrap();
-        db_txn.commit().unwrap();
-        drop(crypto_provider);
-
-        let env = Arc::new(
-            Environment::new()
-                .set_max_dbs(10)
-                .set_map_size(10000000)
-                .open(path.as_ref())
+        let cipher = Aes256Gcm::new_from_slice(&key).unwrap();
+        let context = CryptoContext::from_salt(&[42; PASSWORD_LEN], salt).unwrap();
+        let value = context.encrypt(b"record").unwrap();
+        assert_eq!(
+            cipher
+                .decrypt(
+                    <&Nonce<Aes256Gcm>>::try_from(&value[1..13]).unwrap(),
+                    Payload {
+                        msg: &value[13..],
+                        aad: b"mc_mobilecoind_db_v1\x01",
+                    }
+                )
                 .unwrap(),
+            b"record"
         );
-        let crypto_provider = DbCryptoProvider::new(env).unwrap();
-        assert!(crypto_provider.is_db_encrypted());
-        assert!(!crypto_provider.is_unlocked());
-
-        crypto_provider.check_and_store_password(&PASSWORD).unwrap();
-        assert!(crypto_provider.is_unlocked());
-        assert_eq!(crypto_provider.decrypt(&CIPHERTEXT).unwrap(), PLAINTEXT);
-        assert_eq!(
-            crypto_provider
-                .encrypt_with_password(&PASSWORD, PLAINTEXT)
-                .unwrap(),
-            CIPHERTEXT
-        );
-    }
-
-    #[test]
-    fn test_basic() {
-        let (crypto_provider, _) = get_test_db_crypto_provider();
-
-        // We start un-encrypted and unlocked.
-        assert!(!crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        // check_and_store_password should only accept an empty password and we should
-        // stay unencrypted.
-        assert!(crypto_provider
-            .check_and_store_password(&[1, 2, 3])
-            .is_err());
-        assert!(!crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
-        assert!(!crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        // Encrypting/decrypting should be a no-op at this point.
-        assert_eq!(
-            crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_eq!(
-            crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_eq!(
-            crypto_provider
-                .encrypt_with_password(&[], &TEST_DATA[..])
-                .unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_ne!(
-            crypto_provider
-                .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
-                .unwrap(),
-            TEST_DATA.to_vec()
-        );
-
-        // Changing to empty password should not affect anything.
-        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
-        crypto_provider.change_password(db_txn, &[]).unwrap();
-
-        assert!(crypto_provider
-            .check_and_store_password(&[1, 2, 3])
-            .is_err());
-        assert!(!crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
-        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
-        assert!(crypto_provider
-            .check_and_store_password(&[200; PASSWORD_LEN])
-            .is_err());
-        assert!(!crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        // Encrypting/decrypting should be a no-op at this point.
-        assert_eq!(
-            crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_eq!(
-            crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_eq!(
-            crypto_provider
-                .encrypt_with_password(&[], &TEST_DATA[..])
-                .unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_ne!(
-            crypto_provider
-                .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
-                .unwrap(),
-            TEST_DATA.to_vec()
-        );
-
-        // Changing a password should indicate we are now encrypted, and
-        // encryption/decryption should no longer be the identity function.
-        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
-        crypto_provider
-            .change_password(db_txn, &[6; PASSWORD_LEN])
-            .unwrap();
-
-        assert!(crypto_provider.check_and_store_password(&[]).is_err());
-        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
-        assert!(crypto_provider
-            .check_and_store_password(&[200; PASSWORD_LEN])
-            .is_err());
-        assert!(crypto_provider
-            .check_and_store_password(&[6; PASSWORD_LEN])
-            .is_ok());
-
-        assert!(crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        let encrypted_data = crypto_provider.encrypt(&TEST_DATA[..]).unwrap();
-        assert_ne!(encrypted_data, TEST_DATA.to_vec()); // No longer the identity function
-        assert!(crypto_provider.decrypt(&TEST_DATA[..]).is_err()); // TEST_DATA is not encrypted so this shoud fail.
-        assert_eq!(
-            TEST_DATA.to_vec(),
-            crypto_provider.decrypt(&encrypted_data).unwrap()
-        );
-
-        assert_eq!(
-            encrypted_data,
-            crypto_provider
-                .encrypt_with_password(&[6; PASSWORD_LEN], &TEST_DATA[..])
-                .unwrap()
-        );
-
-        // Changing to a different password should result in different encrypted data.
-        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
-        crypto_provider
-            .change_password(db_txn, &[7; PASSWORD_LEN])
-            .unwrap();
-
-        assert!(crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        let encrypted_data2 = crypto_provider.encrypt(&TEST_DATA[..]).unwrap();
-        assert_ne!(encrypted_data, encrypted_data2);
-        assert_ne!(TEST_DATA.to_vec(), encrypted_data2);
-
-        assert_eq!(
-            encrypted_data2,
-            crypto_provider
-                .encrypt_with_password(&[7; PASSWORD_LEN], &TEST_DATA[..])
-                .unwrap()
-        );
-
-        // Previously encrypted data should not decrypt.
-        assert!(crypto_provider.decrypt(&encrypted_data).is_err());
-
-        // check_and_store_password should behave as expected.
-        assert!(crypto_provider.check_and_store_password(&[]).is_err());
-        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
-        assert!(crypto_provider
-            .check_and_store_password(&[200; PASSWORD_LEN])
-            .is_err());
-        assert!(crypto_provider
-            .check_and_store_password(&[7; PASSWORD_LEN])
-            .is_ok());
-
-        // Changing back to an empty password should clear the is_db_encrypted flag.
-        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
-        crypto_provider.change_password(db_txn, &[]).unwrap();
-
-        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
-        assert!(!crypto_provider.is_db_encrypted());
-        assert!(crypto_provider.is_unlocked());
-
-        // Encrypting/decrypting should be a no-op at this point.
-        assert_eq!(
-            crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_eq!(
-            crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_eq!(
-            crypto_provider
-                .encrypt_with_password(&[], &TEST_DATA[..])
-                .unwrap(),
-            TEST_DATA.to_vec()
-        );
-        assert_ne!(
-            crypto_provider
-                .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
-                .unwrap(),
-            TEST_DATA.to_vec()
-        );
-
-        // check_and_store_password should behave as expected.
-        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
-        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
-        assert!(crypto_provider
-            .check_and_store_password(&[200; PASSWORD_LEN])
-            .is_err());
-        assert!(crypto_provider.check_and_store_password(&[7; 1]).is_err());
-    }
-
-    #[test]
-    fn test_encrypt_with_password_rejects_invalid_password_len() {
-        let (crypto_provider, _) = get_test_db_crypto_provider();
-
-        assert!(crypto_provider
-            .encrypt_with_password(&[123; PASSWORD_LEN - 1], &TEST_DATA[..])
-            .is_err());
-
-        assert!(crypto_provider
-            .encrypt_with_password(&[123; PASSWORD_LEN + 1], &TEST_DATA[..])
-            .is_err());
-
-        assert!(crypto_provider
-            .encrypt_with_password(&[123; PASSWORD_LEN], &TEST_DATA[..])
-            .is_ok());
-    }
-
-    #[test]
-    fn test_change_password_rejects_invalid_password_len() {
-        let (crypto_provider, _) = get_test_db_crypto_provider();
-
-        assert!(crypto_provider
-            .change_password(
-                crypto_provider.env.begin_rw_txn().unwrap(),
-                &[123; PASSWORD_LEN - 1]
+        // Header/AAD stripping or legacy fallback must not authenticate.
+        assert!(cipher
+            .decrypt(
+                <&Nonce<Aes256Gcm>>::try_from(&value[1..13]).unwrap(),
+                &value[13..]
             )
             .is_err());
-
-        assert!(crypto_provider
-            .change_password(
-                crypto_provider.env.begin_rw_txn().unwrap(),
-                &[123; PASSWORD_LEN + 1]
-            )
-            .is_err());
-
-        assert!(crypto_provider
-            .change_password(
-                crypto_provider.env.begin_rw_txn().unwrap(),
-                &[123; PASSWORD_LEN]
-            )
-            .is_ok());
+        assert!(context.decrypt(&legacy_ciphertext).is_err());
     }
 
     #[test]
-    fn test_db_reopen() {
-        // Get the initial db.
-        let (_crypto_provider, path) = get_test_db_crypto_provider();
-
-        let mut password = [0; PASSWORD_LEN];
-
-        // We will toggle the encrytpion every other iteraction.
-        // Even executions are un-encrypted, odd executions are encrypted.
-        for i in 0..100 {
-            let is_encrypted = i % 2 == 1;
-
-            let env = Arc::new(
-                Environment::new()
-                    .set_max_dbs(10)
-                    .set_map_size(10000000)
-                    .open(path.as_ref())
-                    .unwrap(),
-            );
-
-            let crypto_provider = DbCryptoProvider::new(env).unwrap();
-
-            if is_encrypted {
-                let expected_encrypted_bytes = crypto_provider
-                    .encrypt_with_password(&password[..], &TEST_DATA[..])
-                    .unwrap();
-
-                assert!(crypto_provider.is_db_encrypted());
-                assert!(!crypto_provider.is_unlocked());
-
-                // encrypt/decrypt should fail if a password is not provided.
-                assert!(crypto_provider.encrypt(&TEST_DATA[..]).is_err());
-                assert!(crypto_provider.decrypt(&expected_encrypted_bytes).is_err());
-
-                // Providing the wrong password should fail.
-                assert!(crypto_provider
-                    .check_and_store_password(&[255; PASSWORD_LEN])
-                    .is_err());
-
-                assert!(crypto_provider.is_db_encrypted());
-                assert!(!crypto_provider.is_unlocked());
-
-                // encrypt/decrypt should fail if a password is not provided.
-                assert!(crypto_provider.encrypt(&TEST_DATA[..]).is_err());
-                assert!(crypto_provider.decrypt(&expected_encrypted_bytes).is_err());
-
-                // Provide the correct password
-                crypto_provider
-                    .check_and_store_password(&password[..])
-                    .unwrap();
-
-                assert!(crypto_provider.is_db_encrypted());
-                assert!(crypto_provider.is_unlocked());
-
-                assert_eq!(
-                    crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
-                    expected_encrypted_bytes
-                );
-                assert_eq!(
-                    crypto_provider.decrypt(&expected_encrypted_bytes).unwrap(),
-                    TEST_DATA.to_vec()
-                );
-
-                // Remove password
-                crypto_provider
-                    .change_password(crypto_provider.env.begin_rw_txn().unwrap(), &[])
-                    .unwrap();
-            } else {
-                assert!(!crypto_provider.is_db_encrypted());
-                assert!(crypto_provider.is_unlocked());
-
-                assert_eq!(
-                    crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
-                    TEST_DATA.to_vec()
-                );
-                assert_eq!(
-                    crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
-                    TEST_DATA.to_vec()
-                );
-                assert_eq!(
-                    crypto_provider
-                        .encrypt_with_password(&[], &TEST_DATA[..])
-                        .unwrap(),
-                    TEST_DATA.to_vec()
-                );
-                assert_ne!(
-                    crypto_provider
-                        .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
-                        .unwrap(),
-                    TEST_DATA.to_vec()
-                );
-
-                // Encrypt for the next iteration.
-                password = [i; PASSWORD_LEN];
-                crypto_provider
-                    .change_password(crypto_provider.env.begin_rw_txn().unwrap(), &password[..])
-                    .unwrap();
-            }
+    fn password_lengths() {
+        for len in [1, 31, 33] {
+            assert!(matches!(
+                CryptoContext::new(&vec![42; len]),
+                Err(DbCryptoError::InvalidPasswordLength)
+            ));
         }
+        assert!(matches!(
+            CryptoContext::new(&[]).unwrap(),
+            CryptoContext::Plaintext
+        ));
+        assert!(CryptoContext::new(&[42; 32]).is_ok());
+    }
+
+    #[test]
+    fn provider_metadata_reopen_and_failed_validation_do_not_activate_context() {
+        let path = TempDir::new().unwrap();
+        let env = Environment::new()
+            .set_max_dbs(10)
+            .open(path.path())
+            .unwrap();
+        let mut provider = DbCryptoProvider::new(&env, CryptoFormat::V1).unwrap();
+        assert!(provider.is_unlocked());
+        assert!(!provider.is_db_encrypted());
+        assert_eq!(provider.encrypt(b"plaintext").unwrap(), b"plaintext");
+        let txn = env.begin_ro_txn().unwrap();
+        assert!(provider.validate_password(&txn, &[42; 32]).is_err());
+        drop(txn);
+
+        let context = CryptoContext::new(&[42; 32]).unwrap();
+        let encrypted = context.encrypt(b"plaintext").unwrap();
+        let mut txn = env.begin_rw_txn().unwrap();
+        provider.write_metadata(&mut txn, &context).unwrap();
+        txn.commit().unwrap();
+        provider.activate_context(context);
+        let mut provider = DbCryptoProvider::new(&env, CryptoFormat::V1).unwrap();
+        assert!(!provider.is_unlocked());
+        assert!(provider.is_db_encrypted());
+        assert!(provider.encrypt(b"plaintext").is_err());
+        assert!(provider.decrypt(&encrypted).is_err());
+        let txn = env.begin_ro_txn().unwrap();
+        for password in [vec![], vec![1], vec![43; 32]] {
+            assert!(provider.validate_password(&txn, &password).is_err());
+            assert!(!provider.is_unlocked());
+        }
+        let candidate = provider.validate_password(&txn, &[42; 32]).unwrap();
+        assert!(!provider.is_unlocked());
+        drop(txn);
+        provider.activate_context(candidate);
+        assert_eq!(provider.decrypt(&encrypted).unwrap(), b"plaintext");
+        let mut txn = env.begin_rw_txn().unwrap();
+        provider
+            .write_metadata(&mut txn, &CryptoContext::Plaintext)
+            .unwrap();
+        txn.commit().unwrap();
+        provider.activate_context(CryptoContext::Plaintext);
+        assert!(!provider.is_db_encrypted());
+        assert_eq!(provider.decrypt(b"plaintext").unwrap(), b"plaintext");
+        assert!(matches!(
+            env.begin_ro_txn()
+                .unwrap()
+                .get(provider.database, &KEY_SALT_KEY),
+            Err(LmdbError::NotFound)
+        ));
+    }
+
+    #[test]
+    fn malformed_salt_and_marker_fail_closed() {
+        let path = TempDir::new().unwrap();
+        let env = Environment::new()
+            .set_max_dbs(10)
+            .open(path.path())
+            .unwrap();
+        let provider = DbCryptoProvider::new(&env, CryptoFormat::V1).unwrap();
+        let context = CryptoContext::new(&[42; 32]).unwrap();
+        let mut txn = env.begin_rw_txn().unwrap();
+        provider.write_metadata(&mut txn, &context).unwrap();
+        txn.put(
+            provider.database,
+            &KEY_SALT_KEY,
+            &[1; 31],
+            WriteFlags::empty(),
+        )
+        .unwrap();
+        txn.commit().unwrap();
+        assert!(matches!(
+            DbCryptoProvider::new(&env, CryptoFormat::V1),
+            Err(DbCryptoError::InvalidFormat)
+        ));
+        let mut txn = env.begin_rw_txn().unwrap();
+        provider.write_metadata(&mut txn, &context).unwrap();
+        txn.put(
+            provider.database,
+            &ENCRYPTION_STATE_KEY,
+            &b"bad marker",
+            WriteFlags::empty(),
+        )
+        .unwrap();
+        txn.commit().unwrap();
+        let provider = DbCryptoProvider::new(&env, CryptoFormat::V1).unwrap();
+        assert!(matches!(
+            provider.validate_password(&env.begin_ro_txn().unwrap(), &[42; 32]),
+            Err(DbCryptoError::InvalidFormat)
+        ));
+        assert!(!provider.is_unlocked());
+        let mut txn = env.begin_rw_txn().unwrap();
+        provider.write_metadata(&mut txn, &context).unwrap();
+        txn.put(
+            provider.database,
+            &KEY_SALT_KEY,
+            &[1; 32],
+            WriteFlags::empty(),
+        )
+        .unwrap();
+        txn.commit().unwrap();
+        assert!(provider
+            .validate_password(&env.begin_ro_txn().unwrap(), &[42; 32])
+            .is_err());
+        assert!(!provider.is_unlocked());
     }
 }

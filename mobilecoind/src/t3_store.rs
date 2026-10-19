@@ -2,11 +2,7 @@
 
 //! Database storage for queued data we want to sync to T3.
 
-use crate::{
-    error::Error,
-    monitor_store::{MonitorId, MonitorStore},
-    utxo_store::UnspentTxOut,
-};
+use crate::{error::Error, monitor_store::MonitorData, utxo_store::UnspentTxOut};
 use hex_fmt::HexFmt;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::ShortAddressHash;
@@ -86,18 +82,18 @@ impl T3Store {
         })
     }
 
+    /// Use monitor data already decrypted by the caller within this
+    /// transaction.
     pub fn process_utxo(
         &self,
         db_txn: &mut RwTransaction<'_>,
-        monitor_id: &MonitorId,
-        monitor_store: &MonitorStore,
+        monitor_data: &MonitorData,
         utxo: &UnspentTxOut,
     ) -> Result<(), Error> {
         if utxo.memo_payload.is_empty() {
             return Ok(());
         };
 
-        let monitor_data = monitor_store.get_data(db_txn, monitor_id)?;
         let Ok(memo_payload) = MemoPayload::try_from(&utxo.memo_payload[..]) else {
             return Ok(());
         };
