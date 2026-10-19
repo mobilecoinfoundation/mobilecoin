@@ -6,7 +6,19 @@
 
 pub mod uri;
 
-use crate::uri::{Destination, Uri};
+#[cfg(test)]
+mod s3_test;
+
+use crate::uri::{canonical_region, Destination, Uri};
+use aws_config::{
+    meta::region::ProvideRegion, profile::ProfileFileRegionProvider, BehaviorVersion,
+};
+use aws_sdk_s3::{
+    config::{retry::RetryConfig, timeout::TimeoutConfig, Region, StalledStreamProtectionConfig},
+    primitives::ByteStream,
+    types::ObjectCannedAcl,
+    Client as S3Client,
+};
 use clap::Parser;
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_blockchain_types::{BlockData, BlockIndex};
@@ -15,10 +27,8 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use prost::Message;
 use retry::{delay, retry, OperationResult};
-use rusoto_core::{request::BufferedHttpResponse, Region, RusotoError};
-use rusoto_s3::{HeadObjectRequest, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, time::Duration};
 use tokio::runtime::Handle;
 
 /// Block writer.
@@ -62,61 +72,120 @@ pub struct StateData {
     next_block: BlockIndex,
 }
 
+/// Resolves the region by highest-priority source
+/// An empty or invalid value falls back to us-east-1
+async fn resolve_region(region: Option<String>) -> Region {
+    let selected = match region {
+        Some(region) => Some(region),
+        None => {
+            match std::env::var("AWS_REGION").or_else(|_| std::env::var("AWS_DEFAULT_REGION")) {
+                Ok(region) => Some(region),
+                Err(_) => ProfileFileRegionProvider::new()
+                    .region()
+                    .await
+                    .map(|region| region.as_ref().to_owned()),
+            }
+        }
+    };
+    Region::new(
+        selected
+            .as_deref()
+            .and_then(canonical_region)
+            .unwrap_or("us-east-1"),
+    )
+}
+
 /// S3 block writer.
 pub struct S3BlockWriter {
-    path: PathBuf,
+    bucket: String,
+    prefix: PathBuf,
     s3_client: S3Client,
     logger: Logger,
 }
 
 impl S3BlockWriter {
-    fn new(path: PathBuf, region: Region, logger: Logger) -> S3BlockWriter {
+    fn new(bucket: String, prefix: PathBuf, region: Option<String>, logger: Logger) -> Self {
         log::debug!(
             logger,
-            "Creating S3 Block Writer with path={:?} region={:?}",
-            path,
-            region
+            "Creating S3 Block Writer with bucket={bucket} prefix={prefix:?} region={region:?}"
         );
+        let config = Handle::current().block_on(async {
+            aws_config::defaults(BehaviorVersion::v2026_01_12())
+                .region(resolve_region(region).await)
+                .load()
+                .await
+        });
+        Self::from_config(
+            bucket,
+            prefix,
+            aws_sdk_s3::config::Builder::from(&config),
+            logger,
+        )
+    }
 
-        let s3_client = S3Client::new(region);
-        S3BlockWriter {
-            path,
-            s3_client,
+    fn from_config(
+        bucket: String,
+        prefix: PathBuf,
+        config: aws_sdk_s3::config::Builder,
+        logger: Logger,
+    ) -> Self {
+        let config = config
+            // The outer retry loop already retries indefinitely with jitter.
+            .retry_config(RetryConfig::disabled())
+            // Bound connection setup and stalled transfers separately from the
+            // generous request-to-response-header deadline.
+            .timeout_config(
+                TimeoutConfig::builder()
+                    .connect_timeout(Duration::from_secs(30))
+                    // The read timeout includes sending the request body. Sampled large
+                    // 10,000-block testnet archives are ~250 MB (~34 minutes at 1 Mbit/s),
+                    // so allow an hour for upload and response headers.
+                    .read_timeout(Duration::from_secs(60 * 60))
+                    .disable_operation_timeout()
+                    .disable_operation_attempt_timeout()
+                    .build(),
+            )
+            .stalled_stream_protection(
+                StalledStreamProtectionConfig::enabled()
+                    .grace_period(Duration::from_secs(120))
+                    .build(),
+            )
+            // The blocks have dots, `.`, in the names. We use path style to be
+            // able to validate TLS certificates
+            .force_path_style(true)
+            .build();
+        Self {
+            bucket,
+            prefix,
+            s3_client: S3Client::from_conf(config),
             logger,
         }
     }
 
-    fn write_bytes_to_s3(&self, path: &str, filename: &str, value: &[u8]) {
+    fn write_bytes_to_s3(&self, key: &str, value: &[u8]) {
         let runtime = Handle::current();
         let result = retry(
             delay::Exponential::from_millis_with_base_factor(10).map(delay::jitter),
             || {
-                let req = PutObjectRequest {
-                    bucket: path.to_string(),
-                    key: filename.to_string(),
-                    body: Some(value.to_vec().into()),
-                    acl: Some("public-read".to_string()),
-                    ..Default::default()
-                };
-
                 runtime
-                    .block_on(self.s3_client.put_object(req))
+                    .block_on(
+                        self.s3_client
+                            .put_object()
+                            .bucket(&self.bucket)
+                            .key(key)
+                            .body(ByteStream::from(value.to_vec()))
+                            .acl(ObjectCannedAcl::PublicRead)
+                            .send(),
+                    )
                     .map_or_else(
                         |err| {
-                            log::warn!(
-                                self.logger,
-                                "Failed writing {}: {:?}, retrying...",
-                                filename,
-                                err
-                            );
+                            log::warn!(self.logger, "Failed writing {key}: {err:?}, retrying...");
                             OperationResult::Retry(err)
                         },
                         OperationResult::Ok,
                     )
             },
         );
-
-        // We should always succeed since retrying should never stop until that happens.
         result.expect("failed to write to S3");
     }
 }
@@ -128,98 +197,64 @@ impl BlockHandler for S3BlockWriter {
             "S3: Handling block {}",
             block_data.block().index
         );
-
         let archive_block = blockchain::ArchiveBlock::from(block_data);
-
-        let dest = self
-            .path
-            .as_path()
+        let key = self
+            .prefix
             .join(block_num_to_s3block_path(block_data.block().index));
-
-        let dir = dest.as_path().parent().expect("failed getting parent");
-        let filename = dest.file_name().unwrap();
-
-        self.write_bytes_to_s3(
-            dir.to_str().unwrap(),
-            filename.to_str().unwrap(),
-            &archive_block.encode_to_vec(),
-        );
+        self.write_bytes_to_s3(key.to_str().unwrap(), &archive_block.encode_to_vec());
     }
 
     fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]) {
         assert!(blocks_data.len() >= 2);
-
         let first_block_index = blocks_data[0].block().index;
         let last_block_index = blocks_data.last().unwrap().block().index;
         assert_eq!(
             last_block_index,
             first_block_index + blocks_data.len() as u64 - 1
         );
-
         log::info!(
             self.logger,
             "S3: Handling blocks {}-{}",
             first_block_index,
-            last_block_index,
+            last_block_index
         );
-
         let archive_blocks = blockchain::ArchiveBlocks::from(blocks_data);
-
-        let dest = self.path.as_path().join(merged_block_num_to_s3block_path(
+        let key = self.prefix.join(merged_block_num_to_s3block_path(
             blocks_data.len() as u64,
             first_block_index,
         ));
-
-        let dir = dest.as_path().parent().expect("failed getting parent");
-        let filename = dest.file_name().unwrap();
-
-        self.write_bytes_to_s3(
-            dir.to_str().unwrap(),
-            filename.to_str().unwrap(),
-            &archive_blocks.encode_to_vec(),
-        );
+        self.write_bytes_to_s3(key.to_str().unwrap(), &archive_blocks.encode_to_vec());
     }
 
     fn block_exists(&self, block_index: BlockIndex) -> bool {
         let runtime = Handle::current();
+        let key = self.prefix.join(block_num_to_s3block_path(block_index));
         let result = retry(
             delay::Exponential::from_millis_with_base_factor(10).map(delay::jitter),
             || {
-                let dest = self.path.join(block_num_to_s3block_path(block_index));
-
-                let dir = dest
-                    .parent()
-                    .expect("failed getting parent")
-                    .to_string_lossy();
-                let filename = dest
-                    .file_name()
-                    .expect("Failed getting the file name")
-                    .to_string_lossy();
-                let req = HeadObjectRequest {
-                    bucket: dir.into(),
-                    key: filename.into(),
-                    ..Default::default()
-                };
                 log::info!(self.logger, "Checking for existence of block {block_index}");
-
-                let result = runtime.block_on(self.s3_client.head_object(req));
-                match result {
+                match runtime.block_on(
+                    self.s3_client
+                        .head_object()
+                        .bucket(&self.bucket)
+                        .key(key.to_str().unwrap())
+                        .send(),
+                ) {
                     Ok(_) => OperationResult::Ok(true),
-                    // Happens when the object doesn't exist, see
-                    // https://docs.aws.amazon.com/cli/latest/reference/s3api/head-object.html
-                    Err(RusotoError::Unknown(BufferedHttpResponse { status, .. }))
-                        if status.as_u16() == 404 =>
+                    Err(err)
+                        if err
+                            .raw_response()
+                            .is_some_and(|response| response.status().as_u16() == 404) =>
                     {
                         OperationResult::Ok(false)
                     }
-                    Err(e) => {
-                        log::warn!(self.logger, "Failed to talk to S3 {e:?}, retrying...");
-                        OperationResult::Retry(e)
+                    Err(err) => {
+                        log::warn!(self.logger, "Failed to talk to S3 {err:?}, retrying...");
+                        OperationResult::Retry(err)
                     }
                 }
             },
         );
-
         result.expect("Stopped retrying getting block existence from S3")
     }
 }
@@ -334,9 +369,11 @@ fn main() {
 
     // Create block handler
     let mut block_handler: Box<dyn BlockHandler> = match config.destination.destination {
-        Destination::S3 { path, region } => {
-            Box::new(S3BlockWriter::new(path, region, logger.clone()))
-        }
+        Destination::S3 {
+            bucket,
+            prefix,
+            region,
+        } => Box::new(S3BlockWriter::new(bucket, prefix, region, logger.clone())),
 
         Destination::Local { path } => {
             fs::create_dir_all(&path)
@@ -436,6 +473,51 @@ mod test {
     use std::path::Path;
     use tempfile::TempDir;
     use walkdir::WalkDir;
+
+    #[test]
+    fn cli_parses_s3_destination() {
+        let config = Config::try_parse_from([
+            "ledger-distribution",
+            "--ledger-path",
+            "/tmp/ledger",
+            "--dest",
+            "s3://bucket/node.example/nested?region=EuWeSt2",
+            "--merge-buckets",
+            "10,100",
+        ])
+        .unwrap();
+
+        assert_eq!(config.ledger_path, PathBuf::from("/tmp/ledger"));
+        assert_eq!(config.merge_buckets, vec![10, 100]);
+        let Destination::S3 {
+            bucket,
+            prefix,
+            region,
+        } = config.destination.destination
+        else {
+            panic!("expected S3");
+        };
+        assert_eq!(bucket, "bucket");
+        assert_eq!(prefix, PathBuf::from("node.example/nested"));
+        assert_eq!(region.as_deref(), Some("eu-west-2"));
+    }
+
+    #[test]
+    fn invalid_explicit_region_is_reported_by_cli() {
+        let error = Config::try_parse_from([
+            "ledger-distribution",
+            "--ledger-path",
+            "/unused",
+            "--dest",
+            "s3://bucket/prefix?region=UNKNOWN",
+            "--merge-buckets",
+            "0",
+        ])
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("Invalid S3 region: Not a valid AWS region: unknown"));
+    }
 
     fn number_of_files_in_directory(directory: impl AsRef<Path>) -> u64 {
         WalkDir::new(directory)

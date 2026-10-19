@@ -203,6 +203,8 @@ anyhow = "1"
 assert_cmd = "2"
 assert_matches = "1"
 async-channel = "2"
+aws-config = { version = "1.12", default-features = false, features = ["credentials-process", "default-https-client", "rt-tokio"] }
+aws-sdk-s3 = { version = "1.152", default-features = false, features = ["default-https-client", "rt-tokio"] }
 backtrace = "0.3"
 balanced-tree-index = "3"
 base64 = { version = "0.23", default-features = false }
@@ -249,6 +251,7 @@ hex_fmt = "0.3"
 hkdf = "0.13"
 hmac = "0.13"
 hostname = "0.4"
+httpmock = { version = "0.8", default-features = false }
 itertools = "0.15"
 json = "0.12"
 lazy_static = "1"
@@ -306,8 +309,6 @@ reqwest = { version = "0.13", default-features = false }
 retry = "2"
 rjson = "0.3"
 rocket = "0.5"
-rusoto_core = { version = "0.48", default-features = false }
-rusoto_s3 = { version = "0.48", default-features = false }
 schnorrkel = { version = "0.11.6", default-features = false }
 scoped_threadpool = "0.1"
 secrecy = "0.10"
