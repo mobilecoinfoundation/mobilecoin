@@ -9,6 +9,7 @@ use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFil
 use mc_fog_types::{common::BlockRange, ETxOutRecord};
 use mc_util_grpc::ReadinessIndicator;
 use std::{
+    cmp::min,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex, MutexGuard,
@@ -182,6 +183,9 @@ where
     stop_requested: Arc<AtomicBool>,
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
     block_tracker: BlockTracker<SS>,
+    /// One past the last block this shard is responsible for. Blocks at or
+    /// beyond this index are never fetched.
+    end_block: u64,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
     readiness_indicator: ReadinessIndicator,
     block_query_batch_size: usize,
@@ -210,12 +214,14 @@ where
             block_query_batch_size > 0,
             "Block batch request size cannot be 0, this is a configuration error"
         );
+        let end_block = sharding_strategy.get_block_range().end_block;
         let thread = Self {
             db,
             db_polling_interval,
             stop_requested,
             shared_state,
             block_tracker: BlockTracker::new(logger.clone(), sharding_strategy),
+            end_block,
             num_queued_records_limiter,
             readiness_indicator,
             block_query_batch_size,
@@ -301,8 +307,18 @@ where
         );
 
         for (ingress_key, block_index) in next_block_index_per_ingress_key.into_iter() {
-            let block_range =
-                BlockRange::new_from_length(block_index, self.block_query_batch_size as u64);
+            // This shard will never process blocks past the end of its block range, so
+            // there is no point in fetching them.
+            if block_index >= self.end_block {
+                continue;
+            }
+            let block_range = BlockRange::new_from_length(
+                block_index,
+                min(
+                    self.block_query_batch_size as u64,
+                    self.end_block - block_index,
+                ),
+            );
             // Attempt to load data for the block range.
             let get_tx_outs_by_block_result = {
                 let _metrics_timer = counters::GET_TX_OUTS_BY_BLOCK_TIME.start_timer();
