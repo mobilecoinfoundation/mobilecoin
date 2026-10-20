@@ -8,12 +8,17 @@ mod config;
 use clap::Parser;
 use config::LedgerFromArchiveConfig;
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_ledger_db::{create_ledger_in, Ledger, LedgerDB};
+use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use std::{path::Path, time::Instant};
 
 /// Log an info-level progress message every this many blocks.
 const BLOCK_LOG_INTERVAL: u64 = 10_000;
+
+/// Open the ledger db with LMDB's NO_READAHEAD flag. Appends do random lookups
+/// in hash-keyed indexes, so OS readahead mostly reads pages that are never
+/// used.
+const NO_READAHEAD: bool = true;
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -104,7 +109,8 @@ fn ledger_db(
                 "Opening existing ledger at {}",
                 ledger_path.display()
             );
-            LedgerDB::open(ledger_path).expect("Could not open existing ledger")
+            LedgerDB::open_with_options(ledger_path, NO_READAHEAD)
+                .expect("Could not open existing ledger")
         }
         false => create_ledger_db(logger, ledger_path, transactions_fetcher),
     }
@@ -117,7 +123,10 @@ fn create_ledger_db(
 ) -> LedgerDB {
     let ledger_path = ledger_path.as_ref();
     log::info!(logger, "Creating local ledger at {}", ledger_path.display());
-    let mut local_ledger = create_ledger_in(ledger_path);
+    std::fs::create_dir_all(ledger_path).expect("Could not create ledger dir");
+    LedgerDB::create(ledger_path).expect("Could not create ledger_db");
+    let mut local_ledger =
+        LedgerDB::open_with_options(ledger_path, NO_READAHEAD).expect("Could not open ledger_db");
 
     // Sync Origin Block
     log::info!(logger, "Getting origin block");

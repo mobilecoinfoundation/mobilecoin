@@ -435,16 +435,27 @@ impl Ledger for LedgerDB {
 
 impl LedgerDB {
     /// Opens an existing Ledger Database in the given path.
-    #[allow(clippy::unreadable_literal)]
     pub fn open(path: &Path) -> Result<LedgerDB, Error> {
+        Self::open_with_options(path, false)
+    }
+
+    /// Opens an existing Ledger Database in the given path.
+    ///
+    /// * `no_readahead` - Open the LMDB environment with `NO_READAHEAD`.
+    ///   Appends do random lookups in hash-keyed indexes, so OS readahead on
+    ///   page faults mostly reads data that is never used.
+    pub fn open_with_options(path: &Path, no_readahead: bool) -> Result<LedgerDB, Error> {
+        // NO_SYNC: TODO - needed because currently our test cloud machines have slow
+        // disks.
+        let mut flags = EnvironmentFlags::NO_SYNC;
+        if no_readahead {
+            flags |= EnvironmentFlags::NO_READAHEAD;
+        }
+        global_log::info!("Opening ledger db with flags: {:?}", flags);
         let env = Environment::new()
             .set_max_dbs(MAX_LMDB_DATABASES)
             .set_map_size(MAX_LMDB_FILE_SIZE)
-            // NO_SYNC: TODO - needed because currently our test cloud machines have slow
-            // disks.
-            // NO_READAHEAD: appends do random lookups in hash-keyed indexes, so OS
-            // readahead on page faults mostly reads data that is never used.
-            .set_flags(EnvironmentFlags::NO_SYNC | EnvironmentFlags::NO_READAHEAD)
+            .set_flags(flags)
             .open(path)?;
 
         let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)?;
