@@ -5847,8 +5847,11 @@ dependencies = [
 name = "mc-fog-view-enclave"
 version = "7.2.2"
 dependencies = [
+ "aes-gcm",
  "cargo-emit",
  "criterion",
+ "mc-attest-ake",
+ "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-verifier",
@@ -5862,9 +5865,11 @@ dependencies = [
  "mc-fog-view-enclave-api",
  "mc-fog-view-enclave-edl",
  "mc-fog-view-enclave-measurement",
+ "mc-rand",
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
+ "mc-sgx-report-cache-untrusted",
  "mc-sgx-slog",
  "mc-sgx-slog-edl",
  "mc-sgx-types",
@@ -5872,9 +5877,12 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-from-random",
+ "mc-util-metrics",
  "mc-util-serial",
+ "mc-util-test-helper",
  "pkg-config",
  "serde",
+ "sha2",
 ]
 
 [[package]]

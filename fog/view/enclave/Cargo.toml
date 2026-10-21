@@ -42,7 +42,15 @@ cargo-emit = { workspace = true }
 pkg-config = { workspace = true }
 
 [dev-dependencies]
+aes-gcm = { workspace = true }
 criterion = { workspace = true }
+sha2 = { workspace = true }
 
+mc-attest-ake = { workspace = true }
+mc-attest-api = { workspace = true }
 mc-fog-test-infra = { workspace = true }
+mc-rand = { workspace = true }
+mc-sgx-report-cache-untrusted = { workspace = true }
 mc-util-from-random = { workspace = true }
+mc-util-metrics = { workspace = true }
+mc-util-test-helper = { workspace = true }
