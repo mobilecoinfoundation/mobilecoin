@@ -1,5 +1,10 @@
 # Security Policy
 
+### ⚠️**Attention**⚠️
+> Due to an overwhelming influx of low-quality AI driven reports, we are suspending our bounty reward program for any issue less than a **CRITICAL** severity.
+
+# Security Bounty Program
+
 The security of Sentz is fundamental to our mission. We greatly appreciate the efforts of security researchers, auditors, and members of the security community who help identify vulnerabilities and responsibly disclose them.
 
 This document describes how to report security vulnerabilities, the information we need to investigate a report, and the expectations we have for responsible security research.
@@ -9,8 +14,6 @@ If you believe you have discovered a security vulnerability, please report it to
 **[security@sentz.com](mailto:security@sentz.com)**
 
 Please do not publicly disclose a vulnerability until we have had a reasonable opportunity to investigate and remediate the issue.
-
-# Security Bounty Program
 
 Sentz operates a security bounty program and may provide rewards for eligible vulnerability reports.
 
@@ -24,6 +27,17 @@ Eligibility, scope, severity, and reward determinations are made at Sentz's sole
 * Existing mitigations
 
 Not all reports will qualify for bounty consideration.
+
+---
+
+# Severity Definitions
+
+Please note these are general guidelines. Severity classification and reward decisions are up to the sole discretion of Sentz.
+
+- **CRITICAL**: Loss of Funds, System lack of availability for > 4 hours, Private key extraction, "Money printing" and Double spend issues.
+- **HIGH**: Denial of Service, PII Leaks, Discernment of transaction graph, Loss of detail or availability of funds, Incorrect or weakened cryptography usage, Attestation failures or exploitation in normal usage.
+- **MEDIUM**: Account impersonation, Invalid conversions or display of data. Display errors that could realistically lead to a user sending funds to the wrong address or user and Bypasses to RemoteConfig logic
+- **LOW**: Misconfigured certificates or infrastructure layer, retry logic causing DOS, unredacted local application logs.
 
 ---
 
@@ -44,7 +58,9 @@ Examples may include:
 * Payment and transaction infrastructure
 * Privacy-preserving systems and protocols
 
-# Out of scope vulnerabilities
+---
+
+# Out of scope issues
 
 The following issues are considered out of scope:
 
@@ -68,6 +84,9 @@ The following issues are considered out of scope:
 - Tabnabbing
 - Open redirect - unless an additional security impact can be demonstrated
 - Broken links on our public websites or support pages (intercom)
+- Crashes in local wallet applications (full-service, mobilecoind)
+- Crashes that have not been verified in a full binary release.
+
 ---
 
 # Privacy Vulnerabilities
@@ -193,7 +212,7 @@ Examples include:
 * Smart contract interactions
 * Demonstration videos
 
-Whenever possible, demonstrate actual impact rather than theoretical possibility.
+**NOTE:** Many code paths have multiple safe guards in place. A POC for a potential vulnerability must be demonstrated with the complete binary.  Submitted reports with functions only tested in isolation will be considered for a fix, but will not be eligible for a bounty reward.
 
 ---
 
@@ -241,7 +260,7 @@ Where practical, include a proof-of-concept demonstrating exploitation.
 
 ---
 
-## Additional Requirements for AI-Assisted Security Research 
+## Additional Requirements for AI-Assisted Security Research
 
 As AI-assisted security research becomes increasingly common, we welcome submissions that leverage AI tools.
 
