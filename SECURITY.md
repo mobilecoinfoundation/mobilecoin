@@ -36,7 +36,7 @@ Please note these are general guidelines. Severity classification and reward dec
 
 - **CRITICAL**: Loss of Funds, System lack of availability for > 4 hours, Private key extraction, "Money printing" and Double spend issues.
 - **HIGH**: Denial of Service, PII Leaks, Discernment of transaction graph, Loss of detail or availability of funds, Incorrect or weakened cryptography usage, Attestation failures or exploitation in normal usage.
-- **MEDIUM**: Account impersonation, Invalid conversions or display of data. Display errors that could realistically lead to a user sending funds to the wrong address or user and Bypasses to RemoteConfig logic
+- **MEDIUM**: Account impersonation, Invalid conversions or display of data. Display errors that could realistically lead to a user sending funds to the wrong address or user and Bypasses to RemoteConfig logic.
 - **LOW**: Misconfigured certificates or infrastructure layer, retry logic causing DOS, unredacted local application logs.
 
 ---
