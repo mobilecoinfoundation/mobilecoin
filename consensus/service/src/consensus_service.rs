@@ -9,6 +9,7 @@ use crate::{
     },
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
+    consensus_msg_verifier::ConsensusMsgVerifier,
     counters,
     mint_tx_manager::MintTxManager,
     peer_keepalive::PeerKeepalive,
@@ -28,7 +29,7 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client, consensus_common, consensus_peer};
 use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
-use mc_consensus_service_config::{Config, Error as ConfigError};
+use mc_consensus_service_config::{Config, Error as ConfigError, NetworkConfig};
 use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{ConsensusValue, PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
@@ -112,6 +113,7 @@ pub struct ConsensusService<
     MTXM: MintTxManager + Clone + Send + Sync + 'static,
 > {
     config: Config,
+    network: NetworkConfig,
     local_node_id: NodeID,
     enclave: E,
     ledger_db: LedgerDB,
@@ -121,6 +123,7 @@ pub struct ConsensusService<
     report_cache_thread: Option<ReportCacheThread>,
 
     consensus_msgs_from_network: BackgroundWorkQueue<IncomingConsensusMsg>,
+    consensus_msg_verifier: Arc<ConsensusMsgVerifier>,
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     // This mutex is required because ThreadedBroadcaster API cannot be used concurrently,
@@ -175,10 +178,16 @@ impl<
             BackgroundWorkQueue::new(&counters::CONSENSUS_MSGS_FROM_NETWORK_QUEUE_SIZE);
 
         let local_node_id = config.node_id();
+        let network = config.network();
+        let consensus_msg_verifier = Arc::new(ConsensusMsgVerifier::new(
+            network
+                .peer_node_ids()
+                .into_values()
+                .chain(std::iter::once(local_node_id.clone())),
+        ));
 
         // Peers
-        let peers: Vec<PeerConnection<E>> = config
-            .network()
+        let peers: Vec<PeerConnection<E>> = network
             .broadcast_peers()
             .into_iter()
             .map(|peer_uri| {
@@ -205,6 +214,7 @@ impl<
         let peer_keepalive = Some(Arc::new(PeerKeepalive::start(
             peer_manager.clone(),
             consensus_msgs_from_network.get_sender_fn(),
+            consensus_msg_verifier.clone(),
             logger.clone(),
         )));
 
@@ -223,6 +233,7 @@ impl<
         // Return
         Self {
             config,
+            network,
             local_node_id,
             enclave,
             ledger_db,
@@ -232,6 +243,7 @@ impl<
             report_cache_thread: None,
 
             consensus_msgs_from_network,
+            consensus_msg_verifier,
 
             peer_manager,
             broadcaster,
@@ -470,6 +482,7 @@ impl<
             self.create_scp_client_value_sender_fn(),
             get_highest_scp_message_fn,
             self.peer_manager.responder_ids(),
+            self.consensus_msg_verifier.clone(),
             self.logger.clone(),
         ));
 
@@ -517,7 +530,7 @@ impl<
         if byzantine_ledger_arc
             .set(ByzantineLedger::new(
                 self.local_node_id.clone(),
-                self.config.network().quorum_set(),
+                self.network.quorum_set(),
                 self.enclave.clone(),
                 self.peer_manager.clone(),
                 self.ledger_db.clone(),
@@ -525,7 +538,7 @@ impl<
                 self.mint_tx_manager.clone(),
                 self.broadcaster.clone(),
                 self.config.msg_signer_key.clone(),
-                self.config.network().tx_source_urls,
+                self.network.tx_source_urls.clone(),
                 self.config.scp_debug_dump.clone(),
                 self.logger.clone(),
             ))
@@ -693,6 +706,7 @@ impl<
             .map(Arc::downgrade)
             .expect("Server was not initialized");
         let config = self.config.clone();
+        let network = self.network.clone();
         let logger = self.logger.clone();
         Arc::new(move || {
             let mut sync_status = "synced";
@@ -771,12 +785,12 @@ impl<
                     "client_auth_token_enabled": config.client_auth_token_secret.map(|_| true).unwrap_or(false),
                     "client_auth_token_max_lifetime": config.client_auth_token_max_lifetime.as_secs(),
                 },
-                "network": config.network(),
+                "network": network,
                 "status": {
                     "block_height": block_height,
                     "version": VERSION,
-                    "broadcast_peer_count": config.network().broadcast_peers.len(),
-                    "known_peer_count": config.network().known_peers.map_or(0, |x| x.len()),
+                    "broadcast_peer_count": network.broadcast_peers.len(),
+                    "known_peer_count": network.known_peers.as_ref().map_or(0, |x| x.len()),
                     "sync_status": sync_status,
                     "blocks_behind": blocks_behind,
                     "latest_block_hash": latest_block_hash,

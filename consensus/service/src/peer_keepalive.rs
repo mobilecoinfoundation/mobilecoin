@@ -6,14 +6,17 @@
 //! their peers.
 
 use crate::{
-    background_work_queue::BackgroundWorkQueueSenderFn, consensus_service::IncomingConsensusMsg,
+    background_work_queue::BackgroundWorkQueueSenderFn,
+    consensus_msg_verifier::{ConsensusMsgVerificationError, ConsensusMsgVerifier},
+    consensus_service::IncomingConsensusMsg,
+    counters,
 };
 use mc_common::{
     logger::{log, Logger},
     HashMap, ResponderId,
 };
 use mc_connection::ConnectionManager;
-use mc_peers::{ConsensusConnection, RetryableConsensusConnection};
+use mc_peers::{ConsensusConnection, ConsensusMsg, RetryableConsensusConnection};
 use retry::Error as RetryError;
 use std::{
     sync::{
@@ -41,6 +44,7 @@ impl PeerKeepalive {
     pub fn start<CC: ConsensusConnection + 'static>(
         conn_manager: ConnectionManager<CC>,
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
+        consensus_msg_verifier: Arc<ConsensusMsgVerifier>,
         logger: Logger,
     ) -> Self {
         // Start by asssuming we heard from all of our peers.
@@ -65,6 +69,7 @@ impl PeerKeepalive {
                         thread_stop_requested,
                         incoming_consensus_msgs_sender,
                         thread_responder_id_to_last_heard,
+                        consensus_msg_verifier,
                         logger,
                     )
                 })
@@ -98,6 +103,7 @@ impl PeerKeepalive {
         stop_requested: Arc<AtomicBool>,
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
         responder_id_to_last_heard: Arc<Mutex<HashMap<ResponderId, Instant>>>,
+        consensus_msg_verifier: Arc<ConsensusMsgVerifier>,
         logger: Logger,
     ) {
         log::debug!(logger, "PeerKeepAlive thread has started.");
@@ -159,38 +165,13 @@ impl PeerKeepalive {
                                 responder_id
                             );
                         }
-                        Ok(Some(unverified_consensus_msg)) => {
-                            // Validate message signature
-                            // FIXME: Additional verification for quorum set members that public key
-                            // matches expected
-                            match unverified_consensus_msg.clone().try_into() {
-                                Ok(consensus_msg) => {
-                                    // Note that we do not update `responder_id_to_last_heard` here
-                                    // since this will get to us
-                                    // through the `incoming_consensus_msgs` processing loop
-                                    // in `ConsensusService`.
-                                    log::trace!(
-                                        logger,
-                                        "heard back from silent node {} with a consensus message",
-                                        responder_id
-                                    );
-                                    let _ =
-                                        (incoming_consensus_msgs_sender)(IncomingConsensusMsg {
-                                            from_responder_id: responder_id,
-                                            consensus_msg,
-                                        });
-                                }
-                                Err(err) => {
-                                    log::error!(
-                                        logger,
-                                        "Signature verification failed for msg {:?} from node_id {:?}: {:?}, disregarding.",
-                                        unverified_consensus_msg,
-                                        responder_id,
-                                        err
-                                    );
-                                }
-                            };
-                        }
+                        Ok(Some(msg)) => Self::handle_consensus_msg(
+                            msg,
+                            responder_id,
+                            &consensus_msg_verifier,
+                            &incoming_consensus_msgs_sender,
+                            &logger,
+                        ),
                         Err(err) => {
                             log::info!(
                                 logger,
@@ -206,10 +187,111 @@ impl PeerKeepalive {
             thread::sleep(Duration::from_secs(1));
         }
     }
+
+    fn handle_consensus_msg(
+        msg: ConsensusMsg,
+        from_responder_id: ResponderId,
+        verifier: &ConsensusMsgVerifier,
+        incoming_consensus_msgs_sender: &BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
+        logger: &Logger,
+    ) {
+        let issuer = msg.issuer_node_id().clone();
+        let slot_index = msg.scp_msg.slot_index;
+        match verifier.verify(msg) {
+            Ok(consensus_msg) => {
+                // The incoming-message loop updates when we last heard from the peer.
+                log::trace!(
+                    logger,
+                    "heard back from silent node {} with a consensus message",
+                    from_responder_id
+                );
+                let _ = (incoming_consensus_msgs_sender)(IncomingConsensusMsg {
+                    from_responder_id,
+                    consensus_msg,
+                });
+            }
+            Err(err) => {
+                if matches!(err, ConsensusMsgVerificationError::PublicKeyMismatch(_)) {
+                    counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.inc();
+                }
+                log::error!(
+                    logger,
+                    "Consensus message verification failed for issuer {issuer} from {from_responder_id} at slot {slot_index}: {err}, disregarding."
+                );
+            }
+        }
+    }
 }
 
 impl Drop for PeerKeepalive {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_common::{logger::test_with_logger, NodeID};
+    use mc_consensus_scp::QuorumSet;
+    use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_peers_test_utils::{create_consensus_msg, test_node_id_and_signer};
+
+    #[test_with_logger]
+    fn latest_messages_enforce_configured_issuer_keys(logger: Logger) {
+        let (peer, signer) = test_node_id_and_signer(22);
+        let (attacker, attacker_signer) = test_node_id_and_signer(33);
+        let verifier = ConsensusMsgVerifier::new([peer.clone()]);
+        let ledger = get_mock_ledger(1);
+        let make_message =
+            |node, key| create_consensus_msg(&ledger, node, QuorumSet::empty(), 1, "value", key);
+        let received = Arc::new(Mutex::new(Vec::new()));
+        let sender_received = received.clone();
+        let sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg> = Arc::new(move |msg| {
+            sender_received.lock().unwrap().push(msg);
+            Ok(())
+        });
+        let forged = make_message(
+            NodeID {
+                responder_id: peer.responder_id.clone(),
+                public_key: attacker.public_key,
+            },
+            &attacker_signer,
+        );
+        forged.verify_signature().unwrap();
+        let mismatches_before = counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get();
+        for invalid in [forged, make_message(peer.clone(), &attacker_signer)] {
+            PeerKeepalive::handle_consensus_msg(
+                invalid,
+                peer.responder_id.clone(),
+                &verifier,
+                &sender,
+                &logger,
+            );
+        }
+        assert!(received.lock().unwrap().is_empty());
+        assert!(counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get() > mismatches_before);
+
+        let transitive = make_message(attacker, &attacker_signer);
+        PeerKeepalive::handle_consensus_msg(
+            transitive.clone(),
+            peer.responder_id.clone(),
+            &verifier,
+            &sender,
+            &logger,
+        );
+        let valid = make_message(peer.clone(), &signer);
+        PeerKeepalive::handle_consensus_msg(
+            valid.clone(),
+            peer.responder_id.clone(),
+            &verifier,
+            &sender,
+            &logger,
+        );
+        let received = received.lock().unwrap();
+        assert_eq!(received.len(), 2);
+        assert_eq!(received[0].consensus_msg.as_ref(), &transitive);
+        assert_eq!(received[1].from_responder_id, peer.responder_id);
+        assert_eq!(received[1].consensus_msg.as_ref(), &valid);
     }
 }

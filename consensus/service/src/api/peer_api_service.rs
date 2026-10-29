@@ -5,6 +5,7 @@
 use crate::{
     api::peer_service_error::PeerServiceError,
     background_work_queue::BackgroundWorkQueueSenderFn,
+    consensus_msg_verifier::{ConsensusMsgVerificationError, ConsensusMsgVerifier},
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
     tx_manager::{TxManager, TxManagerError},
@@ -67,6 +68,10 @@ pub struct PeerApiService {
     /// won't be able to reach out to it to ask for the transaction contents.
     known_responder_ids: Vec<ResponderId>,
 
+    /// Verifies message signatures and configured issuer keys,
+    /// independently of which peer forwarded the message.
+    consensus_msg_verifier: Arc<ConsensusMsgVerifier>,
+
     /// Logger.
     logger: Logger,
 }
@@ -84,6 +89,7 @@ impl PeerApiService {
     /// * `fetch_latest_msg_fn` - Returns highest message emitted by this node.
     /// * `known_responder_ids` - Messages from peers not on this "whitelist"
     ///   are ignored.
+    /// * `consensus_msg_verifier` - Enforces configured issuer key bindings.
     /// * `logger` - Logger.
     pub fn new(
         consensus_enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
@@ -93,6 +99,7 @@ impl PeerApiService {
         scp_client_value_sender: ProposeTxCallback,
         fetch_latest_msg_fn: FetchLatestMsgFn,
         known_responder_ids: Vec<ResponderId>,
+        consensus_msg_verifier: Arc<ConsensusMsgVerifier>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -103,6 +110,7 @@ impl PeerApiService {
             ledger,
             fetch_latest_msg_fn,
             known_responder_ids,
+            consensus_msg_verifier,
             logger,
         }
     }
@@ -191,10 +199,24 @@ impl PeerApiService {
             return Err(PeerServiceError::UnknownPeer(from_responder_id.to_string()));
         }
 
-        // A consensus message with a valid signature.
-        let verified_consensus_msg: mc_peers::VerifiedConsensusMsg = consensus_msg
-            .try_into()
-            .map_err(|_| PeerServiceError::ConsensusMsgInvalidSignature)?;
+        // The forwarding peer may differ from the issuer. Check configured key
+        // bindings while allowing transitive SCP participants.
+        let verified_consensus_msg =
+            self.consensus_msg_verifier
+                .verify(consensus_msg)
+                .map_err(|err| match err {
+                    ConsensusMsgVerificationError::PublicKeyMismatch(issuer) => {
+                        counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.inc();
+                        log::warn!(
+                            self.logger,
+                            "Consensus message signing key mismatch for issuer {issuer} relayed by {from_responder_id}"
+                        );
+                        PeerServiceError::ConsensusMsgInvalidIssuer
+                    }
+                    ConsensusMsgVerificationError::InvalidSignature(_) => {
+                        PeerServiceError::ConsensusMsgInvalidSignature
+                    }
+                })?;
 
         (self.incoming_consensus_msgs_sender)(IncomingConsensusMsg {
             from_responder_id,
@@ -306,6 +328,11 @@ impl ConsensusPeerApi for PeerApiService {
                     "InvalidConsensusMsgSignature",
                     logger,
                 )),
+                Err(PeerServiceError::ConsensusMsgInvalidIssuer) => Err(rpc_invalid_arg_error(
+                    "send_consensus_msg",
+                    "InvalidConsensusMsgIssuer",
+                    logger,
+                )),
                 Err(_) => Err(rpc_internal_error(
                     "send_consensus_msg",
                     "InternalError",
@@ -389,7 +416,8 @@ mod tests {
     use super::*;
     use crate::{background_work_queue::BackgroundWorkQueueError, tx_manager::MockTxManager};
     use grpcio::{
-        ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder, ServerCredentials,
+        ChannelBuilder, Environment, Error::RpcFailure, RpcStatusCode, Server, ServerBuilder,
+        ServerCredentials,
     };
     use mc_blockchain_types::Block;
     use mc_common::{logger::test_with_logger, NodeID};
@@ -405,6 +433,17 @@ mod tests {
     use mc_ledger_db::MockLedger;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::sync::Mutex;
+
+    fn get_consensus_msg_verifier(
+        responder_id: ResponderId,
+        signer: &Ed25519Pair,
+    ) -> Arc<ConsensusMsgVerifier> {
+        Arc::new(ConsensusMsgVerifier::new([NodeID {
+            responder_id,
+            public_key: signer.public_key(),
+        }]))
+    }
 
     // Get sensibly-initialized mocks.
     fn get_mocks() -> (MockConsensusEnclave, MockLedger, MockTxManager) {
@@ -478,6 +517,7 @@ mod tests {
             get_scp_client_value_sender(),
             get_fetch_latest_msg_fn(),
             known_responder_ids,
+            Arc::new(ConsensusMsgVerifier::new([])),
             logger,
         );
 
@@ -553,6 +593,7 @@ mod tests {
             get_scp_client_value_sender(),
             get_fetch_latest_msg_fn(),
             known_responder_ids.clone(),
+            get_consensus_msg_verifier(known_responder_ids[0].clone(), &node_a_signer_key),
             logger,
         );
 
@@ -620,6 +661,7 @@ mod tests {
             get_scp_client_value_sender(),
             get_fetch_latest_msg_fn(),
             known_responder_ids.clone(),
+            Arc::new(ConsensusMsgVerifier::new([])),
             logger,
         );
 
@@ -669,6 +711,7 @@ mod tests {
             get_scp_client_value_sender(),
             get_fetch_latest_msg_fn(),
             known_responder_ids.clone(),
+            get_consensus_msg_verifier(known_responder_ids[0].clone(), &node_a_signer_key),
             logger,
         );
 
@@ -719,6 +762,97 @@ mod tests {
             }
             Err(e) => panic!("Unexpected error: {e:?}"),
         }
+    }
+
+    #[test_with_logger]
+    fn test_send_consensus_msg_authorizes_issuer_and_preserves_relay(logger: Logger) {
+        use mc_peers_test_utils::{create_consensus_msg, test_node_id_and_signer};
+
+        let (consensus_enclave, ledger, tx_manager) = get_mocks();
+        let (issuer, issuer_signer) = test_node_id_and_signer(22);
+        let (relay, relay_signer) = test_node_id_and_signer(33);
+        let (attacker, attacker_signer) = test_node_id_and_signer(44);
+        let verifier = Arc::new(ConsensusMsgVerifier::new([issuer.clone(), relay.clone()]));
+        let received = Arc::new(Mutex::new(Vec::new()));
+        let sender_received = received.clone();
+        let instance = PeerApiService::new(
+            Arc::new(consensus_enclave),
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            Arc::new(move |msg| {
+                sender_received.lock().unwrap().push(msg);
+                Ok(())
+            }),
+            get_scp_client_value_sender(),
+            get_fetch_latest_msg_fn(),
+            // The issuer is configured but reachable through this relay only.
+            vec![relay.responder_id.clone()],
+            verifier,
+            logger,
+        );
+        let (client, _server) = get_client_server(instance);
+        let msg_ledger = mc_ledger_db::test_utils::get_mock_ledger(1);
+        let make_message = |node_id, signer| {
+            create_consensus_msg(&msg_ledger, node_id, QuorumSet::empty(), 1, "value", signer)
+        };
+        let request = |msg: &mc_peers::ConsensusMsg, from: &ResponderId| ConsensusMsg {
+            from_responder_id: from.to_string(),
+            payload: mc_util_serial::serialize(msg).unwrap(),
+        };
+
+        let mismatches_before = counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get();
+        // Neither an attacker key nor another configured node's key may sign as issuer.
+        for signer in [&attacker_signer, &relay_signer] {
+            let forged = make_message(
+                NodeID {
+                    responder_id: issuer.responder_id.clone(),
+                    public_key: signer.public_key(),
+                },
+                signer,
+            );
+            forged.verify_signature().unwrap();
+            match client.send_consensus_msg(&request(&forged, &relay.responder_id)) {
+                Err(RpcFailure(status)) => {
+                    assert_eq!(status.code(), RpcStatusCode::INVALID_ARGUMENT);
+                    assert!(status.message().contains("InvalidConsensusMsgIssuer"));
+                }
+                result => panic!("Expected issuer validation failure, got {result:?}"),
+            }
+        }
+
+        assert!(received.lock().unwrap().is_empty());
+        assert!(counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get() >= mismatches_before + 2);
+        // Unconfigured participants remain admissible for transitive SCP quorums.
+        let unknown = make_message(attacker.clone(), &attacker_signer);
+        assert_eq!(
+            client
+                .send_consensus_msg(&request(&unknown, &relay.responder_id))
+                .unwrap()
+                .result(),
+            ConsensusMsgResult::Ok
+        );
+        let valid = make_message(issuer.clone(), &issuer_signer);
+        assert_eq!(
+            client
+                .send_consensus_msg(&request(&valid, &attacker.responder_id))
+                .unwrap()
+                .result(),
+            ConsensusMsgResult::UnknownPeer
+        );
+        assert_eq!(received.lock().unwrap().len(), 1);
+
+        assert_eq!(
+            client
+                .send_consensus_msg(&request(&valid, &relay.responder_id))
+                .unwrap()
+                .result(),
+            ConsensusMsgResult::Ok
+        );
+        let received = received.lock().unwrap();
+        assert_eq!(received.len(), 2);
+        assert_eq!(received[0].consensus_msg.as_ref(), &unknown);
+        assert_eq!(received[1].from_responder_id, relay.responder_id);
+        assert_eq!(received[1].consensus_msg.as_ref(), &valid);
     }
 
     // TODO: fetch_latest_msg
