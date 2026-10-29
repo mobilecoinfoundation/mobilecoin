@@ -43,7 +43,10 @@ impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash + Send> SCPNetworkState<I
             Topic::Externalize(_) => msg.slot_index,
             // All other messages for a given SlotIndex imply that the previous SlotIndex
             // is the highest externalized slot.
-            _ => msg.slot_index - 1,
+            _ => match msg.slot_index.checked_sub(1) {
+                Some(slot_index) => slot_index,
+                None => return,
+            },
         };
 
         // "Upsert"
@@ -57,26 +60,21 @@ impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash + Send> SCPNetworkState<I
     pub fn peer_to_current_slot(&self) -> &HashMap<ID, SlotIndex> {
         &self.id_to_current_slot
     }
-}
 
-impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serialize> NetworkState
-    for SCPNetworkState<ID>
-{
-    /// Returns true if `peers` forms a blocking set for this node and, if the
-    /// local node is included, a quorum.
-    ///
-    /// # Arguments
-    /// * `responder_ids` - IDs of other nodes.
-    fn is_blocking_and_quorum(&self, responder_ids: &HashSet<ResponderId>) -> bool {
-        // Construct a map of responder id -> dummy message so that we could leverage
-        // the existing quorum findBlockingSet/findQuorum code.
-        let msg_map = responder_ids
+    /// Check the original node identities, including their public keys, against
+    /// the configured quorum set.
+    fn is_blocking_and_quorum_for_nodes(&self, peer_ids: &HashSet<ID>) -> bool
+    where
+        ID: DeserializeOwned,
+    {
+        // Construct dummy messages to reuse the existing quorum search code.
+        let msg_map = peer_ids
             .iter()
-            .map(|responder_id| {
+            .map(|node_id| {
                 (
-                    responder_id.clone(),
-                    Msg::<&str, ResponderId>::new(
-                        responder_id.clone(),
+                    node_id.clone(),
+                    Msg::<&str, ID>::new(
+                        node_id.clone(),
                         QuorumSet::empty(),
                         1,
                         Topic::Externalize(ExternalizePayload {
@@ -88,28 +86,41 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
             })
             .collect();
 
-        let quorum_set: QuorumSet<ResponderId> = (&self.local_quorum_set).into();
-
-        // Check if responder_ids form a blocking set
+        // Check if peer_ids form a blocking set.
         let fp = FuncPredicate {
-            test_fn: &|msg: &Msg<&str, ResponderId>| responder_ids.contains(&msg.sender_id),
+            test_fn: &|msg: &Msg<&str, ID>| peer_ids.contains(&msg.sender_id),
         };
-        let (node_ids, _pred) = quorum_set.findBlockingSet(&msg_map, fp);
-        if node_ids.is_empty() {
+        let (blocking_set, _pred) = self.local_quorum_set.findBlockingSet(&msg_map, fp);
+        if blocking_set.is_empty() {
             return false;
         }
 
-        // Check if responder_ids form a quorum
+        // Check if peer_ids form a quorum.
         let fp = FuncPredicate {
-            test_fn: &|msg: &Msg<&str, ResponderId>| responder_ids.contains(&msg.sender_id),
+            test_fn: &|msg: &Msg<&str, ID>| peer_ids.contains(&msg.sender_id),
         };
-        let (node_ids, _pred) = quorum_set.findQuorum(self.local_node_id.as_ref(), &msg_map, fp);
-        if node_ids.is_empty() {
-            return false;
-        }
+        let (quorum, _pred) = self
+            .local_quorum_set
+            .findQuorum(&self.local_node_id, &msg_map, fp);
+        !quorum.is_empty()
+    }
+}
 
-        // responder_ids are a blocking set and a quorum.
-        true
+impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serialize> NetworkState
+    for SCPNetworkState<ID>
+{
+    /// Returns true if `responder_ids` forms a blocking set for this node and,
+    /// if the local node is included, a quorum.
+    fn is_blocking_and_quorum(&self, responder_ids: &HashSet<ResponderId>) -> bool {
+        // Block fetching identifies connections by responder ID. Resolve these
+        // through the configured quorum, never through identities from messages.
+        let node_ids = self
+            .local_quorum_set
+            .nodes()
+            .into_iter()
+            .filter(|node_id| responder_ids.contains(node_id.as_ref()))
+            .collect();
+        self.is_blocking_and_quorum_for_nodes(&node_ids)
     }
 
     /// Returns true if the local node has "fallen behind its peers" and should
@@ -118,19 +129,14 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
     /// # Arguments
     /// * `local_block_index` - The highest block externalized by this node.
     fn is_behind(&self, local_block_index: BlockIndex) -> bool {
-        let peers_on_higher_block: Vec<ID> = self
+        let peers_on_higher_block = self
             .peer_to_current_slot()
             .iter()
             .filter(|&(_id, block_index)| *block_index > local_block_index)
             .map(|(id, _block_index)| id.clone())
             .collect();
 
-        self.is_blocking_and_quorum(
-            &peers_on_higher_block
-                .iter()
-                .map(|node_id| node_id.as_ref().clone())
-                .collect(),
-        )
+        self.is_blocking_and_quorum_for_nodes(&peers_on_higher_block)
     }
 
     /// Returns the highest block index the network agrees on (the highest block
@@ -147,19 +153,14 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
         // For each potential block index we saw (from the highest to the lowest), see
         // if we can pass the is_blocking_and_quorum test.
         for highest_block_index in seen_block_indexes.iter().rev() {
-            let peers_on_higher_block: Vec<ID> = self
+            let peers_on_higher_block = self
                 .peer_to_current_slot()
                 .iter()
                 .filter(|&(_id, block_index)| block_index >= highest_block_index)
                 .map(|(id, _block_index)| id.clone())
                 .collect();
 
-            if self.is_blocking_and_quorum(
-                &peers_on_higher_block
-                    .iter()
-                    .map(|node_id| node_id.as_ref().clone())
-                    .collect(),
-            ) {
+            if self.is_blocking_and_quorum_for_nodes(&peers_on_higher_block) {
                 // Found a block index the network agrees on.
                 return Some(*highest_block_index);
             }
@@ -183,6 +184,194 @@ mod tests {
         let network_state =
             SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
         assert_eq!(network_state.peer_to_current_slot().len(), 0);
+    }
+
+    #[test]
+    fn test_forged_responder_ids_do_not_advance_network() {
+        let quorum_set = QuorumSet::new_with_inner_sets(
+            2,
+            vec![
+                QuorumSet::new_with_node_ids(
+                    2,
+                    vec![test_node_id(2), test_node_id(3), test_node_id(4)],
+                ),
+                QuorumSet::new_with_node_ids(
+                    2,
+                    vec![test_node_id(5), test_node_id(6), test_node_id(7)],
+                ),
+            ],
+        );
+        let mut network_state = SCPNetworkState::new(test_node_id(1), quorum_set);
+        let local_block = 5;
+        let forged_slot = 100_005;
+        let quorum_members = [2, 3, 5, 6];
+        let responders = quorum_members
+            .iter()
+            .map(|id| test_node_id(*id).responder_id)
+            .collect();
+
+        // Block fetching checks configured responders without requiring SCP messages.
+        assert!(network_state.is_blocking_and_quorum(&responders));
+
+        for id in quorum_members {
+            // Each forged identity needs a distinct key: NodeID equality uses the key.
+            let forged_node_id = NodeID {
+                responder_id: test_node_id(id).responder_id,
+                public_key: test_node_id(id + 100).public_key,
+            };
+            assert_ne!(forged_node_id, test_node_id(id));
+            network_state.push(Msg::<&str>::new(
+                forged_node_id,
+                QuorumSet::empty(),
+                forged_slot,
+                Topic::Externalize(ExternalizePayload {
+                    C: Ballot::new(1, &["value"]),
+                    HN: 1,
+                }),
+            ));
+            assert!(!network_state.is_behind(local_block));
+            assert_eq!(network_state.highest_block_index_on_network(), None);
+        }
+
+        // Forged high slots must not supplement a partial set of genuine validators.
+        for (index, id) in quorum_members.into_iter().enumerate() {
+            network_state.push(Msg::<&str>::new(
+                test_node_id(id),
+                QuorumSet::empty(),
+                local_block + 1,
+                Topic::Externalize(ExternalizePayload {
+                    C: Ballot::new(1, &["value"]),
+                    HN: 1,
+                }),
+            ));
+            let has_quorum = index == quorum_members.len() - 1;
+            assert_eq!(network_state.is_behind(local_block), has_quorum);
+            assert_eq!(
+                network_state.highest_block_index_on_network(),
+                has_quorum.then_some(local_block + 1)
+            );
+        }
+        assert!(!network_state.is_behind(local_block + 1));
+
+        // Genuine validators can still report a far-ahead network tip.
+        for id in quorum_members {
+            network_state.push(Msg::<&str>::new(
+                test_node_id(id),
+                QuorumSet::empty(),
+                forged_slot,
+                Topic::Externalize(ExternalizePayload {
+                    C: Ballot::new(1, &["value"]),
+                    HN: 1,
+                }),
+            ));
+        }
+        assert!(network_state.is_behind(local_block + 1));
+        assert_eq!(
+            network_state.highest_block_index_on_network(),
+            Some(forged_slot)
+        );
+        assert!(!network_state.is_behind(forged_slot));
+    }
+
+    #[test]
+    fn test_responder_quorum_uses_configured_node_ids() {
+        let peer = test_node_id(2);
+        let unknown_responder = test_node_id(3).responder_id;
+        let mut network_state = SCPNetworkState::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![peer.clone()]),
+        );
+        // An observed responder name must not replace the configured name for a key.
+        network_state.push(Msg::<&str>::new(
+            NodeID {
+                responder_id: unknown_responder.clone(),
+                public_key: peer.public_key,
+            },
+            QuorumSet::empty(),
+            5,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["value"]),
+                HN: 1,
+            }),
+        ));
+        assert!(network_state.is_blocking_and_quorum(&HashSet::from([peer.responder_id])));
+        assert!(!network_state.is_blocking_and_quorum(&HashSet::from([unknown_responder])));
+    }
+
+    #[test]
+    fn test_push_non_externalize_slot_boundaries() {
+        let nominate = NominatePayload {
+            X: Default::default(),
+            Y: Default::default(),
+        };
+        let prepare = PreparePayload {
+            B: Ballot::new(1, &["value"]),
+            P: None,
+            PP: None,
+            HN: 0,
+            CN: 0,
+        };
+        for topic in [
+            Topic::Nominate(nominate.clone()),
+            Topic::NominatePrepare(nominate, prepare.clone()),
+            Topic::Prepare(prepare),
+            Topic::Commit(CommitPayload {
+                B: Ballot::new(1, &["value"]),
+                PN: 0,
+                CN: 0,
+                HN: 0,
+            }),
+        ] {
+            let peer = test_node_id(2);
+            let mut network_state = SCPNetworkState::new(
+                test_node_id(1),
+                QuorumSet::new_with_node_ids(1, vec![peer.clone()]),
+            );
+            network_state.push(Msg::new(peer.clone(), QuorumSet::empty(), 0, topic.clone()));
+            assert!(network_state.peer_to_current_slot().is_empty());
+            assert!(!network_state.is_behind(0));
+            assert_eq!(network_state.highest_block_index_on_network(), None);
+
+            // Slot one implies the genesis block has been externalized.
+            network_state.push(Msg::new(peer.clone(), QuorumSet::empty(), 1, topic.clone()));
+            assert_eq!(network_state.peer_to_current_slot().get(&peer), Some(&0));
+            network_state.push(Msg::new(peer.clone(), QuorumSet::empty(), 6, topic.clone()));
+            network_state.push(Msg::new(peer.clone(), QuorumSet::empty(), 0, topic.clone()));
+            assert_eq!(network_state.peer_to_current_slot().get(&peer), Some(&5));
+            assert_eq!(network_state.highest_block_index_on_network(), Some(5));
+
+            network_state.push(Msg::new(
+                peer.clone(),
+                QuorumSet::empty(),
+                SlotIndex::MAX,
+                topic,
+            ));
+            assert_eq!(
+                network_state.peer_to_current_slot().get(&peer),
+                Some(&(SlotIndex::MAX - 1))
+            );
+        }
+    }
+
+    #[test]
+    fn test_push_zero_slot_externalize_for_polling() {
+        let peer = test_node_id(2).responder_id;
+        let mut network_state = SCPNetworkState::new(
+            test_node_id(1).responder_id,
+            QuorumSet::new_with_node_ids(1, vec![peer.clone()]),
+        );
+        network_state.push(Msg::new(
+            peer.clone(),
+            QuorumSet::empty(),
+            0,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["value"]),
+                HN: 1,
+            }),
+        ));
+        assert_eq!(network_state.peer_to_current_slot().get(&peer), Some(&0));
+        assert_eq!(network_state.highest_block_index_on_network(), Some(0));
+        assert!(!network_state.is_behind(0));
     }
 
     #[test]
