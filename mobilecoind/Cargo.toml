@@ -59,6 +59,7 @@ mc-watcher = { workspace = true }
 mc-watcher-api = { workspace = true }
 
 aes-gcm = { workspace = true }
+argon2 = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 crossbeam-channel = { workspace = true }
 displaydoc = { workspace = true }
@@ -68,7 +69,7 @@ lmdb-rkv = { workspace = true }
 mc-attestation-verifier = { workspace = true }
 num_cpus = { workspace = true }
 prost = { workspace = true, features = ["prost-derive"] }
-rand = { workspace = true }
+rand = { workspace = true, features = ["sys_rng"] }
 rayon = { workspace = true }
 reqwest = { workspace = true, features = ["blocking", "rustls", "gzip"] }
 retry = { workspace = true }

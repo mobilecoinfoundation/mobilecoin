@@ -107,3 +107,68 @@ The steps for constructing and submitting an offline transaction are:
 1. `GenerateTx` will return a `TxProposal`, which you can then copy back to the internet-connected machine.
 1. Copy this `TxProposal` into a machine that has internet access and `mobilecoind` running.
 1. Decode the `TxProposal` and submit it using the `SubmitTx` API call. Even if the `mobilecoind` instance you are submitting to has no monitors defined at all, this would still work.
+
+## Encrypted database upgrades
+
+Database format `20261016` uses a fresh random 96-bit AES-GCM nonce for every
+monitor write, including sync updates. Each encryption generation has a random
+32-byte salt and its own Argon2id-derived key (64 MiB, 3 passes, 4 lanes).
+Password changes, including setting the same password again, create a new
+generation and re-encrypt every monitor. The password API still accepts a
+caller-derived 32-byte value; an empty password still disables encryption.
+
+An older encrypted database opens locked. The first successful `UnlockDb` (or
+mobilecoind-json `/unlock-db`) authenticates the password and migrates all monitor
+records, the password marker, salt, and format version in one LMDB transaction.
+Sync starts only after this succeeds. Allow enough storage for LMDB's temporary
+copy-on-write pages. Wrong passwords or migration failures leave the database
+locked and its committed data unchanged; investigate the error and retry unlock.
+Unencrypted databases upgrade their version on opening.
+
+Upgraded databases cannot be opened by older binaries, even after encryption is
+removed. Rollback requires a protected pre-upgrade backup and an older binary;
+that backup still uses the vulnerable encryption format. Run only one mobilecoind
+process per database directory.
+
+### Remove unused pages after migration
+
+In-place migration changes active records but does not erase old ciphertext from
+unused LMDB pages. Finish the rollout with an offline compact copy. LMDB's
+`mdb_copy -c` copies only current pages, omitting unused pages. Install the LMDB
+`mdb_copy` utility appropriate for the deployment before starting this procedure.
+
+1. Upgrade mobilecoind, unlock the database, and wait for successful migration.
+   Verify that the expected monitors and sync positions are accessible.
+2. Stop mobilecoind and every other process accessing that database directory.
+   Keep them stopped until the replacement is complete.
+3. Create a compact copy on the same filesystem, with restricted permissions:
+
+   ```sh
+   db_dir=/path/to/mobilecoind-db
+   compact_dir="${db_dir}.compact"
+   old_dir="${db_dir}.pre-compact"
+   umask 077
+   test ! -e "$compact_dir" && test ! -e "$old_dir" || exit 1
+   mkdir -m 700 "$compact_dir"
+   mdb_copy -c "$db_dir" "$compact_dir" || exit 1
+   ```
+
+4. Start the upgraded binary with the usual deployment configuration but point
+   `--mobilecoind-db` at the compact directory. Unlock it and verify every expected
+   monitor and sync position. Stop that validation process before replacing files.
+   If validation fails, retain the source directory and investigate.
+5. With all database processes stopped, replace the directory:
+
+   ```sh
+   mv -- "$db_dir" "$old_dir" || exit 1
+   if ! mv -- "$compact_dir" "$db_dir"; then
+       mv -- "$old_dir" "$db_dir"
+       exit 1
+   fi
+   ```
+
+6. Restore the deployment's required ownership and permissions, then restart with
+   the original database path and unlock. Retire the old directory and any
+   pre-migration snapshots/backups according to the storage system's secure data
+   retirement procedure. Ordinary file deletion does not guarantee erasure from
+   SSDs, filesystem snapshots, or backups.
