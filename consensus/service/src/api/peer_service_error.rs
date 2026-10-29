@@ -10,6 +10,9 @@ pub enum PeerServiceError {
     /// The ConsensusMsg's signature is invalid.
     ConsensusMsgInvalidSignature,
 
+    /// The ConsensusMsg's issuer does not match its configured signing key.
+    ConsensusMsgInvalidIssuer,
+
     /// Unknown transactions `{0:?}`.
     UnknownTransactions(Vec<TxHash>),
 

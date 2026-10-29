@@ -19,6 +19,9 @@ lazy_static::lazy_static! {
     // consensus_msgs_from_network queue size.
     pub static ref CONSENSUS_MSGS_FROM_NETWORK_QUEUE_SIZE: IntGauge = OP_COUNTERS.gauge("consensus_msgs_from_network_queue_size");
 
+    // Messages rejected because a configured issuer claimed a different signing key.
+    pub static ref CONSENSUS_MSG_ISSUER_KEY_MISMATCHES: IntCounter = OP_COUNTERS.counter("consensus_msg_issuer_key_mismatches");
+
     // Transactions externalized through byzantine ledger service since this node started.
     pub static ref TX_EXTERNALIZED_COUNT: IntCounter = OP_COUNTERS.counter("tx_externalized_count");
 
