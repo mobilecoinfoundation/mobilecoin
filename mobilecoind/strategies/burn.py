@@ -175,7 +175,8 @@ class MobilecoindClient:
                     monitor_id=monitor_id
                 )
             ).status
-            if status.next_block >= network_block_index:
+            # next_block is unprocessed; the highest network block must be processed too.
+            if status.next_block > network_block_index:
                 break
             time.sleep(poll_interval)
 
