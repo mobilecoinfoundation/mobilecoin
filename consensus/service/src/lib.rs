@@ -14,6 +14,7 @@ pub mod validators; // Public so that it can be benchmarked by the `benchmarks` 
 mod api;
 mod background_work_queue;
 mod byzantine_ledger;
+mod consensus_msg_verifier;
 mod counters;
 mod peer_keepalive;
 

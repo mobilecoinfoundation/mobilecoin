@@ -83,6 +83,11 @@ impl NetworkConfig {
             panic!("invalid quorum set: {:?}", self.quorum_set);
         }
 
+        Self::resolve_quorum_set(&self.quorum_set, &self.peer_node_ids())
+    }
+
+    /// Resolve the signing identities of all broadcast and known peers.
+    pub fn peer_node_ids(&self) -> HashMap<ResponderId, NodeID> {
         let mut peer_map: HashMap<ResponderId, NodeID> = self
             .broadcast_peers
             .iter()
@@ -112,7 +117,7 @@ impl NetworkConfig {
             }
         }
 
-        Self::resolve_quorum_set(&self.quorum_set, &peer_map)
+        peer_map
     }
 
     /// Get the list of peers we connect and broadcast messages to.
@@ -179,6 +184,8 @@ mod tests {
                 serde_json::from_str(input_json).expect("failed parsing json");
             assert_eq!(network, network2);
 
+            assert!(network.peer_node_ids().is_empty());
+
             assert_eq!(network.quorum_set.threshold, 2);
             assert_eq!(network.quorum_set.members.len(), 0);
             assert_eq!(network.broadcast_peers.len(), 0);
@@ -242,6 +249,19 @@ mod tests {
                 serde_json::from_str(input_json).expect("failed parsing json");
 
             assert_eq!(network, network2);
+
+            let peer_node_ids = network.peer_node_ids();
+            assert_eq!(peer_node_ids.len(), 3);
+            for uri in network
+                .broadcast_peers
+                .iter()
+                .chain(network.known_peers.iter().flatten())
+            {
+                let expected = uri.node_id().unwrap();
+                let actual = &peer_node_ids[&uri.responder_id().unwrap()];
+                assert_eq!(actual.responder_id, expected.responder_id);
+                assert_eq!(actual.public_key, expected.public_key);
+            }
 
             let quorum_set = network.quorum_set();
             assert_eq!(
