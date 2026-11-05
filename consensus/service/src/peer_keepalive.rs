@@ -294,5 +294,6 @@ mod tests {
         assert_eq!(received[0].consensus_msg.as_ref(), &transitive);
         assert_eq!(received[1].from_responder_id, peer.responder_id);
         assert_eq!(received[1].consensus_msg.as_ref(), &valid);
+        assert_eq!(counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get(), mismatches_after);
     }
 }
