@@ -33,8 +33,8 @@ impl ConsensusMsgVerifier {
         msg: ConsensusMsg,
     ) -> Result<VerifiedConsensusMsg, ConsensusMsgVerificationError> {
         let issuer = msg.issuer_node_id();
-        // NodeID equality compares only public keys. Resolve the claimed responder
-        // first so a key configured for a different responder cannot impersonate it.
+        // Reject a known responder ID paired with a different public key.
+        // Look up by responder_id because NodeID equality compares only public keys.
         if let Some(expected) = self.known_nodes.get(&issuer.responder_id) {
             if issuer.public_key != expected.public_key {
                 return Err(ConsensusMsgVerificationError::PublicKeyMismatch(
