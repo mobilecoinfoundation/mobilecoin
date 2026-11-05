@@ -24,7 +24,7 @@ Decryption takes the private key and the cryptogram and repoduces the message.
 Properties
 ----------
 
-The `VersionedCryptoBox` object aims for semantic security at at least 128-bit security level,
+The `VersionedCryptoBox` object aims for semantic security at least 128-bit security level,
 and non-malleability of the cryptograms. The primitives used at current version are:
 
 - Ristretto elliptic curve (`curve25519-dalek` crate) for key exchange
