@@ -270,7 +270,8 @@ mod tests {
             );
         }
         assert!(received.lock().unwrap().is_empty());
-        assert!(counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get() > mismatches_before);
+        let mismatches_after = counters::CONSENSUS_MSG_ISSUER_KEY_MISMATCHES.get();
+        assert_eq!(mismatches_after, mismatches_before + 1);
 
         let transitive = make_message(attacker, &attacker_signer);
         PeerKeepalive::handle_consensus_msg(
