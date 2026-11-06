@@ -9,10 +9,11 @@ pub use opentelemetry::{
 };
 
 use opentelemetry::{
-    global::tracer_provider,
-    trace::{SpanBuilder, TraceId, TracerProvider},
+    global::tracer_with_scope,
+    trace::{SpanBuilder, SpanContext, SpanId, TraceFlags, TraceId, TraceState},
+    InstrumentationScope,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow, time::SystemTime};
 mod extractor;
 mod injector;
 mod otlp;
@@ -48,22 +49,21 @@ macro_rules! telemetry_static_key {
 /// `block_index_to_trace_id`. (Hex encoding of 'BLKID', chosen arbitrarily)
 pub const BLOCK_INDEX_TRACE_ID_MAGIC: u128 = 0x424c4b4944;
 
-// Wrapper around tracer_provider call so users of this lib do not need to
-// use GlobalTraceProvider.
+// Wrapper around the global tracer provider so users of this lib do not need
+// to build an InstrumentationScope themselves.
 pub fn versioned_tracer(
     name: impl Into<Cow<'static, str>>,
     version: Option<&'static str>,
     schema_url: Option<&'static str>,
 ) -> BoxedTracer {
-    let provider = tracer_provider();
-    let mut builder = provider.tracer_builder(name);
+    let mut scope = InstrumentationScope::builder(name);
     if let Some(version) = version {
-        builder = builder.with_version(version);
+        scope = scope.with_version(version);
     }
     if let Some(schema_url) = schema_url {
-        builder = builder.with_schema_url(schema_url);
+        scope = scope.with_schema_url(schema_url);
     }
-    builder.build()
+    tracer_with_scope(scope.build())
 }
 
 /// Creates a context when an explicit context is required. Useful when tracing
@@ -88,16 +88,73 @@ pub fn block_index_to_trace_id(block_index: u64) -> TraceId {
     TraceId::from_bytes(id.to_be_bytes())
 }
 
-/// Create a SpanBuilder and attack the trace ID to a specific block index.
+/// Span ID of the synthetic remote parent used to pin a span to a block's
+/// trace ID. It is never exported; it only has to be valid (non-zero).
+const BLOCK_INDEX_PARENT_SPAN_ID: SpanId =
+    SpanId::from_bytes((BLOCK_INDEX_TRACE_ID_MAGIC as u64).to_be_bytes());
+
+/// Returns the context a block span should be started in.
+///
+/// If the current context already has a valid active span, the new span is a
+/// child of it and inherits its trace ID (same behavior as the pre-0.33
+/// `SpanBuilder::with_trace_id`, which was ignored when a parent existed).
+/// Otherwise a sampled, remote parent span context carrying
+/// `block_index_to_trace_id(block_index)` is attached so that the new span
+/// lands in the block's predictable trace.
+pub fn block_context(block_index: u64) -> Context {
+    let cx = Context::current();
+    if cx.span().span_context().is_valid() {
+        return cx;
+    }
+    cx.with_remote_span_context(SpanContext::new(
+        block_index_to_trace_id(block_index),
+        BLOCK_INDEX_PARENT_SPAN_ID,
+        TraceFlags::SAMPLED,
+        true,
+        TraceState::default(),
+    ))
+}
+
+/// A [`SpanBuilder`] whose span is tied to a specific block index's trace ID.
+#[must_use]
+pub struct BlockSpanBuilder {
+    builder: SpanBuilder,
+    block_index: u64,
+}
+
+impl BlockSpanBuilder {
+    /// Set the span start time.
+    pub fn with_start_time<T: Into<SystemTime>>(mut self, start_time: T) -> Self {
+        self.builder = self.builder.with_start_time(start_time);
+        self
+    }
+
+    /// Set the span attributes.
+    pub fn with_attributes<I>(mut self, attributes: I) -> Self
+    where
+        I: IntoIterator<Item = KeyValue>,
+    {
+        self.builder = self.builder.with_attributes(attributes);
+        self
+    }
+
+    /// Start the span in the block's trace (see [`block_context`]).
+    pub fn start<T: Tracer>(self, tracer: &T) -> T::Span {
+        tracer.build_with_context(self.builder, &block_context(self.block_index))
+    }
+}
+
+/// Create a span builder whose span is attached to a specific block index's
+/// trace ID.
 pub fn block_span_builder<T: Tracer>(
     tracer: &T,
     span_name: &'static str,
     block_index: u64,
-) -> SpanBuilder {
-    tracer
-        .span_builder(span_name)
-        .with_kind(SpanKind::Server)
-        .with_trace_id(block_index_to_trace_id(block_index))
+) -> BlockSpanBuilder {
+    BlockSpanBuilder {
+        builder: tracer.span_builder(span_name).with_kind(SpanKind::Server),
+        block_index,
+    }
 }
 
 /// Start a span tied to a specific block index.

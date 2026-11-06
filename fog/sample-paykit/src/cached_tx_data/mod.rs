@@ -33,7 +33,7 @@ use mc_transaction_core::{
     Amount, TokenId,
 };
 use mc_transaction_extra::MemoType;
-use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
+use mc_util_telemetry::{telemetry_static_key, tracer, Key, KeyValue, TraceContextExt, Tracer};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 mod memo_handler;
@@ -840,7 +840,7 @@ impl CachedTxData {
         tracer.in_span("poll_fog_for_txos", |cx| -> Result<()> {
             let num_txos = self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
             cx.span()
-                .set_attribute(TELEMETRY_NUM_TXOS_KEY.i64(num_txos as i64));
+                .set_attribute(KeyValue::new(TELEMETRY_NUM_TXOS_KEY, num_txos as i64));
 
             Ok(())
         })?;

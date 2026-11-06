@@ -23,7 +23,7 @@ use mc_transaction_core::{
 };
 use mc_util_serial::{decode, encode, Message};
 use mc_util_telemetry::{
-    mark_span_as_active, start_block_span, telemetry_static_key, tracer, Key, Span,
+    mark_span_as_active, start_block_span, telemetry_static_key, tracer, Key, KeyValue, Span,
 };
 use std::{
     fs,
@@ -161,11 +161,15 @@ impl Ledger for LedgerDB {
         let tracer = tracer!();
 
         let mut span = start_block_span(&tracer, "append_block", block.index);
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block.index as i64));
-        span.set_attribute(
-            TELEMETRY_NUM_KEY_IMAGES_KEY.i64(block_contents.key_images.len() as i64),
-        );
-        span.set_attribute(TELEMETRY_NUM_TXOS_KEY.i64(block_contents.outputs.len() as i64));
+        span.set_attribute(KeyValue::new(TELEMETRY_BLOCK_INDEX_KEY, block.index as i64));
+        span.set_attribute(KeyValue::new(
+            TELEMETRY_NUM_KEY_IMAGES_KEY,
+            block_contents.key_images.len() as i64,
+        ));
+        span.set_attribute(KeyValue::new(
+            TELEMETRY_NUM_TXOS_KEY,
+            block_contents.outputs.len() as i64,
+        ));
         let _active = mark_span_as_active(span);
 
         // Note: This function must update every LMDB database managed by LedgerDB.

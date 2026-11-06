@@ -15,7 +15,8 @@ use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_fog_types::common::BlockRange;
 use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
-    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, KeyValue, Span,
+    Tracer,
 };
 use mc_watcher_api::TimestampResultCode;
 use retry::{delay, retry, OperationResult};
@@ -242,7 +243,10 @@ impl<
                 .with_start_time(start_time)
                 .start(&tracer);
 
-            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(*next_block_index as i64));
+            span.set_attribute(KeyValue::new(
+                TELEMETRY_BLOCK_INDEX_KEY,
+                *next_block_index as i64,
+            ));
 
             let _active = mark_span_as_active(span);
 

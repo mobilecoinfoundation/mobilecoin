@@ -20,7 +20,8 @@ use mc_connection::{
 use mc_ledger_db::Ledger;
 use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_telemetry::{
-    block_span_builder, telemetry_static_key, tracer, Context, Key, Span, TraceContextExt, Tracer,
+    block_span_builder, telemetry_static_key, tracer, Context, Key, KeyValue, Span,
+    TraceContextExt, Tracer,
 };
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
@@ -261,7 +262,6 @@ impl<
                 let block_index = block_data.block().index;
                 let mut span = block_span_builder(&tracer, "append_block", block_index)
                     .with_start_time(append_block_start)
-                    .with_end_time(append_block_end)
                     .start(&tracer);
                 span.end_with_timestamp(append_block_end);
             }
@@ -398,8 +398,10 @@ impl<
 
             {
                 tracer!().in_span("append_safe_blocks", |cx| {
-                    cx.span()
-                        .set_attribute(TELEMETRY_NUM_BLOCKS_APPENDED.i64(safe_blocks.len() as i64));
+                    cx.span().set_attribute(KeyValue::new(
+                        TELEMETRY_NUM_BLOCKS_APPENDED,
+                        safe_blocks.len() as i64,
+                    ));
                     self.append_safe_blocks(&safe_blocks)
                 })?;
             }

@@ -1,11 +1,12 @@
 use displaydoc::Display;
-use opentelemetry::{global, global::BoxedTracer, trace::TraceError, KeyValue};
-use opentelemetry_sdk::{propagation::TraceContextPropagator, trace, Resource};
+use opentelemetry::{global, global::BoxedTracer, KeyValue};
+use opentelemetry_otlp::{ExporterBuildError, SpanExporter};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 
 #[derive(Debug, Display)]
 pub enum Error {
-    /// Trace error: {0}
-    Trace(TraceError),
+    /// Failed building OTLP exporter: {0}
+    Exporter(ExporterBuildError),
 
     /// Get hostname error: {0}
     GetHostname(std::io::Error),
@@ -40,26 +41,33 @@ pub fn setup_default_tracer_with_tags(
 
     let local_hostname = hostname::get().map_err(Error::GetHostname)?;
 
-    let mut tags = vec![
-        KeyValue::new("service.name", service_name.to_owned()),
-        KeyValue::new(
-            "hostname",
-            local_hostname
-                .to_str()
-                .ok_or(Error::HostnameToString)?
-                .to_owned(),
-        ),
-    ];
+    let mut tags = vec![KeyValue::new(
+        "hostname",
+        local_hostname
+            .to_str()
+            .ok_or(Error::HostnameToString)?
+            .to_owned(),
+    )];
     for (key, value) in extra_tags.iter() {
         tags.push(KeyValue::new(*key, value.clone()));
     }
 
-    let provider = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
-        .with_trace_config(trace::Config::default().with_resource(Resource::new(tags)))
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
-        .map_err(Error::Trace)?;
+    let resource = Resource::builder()
+        .with_service_name(service_name)
+        .with_attributes(tags)
+        .build();
+
+    // The tonic exporter must be built inside a Tokio runtime context, and that
+    // runtime must outlive the tracer provider.
+    let exporter = SpanExporter::builder()
+        .with_tonic()
+        .build()
+        .map_err(Error::Exporter)?;
+
+    let provider = SdkTracerProvider::builder()
+        .with_resource(resource)
+        .with_batch_exporter(exporter)
+        .build();
     global::set_tracer_provider(provider);
 
     Ok(Some(global::tracer(service_name)))

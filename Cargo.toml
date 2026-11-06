@@ -241,7 +241,7 @@ generic-array = { version = "0.14", default-features = false }
 getrandom = "0.2"
 grpcio = { version = "0.13", default-features = false }
 grpcio-compiler = { version = "0.13", default-features = false }
-hashbrown = { version = "0.14", default-features = false }
+hashbrown = { version = "0.17", default-features = false }
 heapless = { version = "0.8", default-features = false }
 hex = { version = "0.4", default-features = false }
 hex-literal = "0.4"
@@ -277,9 +277,9 @@ mockall = "0.12"
 more-asserts = "0.3"
 num_cpus = "1"
 once_cell = { version = "1", default-features = false }
-opentelemetry = "0.25"
-opentelemetry-otlp = "0.25"
-opentelemetry_sdk = "0.25"
+opentelemetry = "0.33"
+opentelemetry-otlp = { version = "0.33", default-features = false }
+opentelemetry_sdk = { version = "0.33", default-features = false }
 p256 = { version = "0.13", default-features = false }
 pem = "3"
 percent-encoding = "2"
