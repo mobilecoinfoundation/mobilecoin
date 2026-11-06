@@ -303,8 +303,11 @@ jobs:
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/postgresql-values.yaml"
         architecture: replication
+        global:
+          postgresql:
+            auth:
+              database: fog_recovery
         auth:
-          database: fog_recovery
           existingSecret: fog-recovery-postgresql
         primary:
           resources:
