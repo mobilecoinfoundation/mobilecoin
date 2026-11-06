@@ -238,7 +238,7 @@ jobs:
 
         # primary
         echo -n "fog_recovery" > "${PG_PATH}/cm/postgres-database"
-        echo -n "fog-recovery-postgresql-primary" > "${PG_PATH}/cm/postgres-hostname"
+        echo -n "fog-recovery-postgresql" > "${PG_PATH}/cm/postgres-hostname"
         echo -n "5432" > "${PG_PATH}/cm/postgres-port"
         echo -n "?sslmode=disable" > "${PG_PATH}/cm/postgres-ssl-options"
         echo -n "postgres" > "${PG_PATH}/cm/postgres-username"
@@ -307,8 +307,8 @@ jobs:
           postgresql:
             auth:
               database: fog_recovery
-              existingSecret: fog-recovery-postgresql
-        postgresqlSharedPreloadLibraries: pgaudit,pg_stat_statements
+        auth:
+          existingSecret: fog-recovery-postgresql
         primary:
           resources:
             requests:
@@ -329,9 +329,9 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-deploy
-        chart_repo: https://charts.bitnami.com/bitnami
+        chart_repo: https://kubelauncher.github.io/charts
         chart_name: postgresql
-        chart_version: 18.1.1
+        chart_version: 0.5.1
         chart_values: ${{ env.VALUES_BASE_PATH }}/postgresql-values.yaml
         chart_wait_timeout: 5m
         release_name: fog-recovery-postgresql

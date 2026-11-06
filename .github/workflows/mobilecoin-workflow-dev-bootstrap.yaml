@@ -108,7 +108,7 @@ jobs:
         AWS_DEFAULT_REGION: eu-central-1
         BUCKET: mobilecoin.eu.development.chain
         PGDATABASE: postgres
-        PGHOST: fog-recovery-postgresql-primary.${{ inputs.namespace }}
+        PGHOST: fog-recovery-postgresql.${{ inputs.namespace }}
         PGPASSWORD: ${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}
         PGUSER: postgres
         VERSION: ${{ inputs.bootstrap_version }}
