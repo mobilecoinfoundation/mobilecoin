@@ -238,7 +238,7 @@ jobs:
 
         # primary
         echo -n "fog_recovery" > "${PG_PATH}/cm/postgres-database"
-        echo -n "fog-recovery-postgresql" > "${PG_PATH}/cm/postgres-hostname"
+        echo -n "fog-recovery-postgresql-primary" > "${PG_PATH}/cm/postgres-hostname"
         echo -n "5432" > "${PG_PATH}/cm/postgres-port"
         echo -n "?sslmode=disable" > "${PG_PATH}/cm/postgres-ssl-options"
         echo -n "postgres" > "${PG_PATH}/cm/postgres-username"
