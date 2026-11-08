@@ -253,6 +253,7 @@ jobs:
         # secret
         echo -n "${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}" > "${PG_PATH}/sec/postgres-password"
         echo -n "${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}" > "${PG_PATH}/sec/replication-password"
+        echo -n "${{ secrets.DEV_POSTGRESQL_FOG_RECOVERY_PASSWORD }}" > "${PG_PATH}/sec/user-password"
 
     - name: Create pg primary cm
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -302,24 +303,26 @@ jobs:
       run: |
         mkdir -p "${VALUES_BASE_PATH}"
         cat <<EOF > "${VALUES_BASE_PATH}/postgresql-values.yaml"
+        fullnameOverride: fog-recovery-postgresql
         architecture: replication
         auth:
           database: fog_recovery
           existingSecret: fog-recovery-postgresql
-        primary:
-          resources:
-            requests:
-              cpu: 1
-              memory: 1Gi
-            limits:
-              memory: 8Gi
-        readReplicas:
-          resources:
-            requests:
-              cpu: 1
-              memory: 1Gi
-            limits:
-              memory: 8Gi
+        replication:
+          primary:
+            resources:
+              requests:
+                cpu: 1
+                memory: 1Gi
+              limits:
+                memory: 8Gi
+          readReplicas:
+            resources:
+              requests:
+                cpu: 1
+                memory: 1Gi
+              limits:
+                memory: 8Gi
         EOF
 
     - name: Deploy PostgreSQL instance
