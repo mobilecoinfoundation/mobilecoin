@@ -245,7 +245,7 @@ jobs:
 
         # reader
         echo -n "fog_recovery" > "${PG_PATH}/cm-reader/postgres-database"
-        echo -n "fog-recovery-postgresql-read" > "${PG_PATH}/cm-reader/postgres-hostname"
+        echo -n "fog-recovery-postgresql-replicas" > "${PG_PATH}/cm-reader/postgres-hostname"
         echo -n "5432" > "${PG_PATH}/cm-reader/postgres-port"
         echo -n "?sslmode=disable" > "${PG_PATH}/cm-reader/postgres-ssl-options"
         echo -n "postgres" > "${PG_PATH}/cm-reader/postgres-username"
@@ -317,6 +317,7 @@ jobs:
               limits:
                 memory: 8Gi
           readReplicas:
+            replicaCount: 1
             resources:
               requests:
                 cpu: 1
