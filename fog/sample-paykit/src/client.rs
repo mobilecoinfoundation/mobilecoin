@@ -41,7 +41,7 @@ use mc_transaction_core::{
 use mc_transaction_extra::{MemoType, SenderMemoCredential, SignedContingentInput};
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::{seq::SliceRandom, RngExt};
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 /// Default number of blocks used for calculating transaction tombstone block
 /// number. See `new_tx_block_attempts` below.
@@ -62,6 +62,13 @@ pub struct Client {
     account_key: AccountKey,
     tx_data: CachedTxData,
     block_info_cache: Option<BlockInfo>,
+
+    /// What we remember about each of our inputs (keyed by global index) that
+    /// has been part of a transaction: the indices the fog ledger operator
+    /// first saw it with, and the mixins currently used for it. Consulted on
+    /// every build so that linked `GetOutputs` requests cannot narrow down
+    /// which ring members are real, see `get_inputs_and_rings`.
+    ring_cache: HashMap<u64, CachedInput>,
 
     /// Number of blocks for which to try and get the new transaction to be
     /// included in the ledger. This value is used to calculate the
@@ -102,6 +109,7 @@ impl Client {
             account_key,
             tx_data,
             block_info_cache: None,
+            ring_cache: Default::default(),
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
             logger,
         }
@@ -346,7 +354,7 @@ impl Client {
         let inputs = self
             .tx_data
             .get_transaction_inputs(required_input_amount, TARGET_NUM_INPUTS)?;
-        let (inputs, rings) = self.get_inputs_and_rings(&inputs, None, rng)?;
+        let (inputs, rings) = self.get_inputs_and_rings(&inputs, false, rng)?;
 
         let tombstone_block = self.compute_tombstone_block()?;
 
@@ -402,7 +410,7 @@ impl Client {
 
         // Only one input can be used, otherwise defragmentation is required
         let inputs = self.tx_data.get_transaction_inputs(offered, 1)?;
-        let (inputs, rings) = self.get_inputs_and_rings(&inputs, None, rng)?;
+        let (inputs, rings) = self.get_inputs_and_rings(&inputs, true, rng)?;
 
         assert_eq!(inputs.len(), 1);
         assert_eq!(rings.len(), 1);
@@ -598,7 +606,6 @@ impl Client {
 
         let sci_token_id = TokenId::from(sci.pseudo_output_amount.token_id);
         let sci_value = sci.pseudo_output_amount.value;
-        let sci_tx_out_global_indices = sci.tx_out_global_indices.clone();
 
         // Now we have to case out on the partial-fill vs. non-partial fill flow
         if let Some(fill_amount) = fill_amount {
@@ -682,33 +689,38 @@ impl Client {
         // Pay the leftover to ourselves
         tx_builder.add_change_output(leftover, &change_destination, rng)?;
 
-        // Contribute our own inputs that may be required to fulfill the order
+        // Contribute our own inputs that may be required to fulfill the order.
+        // The inputs for all token ids are selected first and their rings are
+        // fetched together, so that no mixin ends up in two of our rings, which
+        // the network would reject.
+        //
+        // Arbitrarily choose 3 as the maximum number of inputs per token id
+        // TODO: Should be based on fee scaling and fee choice
+        const TARGET_NUM_INPUTS: usize = 3;
+        let mut inputs = Vec::new();
+        let mut change_amounts = Vec::new();
         for (token_id, value) in outlay {
-            // Arbitrarily choose 3 as the maximum number of inputs
-            // TODO: Should be based on fee scaling and fee choice
-            const TARGET_NUM_INPUTS: usize = 3;
-            let inputs = self
+            let token_inputs = self
                 .tx_data
                 .get_transaction_inputs(Amount::new(value, token_id), TARGET_NUM_INPUTS)?;
 
-            let total_input_value: u64 = inputs
+            let total_input_value: u64 = token_inputs
                 .iter()
                 .map(|owned_tx_out| owned_tx_out.amount.value)
                 .sum();
 
-            // Pass the sci.tx_out_global_indices as indices that we must avoid selecting
-            let (inputs, rings) =
-                self.get_inputs_and_rings(&inputs, Some(&sci_tx_out_global_indices), rng)?;
+            // Change in this token id goes back to ourselves
+            change_amounts.push(Amount::new(total_input_value - value, token_id));
+            inputs.extend(token_inputs);
+        }
 
-            // Add the inputs we selected for this token id
+        if !inputs.is_empty() {
+            let (inputs, rings) = self.get_inputs_and_rings(&inputs, false, rng)?;
             add_inputs_to_tx_builder(&mut tx_builder, inputs, rings, &self.account_key)?;
+        }
 
-            // Pay change in this token id back to ourselves
-            tx_builder.add_change_output(
-                Amount::new(total_input_value - value, token_id),
-                &change_destination,
-                rng,
-            )?;
+        for change in change_amounts {
+            tx_builder.add_change_output(change, &change_destination, rng)?;
         }
 
         let ring_signer = LocalRingSigner::from(&self.account_key);
@@ -724,12 +736,27 @@ impl Client {
     /// inputs on their own (and the mixins in a separate request) would tell
     /// the operator exactly which ring member is real. Instead, the true input
     /// indices are shuffled in among the mixin indices and sent together, so
-    /// the operator only learns the ring membership, which becomes public once
-    /// the transaction lands anyway.
+    /// a single request only reveals the ring membership. (Note that rings do
+    /// not reach the chain: a block contains only key images and outputs.
+    /// Apart from the counterparty of a signed contingent input, the fog
+    /// ledger operator is the only party outside the consensus enclave that
+    /// ever sees them, so the shape of these requests is all that protects
+    /// them.)
+    ///
+    /// That is not enough on its own: if a transaction is built more than once
+    /// with the same inputs (a retry, a rebuild with a different fee, an
+    /// abandoned build), re-sampling the mixins each time would let the
+    /// operator intersect the requests and recover exactly the true inputs.
+    /// So the mixins chosen for each input are remembered in `self.ring_cache`
+    /// for as long as this client lives, and every later request involving an
+    /// input also includes the ring the operator first saw it in. See
+    /// `select_mixin_indices` for the exact guarantee, its one exception, and
+    /// how it is kept.
     ///
     /// # Arguments
     /// * inputs: The OwnedTxOut records we intend to spend
-    /// * avoid_indices: Indices which are not allowed to be used as mixins
+    /// * for_proposal: true if the rings will leave the client (in a signed
+    ///   contingent input), see `select_mixin_indices`
     /// * rng: randomness
     ///
     /// # Returns
@@ -742,7 +769,7 @@ impl Client {
     fn get_inputs_and_rings<T: CryptoRng>(
         &mut self,
         inputs: &[OwnedTxOut],
-        avoid_indices: Option<&[u64]>,
+        for_proposal: bool,
         rng: &mut T,
     ) -> Result<(
         Vec<(OwnedTxOut, TxOutMembershipProof)>,
@@ -752,37 +779,20 @@ impl Client {
 
         let real_indices: Vec<u64> = inputs.iter().map(|input| input.global_index).collect();
 
-        let mut all_avoid_indices: HashSet<u64> = real_indices.iter().cloned().collect();
-        all_avoid_indices.extend(avoid_indices.unwrap_or_default().iter().cloned());
-
         // Each ring is the true input plus (ring_size - 1) mixins.
-        let num_mixins_per_ring = self.ring_size.saturating_sub(1);
-        let num_mixins = inputs.len() * num_mixins_per_ring;
-        let sample_limit = self.tx_data.get_global_txo_count() as usize;
+        let RingSelection {
+            mixins: mixin_indices,
+            mut request_indices,
+        } = select_mixin_indices(
+            &real_indices,
+            for_proposal,
+            &mut self.ring_cache,
+            self.ring_size.saturating_sub(1),
+            self.tx_data.get_global_txo_count(),
+            rng,
+        )?;
 
-        if sample_limit < num_mixins + all_avoid_indices.len() {
-            return Err(Error::InsufficientTxOutsInBlockchain(
-                num_mixins + all_avoid_indices.len(),
-                sample_limit,
-            ));
-        }
-
-        // Randomly sample distinct mixin indices, excluding forbidden indices
-        let mut mixin_indices: Vec<u64> = Vec::with_capacity(num_mixins);
-        let mut sampled: HashSet<u64> = HashSet::default();
-        while mixin_indices.len() < num_mixins {
-            let index = rng.random_range(0..sample_limit) as u64;
-            if !all_avoid_indices.contains(&index) && sampled.insert(index) {
-                mixin_indices.push(index);
-            }
-        }
-
-        // Shuffle the true inputs in among the mixins before asking the server
-        let mut request_indices: Vec<u64> = real_indices
-            .iter()
-            .chain(mixin_indices.iter())
-            .cloned()
-            .collect();
+        // Shuffle before asking the server
         request_indices.shuffle(rng);
 
         // FIXME: We are not sure whether this is a necessary parameter under ORAM.
@@ -830,15 +840,12 @@ impl Client {
 
         let mut inputs_with_proofs = Vec::with_capacity(inputs.len());
         let mut rings = Vec::with_capacity(inputs.len());
-        for input in inputs {
+        for (input, mixins) in inputs.iter().zip(mixin_indices.iter()) {
             let (tx_out, proof) = take(input.global_index)?;
             let mut ring = Vec::with_capacity(self.ring_size);
             ring.push((tx_out.clone(), proof.clone()));
-            for _ in 0..num_mixins_per_ring {
-                let mixin = mixin_indices
-                    .pop()
-                    .expect("enough mixins sampled for every ring");
-                ring.push(take(mixin)?);
+            for mixin in mixins {
+                ring.push(take(*mixin)?);
             }
             rings.push(ring);
 
@@ -940,6 +947,880 @@ impl Client {
     }
 }
 
+/// How large an earlier request we are willing to send again, in rings.
+///
+/// Sometimes an output of ours has already been sent to the fog ledger in an
+/// earlier request, as a mixin for another input. When we later spend that
+/// output, the safest ring request is the earlier request's indices again, so
+/// the operator learns nothing new. The indices remembered for an input are
+/// the ones it was first sent with plus its current mixins, which can change
+/// over time, so that set can be larger than one ring. Sets up to this many
+/// rings are resent; a larger one is left alone and the output gets a fresh
+/// ring instead, accepting the privacy loss documented in
+/// `select_mixin_indices`.
+///
+/// With ring size 11, this allows 22 indices. An input whose mixins have all
+/// been swapped once needs 11 + 10 = 21.
+const MAX_REUSED_REQUEST_RINGS: usize = 2;
+
+/// What the client remembers about an input that has been part of a
+/// transaction before. See `select_mixin_indices`.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct CachedInput {
+    /// The indices the fog ledger operator first saw this input among: its own
+    /// first ring, or, if it turned out to have been a mixin for an earlier
+    /// input of ours, everything remembered for that input. Never changes, and
+    /// is sent again in every later request involving this input. Swap
+    /// proposals use its first ring_size - 1 members other than the input as
+    /// the ring, so a reused set is shuffled once before it is stored here.
+    first_request: Vec<u64>,
+    /// The mixins currently used for this input in transactions. Initially
+    /// taken from `first_request`, leaving out the input. A mixin is replaced
+    /// only when it collides with another input of the same transaction or
+    /// with one of its other rings.
+    mixins: Vec<u64>,
+}
+
+impl CachedInput {
+    /// Everything a request involving this input contains: the first request
+    /// plus the current mixins, without duplicates.
+    fn request(&self) -> HashSet<u64> {
+        self.first_request
+            .iter()
+            .chain(&self.mixins)
+            .cloned()
+            .collect()
+    }
+
+    /// The mixins used for the ring that leaves the client in a signed
+    /// contingent input (a swap proposal): the same every time, and always
+    /// part of `first_request`.
+    ///
+    /// # Arguments
+    /// * `input` - the global index of this input, which is left out of its own
+    ///   ring
+    /// * `num_mixins` - how many mixins the ring needs (ring size - 1)
+    fn sci_mixins(&self, input: u64, num_mixins: usize) -> Vec<u64> {
+        self.first_request
+            .iter()
+            .cloned()
+            .filter(|index| *index != input)
+            .take(num_mixins)
+            .collect()
+    }
+}
+
+/// The result of `select_mixin_indices`
+struct RingSelection {
+    /// One list of `num_mixins_per_ring` mixin indices per true input, in the
+    /// same order as the true inputs.
+    mixins: Vec<Vec<u64>>,
+    /// Every index to request from the fog ledger: for each input, its first
+    /// request and its mixins. Sorted and free of duplicates; the caller
+    /// shuffles it.
+    request_indices: Vec<u64>,
+}
+
+/// Choose the mixins for a set of true inputs, and the indices to request from
+/// the fog ledger for them.
+///
+/// # Privacy guarantee
+///
+/// The fog ledger operator sees the requested indices and may link requests
+/// from the same wallet. Fresh mixins on each rebuild would let it intersect
+/// requests sharing a true input and potentially identify that input, even if
+/// none of the transactions are submitted.
+///
+/// Once an input has a cache entry, every request selecting it as a true input
+/// includes its remembered first request (`first_request`), usually its first
+/// ring. This is the set remembered for this input; other inputs from the same
+/// network request are tracked separately. A cached mixin must be replaced if
+/// it is another true input in the transaction, or if it is already used in
+/// another ordinary input's ring: the network rejects repeated ring members
+/// across ordinary inputs. Even after such a replacement, the remembered first
+/// request is still fetched in full. The intersection of these requests
+/// therefore always contains that whole set, which blocks the repeated-build
+/// attack. It does not stop the operator from guessing better than chance
+/// within that set; the limits below describe what still leaks.
+///
+/// Our own outputs are eligible mixins too. If an output first appeared as a
+/// mixin and is later selected as a true input, we try to reuse that earlier
+/// input's first request plus its current mixins. Otherwise a fresh ring could
+/// share only the newly selected input with the earlier request, identifying
+/// it.
+///
+/// # Privacy tradeoff: the reuse size limit
+///
+/// Reusing earlier requests and then replacing mixins can grow the number of
+/// indices fetched: a reused set carries over every index of the earlier
+/// request, each later replacement adds one more, and an output of ours found
+/// in the grown set would reuse all of it in turn. Without a cap, such a
+/// chain has no upper bound, and the fog ledger accepts at most 2000 indices
+/// per request. We only reuse sets of at most
+/// `MAX_REUSED_REQUEST_RINGS * ring_size` indices (22 with the defaults),
+/// which keeps a 16-input request at 512 indices or fewer.
+/// A set only exceeds the cap after three unlikely events in a row: one of
+/// our outputs sampled into our own ring (about one in a thousand per ring
+/// for a wallet with 1,000 outputs on a 10M ledger), a replacement in the
+/// reused set because it collided with another input or ring of ours (about
+/// the same odds), and then another output of ours found in that grown set
+/// (again about one in a thousand). The fallback below is therefore expected
+/// far less than once in a million builds.
+///
+/// If every matching set is larger, we give the input a fresh ring instead.
+/// That fresh ring and the earlier request have, barring a chance collision,
+/// exactly one index in common: this input. An operator comparing the two
+/// requests therefore learns that it is an output of ours. The size cap
+/// deliberately accepts that to keep requests bounded. Later builds of this
+/// input send the same fresh ring again and add nothing new, but the operator
+/// already has the answer from the first comparison.
+///
+/// # Other limits
+///
+/// Request sizes and timing remain visible. Mixin replacements can enlarge
+/// requests, revealing that rings changed; overlapping and reused requests can
+/// also reveal relationships between wallet outputs. Remembering the first
+/// request prevents simple set-intersection collapse, not all inference from
+/// wallet activity. The protection lasts only while the cache is retained.
+/// Recreating a client with an empty cache can expose inputs through fresh
+/// rings; a wallet that needs protection across restarts must persist the
+/// cache.
+///
+/// Rings are absent from blocks, but a swap proposal exposes its ring to the
+/// counterparty. With `for_proposal`, the ring is always the same subset of
+/// the remembered first request: its first ring_size - 1 members other than
+/// the input. Reused requests are shuffled once so this subset is chosen at
+/// random. Every later request selecting the input includes that proposal
+/// ring, so intersecting its proposals and those requests retains the whole
+/// ring. Proposal builds preserve the ordinary mixins for later lookups.
+///
+/// # Construction
+///
+/// Fresh mixins are sampled from the whole ledger. Two kinds of index that it
+/// might seem natural to keep out of the sampling are deliberately left in:
+///
+/// * Our own outputs may be sampled as mixins. If they could not, a true input
+///   of ours could never appear as a mixin, so an index that the rings of two
+///   different inputs of ours happen to share would have to be a mixin in both,
+///   and the operator could conclude that it is not an output of ours.
+/// * Members of the ring of an SCI we are fulfilling may be sampled as mixins.
+///   Consensus allows an SCI's ring to overlap our ordinary rings (MCIP 57), so
+///   nothing forces us to keep them out. Doing so would also let the
+///   counterparty, who picks that ring, force us to replace mixins of their
+///   choosing, showing the operator which members were mixins.
+///
+/// A cached input contributes its first request plus at most ring_size - 1
+/// current mixins. With 11 ring members and at most 16 inputs, the worst case
+/// is 16 * (22 + 10) = 512 indices against the fog ledger's limit of 2000.
+/// The cache is updated before the request is sent, so failed requests and
+/// abandoned builds are accounted for too.
+///
+/// # Arguments
+/// * `real_indices` - global indices of the true inputs, all distinct
+/// * `for_proposal` - the rings will be shown to a counterparty, see above
+/// * `ring_cache` - what we remember per true input, updated on return
+/// * `num_mixins_per_ring` - how many mixins each ring needs
+/// * `sample_limit` - fresh mixins are sampled from `0..sample_limit`
+/// * `rng` - randomness
+fn select_mixin_indices<T: CryptoRng>(
+    real_indices: &[u64],
+    for_proposal: bool,
+    ring_cache: &mut HashMap<u64, CachedInput>,
+    num_mixins_per_ring: usize,
+    sample_limit: u64,
+    rng: &mut T,
+) -> Result<RingSelection> {
+    let max_reused_len = MAX_REUSED_REQUEST_RINGS * (num_mixins_per_ring + 1);
+
+    // Indices that may not be used as a mixin in this transaction. Grows as
+    // mixins are assigned, so that no index ends up in two rings.
+    let mut forbidden: HashSet<u64> = real_indices.iter().cloned().collect();
+
+    // First pass: for each input, the mixins we would like, and the earlier
+    // request it reuses if it was found in one. Mixins that are not allowed
+    // (anymore) are dropped here and replaced by fresh samples below.
+    let mut rings: Vec<Vec<u64>> = Vec::with_capacity(real_indices.len());
+    let mut reused_requests: Vec<Option<Vec<u64>>> = Vec::with_capacity(real_indices.len());
+    for real in real_indices {
+        let (candidates, reused): (Vec<u64>, Option<Vec<u64>>) = if let Some(entry) =
+            ring_cache.get(real)
+        {
+            let candidates = if for_proposal {
+                entry.sci_mixins(*real, num_mixins_per_ring)
+            } else {
+                entry.mixins.clone()
+            };
+            (candidates, None)
+        } else if let Some(request) = ring_cache
+            .iter()
+            // Linear scan: the cache is tiny. A wallet that persists it across
+            // sessions might want an index -> input reverse map instead.
+            .filter(|(_, entry)| entry.first_request.contains(real) || entry.mixins.contains(real))
+            .map(|(input, entry)| (*input, entry.request()))
+            .filter(|(_, request)| request.len() <= max_reused_len)
+            .min_by_key(|(input, _)| *input)
+            .map(|(_, request)| request)
+        {
+            // This input, which we own, was a mixin in that earlier request.
+            // Reuse the request rather than sampling a fresh ring, which would
+            // share exactly this input with it. Shuffled so that the ring taken
+            // from it is a random choice (see `CachedInput`).
+            //
+            // Privacy: if the two inputs are later built together, that build
+            // is abandoned, and one of them is then built alone, the operator
+            // sees that two distinct inputs of ours are in this set (the
+            // requests differ in size but share the set). The candidates for
+            // each stay the whole set. A counterparty who holds proposals for
+            // both learns the same. Needs one of our outputs to have been
+            // sampled into our own ring in the first place. A ring draws
+            // (ring size - 1) = 10 mixins uniformly from the ledger, so that is
+            // about 10 * owned / ledger per ring: one in a thousand for a
+            // wallet with 1,000 outputs on a 10M ledger.
+            let mut request: Vec<u64> = request.into_iter().collect();
+            request.shuffle(rng);
+            let candidates = request
+                .iter()
+                .cloned()
+                .filter(|index| index != real)
+                .collect();
+            (candidates, Some(request))
+        } else {
+            // Never seen before, or only in requests too large to reuse: a
+            // fresh ring.
+            //
+            // Privacy: in the second case this input is the only index that
+            // its earlier request and this one share, so the operator can
+            // identify it as the real input. Needs two of our outputs sampled,
+            // one after the other, into the same chain of rings. Each such
+            // sampling is the one-in-a-thousand event above, so this is about
+            // (10 * owned / ledger)^3 per ring: one in a million for a wallet
+            // with 1,000 outputs on a 10M ledger.
+            (Vec::new(), None)
+        };
+        // Privacy: dropping a remembered mixin here changes the ring. The first
+        // request keeps the operator's candidates at the original ring, but
+        // the request grows by the replacement, so the operator learns that a
+        // replacement happened, and when two of our rings shared a mixin, that
+        // the shared index was a mixin in one of them. Needs two independently
+        // sampled rings to overlap: each of the 10 mixins of one against each
+        // of the 10 of the other, about 10 * 10 / ledger per pair of rings,
+        // one in a hundred thousand on a 10M ledger. Or one of our outputs in
+        // our own ring (see above).
+        let mut ring: Vec<u64> = candidates
+            .into_iter()
+            .filter(|mixin| !forbidden.contains(mixin))
+            .collect();
+        ring.truncate(num_mixins_per_ring);
+        forbidden.extend(ring.iter().cloned());
+        rings.push(ring);
+        reused_requests.push(reused);
+    }
+
+    // Second pass: top the rings up with fresh samples and update the cache.
+    let num_needed: usize = rings
+        .iter()
+        .map(|ring| num_mixins_per_ring - ring.len())
+        .sum();
+    let num_forbidden = forbidden
+        .iter()
+        .filter(|index| **index < sample_limit)
+        .count();
+    if (sample_limit as usize) < num_needed + num_forbidden {
+        return Err(Error::InsufficientTxOutsInBlockchain(
+            num_needed + num_forbidden,
+            sample_limit as usize,
+        ));
+    }
+
+    for ((real, ring), reused) in real_indices
+        .iter()
+        .zip(rings.iter_mut())
+        .zip(reused_requests)
+    {
+        // Privacy: our own outputs are sampled like any other (see the doc
+        // comment for why excluding them would be worse).
+        while ring.len() < num_mixins_per_ring {
+            let index = rng.random_range(0..sample_limit);
+            if forbidden.insert(index) {
+                ring.push(index);
+            }
+        }
+        // Record the outcome. An existing entry keeps its first request; a new
+        // one starts from the reused request, or from this ring if nothing was
+        // reused.
+        match ring_cache.entry(*real) {
+            Entry::Occupied(mut entry) => {
+                // A proposal does not change the mixins used in transactions:
+                // forgetting a replacement that happens to be an output of ours
+                // would give that output a fresh ring when it is spent later.
+                if !for_proposal {
+                    entry.get_mut().mixins = ring.clone();
+                }
+            }
+            Entry::Vacant(entry) => {
+                let first_request = reused.unwrap_or_else(|| {
+                    core::iter::once(*real)
+                        .chain(ring.iter().cloned())
+                        .collect()
+                });
+                entry.insert(CachedInput {
+                    first_request,
+                    mixins: ring.clone(),
+                });
+            }
+        }
+    }
+
+    let mut request_indices: Vec<u64> = real_indices
+        .iter()
+        .flat_map(|real| ring_cache[real].request())
+        .collect();
+    request_indices.sort_unstable();
+    request_indices.dedup();
+
+    Ok(RingSelection {
+        mixins: rings,
+        request_indices,
+    })
+}
+
+#[cfg(test)]
+mod test_select_mixin_indices {
+    use super::*;
+    use mc_util_test_helper::get_seeded_rng;
+
+    const RING_SIZE: usize = 11;
+    const NUM_MIXINS: usize = RING_SIZE - 1;
+    const SAMPLE_LIMIT: u64 = 1000;
+    /// `MAX_REQUEST_SIZE` of the fog ledger merkle proof service
+    const FOG_LEDGER_MAX_REQUEST_SIZE: usize = 2000;
+
+    fn select<T: CryptoRng>(
+        real_indices: &[u64],
+        ring_cache: &mut HashMap<u64, CachedInput>,
+        rng: &mut T,
+    ) -> RingSelection {
+        select_with(real_indices, false, ring_cache, rng)
+    }
+
+    fn select_with<T: CryptoRng>(
+        real_indices: &[u64],
+        for_proposal: bool,
+        ring_cache: &mut HashMap<u64, CachedInput>,
+        rng: &mut T,
+    ) -> RingSelection {
+        let selection = select_mixin_indices(
+            real_indices,
+            for_proposal,
+            ring_cache,
+            NUM_MIXINS,
+            SAMPLE_LIMIT,
+            rng,
+        )
+        .expect("select_mixin_indices failed");
+        assert_valid(real_indices, &selection.mixins);
+        assert_request(real_indices, &selection, ring_cache);
+        selection
+    }
+
+    /// A cache entry as it would look right after `real` was first used with
+    /// these mixins
+    fn entry(real: u64, mixins: &[u64]) -> CachedInput {
+        CachedInput {
+            first_request: core::iter::once(real)
+                .chain(mixins.iter().cloned())
+                .collect(),
+            mixins: mixins.to_vec(),
+        }
+    }
+
+    /// A cache entry for `real` whose ring was first `first_mixins` and whose
+    /// mixins have since been replaced by `current_mixins`
+    fn replaced_entry(real: u64, first_mixins: &[u64], current_mixins: &[u64]) -> CachedInput {
+        CachedInput {
+            mixins: current_mixins.to_vec(),
+            ..entry(real, first_mixins)
+        }
+    }
+
+    fn sorted<'a>(indices: impl IntoIterator<Item = &'a u64>) -> Vec<u64> {
+        let mut sorted: Vec<u64> = indices.into_iter().cloned().collect();
+        sorted.sort_unstable();
+        sorted
+    }
+
+    fn is_subset<'a>(smaller: &[u64], larger: impl IntoIterator<Item = &'a u64>) -> bool {
+        let larger: HashSet<u64> = larger.into_iter().cloned().collect();
+        smaller.iter().all(|index| larger.contains(index))
+    }
+
+    /// The rings must be full, and all ring members (real and mixin) must be
+    /// distinct.
+    fn assert_valid(real_indices: &[u64], rings: &[Vec<u64>]) {
+        assert_eq!(rings.len(), real_indices.len());
+        let mut seen: HashSet<u64> = real_indices.iter().cloned().collect();
+        for ring in rings {
+            assert_eq!(ring.len(), NUM_MIXINS);
+            for mixin in ring {
+                assert!(*mixin < SAMPLE_LIMIT);
+                assert!(seen.insert(*mixin), "index {mixin} used twice");
+            }
+        }
+    }
+
+    /// The request must hold, for every input, its first request and its
+    /// mixins, nothing else, sorted and without duplicates.
+    fn assert_request(
+        real_indices: &[u64],
+        selection: &RingSelection,
+        cache: &HashMap<u64, CachedInput>,
+    ) {
+        let mut expected: Vec<u64> = Vec::new();
+        for (real, mixins) in real_indices.iter().zip(&selection.mixins) {
+            expected.push(*real);
+            expected.extend(mixins);
+            expected.extend(cache[real].request());
+        }
+        expected.sort_unstable();
+        expected.dedup();
+        assert_eq!(selection.request_indices, expected);
+    }
+
+    #[test]
+    fn repeated_build_reuses_the_same_rings() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+        let real = [7, 42, 500];
+
+        let first = select(&real, &mut cache, &mut rng);
+        // A new input's first request is its first ring
+        for (real, mixins) in real.iter().zip(&first.mixins) {
+            assert_eq!(cache[real], entry(*real, mixins));
+        }
+        assert_eq!(first.request_indices.len(), 3 * RING_SIZE);
+
+        let second = select(&real, &mut cache, &mut rng);
+        assert_eq!(second.mixins, first.mixins);
+        assert_eq!(second.request_indices, first.request_indices);
+
+        // A subset of the inputs, in a different order, still gets the same rings
+        let third = select(&[500, 7], &mut cache, &mut rng);
+        assert_eq!(
+            third.mixins,
+            vec![first.mixins[2].clone(), first.mixins[0].clone()]
+        );
+
+        assert_eq!(cache.len(), 3);
+    }
+
+    #[test]
+    fn new_input_gets_a_fresh_ring_without_disturbing_cached_ones() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        let first = select(&[7], &mut cache, &mut rng);
+        let both = select(&[7, 42], &mut cache, &mut rng);
+        assert_eq!(both.mixins[0], first.mixins[0]);
+        assert_eq!(cache[&42], entry(42, &both.mixins[1]));
+        assert_eq!(both.request_indices.len(), 2 * RING_SIZE);
+    }
+
+    #[test]
+    fn changing_input_combinations_do_not_merge_histories() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        let first = select(&[7, 42], &mut cache, &mut rng);
+        let second = select(&[42, 99], &mut cache, &mut rng);
+        let third = select(&[99, 500], &mut cache, &mut rng);
+
+        // An input keeps its ring whichever inputs it is built with
+        assert_eq!(second.mixins[0], first.mixins[1]);
+        assert_eq!(third.mixins[0], second.mixins[1]);
+
+        // Inputs built together earlier are not dragged into later requests:
+        // each input contributes exactly its own ring (see `assert_request`)
+        assert_eq!(third.request_indices.len(), 2 * RING_SIZE);
+        assert!(!third.request_indices.contains(&7));
+        assert!(!third.request_indices.contains(&42));
+
+        let alone = select(&[7], &mut cache, &mut rng);
+        assert_eq!(alone.mixins[0], first.mixins[0]);
+        assert_eq!(alone.request_indices.len(), RING_SIZE);
+    }
+
+    #[test]
+    fn mixin_colliding_with_a_true_input_is_replaced() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        let first = select(&[7], &mut cache, &mut rng);
+        // Pretend that 42, which we own, was sampled as a mixin of 7's ring
+        let mut poisoned = first.mixins[0].clone();
+        poisoned[3] = 42;
+        let seeded = entry(7, &poisoned);
+        cache.insert(7, seeded.clone());
+
+        let selection = select(&[7, 42], &mut cache, &mut rng);
+
+        // Only the colliding mixin was replaced: the other nine are kept, in
+        // order, and the replacement is appended after them
+        let kept: Vec<u64> = poisoned.iter().filter(|m| **m != 42).cloned().collect();
+        assert_eq!(selection.mixins[0][..NUM_MIXINS - 1], kept[..]);
+        assert_eq!(cache[&7].mixins, selection.mixins[0]);
+
+        // The first request is untouched: 42 stays in it although it is no
+        // longer a mixin, so later requests for 7 keep fetching it and the
+        // operator cannot tell it apart from the other members
+        assert_eq!(cache[&7].first_request, seeded.first_request);
+        assert!(cache[&7].first_request.contains(&42));
+
+        // 42 reused 7's request although every member of it was reserved, so
+        // its ring in this transaction is fresh, but the ring it will show in
+        // proposals comes from the reused request, which every later request
+        // involving 42 contains.
+        let reused = &cache[&42];
+        assert_eq!(
+            sorted(&reused.first_request),
+            sorted(&cache[&7].first_request)
+        );
+        assert_eq!(reused.mixins, selection.mixins[1]);
+        let sci_mixins = reused.sci_mixins(42, NUM_MIXINS);
+        assert_eq!(sci_mixins.len(), NUM_MIXINS);
+        assert!(is_subset(&sci_mixins, &reused.first_request));
+        assert!(!sci_mixins.contains(&42));
+        let proposal = select_with(&[42], true, &mut cache, &mut rng);
+        assert_eq!(proposal.mixins[0], sci_mixins);
+        assert!(is_subset(&sci_mixins, &proposal.request_indices));
+    }
+
+    #[test]
+    fn owned_output_found_in_an_earlier_request_reuses_it() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        let first = select(&[7], &mut cache, &mut rng);
+        // Pretend that 42, which we own, was sampled as a mixin of 7's ring
+        let mut poisoned = first.mixins[0].clone();
+        poisoned[3] = 42;
+        cache.insert(7, entry(7, &poisoned));
+        let request_of_7 = cache[&7].request();
+        // The operator has now seen 42 among the members of 7's ring
+        let parent = select(&[7], &mut cache, &mut rng);
+
+        // Spending 42 must not give it a fresh ring, which would share only 42
+        // with 7's request and so single it out. Instead its ring is the rest
+        // of 7's request, its first request is all of it, and the network
+        // request is identical to the one made for 7
+        let selection = select(&[42], &mut cache, &mut rng);
+        let expected: Vec<u64> = request_of_7.iter().cloned().filter(|i| *i != 42).collect();
+        assert_eq!(sorted(&selection.mixins[0]), sorted(&expected));
+        assert_eq!(sorted(&cache[&42].first_request), sorted(&request_of_7));
+        assert_eq!(cache[&42].mixins, selection.mixins[0]);
+        assert_eq!(selection.request_indices, parent.request_indices);
+        // 7's own entry is untouched
+        assert_eq!(cache[&7], entry(7, &poisoned));
+
+        // And a repeated build of 42 is stable
+        let again = select(&[42], &mut cache, &mut rng);
+        assert_eq!(again.mixins, selection.mixins);
+        assert_eq!(again.request_indices, selection.request_indices);
+    }
+
+    #[test]
+    fn owned_output_found_among_replaced_mixins_reuses_the_whole_request() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        // 7's ring was first {7} + 100..110 and has since been fully replaced
+        // by 200..210, with 42 (which we own) among the replacements.
+        let first_mixins: Vec<u64> = (100..110).collect();
+        let mut current_mixins: Vec<u64> = (200..210).collect();
+        current_mixins[3] = 42;
+        cache.insert(7, replaced_entry(7, &first_mixins, &current_mixins));
+        let request_of_7 = cache[&7].request();
+        let parent = select(&[7], &mut cache, &mut rng);
+        assert_eq!(parent.request_indices.len(), 2 * RING_SIZE - 1);
+
+        let selection = select(&[42], &mut cache, &mut rng);
+        // 42's first request is all of 7's request, and its ring a part of it
+        assert_eq!(sorted(&cache[&42].first_request), sorted(&request_of_7));
+        let mixins = &selection.mixins[0];
+        assert!(is_subset(mixins, &request_of_7));
+        assert!(!mixins.contains(&42));
+        // And the request is indistinguishable from a retry of 7
+        assert_eq!(selection.request_indices, parent.request_indices);
+
+        // The ring shown in proposals is retained even after 42's mixins are
+        // replaced
+        let sci_mixins = cache[&42].sci_mixins(42, NUM_MIXINS);
+        cache.get_mut(&42).unwrap().mixins = (300..310).collect();
+        let proposal = select_with(&[42], true, &mut cache, &mut rng);
+        assert_eq!(proposal.mixins[0], sci_mixins);
+    }
+
+    #[test]
+    fn reused_ring_is_a_random_choice() {
+        let mut rng = get_seeded_rng();
+
+        // Repeated reuses of the same request (one index larger than a ring)
+        // do not always drop the same member, so a counterparty who sees the
+        // earlier ring and the reused one cannot tell which member is the new
+        // real input.
+        let first_mixins: Vec<u64> = (100..110).collect();
+        let mut current_mixins: Vec<u64> = first_mixins.clone();
+        current_mixins[0] = 42;
+        let mut dropped: HashSet<u64> = HashSet::default();
+        for _ in 0..50 {
+            let mut cache = HashMap::default();
+            cache.insert(7, replaced_entry(7, &first_mixins, &current_mixins));
+            let selection = select(&[42], &mut cache, &mut rng);
+            let candidates: Vec<u64> = cache[&42]
+                .first_request
+                .iter()
+                .cloned()
+                .filter(|i| *i != 42 && !selection.mixins[0].contains(i))
+                .collect();
+            assert_eq!(candidates.len(), 1);
+            dropped.insert(candidates[0]);
+        }
+        assert!(dropped.len() > 1);
+    }
+
+    #[test]
+    fn oversized_requests_are_skipped_in_favour_of_a_smaller_one() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        // 42 is in the requests of both 5 and 9. 5's is too large to reuse,
+        // 9's is not, so 9's is reused although 5 < 9.
+        let big: Vec<u64> = [5, 42].into_iter().chain(100..120).collect();
+        cache.insert(
+            5,
+            CachedInput {
+                first_request: big,
+                mixins: (200..210).collect(),
+            },
+        );
+        let mut small: Vec<u64> = (300..310).collect();
+        small[4] = 42;
+        cache.insert(9, entry(9, &small));
+
+        let selection = select(&[42], &mut cache, &mut rng);
+        assert_eq!(
+            sorted(&cache[&42].first_request),
+            sorted(&cache[&9].first_request)
+        );
+        assert_eq!(selection.request_indices.len(), RING_SIZE);
+    }
+
+    #[test]
+    fn shared_mixin_between_cached_rings_is_replaced() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        let ring_a = select(&[7], &mut cache, &mut rng).mixins[0].clone();
+        let mut ring_b = select(&[42], &mut cache, &mut rng).mixins[0].clone();
+        assert_valid(&[7, 42], &[ring_a.clone(), ring_b.clone()]);
+        // Pretend the two rings happened to share a mixin
+        ring_b[0] = ring_a[5];
+        cache.insert(42, entry(42, &ring_b));
+
+        let selection = select(&[7, 42], &mut cache, &mut rng);
+        // 7 comes first, so its ring is kept whole and 42's ring gives up the
+        // shared mixin: its other nine stay in order and a fresh one is appended
+        assert_eq!(selection.mixins[0], ring_a);
+        assert_eq!(selection.mixins[1][..NUM_MIXINS - 1], ring_b[1..]);
+        // The replacement adds one index, the shared one is counted once
+        assert_eq!(selection.request_indices.len(), 2 * RING_SIZE);
+    }
+
+    /// An input loses mixins to collisions in an intermediate (abandoned) build
+    /// with other inputs. Without the first request being sent along, its
+    /// next solo request would share only the input itself with its first
+    /// solo request.
+    #[test]
+    fn replaced_mixins_do_not_shrink_the_intersection_of_requests() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        // 42's and 99's rings each share one mixin with 7's ring
+        let ring_of_7: Vec<u64> = (100..110).collect();
+        let mut ring_of_42: Vec<u64> = (200..210).collect();
+        ring_of_42[0] = ring_of_7[0];
+        let mut ring_of_99: Vec<u64> = (300..310).collect();
+        ring_of_99[0] = ring_of_7[1];
+        cache.insert(7, entry(7, &ring_of_7));
+        cache.insert(42, entry(42, &ring_of_42));
+        cache.insert(99, entry(99, &ring_of_99));
+
+        // 1. 7 alone
+        let first = select(&[7], &mut cache, &mut rng);
+        assert_eq!(first.mixins[0], ring_of_7);
+
+        // 2. 42, 99 and 7 together: 7 comes last, so it loses the two shared mixins.
+        //    This build is abandoned.
+        let joint = select(&[42, 99, 7], &mut cache, &mut rng);
+        assert_eq!(joint.mixins[2][..NUM_MIXINS - 2], ring_of_7[2..]);
+        assert!(is_subset(&first.request_indices, &joint.request_indices));
+
+        // 3. 7 alone again: the changed ring, plus the first request
+        let third = select(&[7], &mut cache, &mut rng);
+        assert_eq!(third.mixins[0], joint.mixins[2]);
+        assert!(is_subset(&first.request_indices, &third.request_indices));
+        assert_eq!(third.request_indices.len(), RING_SIZE + 2);
+    }
+
+    #[test]
+    fn request_size_stays_within_the_fog_ledger_limit() {
+        use mc_transaction_core::constants::{MAX_INPUTS, RING_SIZE as NETWORK_RING_SIZE};
+        assert_eq!(RING_SIZE, NETWORK_RING_SIZE);
+        assert!(
+            (MAX_INPUTS as usize) * (MAX_REUSED_REQUEST_RINGS * RING_SIZE + RING_SIZE - 1)
+                < FOG_LEDGER_MAX_REQUEST_SIZE
+        );
+
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        // Build the worst case: the maximum number of inputs, each with the
+        // largest first request a reuse allows (22 indices) and with every one
+        // of its 10 mixins replaced since, so that none of them is in the first
+        // request any more. Each input then contributes 22 + 10 = 32 distinct
+        // indices. The ranges are chosen so that no two inputs overlap either.
+        let max_first_request = MAX_REUSED_REQUEST_RINGS * RING_SIZE;
+        let real: Vec<u64> = (0..MAX_INPUTS).collect();
+        for input in &real {
+            let start = 100 + (max_first_request as u64 - 1) * input;
+            let first_request: Vec<u64> = core::iter::once(*input)
+                .chain(start..start + max_first_request as u64 - 1)
+                .collect();
+            let mixins: Vec<u64> = (800 + 10 * input..810 + 10 * input).collect();
+            cache.insert(
+                *input,
+                CachedInput {
+                    first_request,
+                    mixins,
+                },
+            );
+        }
+
+        let selection = select(&real, &mut cache, &mut rng);
+        assert_eq!(
+            selection.request_indices.len(),
+            (MAX_INPUTS as usize) * (max_first_request + NUM_MIXINS)
+        );
+        assert!(selection.request_indices.len() < FOG_LEDGER_MAX_REQUEST_SIZE);
+    }
+
+    #[test]
+    fn oversized_requests_are_not_reused() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+        let max_first_request = MAX_REUSED_REQUEST_RINGS * RING_SIZE;
+
+        // 7's first request is itself a reused one, as large as allowed, and
+        // 42 (which we own) is in it.
+        let first_request: Vec<u64> = [7, 42]
+            .into_iter()
+            .chain(100..100 + max_first_request as u64 - 2)
+            .collect();
+        assert_eq!(first_request.len(), max_first_request);
+
+        // With 7's mixins inside it, 7's request is exactly at the limit:
+        // reused
+        cache.insert(
+            7,
+            CachedInput {
+                first_request: first_request.clone(),
+                mixins: first_request[1..RING_SIZE].to_vec(),
+            },
+        );
+        let reused = select(&[42], &mut cache, &mut rng);
+        assert_eq!(sorted(&cache[&42].first_request), sorted(&first_request));
+        assert_eq!(reused.request_indices.len(), max_first_request);
+
+        // With 7's mixins replaced by ones outside it, 7's request is over the
+        // limit: 42 gets a fresh ring instead
+        cache.remove(&42);
+        cache.insert(
+            7,
+            CachedInput {
+                first_request: first_request.clone(),
+                mixins: (500..510).collect(),
+            },
+        );
+        let fresh = select(&[42], &mut cache, &mut rng);
+        assert_eq!(cache[&42], entry(42, &fresh.mixins[0]));
+        assert_eq!(fresh.request_indices.len(), RING_SIZE);
+    }
+
+    #[test]
+    fn proposal_rings_do_not_change() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        // 7's ring was first {7} + 100..110 and has since been fully replaced,
+        // with 42 (which we own) among the replacements
+        let first_mixins: Vec<u64> = (100..110).collect();
+        let mut current_mixins: Vec<u64> = (200..210).collect();
+        current_mixins[3] = 42;
+        cache.insert(7, replaced_entry(7, &first_mixins, &current_mixins));
+
+        // An ordinary build uses the current mixins, a proposal the first
+        // ring; both requests hold the first request and the current mixins
+        let ordinary = select(&[7], &mut cache, &mut rng);
+        assert_eq!(ordinary.mixins[0], current_mixins);
+        let proposal = select_with(&[7], true, &mut cache, &mut rng);
+        assert_eq!(proposal.mixins[0], first_mixins);
+        assert!(is_subset(&current_mixins, &proposal.request_indices));
+        // The proposal did not make 7 forget its current mixins, so 42 is
+        // still found there when it is spent
+        assert_eq!(cache[&7].mixins, current_mixins);
+        let request_of_7 = cache[&7].request();
+        let reused = select(&[42], &mut cache, &mut rng);
+        assert_eq!(sorted(&cache[&42].first_request), sorted(&request_of_7));
+        assert_eq!(sorted(&reused.request_indices), sorted(&request_of_7));
+        assert!(is_subset(
+            &cache[&7].first_request,
+            &ordinary.request_indices
+        ));
+        assert!(is_subset(
+            &cache[&7].first_request,
+            &proposal.request_indices
+        ));
+
+        // A new input in a proposal is sampled like any other, and stays the
+        // same in later proposals
+        let fresh = select_with(&[99], true, &mut cache, &mut rng);
+        assert_eq!(cache[&99], entry(99, &fresh.mixins[0]));
+        let again = select_with(&[99], true, &mut cache, &mut rng);
+        assert_eq!(again.mixins, fresh.mixins);
+    }
+
+    #[test]
+    fn insufficient_tx_outs_is_an_error_not_a_hang() {
+        let mut rng = get_seeded_rng();
+        let mut cache = HashMap::default();
+
+        // Needs 10 mixins from 0..11 minus the input itself: exactly enough
+        let selection = select_mixin_indices(&[1], false, &mut cache, NUM_MIXINS, 11, &mut rng)
+            .expect("exactly enough tx outs");
+        let mut mixins = selection.mixins[0].clone();
+        mixins.sort();
+        assert_eq!(mixins, vec![0, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        // One fewer is an error
+        let mut cache = HashMap::default();
+        let res = select_mixin_indices(&[1], false, &mut cache, NUM_MIXINS, 10, &mut rng);
+        assert!(matches!(
+            res,
+            Err(Error::InsufficientTxOutsInBlockchain(11, 10))
+        ));
+        assert!(cache.is_empty());
+    }
+}
+
 /// Builds a transaction that spends `inputs`, sends `amount` to the recipient,
 /// and returns the remainder to the sender minus the transaction fee.
 ///
@@ -1036,16 +1917,23 @@ fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
     source_account_key: &AccountKey,
 ) -> Result<()> {
+    assert_eq!(
+        inputs.len(),
+        rings.len(),
+        "Each input must have a corresponding ring."
+    );
+
     // Unzip each vec of tuples into a tuple of vecs.
-    let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
+    let rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
         .into_iter()
         .map(|tuples| tuples.into_iter().unzip())
         .collect();
 
-    for (input_txo, input_proof) in inputs {
-        let (ring, membership_proofs) = rings_and_proofs
-            .pop()
-            .expect("Consistency failure converting vec of tuple into tuple of vecs");
+    // Inputs and rings are in the same order: the ring of each input is the
+    // one chosen for it (and remembered in the ring cache), not another's.
+    for ((input_txo, input_proof), (ring, membership_proofs)) in
+        inputs.into_iter().zip(rings_and_proofs)
+    {
         assert_eq!(
             ring.len(),
             membership_proofs.len(),
