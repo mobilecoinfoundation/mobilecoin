@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
+## [7.3.0]
+
+- Preserve validator keys in ledger-sync quorum checks ([#4135])
+- Pin configured consensus message issuer keys ([#4136])
+- CI - Change PostgreSQL container and chart provider ([#4139])
+
+[#4135]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4135
+[#4136]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4136
+[#4139]: https://github.com/mobilecoinfoundation/mobilecoin/pull/4139
+
 ## [7.2.2]
 
 ### Fixed
