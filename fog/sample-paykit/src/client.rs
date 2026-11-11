@@ -1075,6 +1075,10 @@ struct RingSelection {
 /// input send the same fresh ring again and add nothing new, but the operator
 /// already has the answer from the first comparison.
 ///
+/// The same identification happens, at similar odds, when the output is found
+/// in more than one reusable request: only one of them is reused, so the new
+/// request shares just this input with the others.
+///
 /// # Other limits
 ///
 /// Request sizes and timing remain visible. Mixin replacements can enlarge
@@ -1158,6 +1162,18 @@ fn select_mixin_indices<T: CryptoRng>(
             .filter(|(_, entry)| entry.first_request.contains(real) || entry.mixins.contains(real))
             .map(|(input, entry)| (*input, entry.request()))
             .filter(|(_, request)| request.len() <= max_reused_len)
+            // If several requests qualify, only the one for the lowest input is
+            // reused.
+            //
+            // Privacy: the new request then shares only this input with the
+            // other qualifying requests, which identifies it there as an
+            // output of ours. Needs one of our outputs sampled into two of our
+            // rings: per new ring, 10 mixins each ours with probability
+            // owned / ledger and already in one of the earlier rings with
+            // probability about 10 * rings / ledger. For a wallet with 1,000
+            // outputs and 1,000 earlier rings on a 10M ledger that is about
+            // one in a million per ring, the same order as the fresh-ring
+            // case below.
             .min_by_key(|(input, _)| *input)
             .map(|(_, request)| request)
         {

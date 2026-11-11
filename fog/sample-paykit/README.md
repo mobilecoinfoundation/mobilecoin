@@ -39,7 +39,7 @@ as the indices the operator first saw that input among, normally its first ring.
 that spends the input includes that set, so an operator comparing linked requests can never narrow
 the candidates for that input below it. The bound is per input: the rings of other inputs built
 together with it are not carried along. This is an intersection bound only; it says nothing about
-what request sizes or timing reveal, and it has one accepted exception for a very unlikely chain of
+what request sizes or timing reveal, and it has accepted exceptions for very unlikely chains of
 events, documented in `select_mixin_indices`. A real wallet should persist that ring cache alongside
 the account state.
 
