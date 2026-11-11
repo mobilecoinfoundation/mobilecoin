@@ -35,12 +35,13 @@ in that function, and would support fetching those data in advance.
 Note: The fog ledger operator sees every TxOut index that `build_transaction` requests merkle
 proofs for. The sample paykit requests the true inputs and the mixins together in one shuffled
 request, and remembers, for the lifetime of the `Client`, the mixins chosen for each input as well
-as the ring the operator first saw that input in. Every later request involving the input includes
-that ring, so an operator comparing linked requests can never narrow the candidates for an input
-below what the first request already showed. This is an intersection bound only; it says nothing
-about what request sizes or timing reveal, and it has one accepted exception for a very unlikely
-chain of events, documented in `select_mixin_indices`. A real wallet should persist that ring
-cache alongside the account state.
+as the indices the operator first saw that input among, normally its first ring. Every later request
+that spends the input includes that set, so an operator comparing linked requests can never narrow
+the candidates for that input below it. The bound is per input: the rings of other inputs built
+together with it are not carried along. This is an intersection bound only; it says nothing about
+what request sizes or timing reveal, and it has one accepted exception for a very unlikely chain of
+events, documented in `select_mixin_indices`. A real wallet should persist that ring cache alongside
+the account state.
 
 scope
 -----
