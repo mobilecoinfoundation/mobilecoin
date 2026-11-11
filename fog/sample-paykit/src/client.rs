@@ -1751,6 +1751,132 @@ mod test_build_transaction_helper {
         }
     }
 
+    /// `num` outputs of `amount` owned by `account_key`, each paired with a
+    /// placeholder membership proof, as `get_inputs_and_rings` would return
+    /// them
+    fn owned_inputs<T: CryptoRng>(
+        block_version: BlockVersion,
+        account_key: &AccountKey,
+        num: usize,
+        amount: Amount,
+        rng: &mut T,
+    ) -> Vec<(OwnedTxOut, TxOutMembershipProof)> {
+        let public_address = account_key.default_subaddress();
+        let recipient_and_amount = (0..num)
+            .map(|_| (public_address.clone(), amount))
+            .collect::<Vec<_>>();
+        get_outputs(block_version, &recipient_and_amount, rng)
+            .into_iter()
+            .map(|tx_out| {
+                let fog_tx_out = FogTxOut::try_from(&tx_out).unwrap();
+                let meta = FogTxOutMetadata::default();
+                let txo_record = TxOutRecord::new(fog_tx_out, meta);
+
+                let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+                let subaddress_spk = recover_public_subaddress_spend_key(
+                    account_key.view_private_key(),
+                    &tx_out_target_key,
+                    &tx_public_key,
+                );
+                let spsk_to_index =
+                    HashMap::from_iter(vec![(subaddress_spk, DEFAULT_SUBADDRESS_INDEX)]);
+
+                let owned_tx_out =
+                    OwnedTxOut::new(txo_record, account_key, &spsk_to_index).unwrap();
+                let proof = TxOutMembershipProof::new(0, 0, Default::default());
+                (owned_tx_out, proof)
+            })
+            .collect()
+    }
+
+    // `build_transaction_helper` must pair each input with the ring chosen for
+    // it. The ring cache relies on this: an input's remembered mixins are only
+    // its own if they end up in its TxIn. (The disjoint-rings test below uses
+    // rings of one member, which the helper replaces wholesale, so it cannot
+    // tell the rings apart.)
+    #[test_with_logger]
+    fn test_build_transaction_helper_pairs_each_input_with_its_own_ring(logger: Logger) {
+        let mut rng = get_seeded_rng();
+        let block_version = BlockVersion::MAX;
+        let sender_account_key = AccountKey::random(&mut rng);
+        let sender_public_address = sender_account_key.default_subaddress();
+        let num_inputs = 3;
+        let ring_size = 4;
+
+        let inputs = owned_inputs(
+            block_version,
+            &sender_account_key,
+            num_inputs,
+            Amount::new(300 * MILLIMOB_TO_PICOMOB, Mob::ID),
+            &mut rng,
+        );
+
+        // Distinct mixins for every input, none of them an input
+        let rings: Vec<Vec<TxOut>> = (0..num_inputs)
+            .map(|_| {
+                let recipient_and_amount = (0..ring_size)
+                    .map(|_| (sender_public_address.clone(), Amount::new(33, Mob::ID)))
+                    .collect::<Vec<_>>();
+                get_outputs(block_version, &recipient_and_amount, &mut rng)
+            })
+            .collect();
+        let rings_and_membership_proofs = rings
+            .iter()
+            .map(|ring| {
+                ring.iter()
+                    .cloned()
+                    .map(|tx_out| (tx_out, TxOutMembershipProof::new(0, 0, Default::default())))
+                    .collect()
+            })
+            .collect();
+
+        let tx = build_transaction_helper(
+            block_version,
+            FeeMap::default(),
+            inputs.clone(),
+            rings_and_membership_proofs,
+            Amount::new(457 * MILLIMOB_TO_PICOMOB, Mob::ID),
+            &sender_account_key,
+            &AccountKey::random(&mut rng).default_subaddress(),
+            super::BlockIndex::MAX,
+            FakeAcctResolver {},
+            &LocalRingSigner::from(&sender_account_key),
+            &mut rng,
+            &logger,
+            Mob::MINIMUM_FEE,
+        )
+        .unwrap();
+
+        // Every TxIn holds exactly one of the inputs, and its other members are
+        // the mixins supplied for that input. The helper puts the input in
+        // place of the ring's first member and the builder sorts the ring, so
+        // compare as sets.
+        assert_eq!(tx.prefix.inputs.len(), num_inputs);
+        for tx_in in &tx.prefix.inputs {
+            let positions: Vec<usize> = inputs
+                .iter()
+                .enumerate()
+                .filter(|(_, (input, _))| tx_in.ring.contains(&input.tx_out))
+                .map(|(position, _)| position)
+                .collect();
+            assert_eq!(positions.len(), 1, "a TxIn must hold exactly one input");
+            let position = positions[0];
+            let expected: HashSet<TxOut> = rings[position][1..].iter().cloned().collect();
+            let actual: HashSet<TxOut> = tx_in
+                .ring
+                .iter()
+                .filter(|tx_out| **tx_out != inputs[position].0.tx_out)
+                .cloned()
+                .collect();
+            assert_eq!(
+                actual, expected,
+                "TxIn for input {position} carries another input's ring"
+            );
+        }
+    }
+
     // `build_transaction_helper` should return a Tx when `rings` contains TxOuts
     // that do not appear in `inputs`.
     #[test_with_logger]
@@ -1768,44 +1894,13 @@ mod test_build_transaction_helper {
             let ring_size = 1;
 
             // Create inputs.
-            let inputs = {
-                let recipient_and_amount = (0..num_inputs)
-                    .map(|_| (sender_public_address.clone(), initial_amount))
-                    .collect::<Vec<_>>();
-                let outputs = get_outputs(block_version, &recipient_and_amount, &mut rng);
-
-                let cached_inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = outputs
-                    .into_iter()
-                    .map(|tx_out| {
-                        let fog_tx_out = FogTxOut::try_from(&tx_out).unwrap();
-                        let meta = FogTxOutMetadata::default();
-                        let txo_record = TxOutRecord::new(fog_tx_out, meta);
-
-                        let tx_out_target_key =
-                            RistrettoPublic::try_from(&tx_out.target_key).unwrap();
-                        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-                        let subaddress_spk = recover_public_subaddress_spend_key(
-                            sender_account_key.view_private_key(),
-                            &tx_out_target_key,
-                            &tx_public_key,
-                        );
-                        let spsk_to_index =
-                            HashMap::from_iter(vec![(subaddress_spk, DEFAULT_SUBADDRESS_INDEX)]);
-
-                        let owned_tx_out =
-                            OwnedTxOut::new(txo_record, &sender_account_key, &spsk_to_index)
-                                .unwrap();
-
-                        let proof = TxOutMembershipProof::new(0, 0, Default::default());
-
-                        (owned_tx_out, proof)
-                    })
-                    .collect();
-
-                cached_inputs
-            };
-
+            let inputs = owned_inputs(
+                block_version,
+                &sender_account_key,
+                num_inputs,
+                initial_amount,
+                &mut rng,
+            );
             assert_eq!(inputs.len(), num_inputs);
 
             // Create rings.
