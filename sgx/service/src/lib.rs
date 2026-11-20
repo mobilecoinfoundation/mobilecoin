@@ -5,12 +5,12 @@
 #![no_std]
 #![deny(missing_docs)]
 
-use core::ptr;
+use core::{mem::size_of, ptr};
 use mc_sgx_types::{
     sgx_attributes_t, sgx_calc_sealed_data_size, sgx_create_report, sgx_get_add_mac_txt_len,
     sgx_get_encrypt_txt_len, sgx_report_data_t, sgx_report_t, sgx_seal_data_ex, sgx_sealed_data_t,
     sgx_status_t, sgx_target_info_t, sgx_unseal_data, sgx_verify_report, SGX_KEYPOLICY_MRENCLAVE,
-    TSEAL_DEFAULT_FLAGSMASK, TSEAL_DEFAULT_MISCMASK,
+    SGX_KEYSELECT_SEAL, TSEAL_DEFAULT_FLAGSMASK, TSEAL_DEFAULT_MISCMASK,
 };
 
 ////
@@ -56,6 +56,35 @@ const ATTRIBUTE_MASK: sgx_attributes_t = sgx_attributes_t {
     xfrm: 0,
 };
 const MISC_MASK: u32 = TSEAL_DEFAULT_MISCMASK;
+
+/// Validate that a sealed blob's key derivation parameters match those used by
+/// [`seal_data`].
+///
+/// This checks only the untrusted header. It does not authenticate or decrypt
+/// the blob; callers must still pass the blob to [`unseal_data`].
+pub fn validate_sealed_blob_header(sealed_data: &[u8]) -> Result<(), sgx_status_t> {
+    if sealed_data.len() < size_of::<sgx_sealed_data_t>() {
+        return Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER);
+    }
+
+    #[allow(clippy::cast_ptr_alignment)]
+    let sealed_ptr = sealed_data.as_ptr() as *const sgx_sealed_data_t;
+
+    // The input is a byte slice, so it is not guaranteed to have the alignment
+    // required by sgx_sealed_data_t.
+    let key_request = unsafe { ptr::addr_of!((*sealed_ptr).key_request).read_unaligned() };
+
+    if key_request.key_name != SGX_KEYSELECT_SEAL
+        || key_request.key_policy != KEY_POLICY
+        || key_request.attribute_mask.flags != ATTRIBUTE_MASK.flags
+        || key_request.attribute_mask.xfrm != ATTRIBUTE_MASK.xfrm
+        || key_request.misc_mask != MISC_MASK
+    {
+        return Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER);
+    }
+
+    Ok(())
+}
 
 /// Convert a usize to u32 or else return invalid_parameter
 fn usize_for_sgx(val: usize) -> Result<u32, sgx_status_t> {
@@ -150,6 +179,9 @@ pub fn get_sealed_payload_sizes(sealed_data: &[u8]) -> Result<(u32, u32), sgx_st
 /// SGX_ERROR_UNEXPECTED. If unsealing succeeds, we return the portion of the
 /// outbuffer that we wrote to (which is normally the whole thing if you
 /// allocated the amount indicated by `authenticate_sealed`.
+///
+/// The key policy and attribute masks in the sealed blob must match those used
+/// by [`seal_data`].
 pub fn unseal_data(
     sealed_data: &[u8],
     plaintext_out: &mut [u8],
@@ -157,6 +189,8 @@ pub fn unseal_data(
 ) -> Result<(), sgx_status_t> {
     let mut payload_len = usize_for_sgx(plaintext_out.len())?;
     let mut add_mac_len = usize_for_sgx(additional_mac_txt_out.len())?;
+
+    validate_sealed_blob_header(sealed_data)?;
 
     #[allow(clippy::cast_ptr_alignment)]
     let sealed_ptr = sealed_data.as_ptr() as *const sgx_sealed_data_t;
@@ -186,5 +220,104 @@ pub fn unseal_data(
             }
         }
         err_code => Err(err_code),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::{mem::align_of, slice};
+
+    fn valid_header() -> sgx_sealed_data_t {
+        let mut header = sgx_sealed_data_t::default();
+        header.key_request.key_name = SGX_KEYSELECT_SEAL;
+        header.key_request.key_policy = KEY_POLICY;
+        header.key_request.attribute_mask = ATTRIBUTE_MASK;
+        header.key_request.misc_mask = MISC_MASK;
+        header
+    }
+
+    fn header_bytes(header: &sgx_sealed_data_t) -> &[u8] {
+        unsafe {
+            slice::from_raw_parts(
+                (header as *const sgx_sealed_data_t).cast::<u8>(),
+                size_of::<sgx_sealed_data_t>(),
+            )
+        }
+    }
+
+    fn assert_invalid_header(header: &sgx_sealed_data_t) {
+        assert!(matches!(
+            validate_sealed_blob_header(header_bytes(header)),
+            Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER)
+        ));
+    }
+
+    #[test]
+    fn expected_header_is_valid() {
+        assert!(validate_sealed_blob_header(header_bytes(&valid_header())).is_ok());
+    }
+
+    #[test]
+    fn policy_zero_is_invalid() {
+        let mut header = valid_header();
+        header.key_request.key_policy = 0;
+        assert_invalid_header(&header);
+    }
+
+    #[test]
+    fn key_name_zero_is_invalid() {
+        let mut header = valid_header();
+        header.key_request.key_name = 0;
+        assert_invalid_header(&header);
+    }
+
+    #[test]
+    fn unexpected_attribute_flags_mask_is_invalid() {
+        let mut header = valid_header();
+        header.key_request.attribute_mask.flags ^= 1;
+        assert_invalid_header(&header);
+    }
+
+    #[test]
+    fn unexpected_attribute_xfrm_mask_is_invalid() {
+        let mut header = valid_header();
+        header.key_request.attribute_mask.xfrm ^= 1;
+        assert_invalid_header(&header);
+    }
+
+    #[test]
+    fn unexpected_misc_mask_is_invalid() {
+        let mut header = valid_header();
+        header.key_request.misc_mask ^= 1;
+        assert_invalid_header(&header);
+    }
+
+    #[test]
+    fn truncated_header_is_invalid() {
+        let header_binding = valid_header();
+        let header_bytes = header_bytes(&header_binding);
+        assert!(matches!(
+            validate_sealed_blob_header(&header_bytes[..(header_bytes.len() - 1)]),
+            Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER)
+        ));
+    }
+
+    #[test]
+    fn unaligned_header_is_valid() {
+        let header = valid_header();
+        let mut storage = [0u8; size_of::<sgx_sealed_data_t>() + align_of::<sgx_sealed_data_t>()];
+        let offset = (0..align_of::<sgx_sealed_data_t>())
+            .find(|offset| {
+                (storage.as_ptr() as usize + offset) % align_of::<sgx_sealed_data_t>() != 0
+            })
+            .expect("sgx_sealed_data_t alignment should be greater than one");
+        let unaligned_header = &mut storage[offset..offset + size_of::<sgx_sealed_data_t>()];
+
+        unsafe {
+            (unaligned_header.as_mut_ptr() as *mut sgx_sealed_data_t).write_unaligned(header);
+        }
+
+        assert!(validate_sealed_blob_header(unaligned_header).is_ok());
     }
 }

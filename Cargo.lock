@@ -4890,6 +4890,7 @@ dependencies = [
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
+ "mc-sgx-service",
  "mc-sgx-slog-edl",
  "mc-sgx-types",
  "mc-sgx-urts",
@@ -6777,6 +6778,14 @@ dependencies = [
  "mc-sgx-report-cache-api",
  "mc-util-metrics",
  "retry",
+]
+
+[[package]]
+name = "mc-sgx-service"
+version = "7.2.2"
+dependencies = [
+ "mc-sgx-build",
+ "mc-sgx-types",
 ]
 
 [[package]]
