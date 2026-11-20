@@ -48,34 +48,39 @@ mod test {
 
     const RESPONDER_ID_STR: &str = "node1.unittest.mobilenode.com";
 
-    #[test]
-    fn ix_handshake() {
-        // Create a new identity pubkey for our "enclave"
-        let mut csprng = Hc128Rng::seed_from_u64(0);
-        let identity = X25519Private::from_random(&mut csprng);
-        let pubkey = X25519Public::from(&identity);
-
-        let report_data = EnclaveReportDataContents::new([0x2au8; 16].into(), pubkey, [0x36u8; 32]);
+    fn evidence_for(identity: X25519Public) -> (DcapEvidence, TrustedIdentity) {
+        let report_data =
+            EnclaveReportDataContents::new([0x2au8; 16].into(), identity, [0x36u8; 32]);
         let mut report = Report::default();
         report.as_mut().body.report_data.d[..32].copy_from_slice(&report_data.sha256());
 
         let quote = DcapQuotingEnclave::quote_report(&report).expect("Failed to create quote");
         let collateral = DcapQuotingEnclave::collateral(&quote).expect("Failed to get collateral");
-        let attestation_evidence = DcapEvidence {
+        let evidence = DcapEvidence {
             quote,
             collateral,
             report_data,
         };
 
-        let report_body = attestation_evidence.quote.app_report_body();
-
-        let mr_signer = TrustedIdentity::from(TrustedMrSignerIdentity::new(
+        let report_body = evidence.quote.app_report_body();
+        let identity = TrustedIdentity::from(TrustedMrSignerIdentity::new(
             report_body.mr_signer(),
             report_body.isv_product_id(),
             report_body.isv_svn(),
             [] as [&str; 0],
             [] as [&str; 0],
         ));
+
+        (evidence, identity)
+    }
+
+    #[test]
+    fn ix_handshake() {
+        // Create a new identity pubkey for our "enclave"
+        let mut csprng = Hc128Rng::seed_from_u64(0);
+        let identity = X25519Private::from_random(&mut csprng);
+        let pubkey = X25519Public::from(&identity);
+        let (attestation_evidence, mr_signer) = evidence_for(pubkey);
         let identities = [mr_signer];
 
         let initiator = Start::new(RESPONDER_ID_STR.into());
@@ -145,5 +150,37 @@ mod test {
             .expect("Could not decrypt reply");
 
         assert_eq!(plaintext2.as_slice(), response.as_bytes());
+    }
+
+    #[test]
+    fn ix_handshake_rejects_attestation_for_different_noise_identity() {
+        let mut csprng = Hc128Rng::seed_from_u64(1);
+        let noise_identity = X25519Private::from_random(&mut csprng);
+        let noise_public = X25519Public::from(&noise_identity);
+        let attested_identity = X25519Private::from_random(&mut csprng);
+        let attested_public = X25519Public::from(&attested_identity);
+        assert_ne!(noise_public, attested_public);
+
+        let (attestation_evidence, trusted_identity) = evidence_for(attested_public);
+        let initiator = Start::new(RESPONDER_ID_STR.into());
+        let responder = Start::new(RESPONDER_ID_STR.into());
+
+        let node_init = NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(
+            noise_identity,
+            attestation_evidence.clone(),
+        );
+        let (_, auth_request_output) = initiator
+            .try_next(&mut csprng, node_init)
+            .expect("Initiator could not be initiated");
+
+        let auth_request_input = NodeAuthRequestInput::new(
+            auth_request_output,
+            attested_identity,
+            attestation_evidence,
+            [trusted_identity],
+        );
+        let result = responder.try_next(&mut csprng, auth_request_input);
+
+        assert!(matches!(result, Err(Error::BadRemoteIdentity)));
     }
 }

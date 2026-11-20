@@ -3,17 +3,18 @@
 //! Initiator-specific transition functions
 
 use crate::{
-    AuthPending, AuthRequestOutput, AuthResponseInput, ClientInitiate, Error, NodeInitiate, Ready,
-    Start, Terminated, Transition, UnverifiedAttestationEvidence,
+    shared::verify_dcap_evidence, AuthPending, AuthRequestOutput, AuthResponseInput,
+    ClientInitiate, Error, NodeInitiate, Ready, Start, Terminated, Transition,
+    UnverifiedAttestationEvidence,
 };
 use ::prost::Message;
-use alloc::{string::ToString, vec::Vec};
+use alloc::vec::Vec;
 use der::DateTime;
 use mc_attest_core::{EvidenceKind, ReportDataMask, VerificationReport};
-use mc_attest_verifier::{DcapVerifier, Error as VerifierError, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_attest_verifier_types::{prost, DcapEvidence};
-use mc_attestation_verifier::{Evidence, TrustedIdentity, VerificationTreeDisplay};
-use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
+use mc_attestation_verifier::TrustedIdentity;
+use mc_crypto_keys::{Kex, KexPublic};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, NoiseDigest, ProtocolName,
@@ -233,36 +234,6 @@ fn verify_evidence_kind<PubKey: KexPublic>(
         EvidenceKind::Epid(verification_report) => {
             verify_verification_report(&verification_report, identities, remote_identity)
         }
-    }
-}
-
-fn verify_dcap_evidence<PubKey: KexPublic>(
-    dcap_evidence: DcapEvidence,
-    identities: &Vec<TrustedIdentity>,
-    time: Option<DateTime>,
-    remote_identity: &PubKey,
-) -> Result<(), Error> {
-    let DcapEvidence {
-        quote,
-        collateral,
-        report_data,
-    } = dcap_evidence;
-
-    if remote_identity.map_bytes(|bytes| bytes != report_data.key().to_bytes().as_slice()) {
-        return Err(Error::BadRemoteIdentity);
-    }
-
-    let verifier = DcapVerifier::new(identities, time, report_data);
-    let evidence =
-        Evidence::new(quote, collateral).map_err(|_| Error::AttestationEvidenceDeserialization)?;
-    let verification_output = verifier.verify(&evidence);
-    if verification_output.is_success().into() {
-        Ok(())
-    } else {
-        let display_tree = VerificationTreeDisplay::new(&verifier, verification_output);
-        Err(Error::AttestationEvidenceVerification(
-            VerifierError::Verification(display_tree.to_string()),
-        ))
     }
 }
 
