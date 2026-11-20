@@ -21,8 +21,8 @@ use mc_ledger_db::LedgerDB;
 use mc_util_cli::ParserWithBuildInfo;
 use std::{
     env,
-    fs::File,
-    io::{Read, Write},
+    fs::{self, File},
+    io::{ErrorKind, Write},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -61,16 +61,7 @@ fn main() -> Result<(), ConsensusServiceError> {
     .expect("Failed setting telemetry tracer");
 
     // load the sealed block signing key fron storage
-    let cached_key = match File::open(&config.sealed_block_signing_key) {
-        Ok(mut file) => {
-            let mut contents = String::new();
-            match file.read_to_string(&mut contents) {
-                Ok(_) => Some(contents.as_bytes().to_vec()),
-                Err(_) => None,
-            }
-        }
-        Err(_) => None,
-    };
+    let cached_key = load_sealed_block_signing_key(&config.sealed_block_signing_key);
 
     mc_common::sentry::configure_scope(|scope| {
         scope.set_tag("local_node_id", local_node_id.responder_id.to_string());
@@ -151,6 +142,17 @@ fn main() -> Result<(), ConsensusServiceError> {
     panic!("Oh oh, our threads died");
 }
 
+fn load_sealed_block_signing_key(path: &Path) -> Option<Vec<u8>> {
+    match fs::read(path) {
+        Ok(contents) => Some(contents),
+        Err(err) if err.kind() == ErrorKind::NotFound => None,
+        Err(err) => panic!(
+            "Failed to read sealed block signing key {}: {err}",
+            path.display()
+        ),
+    }
+}
+
 fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &Path) {
     if let Some(origin_block_path) = config_origin_path.clone() {
         // Copy origin block to ledger_db path if there are not already contents in
@@ -171,7 +173,37 @@ fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Read;
     use tempfile::TempDir;
+
+    #[test]
+    fn test_load_sealed_block_signing_key_binary() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("sealed.key");
+        let blob = b"\x00\xff\x80sealed-key";
+        fs::write(&path, blob).unwrap();
+
+        assert_eq!(load_sealed_block_signing_key(&path), Some(blob.to_vec()));
+    }
+
+    #[test]
+    fn test_load_sealed_block_signing_key_missing() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("missing.key");
+
+        assert_eq!(load_sealed_block_signing_key(&path), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to read sealed block signing key")]
+    fn test_load_sealed_block_signing_key_read_error() {
+        let dir = TempDir::new().unwrap();
+        // Reading a directory fails.
+        let err = fs::read(dir.path()).unwrap_err();
+        assert_ne!(err.kind(), ErrorKind::NotFound);
+
+        load_sealed_block_signing_key(dir.path());
+    }
 
     #[test]
     #[should_panic]
