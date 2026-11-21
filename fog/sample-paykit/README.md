@@ -32,6 +32,16 @@ makes network calls to get merkle proofs and to get fog reports.
 An implementation that truly supports offline transactions would not make any network calls
 in that function, and would support fetching those data in advance.
 
+Note: The fog ledger operator sees every TxOut index that `build_transaction` requests merkle
+proofs for. The sample paykit requests the true inputs and the mixins together in one shuffled
+request, and remembers, for the lifetime of the `Client`, the ring each input was first requested
+with and the mixins currently used for it. Every later request that spends the input includes that
+whole first ring, even members since replaced because they collided with another input or ring of
+the same transaction, so intersecting the requests for an input cannot remove any member of its
+first ring. That is a statement about set membership only; it says nothing about what request
+sizes, timing, or spending patterns reveal. See `select_mixin_indices` for the details. A real
+wallet should persist that ring cache alongside the account state.
+
 scope
 -----
 
