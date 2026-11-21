@@ -5,13 +5,12 @@ use crate::{
     error::Error,
     event::{AuthResponseOutput, ClientAuthRequestInput, NodeAuthRequestInput},
     mealy::Transition,
+    shared::verify_dcap_evidence,
     state::{Ready, Start},
 };
 use ::prost::Message;
-use alloc::{string::ToString, vec::Vec};
-use mc_attest_verifier::DcapVerifier;
+use alloc::vec::Vec;
 use mc_attest_verifier_types::{prost, DcapEvidence, EvidenceKind};
-use mc_attestation_verifier::{Evidence, VerificationTreeDisplay};
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
@@ -152,20 +151,10 @@ where
         let dcap_evidence = DcapEvidence::try_from(&prost_evidence)
             .map_err(|_| Error::AttestationEvidenceDeserialization)?;
 
-        let DcapEvidence {
-            quote,
-            collateral,
-            report_data,
-        } = dcap_evidence;
-
-        let verifier = DcapVerifier::new(identities, None, report_data);
-        let evidence = Evidence::new(quote, collateral).map_err(mc_attest_verifier::Error::from)?;
-
-        let verification = verifier.verify(&evidence);
-        if verification.is_failure().into() {
-            let display_tree = VerificationTreeDisplay::new(&verifier, verification);
-            return Err(mc_attest_verifier::Error::Verification(display_tree.to_string()).into());
-        }
+        let remote_identity = handshake_state
+            .remote_identity()
+            .ok_or(Error::MissingRemoteIdentity)?;
+        verify_dcap_evidence(dcap_evidence, &identities, None, remote_identity)?;
 
         Self::handle_response(csprng, handshake_state, input.dcap_evidence)
     }
