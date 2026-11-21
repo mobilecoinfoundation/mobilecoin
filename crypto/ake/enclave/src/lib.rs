@@ -555,6 +555,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let client_query_bytes = self.client_decrypt(incoming_client_message)?;
         let sealed_client_query = PlaintextClientRequest {
             client_request_bytes: client_query_bytes,
+            aad: aad.clone(),
             channel_id: channel_id.clone(),
         };
         let sealed_client_query_bytes = mc_util_serial::serialize(&sealed_client_query)?;
@@ -573,6 +574,14 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let (sealed_client_request_bytes, _) = sealed_message.data.unseal_raw()?;
         let sealed_client_request: PlaintextClientRequest =
             mc_util_serial::deserialize(&sealed_client_request_bytes)?;
+
+        // The outer context crosses the untrusted host, so only accept it if
+        // it still matches the context authenticated by the client.
+        if sealed_client_request.channel_id != sealed_message.channel_id
+            || sealed_client_request.aad != sealed_message.aad
+        {
+            return Err(Error::InvalidState);
+        }
 
         Ok(sealed_client_request.client_request_bytes)
     }
@@ -723,5 +732,56 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         }
 
         Err(Error::NotFound)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const REQUEST_BYTES: &[u8] = b"client request";
+    const REQUEST_AAD: &[u8] = b"request aad";
+    const CLIENT_CHANNEL: &[u8] = b"client channel";
+
+    fn sealed_client_message() -> SealedClientMessage {
+        let channel_id = ClientSession::from(CLIENT_CHANNEL);
+        let sealed_client_request = PlaintextClientRequest {
+            client_request_bytes: REQUEST_BYTES.to_vec(),
+            aad: REQUEST_AAD.to_vec(),
+            channel_id: channel_id.clone(),
+        };
+        let sealed_client_request_bytes =
+            mc_util_serial::serialize(&sealed_client_request).unwrap();
+
+        SealedClientMessage {
+            aad: REQUEST_AAD.to_vec(),
+            channel_id,
+            data: IntelSealed::seal_raw(&sealed_client_request_bytes, &[]).unwrap(),
+        }
+    }
+
+    #[test]
+    fn unseal_accepts_matching_client_context() {
+        let ake = AkeEnclaveState::<NullIdentity>::default();
+
+        assert_eq!(ake.unseal(&sealed_client_message()).unwrap(), REQUEST_BYTES);
+    }
+
+    #[test]
+    fn unseal_rejects_mismatched_client_channel() {
+        let ake = AkeEnclaveState::<NullIdentity>::default();
+        let mut sealed_message = sealed_client_message();
+        sealed_message.channel_id = ClientSession::from(&b"attacker channel"[..]);
+
+        assert_eq!(ake.unseal(&sealed_message), Err(Error::InvalidState));
+    }
+
+    #[test]
+    fn unseal_rejects_mismatched_aad() {
+        let ake = AkeEnclaveState::<NullIdentity>::default();
+        let mut sealed_message = sealed_client_message();
+        sealed_message.aad = b"modified aad".to_vec();
+
+        assert_eq!(ake.unseal(&sealed_message), Err(Error::InvalidState));
     }
 }

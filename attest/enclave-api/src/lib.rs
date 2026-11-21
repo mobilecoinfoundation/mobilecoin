@@ -94,6 +94,9 @@ pub struct PlaintextClientRequest {
     /// The decrypted client request bytes
     pub client_request_bytes: Vec<u8>,
 
+    /// The additional authenticated data associated with the client request.
+    pub aad: Vec<u8>,
+
     /// The channel_id associated with the QueryRequest. Since the channel_id
     /// will never be 0, this struct will never serialize into an empty byte
     /// array.
